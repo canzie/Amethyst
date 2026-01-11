@@ -6,8 +6,9 @@
 
 namespace Amethyst {
 
-void ImageButton::draw()
+void ImageButton::draw(GeometryRegistry& registry)
 {
+    (void)registry;
     // TODO: implement
 }
 

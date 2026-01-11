@@ -10,17 +10,22 @@
 
 namespace Amethyst {
 
+class GeometryRegistry;
+
 class UIBase2D : public Instance {
   public:
     UIBase2D() = default;
     virtual ~UIBase2D() = default;
 
-    virtual void draw() = 0;
+    virtual void draw(GeometryRegistry &registry) = 0;
 
   public:
     glm::vec2 absolutePosition;
     Degrees absoluteRotation;
     glm::vec2 absoluteSize;
+
+  protected:
+    uint32_t m_allocationIndex = UINT32_MAX;
 };
 
 } // namespace Amethyst

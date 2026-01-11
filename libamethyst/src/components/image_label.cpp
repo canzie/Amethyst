@@ -6,8 +6,9 @@
 
 namespace Amethyst {
 
-void ImageLabel::draw()
+void ImageLabel::draw(GeometryRegistry& registry)
 {
+    (void)registry;
     // TODO: implement
 }
 

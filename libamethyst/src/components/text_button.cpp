@@ -6,8 +6,9 @@
 
 namespace Amethyst {
 
-void TextButton::draw()
+void TextButton::draw(GeometryRegistry& registry)
 {
+    (void)registry;
     // TODO: implement
 }
 

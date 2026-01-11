@@ -33,7 +33,7 @@ class TextLabel : public UILabel {
     TextLabel() = default;
     virtual ~TextLabel() = default;
 
-    void draw() override;
+    void draw(GeometryRegistry& registry) override;
 
   public:
     std::string text;

@@ -19,7 +19,7 @@ class TextButton : public UIButton {
     TextButton();
     virtual ~TextButton() = default;
 
-    void draw() override;
+    void draw(GeometryRegistry& registry) override;
 
   public:
     std::string text;

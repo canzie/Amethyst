@@ -12,6 +12,7 @@ namespace Amethyst {
 
 using Color3 = glm::vec3;
 using Color4 = glm::vec4;
+
 using Degrees = float;
 using LayoutOrder = uint32_t;
 
@@ -28,8 +29,15 @@ struct UnifiedDimension2 {
     glm::vec2 scale = {0.0f, 0.0f};
     glm::vec2 offset = {0.0f, 0.0f};
 
-    static UnifiedDimension2 fromScale(float scaleX, float scaleY) { return {{scaleX, scaleY}, {0.0f, 0.0f}}; }
+    UnifiedDimension2() = default;
+    UnifiedDimension2(glm::vec2 _scale, glm::vec2 _offset) : scale(_scale), offset(_offset) {};
+    UnifiedDimension2(float scaleX, float offsetX, float scaleY, float offsetY)
+    {
+        scale = glm::vec2(scaleX, scaleY);
+        offset = glm::vec2(offsetX, offsetY);
+    }
 
+    static UnifiedDimension2 fromScale(float scaleX, float scaleY) { return {{scaleX, scaleY}, {0.0f, 0.0f}}; }
     static UnifiedDimension2 fromOffset(float offsetX, float offsetY) { return {{0.0f, 0.0f}, {offsetX, offsetY}}; }
 
     glm::vec2 resolve(const glm::vec2 &parentSize) const { return scale * parentSize + offset; }
@@ -67,6 +75,23 @@ enum class TextDirection {
     AUTO,
     LEFT_TO_RIGHT,
     RIGHT_TO_LEFT
+};
+
+enum PrimitiveType : uint8_t {
+    PRIMITIVE_RECT,
+    PRIMITIVE_CIRCLE,
+    PRIMITIVE_TRIANGLE,
+    PRIMITIVE_LINE,
+    PRIMITIVE_COUNT,
+};
+
+struct InstanceData {
+    alignas(16) glm::mat4 transform;
+    alignas(16) Color3 fillColor;
+    alignas(16) Color3 borderColor;
+    float borderThickness;
+    float cornerRadius;
+    uint32_t primitiveType;
 };
 
 } // namespace Amethyst

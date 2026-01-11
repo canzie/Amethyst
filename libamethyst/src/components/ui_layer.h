@@ -15,7 +15,7 @@ class UILayer : public UIBase2D {
     UILayer() = default;
     virtual ~UILayer() = default;
 
-    void draw() override;
+    void draw(GeometryRegistry& registry) override;
 
   public:
     bool resetOnSpawn = false;

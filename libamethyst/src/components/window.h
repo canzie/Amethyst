@@ -14,7 +14,7 @@ class Window : public UILayer {
     Window() = default;
     virtual ~Window() = default;
 
-    void draw() override;
+    void draw(GeometryRegistry& registry) override;
 
   public:
     uint32_t displayOrder; // kind of like the zindex for windows

@@ -6,8 +6,9 @@
 
 namespace Amethyst {
 
-void UILayer::draw()
+void UILayer::draw(GeometryRegistry& registry)
 {
+    (void)registry;
     // TODO: implement
 }
 

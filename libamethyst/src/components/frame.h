@@ -14,7 +14,7 @@ class Frame : public UIObject {
     Frame() = default;
     virtual ~Frame() = default;
 
-    void draw() override;
+    void draw(GeometryRegistry &registry) override;
 };
 
 } // namespace Amethyst

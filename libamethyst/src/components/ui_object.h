@@ -16,15 +16,22 @@ class UIObject : public UIBase2D {
     UIObject() = default;
     virtual ~UIObject() = default;
 
+    void computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation);
+    glm::mat4 buildTransform() const;
+    InstanceData createInstanceData() const;
+
   public:
     bool active;
     glm::vec2 anchorPoint = glm::vec2(0.0f);
     AutomaticSize automaticSize = AutomaticSize::NONE;
-    Color4 backgroundColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    Color3 backgroundColor = {1.0f, 1.0f, 1.0f};
+    float backgroundTransparency = 0.0;
     BorderMode borderMode;
-    float borderPixelSize;
-    Color4 borderColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    float borderPixelSize = 0.0f;
+    Color3 borderColor = {0.0f, 0.0f, 0.0f};
+    float borderTransparency = 0.0f;
     bool clipsDescendants;
+    float cornerRadius = 0.0f;
     GuiState guiState;
     bool interactable;
     LayoutOrder layoutOrder;
