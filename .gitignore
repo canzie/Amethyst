@@ -39,3 +39,11 @@
 
 # debug information files
 *.dwo
+
+
+.cache/
+.claude/
+.cursor/
+
+build/*
+libamethyst/vendor/*
