@@ -22,9 +22,9 @@ class UIObject : public UIBase2D {
     glm::mat4 buildTransform() const;
     InstanceData createInstanceData() const;
 
-    virtual void onMouseEnter() {}
-    virtual void onMouseLeave() {}
-    virtual void onMouseMoved(uint32_t, uint32_t) {}
+    virtual void onMouseEnter(uint32_t x, uint32_t y);
+    virtual void onMouseLeave(uint32_t x, uint32_t y);
+    virtual void onMouseMoved(uint32_t x, uint32_t y);
     virtual void onMouseButton1Down(uint32_t, uint32_t) {}
     virtual void onMouseButton1Up(uint32_t, uint32_t) {}
     virtual void onMouseButton1Click() {}
@@ -55,6 +55,16 @@ class UIObject : public UIBase2D {
     Degrees rotation = 0.0f;
     bool visible = true;
     uint32_t zIndex = 0;
+    bool draggable = false;
+
+  private:
+    void startDrag(uint32_t mouseX, uint32_t mouseY);
+    void updateDrag(uint32_t mouseX, uint32_t mouseY);
+    void endDrag();
+
+    bool m_isDragging = false;
+    glm::vec2 m_dragStartMouse = glm::vec2(0.0f);
+    glm::vec2 m_dragStartOffset = glm::vec2(0.0f);
 };
 
 } // namespace Amethyst

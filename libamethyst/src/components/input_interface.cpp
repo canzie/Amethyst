@@ -26,6 +26,10 @@ void InputInterface::setMousePosition(uint32_t x, uint32_t y)
 {
     s_mouseX = x;
     s_mouseY = y;
+
+    for (Window *window : s_windows) {
+        window->onMouseMove(s_mouseX, s_mouseY);
+    }
 }
 
 void InputInterface::onMouseButton(int button, int action, int mods)

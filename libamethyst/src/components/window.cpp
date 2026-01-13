@@ -98,6 +98,28 @@ void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_
     }
 }
 
+void Window::onMouseMove(uint32_t x, uint32_t y)
+{
+    Instance *hovered = findClickedObject(x, y);
+    if (hovered != m_lastHoveredInstance) {
+        if (m_lastHoveredInstance) {
+            auto obj = m_lastHoveredInstance->as<UIObject>();
+            obj->onMouseLeave(x, y);
+        }
+        if (hovered) {
+            auto obj = hovered->as<UIObject>();
+            obj->onMouseEnter(x, y);
+        }
+    }
+
+    if (hovered) {
+        auto *uiObject = hovered->as<UIObject>();
+        uiObject->onMouseMoved(x, y);
+    }
+
+    m_lastHoveredInstance = hovered;
+}
+
 void Window::onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y)
 {
     (void)xoffset;

@@ -22,12 +22,16 @@ class Window : public UILayer {
 
     void onMouseButton(int button, int action, int mods, uint32_t x, uint32_t y);
     void onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y);
+    void onMouseMove(uint32_t x, uint32_t y);
 
   private:
     Instance *findClickedObject(uint32_t x, uint32_t y);
 
   public:
     uint32_t displayOrder;
+
+  private:
+    Instance *m_lastHoveredInstance = nullptr;
 };
 
 } // namespace Amethyst

@@ -7,7 +7,8 @@
 
 namespace Amethyst {
 
-void Instance::setParent(Instance* newParent) {
+void Instance::setParent(Instance *newParent)
+{
     if (parent) {
         parent->removeChild(this);
     }
@@ -17,22 +18,27 @@ void Instance::setParent(Instance* newParent) {
     }
 }
 
-void Instance::addChild(Instance* child) {
+void Instance::addChild(Instance *child)
+{
     children.push_back(child);
 }
 
-void Instance::removeChild(Instance* child) {
+void Instance::removeChild(Instance *child)
+{
     auto it = std::find(children.begin(), children.end(), child);
     if (it != children.end()) {
         children.erase(it);
     }
 }
 
-void Instance::markDirty() {
+void Instance::markDirty()
+{
     flags |= FLAG_DIRTY;
-    for (Instance* p = parent; p && !(p->flags & FLAG_CHILD_DIRTY); p = p->parent) {
+    for (Instance *p = parent; p && !(p->flags & FLAG_CHILD_DIRTY); p = p->parent) {
         p->flags |= FLAG_CHILD_DIRTY;
     }
+
+    // TODO: also mark children as dirty, or change how we resolve dirty flag
 }
 
 } // namespace Amethyst

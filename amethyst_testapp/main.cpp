@@ -77,6 +77,7 @@ int main()
             continue;
         }
 
+        window.draw(registry);
         VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];
         backend.record(cmd, registry);
 
