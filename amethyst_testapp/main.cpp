@@ -1,3 +1,4 @@
+#include "components/common.h"
 #include "vk_context.h"
 
 #include "amethyst/Amethyst.h"
@@ -9,7 +10,7 @@ int main()
     AM_LOG_INFO("Amethyst Test App");
 
     VkContext ctx;
-    if (!contextInit(ctx, 1280, 720, "Amethyst Test")) {
+    if (!contextInit(ctx, 1000, 1000, "Amethyst Test")) {
         AM_LOG_ERROR("Failed to initialize Vulkan context");
         return 1;
     }
@@ -35,33 +36,32 @@ int main()
 
     Amethyst::Window window;
     window.absoluteSize = screenSize;
+    window.absoluteRotation = 0.0f;
 
-    Amethyst::Frame frame1;
+    Amethyst::Frame frame1(&window);
     frame1.size = Amethyst::UDim2::fromOffset(300, 200);
     frame1.position = Amethyst::UDim2::fromOffset(200, 200);
     frame1.backgroundColor = {0.9f, 0.2f, 0.2f};
+    frame1.borderPixelSize = 10.0f;
+    frame1.borderMode = Amethyst::BorderMode::INSET;
+    frame1.borderColor = glm::vec3(1.0f);
     frame1.cornerRadius = 10.0f;
-    frame1.setParent(&window);
     frame1.markDirty();
-    frame1.computeAbsolutes(screenSize, glm::vec2(0.0f), 0.0f);
 
-    Amethyst::Frame frame2;
+    Amethyst::Frame frame2(&frame1);
     frame2.size = Amethyst::UDim2::fromScale(0.5f, 0.5f);
     frame2.position = Amethyst::UDim2::fromOffset(0.0f, 0.0f);
+    frame2.anchorPoint = glm::vec2(0.5f);
     frame2.backgroundColor = {0.2f, 0.9f, 0.2f};
     frame2.cornerRadius = 0.0f;
-    frame2.setParent(&frame1);
     frame2.markDirty();
-    frame2.computeAbsolutes(frame1.absoluteSize, frame1.absolutePosition, 0.0f);
 
-    Amethyst::Frame frame3;
+    Amethyst::Frame frame3(&window);
     frame3.size = Amethyst::UDim2(0.0f, 100.0f, 0.9f, 0.0f);
     frame3.position = Amethyst::UDim2::fromOffset(550, 0);
     frame3.backgroundColor = {0.2f, 0.2f, 0.9f};
-    frame3.cornerRadius = 20.0f;
-    frame3.setParent(&window);
+    frame3.cornerRadius = 50.0f;
     frame3.markDirty();
-    frame3.computeAbsolutes(screenSize, glm::vec2(0.0f), 0.0f);
 
     window.draw(registry);
 

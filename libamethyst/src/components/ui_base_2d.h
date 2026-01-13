@@ -20,8 +20,8 @@ class UIBase2D : public Instance {
     virtual void draw(GeometryRegistry &registry) = 0;
 
   public:
-    glm::vec2 absolutePosition;
-    Degrees absoluteRotation;
+    glm::vec2 absolutePosition = glm::vec2(0.0f);
+    Degrees absoluteRotation = 0.0f;
     glm::vec2 absoluteSize;
 
   protected:

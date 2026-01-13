@@ -32,7 +32,8 @@ InstanceData UIObject::createInstanceData() const
                         .borderColor = borderColor,
                         .borderThickness = borderPixelSize,
                         .cornerRadius = cornerRadius,
-                        .primitiveType = PRIMITIVE_TRIANGLE};
+                        .primitiveType = PRIMITIVE_TRIANGLE,
+                        .borderMode = static_cast<uint32_t>(borderMode)};
 }
 
 } // namespace Amethyst

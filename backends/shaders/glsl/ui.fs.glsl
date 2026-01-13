@@ -7,6 +7,7 @@ layout(location = 3) in flat vec3 fragBorderColor;
 layout(location = 4) in flat float fragBorderThickness;
 layout(location = 5) in flat float fragCornerRadius;
 layout(location = 6) in flat vec2 fragSize;
+layout(location = 7) in flat uint fragBorderMode;
 
 layout(location = 0) out vec4 outColor;
 
@@ -15,12 +16,17 @@ const uint PRIMITIVE_CIRCLE = 1;
 const uint PRIMITIVE_TRIANGLE = 2;
 const uint PRIMITIVE_LINE = 3;
 
+const uint BORDER_OUTLINE = 0;
+const uint BORDER_MIDDLE = 1;
+const uint BORDER_INSET = 2;
 
-float sdfRect(vec2 p, vec2 halfSize, float radius)
-{
-    vec2 d = abs(p) - (halfSize - vec2(radius)); // subtract radius from halfSize
-    vec2 dMax = max(d, 0.0);
-    return length(dMax) + min(max(d.x, d.y), 0.0) - radius;
+
+float sdfRect(vec2 p, vec2 b, vec4 r)
+{    
+    r.xy = (p.x>0.0) ? r.xy : r.zw;
+    r.x  = (p.y>0.0) ? r.x  : r.y;
+    vec2 q = abs(p)-b+r.x;
+    return min(max(q.x,q.y),0.0) + length(max(q, vec2(0.0))) - r.x;
 }
 
 float sdfCircle(vec2 p, float radius)
@@ -41,6 +47,16 @@ float sdfTriangle(vec2 p, vec2 halfSize)
     return d * s;
 }
 
+float sdEquilateralTriangle(vec2 p, float r)
+{
+    const float k = sqrt(3.0);
+    p.x = abs(p.x) - r;
+    p.y = p.y + r/k;
+    if( p.x+k*p.y>0.0 ) p = vec2(p.x-k*p.y,-k*p.x-p.y)/2.0;
+    p.x -= clamp( p.x, -2.0*r, 0.0 );
+    return -length(p)*sign(p.y);
+}
+
 float sdfLine(vec2 p, vec2 halfSize, float thickness)
 {
     float d = abs(p.y) - thickness * 0.5;
@@ -56,7 +72,7 @@ void main()
     float dist;
 
     if (fragPrimitiveType == PRIMITIVE_RECT) {
-        dist = sdfRect(p, halfSize, fragCornerRadius);
+        dist = sdfRect(p, halfSize, vec4(fragCornerRadius));
     } else if (fragPrimitiveType == PRIMITIVE_CIRCLE) {
         dist = sdfCircle(p, min(halfSize.x, halfSize.y));
     } else if (fragPrimitiveType == PRIMITIVE_TRIANGLE) {
@@ -64,20 +80,38 @@ void main()
     } else if (fragPrimitiveType == PRIMITIVE_LINE) {
         dist = sdfLine(p, halfSize, fragCornerRadius);
     } else {
-        dist = sdfRect(p, halfSize, 0.0);
+        dist = sdfRect(p, halfSize, vec4(0.0));
     }
 
     float aa = fwidth(dist);
-    float alpha = 1.0 - smoothstep(-aa, aa, dist);
 
-    vec3 color = fragFillColor;
+    float outerThreshold = 0.0;
+    float innerThreshold = 0.0;
+
     if (fragBorderThickness > 0.0) {
-        float borderDist = abs(dist) - fragBorderThickness;
-        float borderAlpha = 1.0 - smoothstep(-aa, aa, borderDist);
-        color = mix(fragFillColor, fragBorderColor, borderAlpha * step(dist, 0.0));
+        if (fragBorderMode == BORDER_OUTLINE) {
+            outerThreshold = fragBorderThickness;
+            innerThreshold = 0.0;
+        } else if (fragBorderMode == BORDER_MIDDLE) {
+            outerThreshold = fragBorderThickness * 0.5;
+            innerThreshold = -fragBorderThickness * 0.5;
+        } else {
+            outerThreshold = 0.0;
+            innerThreshold = -fragBorderThickness;
+        }
     }
 
-    if (alpha < 0.001) discard;
+    float shapeAlpha = 1.0 - smoothstep(-aa, aa, dist - outerThreshold);
 
-    outColor = vec4(color, alpha);
+    vec3 color;
+    if (fragBorderThickness > 0.0) {
+        float fillMask = 1.0 - smoothstep(-aa, aa, dist - innerThreshold);
+        color = mix(fragBorderColor, fragFillColor, fillMask);
+    } else {
+        color = fragFillColor;
+    }
+
+    if (shapeAlpha < 0.001) discard;
+
+    outColor = vec4(color, shapeAlpha);
 }

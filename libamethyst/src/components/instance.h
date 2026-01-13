@@ -20,6 +20,7 @@ enum InstanceFlags : uint8_t {
 class Instance {
   public:
     Instance() = default;
+    Instance(Instance *parent) { setParent(parent); };
     virtual ~Instance() = default;
 
     void setParent(Instance *newParent);

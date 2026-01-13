@@ -122,7 +122,12 @@ static bool createSwapchain(VkContext &ctx, int width, int height)
         }
     }
 
-    ctx.swapchainExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+    // On Wayland, currentExtent reflects the actual window size from compositor
+    if (caps.currentExtent.width != UINT32_MAX) {
+        ctx.swapchainExtent = caps.currentExtent;
+    } else {
+        ctx.swapchainExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+    }
 
     uint32_t imageCount = caps.minImageCount + 1;
     if (caps.maxImageCount > 0 && imageCount > caps.maxImageCount) {
@@ -239,6 +244,10 @@ bool contextInit(VkContext &ctx, int width, int height, const char *title)
     ctx.window = glfwCreateWindow(width, height, title, nullptr, nullptr);
     if (!ctx.window) return false;
 
+    // Force window size after creation (Wayland/Hyprland fix)
+    glfwSetWindowSize(ctx.window, width, height);
+    glfwSetWindowSizeLimits(ctx.window, width, height, width, height);
+
     if (!createInstance(ctx)) return false;
     if (glfwCreateWindowSurface(ctx.instance, ctx.window, nullptr, &ctx.surface) != VK_SUCCESS) return false;
     if (!selectPhysicalDevice(ctx)) return false;
@@ -283,8 +292,8 @@ bool contextBeginFrame(VkContext &ctx, uint32_t &imageIndex)
     vkWaitForFences(ctx.device, 1, &ctx.inFlightFences[ctx.currentFrame], VK_TRUE, UINT64_MAX);
     vkResetFences(ctx.device, 1, &ctx.inFlightFences[ctx.currentFrame]);
 
-    VkResult result = vkAcquireNextImageKHR(ctx.device, ctx.swapchain, UINT64_MAX,
-                                            ctx.imageAvailableSemaphores[ctx.currentFrame], VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(ctx.device, ctx.swapchain, UINT64_MAX, ctx.imageAvailableSemaphores[ctx.currentFrame],
+                                            VK_NULL_HANDLE, &imageIndex);
     if (result != VK_SUCCESS) return false;
 
     VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];

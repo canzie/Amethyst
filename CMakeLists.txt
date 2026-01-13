@@ -12,6 +12,4 @@ option(AMETHYST_BUILD_TESTAPP "Build the Amethyst test application" ON)
 add_subdirectory(libamethyst)
 add_subdirectory(backends)
 
-if(AMETHYST_BUILD_TESTAPP)
     add_subdirectory(amethyst_testapp)
-endif()

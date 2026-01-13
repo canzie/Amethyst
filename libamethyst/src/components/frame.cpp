@@ -4,6 +4,7 @@
 
 #include "components/frame.h"
 
+#include "components/ui_object.h"
 #include "rendering/geometry_registry.h"
 
 namespace Amethyst {
@@ -21,7 +22,8 @@ void Frame::draw(GeometryRegistry &registry)
         registry.update(m_allocationIndex, data);
     }
     for (Instance *child : children) {
-        if (auto *drawable = child->as<UIBase2D>()) {
+        if (auto *drawable = child->as<UIObject>()) {
+            drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(registry);
         }
     }

@@ -92,6 +92,7 @@ struct InstanceData {
     float borderThickness;
     float cornerRadius;
     uint32_t primitiveType;
+    uint32_t borderMode;
 };
 
 } // namespace Amethyst
