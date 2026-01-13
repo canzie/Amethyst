@@ -1,7 +1,9 @@
 #include "amethyst__vk13_glfw.h"
 
-#include "components/common.h"
+#include "components/input_interface.h"
 #include "logging/log.h"
+
+#include <GLFW/glfw3.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -264,8 +266,8 @@ void VkBackend::uploadToGpu(BufferAllocation &alloc, const void *data, size_t si
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memReqs.size;
-    allocInfo.memoryTypeIndex =
-        findMemoryType(m_info.physicalDevice, memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    allocInfo.memoryTypeIndex = findMemoryType(m_info.physicalDevice, memReqs.memoryTypeBits,
+                                               VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     vkAllocateMemory(m_info.device, &allocInfo, nullptr, &stagingMemory);
     vkBindBufferMemory(m_info.device, stagingBuffer, stagingMemory, 0);
 
@@ -500,6 +502,33 @@ void VkBackend::allocateDescriptorSet()
         .pBufferInfo = &bufferInfo,
     };
     vkUpdateDescriptorSets(m_info.device, 1, &descriptorWrite, 0, nullptr);
+}
+
+static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
+{
+    (void)window;
+    InputInterface::onMouseButton(button, action, mods);
+}
+
+static void cursorPosCallback(GLFWwindow *window, double x, double y)
+{
+    (void)window;
+    InputInterface::setMousePosition(static_cast<uint32_t>(x), static_cast<uint32_t>(y));
+}
+
+static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset)
+{
+    (void)window;
+    InputInterface::onMouseScroll(static_cast<float>(xoffset), static_cast<float>(yoffset));
+}
+
+void setupGLFWCallbacks(const GLFWInitInfo &info)
+{
+    GLFWwindow *window = static_cast<GLFWwindow *>(info.window);
+
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetCursorPosCallback(window, cursorPosCallback);
+    glfwSetScrollCallback(window, scrollCallback);
 }
 
 } // namespace Amethyst

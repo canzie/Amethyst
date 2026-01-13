@@ -32,6 +32,10 @@ int main()
     Amethyst::VkBackend backend;
     backend.init(initInfo);
 
+    Amethyst::GLFWInitInfo glfwInfo{};
+    glfwInfo.window = ctx.window;
+    setupGLFWCallbacks(glfwInfo);
+
     glm::vec2 screenSize = {static_cast<float>(ctx.swapchainExtent.width), static_cast<float>(ctx.swapchainExtent.height)};
 
     Amethyst::Window window;

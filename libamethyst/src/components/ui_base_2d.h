@@ -19,6 +19,12 @@ class UIBase2D : public Instance {
 
     virtual void draw(GeometryRegistry &registry) = 0;
 
+    bool containsPoint(const glm::vec2 &point) const
+    {
+        return point.x >= absolutePosition.x && point.x <= absolutePosition.x + absoluteSize.x && point.y >= absolutePosition.y &&
+               point.y <= absolutePosition.y + absoluteSize.y;
+    }
+
   public:
     glm::vec2 absolutePosition = glm::vec2(0.0f);
     Degrees absoluteRotation = 0.0f;

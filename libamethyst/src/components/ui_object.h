@@ -6,8 +6,10 @@
 #define AMETHYST__UI_OBJECT_H
 
 #include "components/common.h"
+#include "components/input_events.h"
 #include "components/ui_base_2d.h"
 #include <cstdint>
+#include <functional>
 
 namespace Amethyst {
 
@@ -20,27 +22,39 @@ class UIObject : public UIBase2D {
     glm::mat4 buildTransform() const;
     InstanceData createInstanceData() const;
 
+    virtual void onMouseEnter() {}
+    virtual void onMouseLeave() {}
+    virtual void onMouseMoved(uint32_t, uint32_t) {}
+    virtual void onMouseButton1Down(uint32_t, uint32_t) {}
+    virtual void onMouseButton1Up(uint32_t, uint32_t) {}
+    virtual void onMouseButton1Click() {}
+    virtual void onMouseButton2Down(uint32_t, uint32_t) {}
+    virtual void onMouseButton2Up(uint32_t, uint32_t) {}
+    virtual void onMouseButton2Click() {}
+    virtual void onMouseScrollUp() {}
+    virtual void onMouseScrollDown() {}
+
   public:
-    bool active;
+    bool active = false;
     glm::vec2 anchorPoint = glm::vec2(0.0f);
     AutomaticSize automaticSize = AutomaticSize::NONE;
     Color3 backgroundColor = {1.0f, 1.0f, 1.0f};
-    float backgroundTransparency = 0.0;
-    BorderMode borderMode;
+    float backgroundTransparency = 0.0f;
+    BorderMode borderMode = BorderMode::OUTLINE;
     float borderPixelSize = 0.0f;
     Color3 borderColor = {0.0f, 0.0f, 0.0f};
     float borderTransparency = 0.0f;
-    bool clipsDescendants;
+    bool clipsDescendants = false;
     float cornerRadius = 0.0f;
-    GuiState guiState;
-    bool interactable;
-    LayoutOrder layoutOrder;
+    GuiState guiState = GuiState::IDLE;
+    bool interactable = true;
+    LayoutOrder layoutOrder = 0;
 
     UDim2 position;
     UDim2 size;
-    Degrees rotation;
-    bool visible;
-    uint32_t zIndex;
+    Degrees rotation = 0.0f;
+    bool visible = true;
+    uint32_t zIndex = 0;
 };
 
 } // namespace Amethyst

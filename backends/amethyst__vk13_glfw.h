@@ -2,6 +2,7 @@
 #define AMETHYST__VK13_GLFW_H
 
 #include "components/common.h"
+#include "components/input_interface.h"
 #include "rendering/geometry_registry.h"
 
 #include <array>
@@ -12,6 +13,10 @@
 
 namespace Amethyst {
 
+struct GLFWInitInfo {
+    void *window;
+};
+
 struct VulkanInitInfo {
     VkDevice device;
     VkInstance instance;
@@ -21,10 +26,11 @@ struct VulkanInitInfo {
     VkDescriptorPool pool;
     uint32_t minImageCount;
     uint32_t imageCount;
-    // callback for results
     VkFormat colorFormat;
     VkExtent2D extent;
 };
+
+void setupGLFWCallbacks(const GLFWInitInfo &info);
 
 struct BufferArena {
     VkBuffer buffer = VK_NULL_HANDLE;

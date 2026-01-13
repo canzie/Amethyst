@@ -5,9 +5,20 @@
 #include "components/frame.h"
 
 #include "components/ui_object.h"
+#include "logging/log.h"
 #include "rendering/geometry_registry.h"
 
 namespace Amethyst {
+
+void Frame::onMouseButton1Click()
+{
+    AM_LOG_INFO("Frame '{}' clicked (button 1)", name.empty() ? "(unnamed)" : name);
+}
+
+void Frame::onMouseButton2Click()
+{
+    AM_LOG_INFO("Frame '{}' clicked (button 2)", name.empty() ? "(unnamed)" : name);
+}
 
 void Frame::draw(GeometryRegistry &registry)
 {
