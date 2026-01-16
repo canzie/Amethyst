@@ -22,16 +22,21 @@ void Frame::onMouseButton2Click()
 
 void Frame::draw(GeometryRegistry &registry)
 {
-    if (!(flags & FLAG_DIRTY)) return;
-
-    InstanceData data = createInstanceData();
-    data.primitiveType = PRIMITIVE_RECT;
-
-    if (m_allocationIndex == UINT32_MAX) {
-        m_allocationIndex = registry.submit(data);
-    } else {
-        registry.update(m_allocationIndex, data);
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
     }
+
+    if (flags & FLAG_DIRTY) {
+        InstanceData data = createInstanceData();
+        data.primitiveType = PRIMITIVE_RECT;
+
+        if (m_allocationIndex == UINT32_MAX) {
+            m_allocationIndex = registry.submit(data);
+        } else {
+            registry.update(m_allocationIndex, data);
+        }
+    }
+
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
@@ -39,7 +44,7 @@ void Frame::draw(GeometryRegistry &registry)
         }
     }
 
-    flags &= ~FLAG_DIRTY;
+    flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }
 
 } // namespace Amethyst

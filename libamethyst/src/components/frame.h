@@ -13,7 +13,11 @@ namespace Amethyst {
 class Frame : public UIObject {
   public:
     Frame() = default;
-    Frame(Instance *parent) { setParent(parent); };
+    Frame(Instance *parent)
+    {
+        setParent(parent);
+        name = "Frame";
+    };
     virtual ~Frame() = default;
 
     void draw(GeometryRegistry &registry) override;

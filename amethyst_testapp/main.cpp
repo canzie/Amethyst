@@ -43,6 +43,7 @@ int main()
     window.absoluteRotation = 0.0f;
 
     Amethyst::Frame frame1(&window);
+    frame1.name = "Frame 1";
     frame1.size = Amethyst::UDim2::fromOffset(300, 200);
     frame1.position = Amethyst::UDim2::fromOffset(200, 200);
     frame1.backgroundColor = {0.9f, 0.2f, 0.2f};
@@ -51,23 +52,31 @@ int main()
     frame1.borderColor = glm::vec3(1.0f);
     frame1.cornerRadius = 10.0f;
     frame1.markDirty();
+    frame1.addExtension<Amethyst::UIDragDetector>();
 
     Amethyst::Frame frame2(&frame1);
+    frame2.name = "Child of frame 1";
     frame2.size = Amethyst::UDim2::fromScale(0.5f, 0.5f);
     frame2.position = Amethyst::UDim2::fromOffset(0.0f, 0.0f);
     frame2.anchorPoint = glm::vec2(0.5f);
     frame2.backgroundColor = {0.2f, 0.9f, 0.2f};
     frame2.cornerRadius = 0.0f;
     frame2.markDirty();
+    frame2.addExtension<Amethyst::UIDragDetector>();
 
     Amethyst::Frame frame3(&window);
+    frame3.name = "long bar";
     frame3.size = Amethyst::UDim2(0.0f, 100.0f, 0.9f, 0.0f);
     frame3.position = Amethyst::UDim2::fromOffset(550, 0);
     frame3.backgroundColor = {0.2f, 0.2f, 0.9f};
     frame3.cornerRadius = 50.0f;
     frame3.markDirty();
+    frame3.addExtension<Amethyst::UIDragDetector>();
 
     window.draw(registry);
+
+    double lastTime = glfwGetTime();
+    int frameCount = 0;
 
     while (!glfwWindowShouldClose(ctx.window)) {
         glfwPollEvents();
@@ -82,6 +91,14 @@ int main()
         backend.record(cmd, registry);
 
         contextEndFrame(ctx, imageIndex);
+
+        frameCount++;
+        double currentTime = glfwGetTime();
+        if (currentTime - lastTime >= 1.0) {
+            AM_LOG_INFO("FPS: {}", frameCount);
+            frameCount = 0;
+            lastTime = currentTime;
+        }
     }
 
     backend.shutdown();

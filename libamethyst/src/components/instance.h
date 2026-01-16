@@ -28,6 +28,7 @@ class Instance {
     void removeChild(Instance *child);
 
     void markDirty();
+    void markChildrenDirty();
 
     template <typename T> T *as() { return dynamic_cast<T *>(this); }
 

@@ -5,10 +5,13 @@
 #ifndef AMETHYST__UI_LIST_LAYOUT_H
 #define AMETHYST__UI_LIST_LAYOUT_H
 
-#include "components/ui_component.h"
 #include "components/common.h"
+#include "components/extensions/ui_extension.h"
+#include <vector>
 
 namespace Amethyst {
+
+class Instance;
 
 enum FillDirection : uint8_t {
     FILL_HORIZONTAL,
@@ -32,14 +35,14 @@ enum SortOrder : uint8_t {
     SORT_LAYOUT_ORDER,
 };
 
-class UIListLayout : public UIComponent {
-public:
-    UIListLayout() = default;
+class UIListLayout : public UIExtension {
+  public:
+    explicit UIListLayout(UIObject *owner) : UIExtension(owner) {}
     virtual ~UIListLayout() = default;
 
-    void apply() override;
+    void apply(std::vector<Instance *> &children);
 
-public:
+  public:
     FillDirection fillDirection = FILL_VERTICAL;
     HorizontalAlignment horizontalAlignment = ALIGN_LEFT;
     VerticalAlignment verticalAlignment = ALIGN_TOP;

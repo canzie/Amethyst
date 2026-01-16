@@ -1,27 +1,34 @@
 #include "components/ui_object.h"
 #include "components/common.h"
-#include "logging/log.h"
+#include "components/extensions/ui_drag_detector.h"
+#include "components/window.h"
 
 #include <cstdint>
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace Amethyst {
 
+UIObject::~UIObject()
+{
+    if (Window *window = getWindow()) {
+        window->releaseMouse(this);
+    }
+}
+
 void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation)
 {
     absoluteSize = size.resolve(parentSize);
-    absolutePosition = parentPos + position.resolve(parentPos);
+    absolutePosition = parentPos + position.resolve(parentSize) - anchorPoint * absoluteSize;
     absoluteRotation = rotation + parentRotation;
 }
 
 glm::mat4 UIObject::buildTransform() const
 {
 
-    glm::vec2 offset = anchorPoint * absoluteSize - glm::vec2(0.5f) * absoluteSize;
+    glm::vec2 centerPos = absolutePosition + absoluteSize * glm::vec2(0.5f);
 
-    glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(absolutePosition, 0.0f)) *
+    glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
                           glm::rotate(glm::mat4(1.0f), glm::radians(absoluteRotation), glm::vec3(0.0f, 0.0f, 1.0f)) *
-                          glm::translate(glm::mat4(1.0f), glm::vec3(-offset, 0.0f)) *
                           glm::scale(glm::mat4(1.0f), glm::vec3(absoluteSize, 1.0f));
 
     return transform;
@@ -38,46 +45,39 @@ InstanceData UIObject::createInstanceData() const
                         .borderMode = static_cast<uint32_t>(borderMode)};
 }
 
-void UIObject::onMouseEnter(uint32_t mouseX, uint32_t mouseY)
+Window *UIObject::getWindow()
 {
-    startDrag(mouseX, mouseY);
-}
-
-void UIObject::onMouseLeave(uint32_t, uint32_t)
-{
-    endDrag();
-}
-
-void UIObject::onMouseMoved(uint32_t mouseX, uint32_t mouseY)
-{
-    updateDrag(mouseX, mouseY);
-}
-
-void UIObject::startDrag(uint32_t mouseX, uint32_t mouseY)
-{
-    m_isDragging = true;
-    m_dragStartMouse = glm::vec2(mouseX, mouseY);
-    m_dragStartOffset = position.offset;
-}
-
-void UIObject::updateDrag(uint32_t mouseX, uint32_t mouseY)
-{
-    if (!m_isDragging) {
-        return;
+    for (Instance *current = parent; current != nullptr; current = current->parent) {
+        if (auto *window = current->as<Window>()) {
+            return window;
+        }
     }
-
-    glm::vec2 currentMouse(mouseX, mouseY);
-    glm::vec2 delta = currentMouse - m_dragStartMouse;
-    position.offset = m_dragStartOffset + delta;
-    AM_LOG_TRACE("Drag delta {},{}", delta.x, delta.y);
-    markDirty();
+    return nullptr;
 }
 
-void UIObject::endDrag()
-{
-    m_isDragging = false;
+void UIObject::onMouseEnter(uint32_t, uint32_t) {}
 
-    AM_LOG_TRACE("Drag Ended");
+void UIObject::onMouseLeave(uint32_t, uint32_t) {}
+
+void UIObject::onMouseMoved(uint32_t x, uint32_t y)
+{
+    if (auto *drag = getExtension<UIDragDetector>()) {
+        drag->handleMouseMove(x, y);
+    }
+}
+
+void UIObject::onMouseButton1Down(uint32_t x, uint32_t y)
+{
+    if (auto *drag = getExtension<UIDragDetector>()) {
+        drag->handleMouseDown(x, y);
+    }
+}
+
+void UIObject::onMouseButton1Up(uint32_t x, uint32_t y)
+{
+    if (auto *drag = getExtension<UIDragDetector>()) {
+        drag->handleMouseUp(x, y);
+    }
 }
 
 } // namespace Amethyst

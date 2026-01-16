@@ -38,9 +38,13 @@ void Window::draw(GeometryRegistry &registry)
 Instance *Window::findClickedObject(uint32_t x, uint32_t y)
 {
     glm::vec2 point(x, y);
+    return findClickedObjectRecursive(children, point);
+}
 
-    std::vector<Instance *> sortedChildren(children.begin(), children.end());
-    std::sort(sortedChildren.begin(), sortedChildren.end(), [](Instance *a, Instance *b) {
+Instance *Window::findClickedObjectRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point)
+{
+    std::vector<Instance *> sortedInstances(instances.begin(), instances.end());
+    std::sort(sortedInstances.begin(), sortedInstances.end(), [](Instance *a, Instance *b) {
         auto *aObj = a->as<UIObject>();
         auto *bObj = b->as<UIObject>();
         if (aObj && bObj) {
@@ -49,23 +53,30 @@ Instance *Window::findClickedObject(uint32_t x, uint32_t y)
         return false;
     });
 
-    for (auto it = sortedChildren.rbegin(); it != sortedChildren.rend(); ++it) {
-        Instance *child = *it;
-        if (auto *base2d = child->as<UIBase2D>()) {
-            if (base2d->containsPoint(point)) {
-                if (auto *obj = child->as<UIObject>()) {
-                    if (!obj->visible || !obj->interactable) {
-                        continue;
-                    }
-                }
-                if (auto *layer = child->as<UILayer>()) {
-                    auto *result = static_cast<Window *>(layer)->findClickedObject(x, y);
-                    if (result) {
-                        return result;
-                    }
-                }
-                return child;
+    for (auto it = sortedInstances.rbegin(); it != sortedInstances.rend(); ++it) {
+        Instance *inst = *it;
+        auto *base2d = inst->as<UIBase2D>();
+        if (!base2d) {
+            continue;
+        }
+
+        auto *obj = inst->as<UIObject>();
+        if (obj && (!obj->visible || !obj->interactable)) {
+            continue;
+        }
+
+        bool pointInside = base2d->containsPoint(point);
+        bool shouldCheckChildren = pointInside || (obj && !obj->clipsDescendants);
+
+        if (shouldCheckChildren && !inst->children.empty()) {
+            Instance *childResult = findClickedObjectRecursive(inst->children, point);
+            if (childResult) {
+                return childResult;
             }
+        }
+
+        if (pointInside) {
+            return inst;
         }
     }
 
@@ -75,31 +86,74 @@ Instance *Window::findClickedObject(uint32_t x, uint32_t y)
 void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_t y)
 {
     (void)mods;
-    Instance *clicked = findClickedObject(x, y);
 
-    if (clicked) {
-        auto *uiObject = clicked->as<UIObject>();
-
-        if (button == MOUSE_BUTTON_1) {
-            if (action == MOUSE_ACTION_PRESS) {
-                uiObject->onMouseButton1Down(x, y);
-            } else if (action == MOUSE_ACTION_RELEASE) {
-                uiObject->onMouseButton1Up(x, y);
-                uiObject->onMouseButton1Click();
+    if (m_mouseCapturedBy && action == MOUSE_ACTION_RELEASE) {
+        UIObject *capturedObject = m_mouseCapturedBy;
+        switch (button) {
+        case MOUSE_BUTTON_1:
+            capturedObject->onMouseButton1Up(x, y);
+            if (findClickedObject(x, y) == capturedObject) {
+                capturedObject->onMouseButton1Click();
             }
-        } else if (button == MOUSE_BUTTON_2) {
-            if (action == MOUSE_ACTION_PRESS) {
-                uiObject->onMouseButton2Down(x, y);
-            } else if (action == MOUSE_ACTION_RELEASE) {
-                uiObject->onMouseButton2Up(x, y);
-                uiObject->onMouseButton2Click();
+            break;
+        case MOUSE_BUTTON_2:
+            capturedObject->onMouseButton2Up(x, y);
+            if (findClickedObject(x, y) == capturedObject) {
+                capturedObject->onMouseButton2Click();
             }
+            break;
+        default:
+            break;
         }
+        return;
+    }
+
+    Instance *clicked = findClickedObject(x, y);
+    if (!clicked) {
+        return;
+    }
+
+    auto *uiObject = clicked->as<UIObject>();
+
+    switch (button) {
+    case MOUSE_BUTTON_1:
+        switch (action) {
+        case MOUSE_ACTION_PRESS:
+            uiObject->onMouseButton1Down(x, y);
+            break;
+        case MOUSE_ACTION_RELEASE:
+            uiObject->onMouseButton1Up(x, y);
+            uiObject->onMouseButton1Click();
+            break;
+        default:
+            break;
+        }
+        break;
+    case MOUSE_BUTTON_2:
+        switch (action) {
+        case MOUSE_ACTION_PRESS:
+            uiObject->onMouseButton2Down(x, y);
+            break;
+        case MOUSE_ACTION_RELEASE:
+            uiObject->onMouseButton2Up(x, y);
+            uiObject->onMouseButton2Click();
+            break;
+        default:
+            break;
+        }
+        break;
+    default:
+        break;
     }
 }
 
 void Window::onMouseMove(uint32_t x, uint32_t y)
 {
+    if (m_mouseCapturedBy) {
+        m_mouseCapturedBy->onMouseMoved(x, y);
+        return;
+    }
+
     Instance *hovered = findClickedObject(x, y);
     if (hovered != m_lastHoveredInstance) {
         if (m_lastHoveredInstance) {
@@ -118,6 +172,18 @@ void Window::onMouseMove(uint32_t x, uint32_t y)
     }
 
     m_lastHoveredInstance = hovered;
+}
+
+void Window::captureMouse(UIObject *object)
+{
+    m_mouseCapturedBy = object;
+}
+
+void Window::releaseMouse(UIObject *object)
+{
+    if (m_mouseCapturedBy == object) {
+        m_mouseCapturedBy = nullptr;
+    }
 }
 
 void Window::onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y)

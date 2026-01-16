@@ -4,6 +4,7 @@
 
 #include "components/instance.h"
 #include <algorithm>
+#include <cstddef>
 
 namespace Amethyst {
 
@@ -31,6 +32,14 @@ void Instance::removeChild(Instance *child)
     }
 }
 
+void Instance::markChildrenDirty()
+{
+    for (size_t i = 0; i < children.size(); i++) {
+        children[i]->markChildrenDirty();
+        children[i]->flags |= FLAG_DIRTY;
+    }
+}
+
 void Instance::markDirty()
 {
     flags |= FLAG_DIRTY;
@@ -38,7 +47,7 @@ void Instance::markDirty()
         p->flags |= FLAG_CHILD_DIRTY;
     }
 
-    // TODO: also mark children as dirty, or change how we resolve dirty flag
+    markChildrenDirty();
 }
 
 } // namespace Amethyst

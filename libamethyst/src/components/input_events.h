@@ -23,14 +23,14 @@ enum MouseButton {
 };
 
 enum MouseAction {
-    MOUSE_ACTION_PRESS = 0,
-    MOUSE_ACTION_RELEASE = 1,
+    MOUSE_ACTION_RELEASE = 0,
+    MOUSE_ACTION_PRESS = 1,
     MOUSE_ACTION_REPEAT = 2
 };
 
 enum KeyAction {
-    KEY_ACTION_PRESS = 0,
-    KEY_ACTION_RELEASE = 1,
+    KEY_ACTION_RELEASE = 0,
+    KEY_ACTION_PRESS = 1,
     KEY_ACTION_REPEAT = 2
 };
 

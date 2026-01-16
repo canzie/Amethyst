@@ -6,27 +6,47 @@
 #define AMETHYST__UI_OBJECT_H
 
 #include "components/common.h"
-#include "components/input_events.h"
+#include "components/extensions/ui_extension.h"
 #include "components/ui_base_2d.h"
 #include <cstdint>
-#include <functional>
+#include <memory>
+#include <typeindex>
+#include <unordered_map>
 
 namespace Amethyst {
+
+class Window;
 
 class UIObject : public UIBase2D {
   public:
     UIObject() = default;
-    virtual ~UIObject() = default;
+    virtual ~UIObject();
 
     void computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation);
     glm::mat4 buildTransform() const;
     InstanceData createInstanceData() const;
+    Window *getWindow();
+
+    template <typename T> T *getExtension()
+    {
+        auto it = m_extensions.find(std::type_index(typeid(T)));
+        return it != m_extensions.end() ? static_cast<T *>(it->second.get()) : nullptr;
+    }
+
+    template <typename T, typename... Args> T *addExtension(Args &&...args)
+    {
+        auto key = std::type_index(typeid(T));
+        auto [it, inserted] = m_extensions.try_emplace(key, std::make_unique<T>(this, std::forward<Args>(args)...));
+        return static_cast<T *>(it->second.get());
+    }
+
+    template <typename T> void removeExtension() { m_extensions.erase(std::type_index(typeid(T))); }
 
     virtual void onMouseEnter(uint32_t x, uint32_t y);
     virtual void onMouseLeave(uint32_t x, uint32_t y);
     virtual void onMouseMoved(uint32_t x, uint32_t y);
-    virtual void onMouseButton1Down(uint32_t, uint32_t) {}
-    virtual void onMouseButton1Up(uint32_t, uint32_t) {}
+    virtual void onMouseButton1Down(uint32_t x, uint32_t y);
+    virtual void onMouseButton1Up(uint32_t x, uint32_t y);
     virtual void onMouseButton1Click() {}
     virtual void onMouseButton2Down(uint32_t, uint32_t) {}
     virtual void onMouseButton2Up(uint32_t, uint32_t) {}
@@ -44,7 +64,7 @@ class UIObject : public UIBase2D {
     float borderPixelSize = 0.0f;
     Color3 borderColor = {0.0f, 0.0f, 0.0f};
     float borderTransparency = 0.0f;
-    bool clipsDescendants = false;
+    bool clipsDescendants = true;
     float cornerRadius = 0.0f;
     GuiState guiState = GuiState::IDLE;
     bool interactable = true;
@@ -55,16 +75,9 @@ class UIObject : public UIBase2D {
     Degrees rotation = 0.0f;
     bool visible = true;
     uint32_t zIndex = 0;
-    bool draggable = false;
 
   private:
-    void startDrag(uint32_t mouseX, uint32_t mouseY);
-    void updateDrag(uint32_t mouseX, uint32_t mouseY);
-    void endDrag();
-
-    bool m_isDragging = false;
-    glm::vec2 m_dragStartMouse = glm::vec2(0.0f);
-    glm::vec2 m_dragStartOffset = glm::vec2(0.0f);
+    std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;
 };
 
 } // namespace Amethyst
