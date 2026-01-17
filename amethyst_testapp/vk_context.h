@@ -6,6 +6,13 @@
 
 #include <vector>
 
+struct TextureInfo {
+    VkImage image = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+    VkImageView view = VK_NULL_HANDLE;
+    VkSampler sampler = VK_NULL_HANDLE;
+};
+
 struct VkContext {
     GLFWwindow *window = nullptr;
     VkInstance instance = VK_NULL_HANDLE;
@@ -38,5 +45,8 @@ bool contextInit(VkContext &ctx, int width, int height, const char *title);
 void contextShutdown(VkContext &ctx);
 bool contextBeginFrame(VkContext &ctx, uint32_t &imageIndex);
 void contextEndFrame(VkContext &ctx, uint32_t imageIndex);
+
+TextureInfo createCheckerboardTexture(VkContext &ctx, uint32_t size, uint32_t tileSize);
+void destroyTexture(VkContext &ctx, TextureInfo &tex);
 
 #endif

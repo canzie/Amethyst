@@ -6,6 +6,7 @@
 #define AMETHYST__IMAGE_BUTTON_H
 
 #include "components/image_label.h"
+#include "components/instance.h"
 #include "components/ui_button.h"
 
 namespace Amethyst {
@@ -13,19 +14,22 @@ namespace Amethyst {
 class ImageButton : public UIButton {
   public:
     ImageButton() = default;
+    ImageButton(Instance *parent) { setParent(parent); }
     virtual ~ImageButton() = default;
 
     void draw(DrawContext &ctx) override;
 
   public:
-    std::string image;
+    AmTextureId image;
     Color4 imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
     float imageTransparency = 0.0f;
     ScaleType scaleType = ScaleType::STRETCH;
     glm::vec2 tileSize = {1.0f, 1.0f};
 
-    std::string hoverImage;
-    std::string pressedImage;
+    AmTextureId hoverImage;
+
+  private:
+    uint32_t m_allocationIndex = UINT32_MAX;
 };
 
 } // namespace Amethyst

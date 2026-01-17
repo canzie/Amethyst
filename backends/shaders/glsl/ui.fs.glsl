@@ -1,4 +1,5 @@
 #version 450
+#extension GL_EXT_nonuniform_qualifier : require
 
 layout(location = 0) in vec2 fragUV;
 layout(location = 1) in flat uint fragPrimitiveType;
@@ -8,8 +9,13 @@ layout(location = 4) in flat float fragBorderThickness;
 layout(location = 5) in flat float fragCornerRadius;
 layout(location = 6) in flat vec2 fragSize;
 layout(location = 7) in flat uint fragBorderMode;
+layout(location = 8) in flat uint fragTextureId;
+
+layout(set = 0, binding = 1) uniform sampler2D gTextures[];
 
 layout(location = 0) out vec4 outColor;
+
+const uint INVALID_TEXTURE = 0xFFFFFFFF;
 
 const uint PRIMITIVE_RECT = 0;
 const uint PRIMITIVE_CIRCLE = 1;
@@ -109,6 +115,11 @@ void main()
         color = mix(fragBorderColor, fragFillColor, fillMask);
     } else {
         color = fragFillColor;
+    }
+
+    if (fragTextureId != INVALID_TEXTURE) {
+        vec4 texColor = texture(gTextures[fragTextureId], fragUV);
+        color = mix(color, texColor.rgb, texColor.a);
     }
 
     if (shapeAlpha < 0.001) discard;

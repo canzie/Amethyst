@@ -10,8 +10,11 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
+
+constexpr uint32_t MAX_BINDLESS_TEXTURES = 1024;
 
 namespace Amethyst {
 
@@ -60,6 +63,9 @@ class VkBackend {
 
     void uploadFontData(const TTF::FontData &fontData);
 
+    AmTextureId registerTexture(VkImageView imageView, VkSampler sampler);
+    void unregisterTexture(AmTextureId id);
+
   private:
     void createPipeline();
     void createTextPipeline();
@@ -102,10 +108,12 @@ class VkBackend {
     BufferAllocation m_indexBuffer;
     BufferAllocation m_instanceDataBuffer;
 
-    // Text buffers
     BufferAllocation m_characterBuffer;
     BufferAllocation m_fontDataBuffer;
     bool m_fontDataUploaded = false;
+
+    std::vector<uint32_t> m_textureFreeList;
+    uint32_t m_nextTextureSlot = 0;
 };
 
 } // namespace Amethyst

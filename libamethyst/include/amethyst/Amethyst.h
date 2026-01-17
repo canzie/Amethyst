@@ -8,6 +8,8 @@
 #include "components/extensions/ui_extension.h"
 #include "components/extensions/ui_drag_detector.h"
 #include "components/frame.h"
+#include "components/image_button.h"
+#include "components/image_label.h"
 #include "components/text_label.h"
 #include "components/ui_layer.h"
 #include "components/window.h"

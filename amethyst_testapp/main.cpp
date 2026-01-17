@@ -151,6 +151,17 @@ int main()
     textLabel2.textScaled = true;
     textLabel2.markDirty();
 
+    TextureInfo checkerboardTex = createCheckerboardTexture(ctx, 64, 8);
+    Amethyst::AmTextureId checkerboardId = backend.registerTexture(checkerboardTex.view, checkerboardTex.sampler);
+
+    Amethyst::ImageLabel imageLabel(&window);
+    imageLabel.name = "checkerboard";
+    imageLabel.image = checkerboardId;
+    imageLabel.size = Amethyst::UDim2::fromOffset(200, 200);
+    imageLabel.position = Amethyst::UDim2::fromOffset(700, 400);
+    imageLabel.cornerRadius = 20.0f;
+    imageLabel.markDirty();
+
     Amethyst::TextLabel textLabel3(&window);
     textLabel3.name = "pangram fixed size";
     textLabel3.text = "The quick brown fox jumps over the lazy dog";
@@ -194,6 +205,8 @@ int main()
         }
     }
 
+    backend.unregisterTexture(checkerboardId);
+    destroyTexture(ctx, checkerboardTex);
     backend.shutdown();
     contextShutdown(ctx);
 

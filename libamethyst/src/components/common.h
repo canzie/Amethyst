@@ -14,6 +14,20 @@ using Color3 = glm::vec3;
 using Color4 = glm::vec4;
 
 using Degrees = float;
+
+/**
+ * @brief Opaque texture handle for bindless textures.
+ * Backend provides these via registerTexture(), core just passes them through.
+ */
+struct AmTextureId {
+    uint32_t id = UINT32_MAX;
+
+    bool isValid() const { return id != UINT32_MAX; }
+    explicit operator bool() const { return isValid(); }
+    bool operator==(const AmTextureId &) const = default;
+};
+
+constexpr AmTextureId AM_INVALID_TEXTURE{UINT32_MAX};
 using LayoutOrder = uint32_t;
 
 struct UnifiedDimension {
@@ -111,6 +125,7 @@ struct InstanceData {
     float cornerRadius;
     uint32_t primitiveType;
     uint32_t borderMode;
+    uint32_t textureId = UINT32_MAX;
 };
 
 inline uint32_t packColor(const Color4 &c)

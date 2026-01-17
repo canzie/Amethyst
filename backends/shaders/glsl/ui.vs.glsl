@@ -12,6 +12,7 @@ struct InstanceData {
     float cornerRadius;
     uint primitiveType;
     uint borderMode;
+    uint textureId;
 };
 
 layout(std430, binding = 0) readonly buffer InstanceBuffer {
@@ -26,6 +27,7 @@ layout(location = 4) out flat float fragBorderThickness;
 layout(location = 5) out flat float fragCornerRadius;
 layout(location = 6) out flat vec2 fragSize;
 layout(location = 7) out flat uint fragBorderMode;
+layout(location = 8) out flat uint fragTextureId;
 
 const vec2 positions[4] = vec2[](
     vec2(-0.5, -0.5),
@@ -59,4 +61,5 @@ void main()
     fragCornerRadius = inst.cornerRadius;
     fragSize = vec2(length(inst.transform[0].xy), length(inst.transform[1].xy));
     fragBorderMode = inst.borderMode;
+    fragTextureId = inst.textureId;
 }

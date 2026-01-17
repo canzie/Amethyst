@@ -5,8 +5,8 @@
 #ifndef AMETHYST__IMAGE_LABEL_H
 #define AMETHYST__IMAGE_LABEL_H
 
+#include "components/instance.h"
 #include "components/ui_label.h"
-#include <string>
 
 namespace Amethyst {
 
@@ -20,16 +20,20 @@ enum class ScaleType : uint8_t {
 class ImageLabel : public UILabel {
   public:
     ImageLabel() = default;
+    ImageLabel(Instance *parent) { setParent(parent); }
     virtual ~ImageLabel() = default;
 
     void draw(DrawContext &ctx) override;
 
   public:
-    std::string image;
+    AmTextureId image;
     Color4 imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
     float imageTransparency = 0.0f;
     ScaleType scaleType = ScaleType::STRETCH;
     glm::vec2 tileSize = {1.0f, 1.0f};
+
+  private:
+    uint32_t m_allocationIndex = UINT32_MAX;
 };
 
 } // namespace Amethyst
