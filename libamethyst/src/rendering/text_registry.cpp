@@ -21,6 +21,7 @@ void TextRegistry::update(uint32_t index, const std::vector<CharacterInstance> &
     size_t oldSize = m_allocations[index].size();
     if (oldSize == chars.size()) {
         m_allocations[index] = chars;
+        m_dirty = true; // TODO: mark this as some sort of partial dirty, so we dont fully rebuild
     } else {
         m_flatBufferRequiredSize -= oldSize;
         m_flatBufferRequiredSize += chars.size();

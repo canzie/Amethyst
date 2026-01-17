@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <glm/glm.hpp>
+#include <unordered_map>
 #include <vector>
 
 namespace Amethyst {
@@ -88,21 +89,13 @@ struct Glyph {
 static_assert(sizeof(Glyph) == 48, "Glyph must be 48 bytes for GPU alignment");
 
 /**
- * @brief Codepoint to glyph index mapping
- */
-struct CodepointMapping {
-    uint32_t codepoint;
-    uint32_t glyphIndex;
-};
-
-/**
  * @brief Complete parsed font data ready for GPU upload
  */
 struct FontData {
     std::vector<Point> points;
     std::vector<Contour> contours;
     std::vector<Glyph> glyphs;
-    std::vector<CodepointMapping> codepointMap;
+    std::unordered_map<uint32_t, uint32_t> codepointMap;
 
     uint16_t unitsPerEm;
     int16_t ascender;

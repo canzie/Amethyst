@@ -77,6 +77,24 @@ enum class TextDirection {
     RIGHT_TO_LEFT
 };
 
+enum class TextXAlignment {
+    LEFT,
+    CENTER,
+    RIGHT,
+};
+
+enum class TextYAlignment {
+    TOP,
+    CENTER,
+    BOTTOM,
+};
+
+enum class TextTruncate {
+    NONE,
+    AT_END,
+    SPLIT_WORD,
+};
+
 enum PrimitiveType : uint8_t {
     PRIMITIVE_RECT,
     PRIMITIVE_CIRCLE,
@@ -105,15 +123,17 @@ inline uint32_t packColor(const Color4 &c)
 }
 
 /**
- * @brief Per-character render data for text (GPU-aligned, 24 bytes)
+ * @brief Per-character render data for text (GPU-aligned, 40 bytes)
  */
 struct CharacterInstance {
     alignas(8) glm::vec2 position;
     alignas(8) glm::vec2 size;
     uint32_t glyphIndex;
     uint32_t color;
+    uint32_t strokeColor;
+    float strokeThickness;
 };
-static_assert(sizeof(CharacterInstance) == 24, "CharacterInstance must be 24 bytes");
+static_assert(sizeof(CharacterInstance) == 32, "CharacterInstance must be 32 bytes");
 
 } // namespace Amethyst
 

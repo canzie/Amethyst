@@ -4,6 +4,8 @@ layout(location = 0) in vec2 fragUV;
 layout(location = 1) in flat uint fragGlyphIndex;
 layout(location = 2) in flat vec4 fragColor;
 layout(location = 3) in flat vec2 fragSize;
+layout(location = 4) in flat float fragStrokeThickness;
+layout(location = 5) in flat vec4 fragStrokeColor;
 
 layout(location = 0) out vec4 outColor;
 
@@ -85,22 +87,68 @@ vec2 evalBezier(vec2 p0, vec2 p1, vec2 p2, float t) {
     return mt * mt * p0 + 2.0 * mt * t * p1 + t * t * p2;
 }
 
-// Distance to quadratic bezier curve (iterative approach)
-float distanceToBezier(vec2 p, vec2 p0, vec2 p1, vec2 p2) {
-    // Sample the curve and find minimum distance
-    float minDist = 1e10;
-    const int SAMPLES = 8;
+// Compute winding contribution from a quadratic bezier for horizontal ray from p to +X
+// Uses endpoint y-comparison to determine crossing direction (more robust than dy derivative)
+int bezierWindingContribution(vec2 p, vec2 p0, vec2 p1, vec2 p2) {
+    float y0 = p0.y - p.y;
+    float y1 = p1.y - p.y;
+    float y2 = p2.y - p.y;
 
-    for (int i = 0; i <= SAMPLES; i++) {
-        float t = float(i) / float(SAMPLES);
-        vec2 pt = evalBezier(p0, p1, p2, t);
-        minDist = min(minDist, length(p - pt));
+    // Quick reject: if all control points are on same side of ray, no crossing
+    if (y0 > 0.0 && y1 > 0.0 && y2 > 0.0) return 0;
+    if (y0 < 0.0 && y1 < 0.0 && y2 < 0.0) return 0;
+
+    // Solve B(t).y = p.y: a·t² + b·t + c = 0
+    float a = y0 - 2.0 * y1 + y2;
+    float b = 2.0 * (y1 - y0);
+    float c = y0;
+
+    int winding = 0;
+
+    if (abs(a) < 1e-7) {
+        // Linear case
+        if (abs(b) > 1e-7) {
+            float t = -c / b;
+            if (t > 0.0 && t <= 1.0) {
+                vec2 pt = evalBezier(p0, p1, p2, t);
+                if (pt.x > p.x) {
+                    // Direction based on endpoints
+                    winding += (p2.y > p0.y) ? 1 : -1;
+                }
+            }
+        }
+    } else {
+        float disc = b * b - 4.0 * a * c;
+        if (disc >= 0.0) {
+            float sqrtDisc = sqrt(disc);
+            float t1 = (-b - sqrtDisc) / (2.0 * a);
+            float t2 = (-b + sqrtDisc) / (2.0 * a);
+
+            for (int i = 0; i < 2; i++) {
+                float t = (i == 0) ? t1 : t2;
+                if (t > 0.0 && t <= 1.0) {
+                    vec2 pt = evalBezier(p0, p1, p2, t);
+                    if (pt.x > p.x) {
+                        // Use derivative sign at crossing point
+                        float dy = 2.0 * a * t + b;
+                        if (abs(dy) > 1e-7) {
+                            winding += (dy > 0.0) ? 1 : -1;
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    // Refine with a few Newton iterations around the best sample
-    // This gives better accuracy without too many samples
+    return winding;
+}
+
+// Distance to quadratic bezier curve (iterative approach)
+float distanceToBezier(vec2 p, vec2 p0, vec2 p1, vec2 p2) {
     float bestT = 0.0;
     float bestDist = length(p - p0);
+
+    const int SAMPLES = 8;
     for (int i = 0; i <= SAMPLES; i++) {
         float t = float(i) / float(SAMPLES);
         vec2 pt = evalBezier(p0, p1, p2, t);
@@ -114,11 +162,11 @@ float distanceToBezier(vec2 p, vec2 p0, vec2 p1, vec2 p2) {
     // Newton-Raphson refinement
     for (int iter = 0; iter < 3; iter++) {
         float t = bestT;
-        vec2 b = evalBezier(p0, p1, p2, t);
-        vec2 d1 = 2.0 * ((1.0 - t) * (p1 - p0) + t * (p2 - p1)); // first derivative
-        vec2 d2 = 2.0 * (p2 - 2.0 * p1 + p0); // second derivative
+        vec2 bp = evalBezier(p0, p1, p2, t);
+        vec2 d1 = 2.0 * ((1.0 - t) * (p1 - p0) + t * (p2 - p1));
+        vec2 d2 = 2.0 * (p2 - 2.0 * p1 + p0);
 
-        vec2 diff = b - p;
+        vec2 diff = bp - p;
         float num = dot(diff, d1);
         float den = dot(d1, d1) + dot(diff, d2);
 
@@ -138,41 +186,61 @@ void main()
         discard;
     }
 
-    // Map UV to glyph space (flip Y since font Y is up, screen Y is down)
     vec2 glyphSize = glyph.bboxMax - glyph.bboxMin;
-    vec2 uv = vec2(fragUV.x, 1.0 - fragUV.y);
-    vec2 p = glyph.bboxMin + uv * glyphSize;
 
+    // Account for padding in UV mapping
+    float padding = fragStrokeThickness + 1.0;
+    float scale = (fragSize.x - 2.0 * padding) / glyphSize.x;
+    vec2 paddingInGlyphUnits = vec2(padding / scale);
+
+    // Map UV to glyph space with padding offset (flip Y since font Y is up, screen Y is down)
+    vec2 uv = vec2(fragUV.x, 1.0 - fragUV.y);
+    vec2 paddedMin = glyph.bboxMin - paddingInGlyphUnits;
+    vec2 paddedSize = glyphSize + 2.0 * paddingInGlyphUnits;
+    vec2 p = paddedMin + uv * paddedSize;
+
+    int winding = 0;
     float minDist = 1e10;
 
-    // Iterate contours - all segments are beziers (on-curve, off-curve, on-curve)
+    // Iterate contours
     for (uint c = 0; c < glyph.contourCount; c++) {
         Contour contour = getContour(glyph.contourStart + c);
 
         if (contour.pointCount < 3) continue;
 
-        // Step by 2: each bezier is points[i], points[i+1], points[i+2]
         uint numBeziers = contour.pointCount / 2;
         for (uint i = 0; i < numBeziers; i++) {
             uint idx = contour.pointStart + i * 2;
-            Point p0 = getPoint(idx);
-            Point p1 = getPoint(idx + 1);
-            Point p2 = getPoint((i == numBeziers - 1) ? contour.pointStart : idx + 2);
+            Point pt0 = getPoint(idx);
+            Point pt1 = getPoint(idx + 1);
+            Point pt2 = getPoint((i == numBeziers - 1) ? contour.pointStart : idx + 2);
 
-            float d = distanceToBezier(p, p0.pos, p1.pos, p2.pos);
+            winding += bezierWindingContribution(p, pt0.pos, pt1.pos, pt2.pos);
+            float d = distanceToBezier(p, pt0.pos, pt1.pos, pt2.pos);
             minDist = min(minDist, d);
         }
     }
 
-    // Scale distance to pixel space
-    float pixelDist = minDist * max(fragSize.x / glyphSize.x, fragSize.y / glyphSize.y);
+    float pixelDist = minDist * scale;
+    bool inside = (winding != 0);
 
-    // Outline thickness
-    float thickness = 1.5;
+    // Signed distance: negative inside, positive outside
+    float signedDist = inside ? -pixelDist : pixelDist;
+
     float aa = fwidth(pixelDist);
-    float alpha = 1.0 - smoothstep(thickness - aa, thickness + aa, pixelDist);
+
+    // Fill: inside the glyph
+    float fillAlpha = 1.0 - smoothstep(-aa, aa, signedDist);
+
+    // Stroke: within strokeThickness of the edge
+    float strokeAlpha = 1.0 - smoothstep(fragStrokeThickness - aa, fragStrokeThickness + aa, pixelDist);
+
+    // Combine: stroke on top of fill (for now just stroke since we don't have fill color yet)
+    float alpha = max(fillAlpha * fragColor.a, strokeAlpha * fragStrokeColor.a);
 
     if (alpha < 0.01) discard;
 
-    outColor = vec4(fragColor.rgb, fragColor.a * alpha);
+    // Blend colors based on which contributes more
+    vec3 color = mix(fragColor.rgb, fragStrokeColor.rgb, strokeAlpha / max(alpha, 0.001));
+    outColor = vec4(color, alpha);
 }

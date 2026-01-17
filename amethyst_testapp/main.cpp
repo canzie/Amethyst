@@ -1,5 +1,6 @@
 #include "amethyst/Amethyst.h"
 #include "amethyst__vk13_glfw.h"
+#include "components/common.h"
 #include "components/text_button.h"
 #include "parsers/ttf/ttf_parser.h"
 #include "vk_context.h"
@@ -13,7 +14,7 @@ int main()
 
     // Test TTF parsing
     Amethyst::TTF::Parser ttfParser;
-    auto fontData = ttfParser.parse("/home/Thomas/dev/Amethyst/libamethyst/assets/fonts/Roboto-Regular.ttf");
+    auto fontData = ttfParser.parse("/home/Thomas/dev/Amethyst/libamethyst/assets/fonts/OpenSans-Regular.ttf");
     if (fontData) {
         AM_LOG_INFO("TTF parsed: {} glyphs, {} points, {} contours", fontData->glyphs.size(), fontData->points.size(),
                     fontData->contours.size());
@@ -114,6 +115,9 @@ int main()
         button1->markDirty();
     };
 
+    bool running = true;
+    button1.onMouseButton1ClickCb = [running = &running]() { *running = false; };
+
     button1.markDirty();
 
     Amethyst::Frame frame3(&window);
@@ -125,21 +129,49 @@ int main()
     frame3.markDirty();
     frame3.addExtension<Amethyst::UIDragDetector>();
 
-    Amethyst::TextLabel textLabel(&window);
-    textLabel.name = "test label";
-    textLabel.text = "Hello Amethyst!";
-    textLabel.fontSize = 128.0f;
-    textLabel.textColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    textLabel.position = Amethyst::UDim2::fromOffset(200, 200);
-    textLabel.size = Amethyst::UDim2::fromOffset(400, 50);
-    textLabel.markDirty();
+    Amethyst::TextLabel textLabel1(&window);
+    textLabel1.name = "pangram scaled full width";
+    textLabel1.text = "The quick brown fox jumps over the lazy dog";
+    textLabel1.textColor = {1.0f, 0.5f, 0.0f, 1.0f};
+    textLabel1.strokeThickness = 0.0f;
+    textLabel1.strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    textLabel1.position = Amethyst::UDim2::fromOffset(10, 20);
+    textLabel1.size = Amethyst::UDim2(0.98f, 0.0f, 0.0f, 80.0f);
+    textLabel1.textScaled = true;
+    textLabel1.markDirty();
+
+    Amethyst::TextLabel textLabel2(&window);
+    textLabel2.name = "pangram scaled half width";
+    textLabel2.text = "The quick brown fox jumps over the lazy dog";
+    textLabel2.textColor = {0.0f, 1.0f, 0.5f, 1.0f};
+    textLabel2.strokeThickness = 0.0f;
+    textLabel2.strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    textLabel2.position = Amethyst::UDim2::fromOffset(10, 120);
+    textLabel2.size = Amethyst::UDim2(0.5f, 0.0f, 0.0f, 50.0f);
+    textLabel2.textScaled = true;
+    textLabel2.markDirty();
+
+    Amethyst::TextLabel textLabel3(&window);
+    textLabel3.name = "pangram fixed size";
+    textLabel3.text = "The quick brown fox jumps over the lazy dog";
+    textLabel3.fontSize = 24.0f;
+    textLabel3.textColor = {0.9f, 0.9f, 1.0f, 1.0f};
+    textLabel3.strokeThickness = 0.0f;
+    textLabel3.strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    textLabel3.position = Amethyst::UDim2::fromOffset(10, 190);
+    textLabel3.size = Amethyst::UDim2(0.98f, 0.0f, 0.0f, 200.0f);
+    textLabel3.backgroundColor = glm::vec3(0.0f);
+    textLabel3.textXAlignment = Amethyst::TextXAlignment::CENTER;
+    textLabel3.textYAlignment = Amethyst::TextYAlignment::CENTER;
+    textLabel3.addExtension<Amethyst::UIDragDetector>();
+    textLabel3.markDirty();
 
     window.draw(drawCtx);
 
     double lastTime = glfwGetTime();
     int frameCount = 0;
 
-    while (!glfwWindowShouldClose(ctx.window)) {
+    while (!glfwWindowShouldClose(ctx.window) && running) {
         glfwPollEvents();
 
         uint32_t imageIndex;

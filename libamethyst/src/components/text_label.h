@@ -11,24 +11,6 @@
 
 namespace Amethyst {
 
-enum class TextXAlignment : uint8_t {
-    LEFT,
-    CENTER,
-    RIGHT,
-};
-
-enum class TextYAlignment : uint8_t {
-    TOP,
-    CENTER,
-    BOTTOM,
-};
-
-enum class TextTruncate : uint8_t {
-    NONE,
-    AT_END,
-    SPLIT_WORD,
-};
-
 class TextLabel : public UILabel {
   public:
     TextLabel() = default;
@@ -47,9 +29,13 @@ class TextLabel : public UILabel {
     TextTruncate textTruncate = TextTruncate::NONE;
     bool richText = false;
     bool textWrapped = false;
+    bool textScaled = false;
     float lineHeight = 1.0f;
+    float strokeThickness = 0.0f;
+    Color4 strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
 
   private:
+    uint32_t m_allocationIndex = UINT32_MAX;
     uint32_t m_textAllocationIndex = UINT32_MAX;
 };
 

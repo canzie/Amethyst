@@ -327,7 +327,7 @@ bool Parser::parseSimpleGlyph(const uint8_t *glyphData, uint32_t length, FontDat
 {
     (void)length;
     int16_t numContours = readS16(glyphData);
-    if (numContours <= 0) {
+    if (numContours < 0) {
         return true;
     }
 
@@ -547,7 +547,7 @@ bool Parser::parseCmapFormat4(const uint8_t *subtable, FontData &out)
             }
 
             if (glyphIndex != 0 && glyphIndex < out.glyphs.size()) {
-                out.codepointMap.push_back({c, glyphIndex});
+                out.codepointMap[c] = glyphIndex;
             }
         }
     }
@@ -568,7 +568,7 @@ bool Parser::parseCmapFormat12(const uint8_t *subtable, FontData &out)
         for (uint32_t c = startCode; c <= endCode; c++) {
             uint32_t glyphIndex = startGlyph + (c - startCode);
             if (glyphIndex < out.glyphs.size()) {
-                out.codepointMap.push_back({c, glyphIndex});
+                out.codepointMap[c] = glyphIndex;
             }
         }
     }
@@ -578,13 +578,8 @@ bool Parser::parseCmapFormat12(const uint8_t *subtable, FontData &out)
 
 uint32_t FontData::getGlyphIndex(uint32_t codepoint) const
 {
-    // Linear search for now - could optimize with sorted array + binary search
-    for (const auto &mapping : codepointMap) {
-        if (mapping.codepoint == codepoint) {
-            return mapping.glyphIndex;
-        }
-    }
-    return 0; // .notdef glyph
+    auto it = codepointMap.find(codepoint);
+    return it != codepointMap.end() ? it->second : 0;
 }
 
 const Glyph *FontData::getGlyph(uint32_t glyphIndex) const

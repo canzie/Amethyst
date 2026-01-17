@@ -9,6 +9,8 @@ struct CharacterInstance {
     vec2 size;
     uint glyphIndex;
     uint color;
+    uint strokeColor;
+    float strokeThickness;
 };
 
 layout(std430, binding = 0) readonly buffer CharacterBuffer {
@@ -19,6 +21,8 @@ layout(location = 0) out vec2 fragUV;
 layout(location = 1) out flat uint fragGlyphIndex;
 layout(location = 2) out flat vec4 fragColor;
 layout(location = 3) out flat vec2 fragSize;
+layout(location = 4) out flat float fragStrokeThickness;
+layout(location = 5) out flat vec4 fragStrokeColor;
 
 const vec2 positions[4] = vec2[](
     vec2(0.0, 0.0),
@@ -50,4 +54,6 @@ void main()
     fragGlyphIndex = ch.glyphIndex;
     fragColor = unpackColor(ch.color);
     fragSize = ch.size;
+    fragStrokeThickness = ch.strokeThickness;
+    fragStrokeColor = unpackColor(ch.strokeColor);
 }
