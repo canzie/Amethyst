@@ -72,6 +72,9 @@ class UIObject : public UIBase2D {
     bool interactable = true;
     LayoutOrder layoutOrder = 0;
 
+    UDim4 padding;
+    UDim4 margin;
+
     UDim2 position;
     UDim2 size;
     Degrees rotation = 0.0f;

@@ -27,9 +27,6 @@ class ImageButton : public UIButton {
     glm::vec2 tileSize = {1.0f, 1.0f};
 
     AmTextureId hoverImage;
-
-  private:
-    uint32_t m_allocationIndex = UINT32_MAX;
 };
 
 } // namespace Amethyst

@@ -34,6 +34,9 @@ struct UnifiedDimension {
     float scale = 0.0f;  // relative to parent (0.0 - 1.0)
     float offset = 0.0f; // absolute pixels
 
+    static UnifiedDimension fromScale(float _scale) { return {_scale, 0.0f}; }
+    static UnifiedDimension fromOffset(float _offset) { return {0.0f, _offset}; }
+
     float resolve(float parentSize) const { return scale * parentSize + offset; }
     bool operator==(const UnifiedDimension &) const = default;
 };
@@ -52,13 +55,29 @@ struct UnifiedDimension2 {
     }
 
     static UnifiedDimension2 fromScale(float scaleX, float scaleY) { return {{scaleX, scaleY}, {0.0f, 0.0f}}; }
+    static UnifiedDimension2 fromScale(float _scale) { return {{_scale, _scale}, {0.0f, 0.0f}}; }
     static UnifiedDimension2 fromOffset(float offsetX, float offsetY) { return {{0.0f, 0.0f}, {offsetX, offsetY}}; }
+    static UnifiedDimension2 fromOffset(float _offset) { return {{0.0f, 0.0f}, {_offset, _offset}}; }
 
     glm::vec2 resolve(const glm::vec2 &parentSize) const { return scale * parentSize + offset; }
 
     bool operator==(const UnifiedDimension2 &) const = default;
 };
 using UDim2 = UnifiedDimension2;
+
+struct UnifiedDimension4 {
+    UDim top;
+    UDim right;
+    UDim bottom;
+    UDim left;
+
+    glm::vec4 resolve(glm::vec2 parentSize) const
+    {
+        return glm::vec4(top.resolve(parentSize.y), right.resolve(parentSize.x), bottom.resolve(parentSize.y),
+                         left.resolve(parentSize.x));
+    }
+};
+using UDim4 = UnifiedDimension4;
 
 enum class AutomaticSize {
     NONE, // default
@@ -82,7 +101,7 @@ enum class GuiState {
 
 enum class ZIndexBehavior {
     GLOBAL,
-    SIBLING // relative to its siblings
+    SIBLING
 };
 
 enum class TextDirection {
@@ -115,6 +134,51 @@ enum PrimitiveType : uint8_t {
     PRIMITIVE_TRIANGLE,
     PRIMITIVE_LINE,
     PRIMITIVE_COUNT,
+};
+
+enum class FillDirection {
+    FILL_HORIZONTAL,
+    FILL_VERTICAL,
+};
+
+enum class HorizontalAlignment {
+    ALIGN_LEFT,
+    ALIGN_CENTER_H,
+    ALIGN_RIGHT,
+};
+
+enum class VerticalAlignment {
+    ALIGN_TOP,
+    ALIGN_CENTER_V,
+    ALIGN_BOTTOM,
+};
+
+enum class SortOrder {
+    SORT_NAME,
+    SORT_LAYOUT_ORDER,
+};
+
+enum class UiFlexAlignment {
+    NONE,
+    FILL,
+    SPACE_AROUND,
+    SPACE_BETWEEN,
+    SPACE_EVENLY
+};
+
+enum class ItemLineAlignment {
+    AUTOMATIC,
+    START,
+    CENTER,
+    END,
+    STRETCH
+};
+
+enum class LabelSide {
+    LEFT,
+    RIGHT,
+    TOP,
+    BOTTOM
 };
 
 struct InstanceData {

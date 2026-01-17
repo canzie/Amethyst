@@ -15,10 +15,10 @@ void TextButton::draw(DrawContext &ctx)
         InstanceData data = createInstanceData();
         data.primitiveType = PRIMITIVE_RECT;
 
-        if (m_allocationIndex == UINT32_MAX) {
-            m_allocationIndex = ctx.geometry->submit(data);
+        if (m_geometryAlloc == nullptr) {
+            m_geometryAlloc = ctx.geometry->submit(data);
         } else {
-            ctx.geometry->update(m_allocationIndex, data);
+            ctx.geometry->update(*m_geometryAlloc, data);
         }
     }
 

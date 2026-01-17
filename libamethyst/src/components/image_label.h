@@ -31,9 +31,6 @@ class ImageLabel : public UILabel {
     float imageTransparency = 0.0f;
     ScaleType scaleType = ScaleType::STRETCH;
     glm::vec2 tileSize = {1.0f, 1.0f};
-
-  private:
-    uint32_t m_allocationIndex = UINT32_MAX;
 };
 
 } // namespace Amethyst

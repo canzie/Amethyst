@@ -11,11 +11,15 @@
 namespace Amethyst {
 
 struct DrawContext;
+struct GeometryAllocation;
 
 class UIBase2D : public Instance {
   public:
     UIBase2D() = default;
-    virtual ~UIBase2D() = default;
+    virtual ~UIBase2D() {
+        // TODO: find a way to free any allocaitons
+        // could maybe make the window own the drawcontext and go up to the window in here? idk
+    };
 
     virtual void draw(DrawContext &ctx) = 0;
 
@@ -31,7 +35,7 @@ class UIBase2D : public Instance {
     glm::vec2 absoluteSize;
 
   protected:
-    uint32_t m_allocationIndex = UINT32_MAX;
+    GeometryAllocation *m_geometryAlloc = nullptr;
 };
 
 } // namespace Amethyst

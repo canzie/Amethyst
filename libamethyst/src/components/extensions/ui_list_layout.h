@@ -13,28 +13,6 @@ namespace Amethyst {
 
 class Instance;
 
-enum FillDirection : uint8_t {
-    FILL_HORIZONTAL,
-    FILL_VERTICAL,
-};
-
-enum HorizontalAlignment : uint8_t {
-    ALIGN_LEFT,
-    ALIGN_CENTER_H,
-    ALIGN_RIGHT,
-};
-
-enum VerticalAlignment : uint8_t {
-    ALIGN_TOP,
-    ALIGN_CENTER_V,
-    ALIGN_BOTTOM,
-};
-
-enum SortOrder : uint8_t {
-    SORT_NAME,
-    SORT_LAYOUT_ORDER,
-};
-
 class UIListLayout : public UIExtension {
   public:
     explicit UIListLayout(UIObject *owner) : UIExtension(owner) {}
@@ -43,11 +21,15 @@ class UIListLayout : public UIExtension {
     void apply(std::vector<Instance *> &children);
 
   public:
-    FillDirection fillDirection = FILL_VERTICAL;
-    HorizontalAlignment horizontalAlignment = ALIGN_LEFT;
-    VerticalAlignment verticalAlignment = ALIGN_TOP;
-    SortOrder sortOrder = SORT_LAYOUT_ORDER;
-    UDim padding;
+    FillDirection fillDirection = FillDirection::FILL_VERTICAL;
+    HorizontalAlignment horizontalAlignment = HorizontalAlignment::ALIGN_LEFT;
+    VerticalAlignment verticalAlignment = VerticalAlignment::ALIGN_TOP;
+    SortOrder sortOrder = SortOrder::SORT_LAYOUT_ORDER;
+    UDim innerPadding;
+    UiFlexAlignment horizontalFlex = UiFlexAlignment::NONE;
+    UiFlexAlignment verticalFlex = UiFlexAlignment::NONE;
+    bool wraps = false;
+    ItemLineAlignment itemLineAlignment = ItemLineAlignment::AUTOMATIC;
 };
 
 } // namespace Amethyst

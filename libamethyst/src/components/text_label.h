@@ -35,7 +35,6 @@ class TextLabel : public UILabel {
     Color4 strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
 
   private:
-    uint32_t m_allocationIndex = UINT32_MAX;
     uint32_t m_textAllocationIndex = UINT32_MAX;
 };
 
