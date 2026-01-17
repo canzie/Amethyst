@@ -60,6 +60,7 @@ class VkBackend {
     void beginFrame();
     void endFrame();
     void record(VkCommandBuffer cmd, GeometryRegistry &geometryRegistry, TextRegistry &textRegistry);
+    void onResize(glm::vec2 extent);
 
     void uploadFontData(const TTF::FontData &fontData);
 
