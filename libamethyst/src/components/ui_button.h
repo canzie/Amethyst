@@ -16,38 +16,56 @@ class UIButton : public UIObject {
     UIButton() = default;
     virtual ~UIButton() = default;
 
+  protected:
     void onMouseButton1Down(uint32_t x, uint32_t y) override
     {
         if (onMouseButton1DownCb) onMouseButton1DownCb(x, y);
     }
+
     void onMouseButton1Up(uint32_t x, uint32_t y) override
     {
         if (onMouseButton1UpCb) onMouseButton1UpCb(x, y);
     }
-    void onMouseButton1Click() override
+
+    void onMouseButton1Click(void) override
     {
         if (onMouseButton1ClickCb) onMouseButton1ClickCb();
     }
+
     void onMouseButton2Down(uint32_t x, uint32_t y) override
     {
         if (onMouseButton2DownCb) onMouseButton2DownCb(x, y);
     }
+
     void onMouseButton2Up(uint32_t x, uint32_t y) override
     {
         if (onMouseButton2UpCb) onMouseButton2UpCb(x, y);
     }
-    void onMouseButton2Click() override
+
+    void onMouseButton2Click(void) override
     {
         if (onMouseButton2ClickCb) onMouseButton2ClickCb();
     }
 
+    void onMouseEnter(void) override
+    {
+        if (onMouseEnterCb) onMouseEnterCb();
+    }
+
+    void onMouseLeave(void) override
+    {
+        if (onMouseLeaveCb) onMouseLeaveCb();
+    }
+
   public:
-    std::function<void()> onMouseButton1ClickCb;
+    std::function<void(void)> onMouseButton1ClickCb;
     std::function<void(uint32_t, uint32_t)> onMouseButton1DownCb;
     std::function<void(uint32_t, uint32_t)> onMouseButton1UpCb;
-    std::function<void()> onMouseButton2ClickCb;
+    std::function<void(void)> onMouseButton2ClickCb;
     std::function<void(uint32_t, uint32_t)> onMouseButton2DownCb;
     std::function<void(uint32_t, uint32_t)> onMouseButton2UpCb;
+    std::function<void(void)> onMouseEnterCb;
+    std::function<void(void)> onMouseLeaveCb;
 
     bool autoButtonColor = true;
     bool modal = false;

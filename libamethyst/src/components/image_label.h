@@ -22,7 +22,7 @@ class ImageLabel : public UILabel {
     ImageLabel() = default;
     virtual ~ImageLabel() = default;
 
-    void draw(GeometryRegistry& registry) override;
+    void draw(DrawContext &ctx) override;
 
   public:
     std::string image;

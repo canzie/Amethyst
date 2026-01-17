@@ -13,14 +13,10 @@ namespace Amethyst {
 class Frame : public UIObject {
   public:
     Frame() = default;
-    Frame(Instance *parent)
-    {
-        setParent(parent);
-        name = "Frame";
-    };
+    Frame(Instance *parent) { setParent(parent); };
     virtual ~Frame() = default;
 
-    void draw(GeometryRegistry &registry) override;
+    void draw(DrawContext &ctx) override;
 
     void onMouseButton1Click() override;
     void onMouseButton2Click() override;

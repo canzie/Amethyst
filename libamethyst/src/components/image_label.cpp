@@ -4,11 +4,13 @@
 
 #include "components/image_label.h"
 
+#include "rendering/draw_context.h"
+
 namespace Amethyst {
 
-void ImageLabel::draw(GeometryRegistry& registry)
+void ImageLabel::draw(DrawContext &ctx)
 {
-    (void)registry;
+    (void)ctx;
     // TODO: implement
 }
 

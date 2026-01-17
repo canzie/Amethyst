@@ -4,11 +4,13 @@
 
 #include "components/ui_layer.h"
 
+#include "rendering/draw_context.h"
+
 namespace Amethyst {
 
-void UILayer::draw(GeometryRegistry& registry)
+void UILayer::draw(DrawContext &ctx)
 {
-    (void)registry;
+    (void)ctx;
     // TODO: implement
 }
 

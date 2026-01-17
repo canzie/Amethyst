@@ -55,9 +55,9 @@ Window *UIObject::getWindow()
     return nullptr;
 }
 
-void UIObject::onMouseEnter(uint32_t, uint32_t) {}
+void UIObject::onMouseEnter() {}
 
-void UIObject::onMouseLeave(uint32_t, uint32_t) {}
+void UIObject::onMouseLeave() {}
 
 void UIObject::onMouseMoved(uint32_t x, uint32_t y)
 {

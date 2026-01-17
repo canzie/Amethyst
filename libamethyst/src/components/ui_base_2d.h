@@ -10,14 +10,14 @@
 
 namespace Amethyst {
 
-class GeometryRegistry;
+struct DrawContext;
 
 class UIBase2D : public Instance {
   public:
     UIBase2D() = default;
     virtual ~UIBase2D() = default;
 
-    virtual void draw(GeometryRegistry &registry) = 0;
+    virtual void draw(DrawContext &ctx) = 0;
 
     bool containsPoint(const glm::vec2 &point) const
     {

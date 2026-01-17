@@ -8,9 +8,13 @@
 #include "components/extensions/ui_extension.h"
 #include "components/extensions/ui_drag_detector.h"
 #include "components/frame.h"
+#include "components/text_label.h"
 #include "components/ui_layer.h"
 #include "components/window.h"
 #include "logging/log.h"
+#include "modules/text_processor.h"
+#include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
+#include "rendering/text_registry.h"
 
 #endif // AMETHYST__AMETHYST_H

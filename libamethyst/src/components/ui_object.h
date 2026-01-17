@@ -42,17 +42,19 @@ class UIObject : public UIBase2D {
 
     template <typename T> void removeExtension() { m_extensions.erase(std::type_index(typeid(T))); }
 
-    virtual void onMouseEnter(uint32_t x, uint32_t y);
-    virtual void onMouseLeave(uint32_t x, uint32_t y);
+  protected:
+    friend class Window;
+    virtual void onMouseEnter(void);
+    virtual void onMouseLeave(void);
     virtual void onMouseMoved(uint32_t x, uint32_t y);
     virtual void onMouseButton1Down(uint32_t x, uint32_t y);
     virtual void onMouseButton1Up(uint32_t x, uint32_t y);
-    virtual void onMouseButton1Click() {}
+    virtual void onMouseButton1Click(void) {}
     virtual void onMouseButton2Down(uint32_t, uint32_t) {}
     virtual void onMouseButton2Up(uint32_t, uint32_t) {}
-    virtual void onMouseButton2Click() {}
-    virtual void onMouseScrollUp() {}
-    virtual void onMouseScrollDown() {}
+    virtual void onMouseButton2Click(void) {}
+    virtual void onMouseScrollUp(void) {}
+    virtual void onMouseScrollDown(void) {}
 
   public:
     bool active = false;

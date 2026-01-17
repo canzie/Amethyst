@@ -1,13 +1,32 @@
-#include "components/common.h"
-#include "vk_context.h"
-
 #include "amethyst/Amethyst.h"
 #include "amethyst__vk13_glfw.h"
+#include "components/text_button.h"
+#include "parsers/ttf/ttf_parser.h"
+#include "vk_context.h"
+
+#include <cstdint>
 
 int main()
 {
     Amethyst::Log::Init();
     AM_LOG_INFO("Amethyst Test App");
+
+    // Test TTF parsing
+    Amethyst::TTF::Parser ttfParser;
+    auto fontData = ttfParser.parse("/home/Thomas/dev/Amethyst/libamethyst/assets/fonts/Roboto-Regular.ttf");
+    if (fontData) {
+        AM_LOG_INFO("TTF parsed: {} glyphs, {} points, {} contours", fontData->glyphs.size(), fontData->points.size(),
+                    fontData->contours.size());
+
+        // Test looking up 'A' (codepoint 65)
+        uint32_t glyphIdx = fontData->getGlyphIndex('A');
+        const auto *glyph = fontData->getGlyph(glyphIdx);
+        if (glyph) {
+            AM_LOG_INFO("Glyph 'A': {} contours, advance={:.3f}", glyph->contourCount, glyph->advanceWidth);
+        }
+    } else {
+        AM_LOG_ERROR("Failed to parse TTF");
+    }
 
     VkContext ctx;
     if (!contextInit(ctx, 1000, 1000, "Amethyst Test")) {
@@ -15,7 +34,17 @@ int main()
         return 1;
     }
 
-    Amethyst::GeometryRegistry registry;
+    Amethyst::GeometryRegistry geometryRegistry;
+    Amethyst::TextRegistry textRegistry;
+    Amethyst::TextProcessor textProcessor;
+    if (fontData) {
+        textProcessor.setFontData(&*fontData);
+    }
+
+    Amethyst::DrawContext drawCtx;
+    drawCtx.geometry = &geometryRegistry;
+    drawCtx.text = &textRegistry;
+    drawCtx.textProcessor = &textProcessor;
 
     Amethyst::VulkanInitInfo initInfo{};
     initInfo.device = ctx.device;
@@ -31,6 +60,10 @@ int main()
 
     Amethyst::VkBackend backend;
     backend.init(initInfo);
+
+    if (fontData) {
+        backend.uploadFontData(*fontData);
+    }
 
     Amethyst::GLFWInitInfo glfwInfo{};
     glfwInfo.window = ctx.window;
@@ -64,6 +97,25 @@ int main()
     frame2.markDirty();
     frame2.addExtension<Amethyst::UIDragDetector>();
 
+    Amethyst::TextButton button1(&frame2);
+    button1.name = "button";
+    button1.size = Amethyst::UDim2::fromScale(0.9f, 0.9f);
+    button1.position = Amethyst::UDim2::fromScale(0.5f, 0.5f);
+    button1.anchorPoint = glm::vec2(0.5f);
+    button1.backgroundColor = {0.2f, 0.0f, 0.2f};
+    button1.cornerRadius = 5.0f;
+    button1.onMouseEnterCb = [button1 = &button1]() {
+        button1->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+        button1->markDirty();
+    };
+
+    button1.onMouseLeaveCb = [button1 = &button1]() {
+        button1->size = Amethyst::UDim2::fromScale(0.9f, 0.9f);
+        button1->markDirty();
+    };
+
+    button1.markDirty();
+
     Amethyst::Frame frame3(&window);
     frame3.name = "long bar";
     frame3.size = Amethyst::UDim2(0.0f, 100.0f, 0.9f, 0.0f);
@@ -73,7 +125,16 @@ int main()
     frame3.markDirty();
     frame3.addExtension<Amethyst::UIDragDetector>();
 
-    window.draw(registry);
+    Amethyst::TextLabel textLabel(&window);
+    textLabel.name = "test label";
+    textLabel.text = "Hello Amethyst!";
+    textLabel.fontSize = 128.0f;
+    textLabel.textColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    textLabel.position = Amethyst::UDim2::fromOffset(200, 200);
+    textLabel.size = Amethyst::UDim2::fromOffset(400, 50);
+    textLabel.markDirty();
+
+    window.draw(drawCtx);
 
     double lastTime = glfwGetTime();
     int frameCount = 0;
@@ -86,9 +147,9 @@ int main()
             continue;
         }
 
-        window.draw(registry);
+        window.draw(drawCtx);
         VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];
-        backend.record(cmd, registry);
+        backend.record(cmd, geometryRegistry, textRegistry);
 
         contextEndFrame(ctx, imageIndex);
 

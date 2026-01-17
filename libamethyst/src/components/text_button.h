@@ -16,14 +16,14 @@ struct Font;
 
 class TextButton : public UIButton {
   public:
-    TextButton();
+    TextButton(Instance *parent) { setParent(parent); };
     virtual ~TextButton() = default;
 
-    void draw(GeometryRegistry& registry) override;
+    void draw(DrawContext &ctx) override;
 
   public:
     std::string text;
-    Font &font;
+    Font *font = nullptr; // make this a ref when used. maybe;
     float lineHeight;
     TextDirection textDirection = TextDirection::LEFT_TO_RIGHT;
     bool textScaled = false;

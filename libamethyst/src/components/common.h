@@ -95,6 +95,26 @@ struct InstanceData {
     uint32_t borderMode;
 };
 
+inline uint32_t packColor(const Color4 &c)
+{
+    uint32_t r = static_cast<uint32_t>(c.r * 255.0f) & 0xFF;
+    uint32_t g = static_cast<uint32_t>(c.g * 255.0f) & 0xFF;
+    uint32_t b = static_cast<uint32_t>(c.b * 255.0f) & 0xFF;
+    uint32_t a = static_cast<uint32_t>(c.a * 255.0f) & 0xFF;
+    return r | (g << 8) | (b << 16) | (a << 24);
+}
+
+/**
+ * @brief Per-character render data for text (GPU-aligned, 24 bytes)
+ */
+struct CharacterInstance {
+    alignas(8) glm::vec2 position;
+    alignas(8) glm::vec2 size;
+    uint32_t glyphIndex;
+    uint32_t color;
+};
+static_assert(sizeof(CharacterInstance) == 24, "CharacterInstance must be 24 bytes");
+
 } // namespace Amethyst
 
 #endif // AMETHYST__COMMON_H

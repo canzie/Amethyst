@@ -4,11 +4,13 @@
 
 #include "components/image_button.h"
 
+#include "rendering/draw_context.h"
+
 namespace Amethyst {
 
-void ImageButton::draw(GeometryRegistry& registry)
+void ImageButton::draw(DrawContext &ctx)
 {
-    (void)registry;
+    (void)ctx;
     // TODO: implement
 }
 

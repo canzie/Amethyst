@@ -5,6 +5,7 @@
 #ifndef AMETHYST__TEXT_LABEL_H
 #define AMETHYST__TEXT_LABEL_H
 
+#include "components/instance.h"
 #include "components/ui_label.h"
 #include <string>
 
@@ -31,9 +32,10 @@ enum class TextTruncate : uint8_t {
 class TextLabel : public UILabel {
   public:
     TextLabel() = default;
+    TextLabel(Instance *parent) { setParent(parent); }
     virtual ~TextLabel() = default;
 
-    void draw(GeometryRegistry& registry) override;
+    void draw(DrawContext &ctx) override;
 
   public:
     std::string text;
@@ -46,6 +48,9 @@ class TextLabel : public UILabel {
     bool richText = false;
     bool textWrapped = false;
     float lineHeight = 1.0f;
+
+  private:
+    uint32_t m_textAllocationIndex = UINT32_MAX;
 };
 
 } // namespace Amethyst

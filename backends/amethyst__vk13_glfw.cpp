@@ -17,6 +17,8 @@
 namespace Amethyst {
 
 constexpr size_t INITIAL_INSTANCE_CAPACITY = 64;
+constexpr size_t INITIAL_CHARACTER_CAPACITY = 1024;
+constexpr size_t INITIAL_FONT_DATA_CAPACITY = 512 * 1024; // 512KB for font data
 constexpr size_t INDEX_COUNT_RECT = 6;
 
 struct PushConstants {
@@ -31,6 +33,8 @@ void VkBackend::init(const VulkanInitInfo &config)
     allocateInstanceBuffers();
     createPipeline();
     allocateDescriptorSet();
+    createTextPipeline();
+    allocateTextDescriptorSet();
 }
 
 void VkBackend::shutdown()
@@ -49,11 +53,15 @@ void VkBackend::shutdown()
         vkDestroyBuffer(device, m_staticArena.buffer, nullptr);
         vkFreeMemory(device, m_staticArena.memory, nullptr);
     }
+    if (m_streamArena.mappedMemory) {
+        vkUnmapMemory(device, m_streamArena.memory);
+    }
     if (m_streamArena.buffer != VK_NULL_HANDLE) {
         vkDestroyBuffer(device, m_streamArena.buffer, nullptr);
         vkFreeMemory(device, m_streamArena.memory, nullptr);
     }
 
+    // UI pipeline cleanup
     if (m_pipeline != VK_NULL_HANDLE) {
         vkDestroyPipeline(device, m_pipeline, nullptr);
     }
@@ -69,21 +77,33 @@ void VkBackend::shutdown()
     if (m_fragShader != VK_NULL_HANDLE) {
         vkDestroyShaderModule(device, m_fragShader, nullptr);
     }
+
+    // Text pipeline cleanup
+    if (m_textPipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(device, m_textPipeline, nullptr);
+    }
+    if (m_textPipelineLayout != VK_NULL_HANDLE) {
+        vkDestroyPipelineLayout(device, m_textPipelineLayout, nullptr);
+    }
+    if (m_textDescriptorSetLayout != VK_NULL_HANDLE) {
+        vkDestroyDescriptorSetLayout(device, m_textDescriptorSetLayout, nullptr);
+    }
+    if (m_textVertShader != VK_NULL_HANDLE) {
+        vkDestroyShaderModule(device, m_textVertShader, nullptr);
+    }
+    if (m_textFragShader != VK_NULL_HANDLE) {
+        vkDestroyShaderModule(device, m_textFragShader, nullptr);
+    }
 }
 
 void VkBackend::beginFrame() {}
 
 void VkBackend::endFrame() {}
 
-void VkBackend::record(VkCommandBuffer cmd, GeometryRegistry &registry)
+void VkBackend::record(VkCommandBuffer cmd, GeometryRegistry &geometryRegistry, TextRegistry &textRegistry)
 {
-    updateInstances(registry);
-
-    if (m_instanceDataBuffer.size == 0) {
-        return;
-    }
-
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+    updateInstances(geometryRegistry);
+    updateTextCharacters(textRegistry);
 
     VkViewport viewport = {
         .x = 0.0f,
@@ -104,12 +124,24 @@ void VkBackend::record(VkCommandBuffer cmd, GeometryRegistry &registry)
     PushConstants pc = {
         .screenSize = {static_cast<float>(m_info.extent.width), static_cast<float>(m_info.extent.height)},
     };
-    vkCmdPushConstants(cmd, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
 
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, nullptr);
+    // Draw UI geometry
+    if (m_instanceDataBuffer.size > 0) {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+        vkCmdPushConstants(cmd, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, nullptr);
+        vkCmdBindIndexBuffer(cmd, m_indexBuffer.arena->buffer, m_indexBuffer.offset, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(cmd, INDEX_COUNT_RECT, static_cast<uint32_t>(m_instanceDataBuffer.size), 0, 0, 0);
+    }
 
-    vkCmdBindIndexBuffer(cmd, m_indexBuffer.arena->buffer, m_indexBuffer.offset, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(cmd, INDEX_COUNT_RECT, static_cast<uint32_t>(m_instanceDataBuffer.size), 0, 0, 0);
+    // Draw text
+    if (m_characterBuffer.size > 0 && m_fontDataUploaded) {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_textPipeline);
+        vkCmdPushConstants(cmd, m_textPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_textPipelineLayout, 0, 1, &m_textDescriptorSet, 0, nullptr);
+        vkCmdBindIndexBuffer(cmd, m_indexBuffer.arena->buffer, m_indexBuffer.offset, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(cmd, INDEX_COUNT_RECT, static_cast<uint32_t>(m_characterBuffer.size), 0, 0, 0);
+    }
 }
 
 static uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
@@ -159,15 +191,18 @@ static void s_createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buf
 
 void VkBackend::allocateBufferArenas()
 {
-    // 2 arena for now, streambuffer can stay empty
-    // dynamic is host visible but not coherent
-    // static is only gpu visible and needs a staging buffer to get the data there
+    // static: gpu only, for indices
+    // dynamic: host visible, for geometry instances
+    // stream: host visible + coherent, for text (no flush needed)
 
     m_staticArena = {};
     m_staticArena.capacity = sizeof(uint32_t) * INDEX_COUNT_RECT;
 
     m_dynamicArena = {};
     m_dynamicArena.capacity = sizeof(InstanceData) * INITIAL_INSTANCE_CAPACITY;
+
+    m_streamArena = {};
+    m_streamArena.capacity = sizeof(CharacterInstance) * INITIAL_CHARACTER_CAPACITY + INITIAL_FONT_DATA_CAPACITY;
 
     VkBufferUsageFlags staticUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     VkMemoryPropertyFlags staticProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -177,7 +212,12 @@ void VkBackend::allocateBufferArenas()
     VkMemoryPropertyFlags dynamicProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
     s_createBuffer(m_info.device, m_info.physicalDevice, m_dynamicArena, dynamicUsage, dynamicProperties);
 
+    VkBufferUsageFlags streamUsage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    VkMemoryPropertyFlags streamProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    s_createBuffer(m_info.device, m_info.physicalDevice, m_streamArena, streamUsage, streamProperties);
+
     vkMapMemory(m_info.device, m_dynamicArena.memory, 0, VK_WHOLE_SIZE, 0, &m_dynamicArena.mappedMemory);
+    vkMapMemory(m_info.device, m_streamArena.memory, 0, VK_WHOLE_SIZE, 0, &m_streamArena.mappedMemory);
 }
 
 void VkBackend::allocateIndexBuffer()
@@ -201,12 +241,7 @@ void VkBackend::allocateIndexBuffer()
 
 void VkBackend::allocateInstanceBuffers()
 {
-    // Will be more dynamic and allow for adding/removing/updating data, that is why it will be dynamic for now
-    // the size of the allocation will be large, but might need to grow over time, The buffer will also need ssbo flag
-    // every allocation in it will be of the same size so defragmentation is not really a thing. we will let the core deal with
-    // indices when data is to be removed, no problem we just wont ue it in the meantime and let the core fill in the gaps. we will
-    // always prioritize filling in gaps over allocating after our farthest element because of the freelist
-
+    // Geometry instance buffer (dynamic arena)
     size_t neededSize = sizeof(InstanceData) * INITIAL_INSTANCE_CAPACITY;
     if (neededSize > (m_dynamicArena.capacity - m_dynamicArena.size)) {
         AM_LOG_ERROR("Failed to allocate instance buffer");
@@ -218,6 +253,21 @@ void VkBackend::allocateInstanceBuffers()
     m_instanceDataBuffer.capacity = neededSize;
     m_instanceDataBuffer.offset = m_dynamicArena.size;
     m_dynamicArena.size += neededSize;
+
+    // Character buffer (stream arena)
+    size_t charSize = sizeof(CharacterInstance) * INITIAL_CHARACTER_CAPACITY;
+    m_characterBuffer = {};
+    m_characterBuffer.arena = &m_streamArena;
+    m_characterBuffer.capacity = charSize;
+    m_characterBuffer.offset = m_streamArena.size;
+    m_streamArena.size += charSize;
+
+    // Font data buffer (stream arena)
+    m_fontDataBuffer = {};
+    m_fontDataBuffer.arena = &m_streamArena;
+    m_fontDataBuffer.capacity = INITIAL_FONT_DATA_CAPACITY;
+    m_fontDataBuffer.offset = m_streamArena.size;
+    m_streamArena.size += INITIAL_FONT_DATA_CAPACITY;
 }
 
 void VkBackend::updateInstances(GeometryRegistry &registry)
@@ -246,6 +296,78 @@ void VkBackend::updateInstances(GeometryRegistry &registry)
     }
 
     m_instanceDataBuffer.size = allocations.size();
+}
+
+void VkBackend::updateTextCharacters(TextRegistry &registry)
+{
+    if (!registry.consumeDirty()) {
+        return;
+    }
+
+    const auto &characters = registry.getCharacters();
+    size_t dataSize = characters.size() * sizeof(CharacterInstance);
+
+    if (dataSize > m_characterBuffer.capacity) {
+        AM_LOG_WARN("Character buffer overflow, truncating");
+        dataSize = m_characterBuffer.capacity;
+    }
+
+    if (!characters.empty()) {
+        auto *basePtr = static_cast<uint8_t *>(m_characterBuffer.arena->mappedMemory);
+        auto *dst = basePtr + m_characterBuffer.offset;
+        std::memcpy(dst, characters.data(), dataSize);
+    }
+
+    m_characterBuffer.size = characters.size();
+}
+
+void VkBackend::uploadFontData(const TTF::FontData &fontData)
+{
+    // Pack font data: header (offsets) + points + contours + glyphs
+    struct FontDataHeader {
+        uint32_t pointsOffset;
+        uint32_t contoursOffset;
+        uint32_t glyphsOffset;
+        uint32_t _pad;
+    };
+
+    size_t headerSize = sizeof(FontDataHeader);
+    size_t pointsSize = fontData.points.size() * sizeof(TTF::Point);
+    size_t contoursSize = fontData.contours.size() * sizeof(TTF::Contour);
+    size_t glyphsSize = fontData.glyphs.size() * sizeof(TTF::Glyph);
+    size_t totalSize = headerSize + pointsSize + contoursSize + glyphsSize;
+
+    if (totalSize > m_fontDataBuffer.capacity) {
+        AM_LOG_ERROR("Font data too large: {} bytes, capacity: {}", totalSize, m_fontDataBuffer.capacity);
+        return;
+    }
+
+    auto *basePtr = static_cast<uint8_t *>(m_fontDataBuffer.arena->mappedMemory);
+    auto *dst = basePtr + m_fontDataBuffer.offset;
+
+    // Write header (offsets are in uint32_t units after header)
+    FontDataHeader header;
+    header.pointsOffset = 0;
+    header.contoursOffset = static_cast<uint32_t>(fontData.points.size() * 3);                         // Point is 3 uint32_t
+    header.glyphsOffset = header.contoursOffset + static_cast<uint32_t>(fontData.contours.size() * 2); // Contour is 2 uint32_t
+    header._pad = 0;
+
+    std::memcpy(dst, &header, headerSize);
+    dst += headerSize;
+
+    std::memcpy(dst, fontData.points.data(), pointsSize);
+    dst += pointsSize;
+
+    std::memcpy(dst, fontData.contours.data(), contoursSize);
+    dst += contoursSize;
+
+    std::memcpy(dst, fontData.glyphs.data(), glyphsSize);
+
+    m_fontDataBuffer.size = totalSize;
+    m_fontDataUploaded = true;
+
+    AM_LOG_INFO("Uploaded font data: {} points, {} contours, {} glyphs", fontData.points.size(), fontData.contours.size(),
+                fontData.glyphs.size());
 }
 
 void VkBackend::uploadToGpu(BufferAllocation &alloc, const void *data, size_t size, size_t offset)
@@ -502,6 +624,250 @@ void VkBackend::allocateDescriptorSet()
         .pBufferInfo = &bufferInfo,
     };
     vkUpdateDescriptorSets(m_info.device, 1, &descriptorWrite, 0, nullptr);
+}
+
+void VkBackend::createTextPipeline()
+{
+    m_textVertShader = loadShaderModule("/home/Thomas/dev/Amethyst/backends/shaders/spirv/text.vs.spv");
+    m_textFragShader = loadShaderModule("/home/Thomas/dev/Amethyst/backends/shaders/spirv/text.fs.spv");
+
+    // Two bindings: character buffer (binding 0) and font data buffer (binding 1)
+    VkDescriptorSetLayoutBinding bindings[] = {
+        {
+            .binding = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .pImmutableSamplers = nullptr,
+        },
+        {
+            .binding = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .pImmutableSamplers = nullptr,
+        },
+    };
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .bindingCount = std::size(bindings),
+        .pBindings = bindings,
+    };
+    vkCreateDescriptorSetLayout(m_info.device, &layoutInfo, nullptr, &m_textDescriptorSetLayout);
+
+    VkPushConstantRange pushConstant = {
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .offset = 0,
+        .size = sizeof(PushConstants),
+    };
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .setLayoutCount = 1,
+        .pSetLayouts = &m_textDescriptorSetLayout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &pushConstant,
+    };
+    vkCreatePipelineLayout(m_info.device, &pipelineLayoutInfo, nullptr, &m_textPipelineLayout);
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .module = m_textVertShader,
+            .pName = "main",
+            .pSpecializationInfo = nullptr,
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = m_textFragShader,
+            .pName = "main",
+            .pSpecializationInfo = nullptr,
+        },
+    };
+
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .vertexBindingDescriptionCount = 0,
+        .pVertexBindingDescriptions = nullptr,
+        .vertexAttributeDescriptionCount = 0,
+        .pVertexAttributeDescriptions = nullptr,
+    };
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE,
+    };
+
+    VkPipelineViewportStateCreateInfo viewportState = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .viewportCount = 1,
+        .pViewports = nullptr,
+        .scissorCount = 1,
+        .pScissors = nullptr,
+    };
+
+    VkPipelineRasterizationStateCreateInfo rasterizer = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .depthClampEnable = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .cullMode = VK_CULL_MODE_NONE,
+        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable = VK_FALSE,
+        .depthBiasConstantFactor = 0.0f,
+        .depthBiasClamp = 0.0f,
+        .depthBiasSlopeFactor = 0.0f,
+        .lineWidth = 1.0f,
+    };
+
+    VkPipelineMultisampleStateCreateInfo multisampling = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable = VK_FALSE,
+        .minSampleShading = 0.0f,
+        .pSampleMask = nullptr,
+        .alphaToCoverageEnable = VK_FALSE,
+        .alphaToOneEnable = VK_FALSE,
+    };
+
+    VkPipelineColorBlendAttachmentState blendAttachment = {
+        .blendEnable = VK_TRUE,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .colorBlendOp = VK_BLEND_OP_ADD,
+        .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .alphaBlendOp = VK_BLEND_OP_ADD,
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+    };
+
+    VkPipelineColorBlendStateCreateInfo colorBlending = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .logicOpEnable = VK_FALSE,
+        .logicOp = VK_LOGIC_OP_COPY,
+        .attachmentCount = 1,
+        .pAttachments = &blendAttachment,
+        .blendConstants = {0.0f, 0.0f, 0.0f, 0.0f},
+    };
+
+    VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dynamicState = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .dynamicStateCount = std::size(dynamicStates),
+        .pDynamicStates = dynamicStates,
+    };
+
+    VkPipelineRenderingCreateInfo renderingInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+        .pNext = nullptr,
+        .viewMask = 0,
+        .colorAttachmentCount = 1,
+        .pColorAttachmentFormats = &m_info.colorFormat,
+        .depthAttachmentFormat = VK_FORMAT_UNDEFINED,
+        .stencilAttachmentFormat = VK_FORMAT_UNDEFINED,
+    };
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .pNext = &renderingInfo,
+        .flags = 0,
+        .stageCount = std::size(shaderStages),
+        .pStages = shaderStages,
+        .pVertexInputState = &vertexInputInfo,
+        .pInputAssemblyState = &inputAssembly,
+        .pTessellationState = nullptr,
+        .pViewportState = &viewportState,
+        .pRasterizationState = &rasterizer,
+        .pMultisampleState = &multisampling,
+        .pDepthStencilState = nullptr,
+        .pColorBlendState = &colorBlending,
+        .pDynamicState = &dynamicState,
+        .layout = m_textPipelineLayout,
+        .renderPass = VK_NULL_HANDLE,
+        .subpass = 0,
+        .basePipelineHandle = VK_NULL_HANDLE,
+        .basePipelineIndex = -1,
+    };
+
+    vkCreateGraphicsPipelines(m_info.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_textPipeline);
+}
+
+void VkBackend::allocateTextDescriptorSet()
+{
+    VkDescriptorSetAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext = nullptr,
+        .descriptorPool = m_info.pool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &m_textDescriptorSetLayout,
+    };
+    vkAllocateDescriptorSets(m_info.device, &allocInfo, &m_textDescriptorSet);
+
+    VkDescriptorBufferInfo characterBufferInfo = {
+        .buffer = m_characterBuffer.arena->buffer,
+        .offset = m_characterBuffer.offset,
+        .range = m_characterBuffer.capacity,
+    };
+
+    VkDescriptorBufferInfo fontDataBufferInfo = {
+        .buffer = m_fontDataBuffer.arena->buffer,
+        .offset = m_fontDataBuffer.offset,
+        .range = m_fontDataBuffer.capacity,
+    };
+
+    VkWriteDescriptorSet descriptorWrites[] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstSet = m_textDescriptorSet,
+            .dstBinding = 0,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pImageInfo = nullptr,
+            .pBufferInfo = &characterBufferInfo,
+            .pTexelBufferView = nullptr,
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext = nullptr,
+            .dstSet = m_textDescriptorSet,
+            .dstBinding = 1,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pImageInfo = nullptr,
+            .pBufferInfo = &fontDataBufferInfo,
+            .pTexelBufferView = nullptr,
+        },
+    };
+    vkUpdateDescriptorSets(m_info.device, std::size(descriptorWrites), descriptorWrites, 0, nullptr);
 }
 
 static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)

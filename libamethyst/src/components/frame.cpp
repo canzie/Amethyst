@@ -6,6 +6,7 @@
 
 #include "components/ui_object.h"
 #include "logging/log.h"
+#include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 
 namespace Amethyst {
@@ -20,7 +21,7 @@ void Frame::onMouseButton2Click()
     AM_LOG_INFO("Frame '{}' clicked (button 2)", name.empty() ? "(unnamed)" : name);
 }
 
-void Frame::draw(GeometryRegistry &registry)
+void Frame::draw(DrawContext &ctx)
 {
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
@@ -31,16 +32,16 @@ void Frame::draw(GeometryRegistry &registry)
         data.primitiveType = PRIMITIVE_RECT;
 
         if (m_allocationIndex == UINT32_MAX) {
-            m_allocationIndex = registry.submit(data);
+            m_allocationIndex = ctx.geometry->submit(data);
         } else {
-            registry.update(m_allocationIndex, data);
+            ctx.geometry->update(m_allocationIndex, data);
         }
     }
 
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-            drawable->draw(registry);
+            drawable->draw(ctx);
         }
     }
 

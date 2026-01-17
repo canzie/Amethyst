@@ -11,6 +11,7 @@
 #include "components/ui_base_2d.h"
 #include "components/ui_object.h"
 #include "logging/log.h"
+#include "rendering/draw_context.h"
 
 namespace Amethyst {
 
@@ -24,13 +25,12 @@ Window::~Window()
     InputInterface::unregisterWindow(this);
 }
 
-void Window::draw(GeometryRegistry &registry)
+void Window::draw(DrawContext &ctx)
 {
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
-
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-            drawable->draw(registry);
+            drawable->draw(ctx);
         }
     }
 }
@@ -158,11 +158,11 @@ void Window::onMouseMove(uint32_t x, uint32_t y)
     if (hovered != m_lastHoveredInstance) {
         if (m_lastHoveredInstance) {
             auto obj = m_lastHoveredInstance->as<UIObject>();
-            obj->onMouseLeave(x, y);
+            obj->onMouseLeave();
         }
         if (hovered) {
             auto obj = hovered->as<UIObject>();
-            obj->onMouseEnter(x, y);
+            obj->onMouseEnter();
         }
     }
 

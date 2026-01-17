@@ -3,7 +3,9 @@
 
 #include "components/common.h"
 #include "components/input_interface.h"
+#include "parsers/ttf/ttf_types.h"
 #include "rendering/geometry_registry.h"
+#include "rendering/text_registry.h"
 
 #include <array>
 #include <cstddef>
@@ -54,21 +56,27 @@ class VkBackend {
 
     void beginFrame();
     void endFrame();
-    void record(VkCommandBuffer cmd, GeometryRegistry &registry);
+    void record(VkCommandBuffer cmd, GeometryRegistry &geometryRegistry, TextRegistry &textRegistry);
+
+    void uploadFontData(const TTF::FontData &fontData);
 
   private:
     void createPipeline();
+    void createTextPipeline();
     void allocateDescriptorSet();
+    void allocateTextDescriptorSet();
     void allocateBufferArenas();
     void allocateIndexBuffer();
     void allocateInstanceBuffers();
     void updateInstances(GeometryRegistry &registry);
+    void updateTextCharacters(TextRegistry &registry);
     void uploadToGpu(BufferAllocation &alloc, const void *data, size_t size, size_t offset);
     VkShaderModule loadShaderModule(const char *path);
 
   private:
     VulkanInitInfo m_info;
 
+    // UI geometry pipeline
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
     VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
@@ -76,15 +84,28 @@ class VkBackend {
     VkShaderModule m_vertShader = VK_NULL_HANDLE;
     VkShaderModule m_fragShader = VK_NULL_HANDLE;
 
+    // Text pipeline
+    VkPipeline m_textPipeline = VK_NULL_HANDLE;
+    VkPipelineLayout m_textPipelineLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_textDescriptorSetLayout = VK_NULL_HANDLE;
+    VkDescriptorSet m_textDescriptorSet = VK_NULL_HANDLE;
+    VkShaderModule m_textVertShader = VK_NULL_HANDLE;
+    VkShaderModule m_textFragShader = VK_NULL_HANDLE;
+
     // used for indices
     BufferArena m_staticArena;
-    // perhaps stream buffer can be used for very frequently updated data, like animated stuff
-    // while the normal shapes will be usingthe dynamic arena, as they need fast updates but not all on a frame to frame basis
+    // dynamic arena for geometry instances
     BufferArena m_dynamicArena;
+    // stream arena for text (coherent, no flush)
     BufferArena m_streamArena;
 
     BufferAllocation m_indexBuffer;
     BufferAllocation m_instanceDataBuffer;
+
+    // Text buffers
+    BufferAllocation m_characterBuffer;
+    BufferAllocation m_fontDataBuffer;
+    bool m_fontDataUploaded = false;
 };
 
 } // namespace Amethyst

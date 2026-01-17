@@ -15,7 +15,7 @@ class ImageButton : public UIButton {
     ImageButton() = default;
     virtual ~ImageButton() = default;
 
-    void draw(GeometryRegistry& registry) override;
+    void draw(DrawContext &ctx) override;
 
   public:
     std::string image;

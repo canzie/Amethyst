@@ -20,7 +20,7 @@ class Window : public UILayer {
     Window();
     virtual ~Window();
 
-    void draw(GeometryRegistry &registry) override;
+    void draw(DrawContext &ctx) override;
 
     void onMouseButton(int button, int action, int mods, uint32_t x, uint32_t y);
     void onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y);
