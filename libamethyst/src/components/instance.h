@@ -6,6 +6,7 @@
 #define AMETHYST__INSTANCE_H
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -40,6 +41,7 @@ class Instance {
     std::string name;
     Instance *parent = nullptr;
     std::vector<Instance *> children;
+    std::function<void(Instance *)> onDestroy;
 };
 
 } // namespace Amethyst

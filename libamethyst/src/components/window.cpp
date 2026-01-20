@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "components/input_interface.h"
+#include "components/instance.h"
 #include "components/ui_base_2d.h"
 #include "components/ui_object.h"
 #include "logging/log.h"
@@ -163,19 +164,27 @@ void Window::onMouseMove(uint32_t x, uint32_t y)
     Instance *hovered = findClickedObject(x, y);
     if (hovered != m_lastHoveredInstance) {
         if (m_lastHoveredInstance) {
+            m_lastHoveredInstance->onDestroy = nullptr;
             if (auto obj = m_lastHoveredInstance->as<UIObject>()) {
                 obj->onMouseLeave();
             }
         }
-        if (hovered) {
-            if (auto obj = hovered->as<UIObject>()) {
+        m_lastHoveredInstance = hovered;
+
+        if (m_lastHoveredInstance) {
+            m_lastHoveredInstance->onDestroy = [this](Instance *dead) {
+                if (this->m_lastHoveredInstance == dead) {
+                    this->m_lastHoveredInstance = nullptr;
+                }
+            };
+            if (auto obj = m_lastHoveredInstance->as<UIObject>()) {
                 obj->onMouseEnter();
             }
         }
     }
 
-    if (hovered) {
-        if (auto *uiObject = hovered->as<UIObject>()) {
+    if (m_lastHoveredInstance) {
+        if (auto *uiObject = m_lastHoveredInstance->as<UIObject>()) {
             uiObject->onMouseMoved(x, y);
         }
     }

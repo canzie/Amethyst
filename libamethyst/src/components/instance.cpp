@@ -10,6 +10,9 @@ namespace Amethyst {
 
 Instance::~Instance()
 {
+    if (onDestroy) {
+        onDestroy(this);
+    }
     if (parent) {
         parent->removeChild(this);
     }
