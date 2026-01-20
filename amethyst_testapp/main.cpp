@@ -148,14 +148,6 @@ int main()
     TextureInfo checkerboardTex = createCheckerboardTexture(ctx, 64, 8);
     Amethyst::AmTextureId checkerboardId = backend.registerTexture(checkerboardTex.view, checkerboardTex.sampler);
 
-    Amethyst::ImageLabel imageLabel(&window);
-    imageLabel.name = "checkerboard";
-    imageLabel.image = checkerboardId;
-    imageLabel.size = Amethyst::UDim2::fromOffset(200, 200);
-    imageLabel.position = Amethyst::UDim2::fromOffset(700, 400);
-    imageLabel.cornerRadius = 20.0f;
-    imageLabel.markDirty();
-
     Amethyst::TextLabel textLabel(&window);
     textLabel.name = "pangram fixed size";
     textLabel.text = "The quick brown fox jumps over the lazy dog";
@@ -215,11 +207,13 @@ int main()
     dockPanel2.markDirty();
     dockingLayer.dock(&dockPanel2, glm::vec2(900.0f, 600.0f));
 
-    Amethyst::Frame dockPanel3;
-    dockPanel3.name = "Panel C";
-    dockPanel3.backgroundColor = {0.2f, 0.2f, 0.6f};
-    dockPanel3.markDirty();
-    dockingLayer.dock(&dockPanel3, glm::vec2(600.0f, 850.0f));
+    Amethyst::ImageLabel imageLabel;
+    imageLabel.name = "checkerboard";
+    imageLabel.image = checkerboardId;
+    imageLabel.cornerRadius = 20.0f;
+    imageLabel.markDirty();
+
+    dockingLayer.dock(&imageLabel, glm::vec2(600.0f, 850.0f));
 
     window.draw(drawCtx);
 

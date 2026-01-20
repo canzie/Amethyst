@@ -29,6 +29,7 @@ void Instance::setParent(Instance *newParent)
 void Instance::addChild(Instance *child)
 {
     children.push_back(child);
+    child->parent = this;
 }
 
 void Instance::removeChild(Instance *child)

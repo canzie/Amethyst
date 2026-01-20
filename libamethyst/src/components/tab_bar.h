@@ -18,7 +18,7 @@ namespace Amethyst {
 
 struct TabItem {
     std::unique_ptr<TextButton> button;
-    std::unique_ptr<ImageButton> closeBtn;
+    // std::unique_ptr<ImageButton> closeBtn;
     Instance *content;
 };
 

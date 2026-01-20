@@ -6,6 +6,7 @@
 #include "rendering/draw_context.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 
 namespace Amethyst {
@@ -19,6 +20,8 @@ DockingLayer::DockingLayer(Instance *parent)
 
 void DockingLayer::draw(DrawContext &ctx)
 {
+    processPendingDeletions();
+
     if (m_rootNode < 0) {
         return;
     }
@@ -32,6 +35,16 @@ void DockingLayer::draw(DrawContext &ctx)
     }
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+}
+
+void DockingLayer::processPendingDeletions()
+{
+    if (m_pendingDeletions.empty()) return;
+
+    for (TabBar *ptr : m_pendingDeletions) {
+        std::erase_if(m_tabBars, [ptr](const auto &uptr) { return uptr.get() == ptr; });
+    }
+    m_pendingDeletions.clear();
 }
 
 std::vector<Instance *> DockingLayer::getHittableInstances()
@@ -64,6 +77,7 @@ void DockingLayer::dock(UIObject *obj, glm::vec2 pos)
             DockNode &node = m_nodes[targetNode];
             node.content->addChild(obj);
         } else {
+            AM_LOG_INFO("Splitting {} {}", targetNode, static_cast<int32_t>(targetZone));
             splitNode(targetNode, targetZone, obj);
         }
     }
@@ -130,7 +144,7 @@ void DockingLayer::collapseNode(int32_t nodeIndex)
     if (parentIndex < 0) {
         swapAndRemoveNode(nodeIndex);
         m_rootNode = -1;
-        std::erase_if(m_tabBars, [emptyTabBar](const auto &ptr) { return ptr.get() == emptyTabBar; });
+        m_pendingDeletions.push_back(emptyTabBar);
         return;
     }
 
@@ -140,9 +154,36 @@ void DockingLayer::collapseNode(int32_t nodeIndex)
 
     parent.axis = sibling.axis;
     parent.ratio = sibling.ratio;
-    parent.firstChild = sibling.firstChild;
-    parent.secondChild = sibling.secondChild;
     parent.content = sibling.content;
+
+    int32_t firstChild = sibling.firstChild;
+    int32_t secondChild = sibling.secondChild;
+
+    int32_t firstToRemove = std::max(nodeIndex, siblingIndex);
+    int32_t secondToRemove = std::min(nodeIndex, siblingIndex);
+
+    auto trackSwap = [&](int32_t oldIndex, int32_t newIndex) {
+        if (firstChild == oldIndex) {
+            firstChild = newIndex;
+        } else if (secondChild == oldIndex) {
+            secondChild = newIndex;
+        }
+    };
+
+    int32_t lastIndex = static_cast<int32_t>(m_nodes.size() - 1);
+    if (firstToRemove != lastIndex) {
+        trackSwap(lastIndex, firstToRemove);
+    }
+    swapAndRemoveNode(firstToRemove);
+
+    lastIndex = static_cast<int32_t>(m_nodes.size() - 1);
+    if (secondToRemove != lastIndex) {
+        trackSwap(lastIndex, secondToRemove);
+    }
+    swapAndRemoveNode(secondToRemove);
+
+    parent.firstChild = firstChild;
+    parent.secondChild = secondChild;
 
     if (parent.firstChild >= 0) {
         m_nodes[parent.firstChild].parentNode = parentIndex;
@@ -150,11 +191,7 @@ void DockingLayer::collapseNode(int32_t nodeIndex)
     if (parent.secondChild >= 0) {
         m_nodes[parent.secondChild].parentNode = parentIndex;
     }
-
-    swapAndRemoveNode(std::max(nodeIndex, siblingIndex));
-    swapAndRemoveNode(std::min(nodeIndex, siblingIndex));
-
-    std::erase_if(m_tabBars, [emptyTabBar](const auto &ptr) { return ptr.get() == emptyTabBar; });
+    m_pendingDeletions.push_back(emptyTabBar);
 }
 
 DockZone DockingLayer::hitTestZone(int32_t nodeIndex, glm::vec2 position)

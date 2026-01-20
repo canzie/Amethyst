@@ -13,11 +13,13 @@ TabBar::TabBar() {}
 
 TabBar::TabBar(Instance *parent)
 {
-
     setParent(parent);
 }
 
-TabBar::~TabBar() {}
+TabBar::~TabBar()
+{
+    m_tabItems.clear();
+}
 
 void TabBar::addChild(Instance *child)
 {
@@ -103,18 +105,18 @@ void TabBar::addChild(Instance *child)
 
 void TabBar::removeChild(Instance *child)
 {
+
     int32_t removedIndex = -1;
-    for (auto it = m_tabItems.begin(); it != m_tabItems.end(); ++it) {
-        if ((*it)->content == child) {
-            removedIndex = static_cast<int32_t>(std::distance(m_tabItems.begin(), it));
-            m_tabItems.erase(it);
-            break;
+    auto it = std::find_if(m_tabItems.begin(), m_tabItems.end(), [child](const auto &item) { return item->content == child; });
+    if (it != m_tabItems.end()) {
+
+        removedIndex = static_cast<int32_t>(std::distance(m_tabItems.begin(), it));
+        if ((*it)->button) {
+            (*it)->button->parent = nullptr;
         }
-    }
+        auto dyingItem = std::move(*it);
+        m_tabItems.erase(it);
 
-    Instance::removeChild(child);
-
-    if (removedIndex >= 0) {
         if (selectedIndex == removedIndex) {
             selectedIndex = std::min(selectedIndex, static_cast<int32_t>(m_tabItems.size()) - 1);
         } else if (selectedIndex > removedIndex) {
@@ -122,6 +124,7 @@ void TabBar::removeChild(Instance *child)
         }
     }
 
+    Instance::removeChild(child);
     markDirty();
 }
 

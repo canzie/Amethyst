@@ -73,11 +73,14 @@ class DockingLayer : public UILayer {
     void collapseNode(int32_t nodeIndex);
     void computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition);
     void setupTabBarCallbacks(TabBar *tabBar);
+    void processPendingDeletions();
 
   private:
     std::vector<DockNode> m_nodes;
     std::vector<std::unique_ptr<TabBar>> m_tabBars;
     int32_t m_rootNode = -1;
+
+    std::vector<TabBar *> m_pendingDeletions;
 };
 
 } // namespace Amethyst
