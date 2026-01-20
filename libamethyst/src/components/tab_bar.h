@@ -44,7 +44,7 @@ class TabBar : public UIObject {
   public:
     TabBar();
     TabBar(Instance *parent);
-    virtual ~TabBar() = default;
+    virtual ~TabBar();
 
     void draw(DrawContext &ctx) override;
     void addChild(Instance *child) override;

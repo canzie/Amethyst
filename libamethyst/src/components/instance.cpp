@@ -8,6 +8,13 @@
 
 namespace Amethyst {
 
+Instance::~Instance()
+{
+    if (parent) {
+        parent->removeChild(this);
+    }
+}
+
 void Instance::setParent(Instance *newParent)
 {
     if (parent) {

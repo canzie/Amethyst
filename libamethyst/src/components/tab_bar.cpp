@@ -17,6 +17,8 @@ TabBar::TabBar(Instance *parent)
     setParent(parent);
 }
 
+TabBar::~TabBar() {}
+
 void TabBar::addChild(Instance *child)
 {
     Instance::addChild(child);

@@ -21,7 +21,7 @@ class Instance {
   public:
     Instance() = default;
     Instance(Instance *parent) { setParent(parent); };
-    virtual ~Instance() = default;
+    virtual ~Instance();
 
     void setParent(Instance *newParent);
     virtual void addChild(Instance *child);
