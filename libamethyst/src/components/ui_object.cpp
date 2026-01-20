@@ -37,12 +37,15 @@ glm::mat4 UIObject::buildTransform() const
 InstanceData UIObject::createInstanceData() const
 {
     return InstanceData{.transform = buildTransform(),
-                        .fillColor = backgroundColor,
-                        .borderColor = borderColor,
+                        .fillColor = Color4(backgroundColor, 1.0f - backgroundTransparency),
+                        .borderColor = Color4(borderColor, 1.0f - borderTransparency),
                         .borderThickness = borderPixelSize,
                         .cornerRadius = cornerRadius,
                         .primitiveType = PRIMITIVE_TRIANGLE,
-                        .borderMode = static_cast<uint32_t>(borderMode)};
+                        .borderMode = static_cast<uint32_t>(borderMode),
+                        .textureId = UINT32_MAX,
+                        .visible = visible ? 1u : 0u,
+                        .zIndex = zIndex};
 }
 
 Window *UIObject::getWindow()

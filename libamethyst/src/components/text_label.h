@@ -7,6 +7,8 @@
 
 #include "components/instance.h"
 #include "components/ui_label.h"
+#include "rendering/text_registry.h"
+
 #include <string>
 
 namespace Amethyst {
@@ -15,7 +17,7 @@ class TextLabel : public UILabel {
   public:
     TextLabel() = default;
     TextLabel(Instance *parent) { setParent(parent); }
-    virtual ~TextLabel() = default;
+    virtual ~TextLabel();
 
     void draw(DrawContext &ctx) override;
 
@@ -34,8 +36,11 @@ class TextLabel : public UILabel {
     float strokeThickness = 0.0f;
     Color4 strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
 
+    glm::vec2 getTextSize() const { return m_textSize; }
+
   private:
-    uint32_t m_textAllocationIndex = UINT32_MAX;
+    TextAllocation *m_textAlloc = nullptr;
+    glm::vec2 m_textSize = {0.0f, 0.0f};
 };
 
 } // namespace Amethyst

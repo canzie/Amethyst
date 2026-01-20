@@ -18,6 +18,8 @@ enum class DragMode : uint8_t {
     FREE,
     HORIZONTAL,
     VERTICAL,
+    SOFT_HORIZONTAL,
+    SOFT_VERTICAL,
 };
 
 class UIDragDetector : public UIExtension {
@@ -31,17 +33,20 @@ class UIDragDetector : public UIExtension {
     void handleMouseUp(uint32_t x, uint32_t y);
 
     bool isDragging() const { return m_isDragging; }
+    bool isSoftLockBroken() const { return m_softLockBroken; }
 
   public:
     DragMode mode = DragMode::FREE;
     UIObject *dragZone = nullptr;
-    // CursorOcon/Image/Content/Texture = cursorIcon;
+    float softLockDistance = 30.0f;
+
     std::function<void(glm::vec2 startPos)> onDragStart;
     std::function<void(glm::vec2 delta, glm::vec2 position)> onDragUpdate;
     std::function<void(glm::vec2 endPos)> onDragEnd;
 
   private:
     bool m_isDragging = false;
+    bool m_softLockBroken = false;
     glm::vec2 m_dragStartMouse = glm::vec2(0.0f);
     glm::vec2 m_dragStartOffset = glm::vec2(0.0f);
 };

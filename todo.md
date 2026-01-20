@@ -1,12 +1,10 @@
-- implement the ui layout extensions
+- implement proper visibility culling, zindex
+    - eother use a middle man buffer
+    - or just rorder on the main data buffer
+    - for zIndex the objects have to be sorted, so need a fast sort algo, prob radix sort in this case, or dont sort at all? i guess we can try some fancy pants stuff
+    - 
+
 - add text editing
-- add support for docking
-    - do i make tabs a seperate thing? or only for docked windows?
-    - do i make the docking layer or docking frame responsible for the tab?
-        - there is the main window (some kind of frame), the top part, which is some kind of draggable container? but limited to its axis
-          it can contain a label and a button (like a close button?)
-        - it needs to display its siblings.
-- add more specific types like dropdowns and menus(like the main header with chaining menu items), tables
 - add addons like gizmo that can be enabled at compile time
 - add a concpet of themes using a toml file
 - drag - drop with payloads, not just mindless dragging.

@@ -7,19 +7,21 @@
 
 #include "components/common.h"
 #include "components/instance.h"
+#include "rendering/geometry_registry.h"
 
 namespace Amethyst {
 
 struct DrawContext;
-struct GeometryAllocation;
 
 class UIBase2D : public Instance {
   public:
     UIBase2D() = default;
-    virtual ~UIBase2D() {
-        // TODO: find a way to free any allocaitons
-        // could maybe make the window own the drawcontext and go up to the window in here? idk
-    };
+    virtual ~UIBase2D()
+    {
+        if (m_geometryAlloc && m_geometryAlloc->isValid()) {
+            m_geometryAlloc->registry->release(std::move(*m_geometryAlloc));
+        }
+    }
 
     virtual void draw(DrawContext &ctx) = 0;
 

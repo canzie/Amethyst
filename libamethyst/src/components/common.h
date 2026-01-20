@@ -183,13 +183,15 @@ enum class LabelSide {
 
 struct InstanceData {
     alignas(16) glm::mat4 transform;
-    alignas(16) Color3 fillColor;
-    alignas(16) Color3 borderColor;
+    alignas(16) Color4 fillColor;
+    alignas(16) Color4 borderColor;
     float borderThickness;
     float cornerRadius;
     uint32_t primitiveType;
     uint32_t borderMode;
     uint32_t textureId = UINT32_MAX;
+    uint32_t visible = 1;
+    int32_t zIndex = 0;
 };
 
 inline uint32_t packColor(const Color4 &c)

@@ -9,9 +9,19 @@
 #include "components/common.h"
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace Amethyst {
+
+class TextRegistry;
+
+struct TextAllocation {
+    uint32_t index = UINT32_MAX;
+    TextRegistry *registry = nullptr;
+
+    bool isValid() const { return index != UINT32_MAX && registry != nullptr; }
+};
 
 /**
  * @brief Registry for text character instances with allocation tracking
@@ -20,19 +30,19 @@ class TextRegistry {
   public:
     /**
      * @brief Submit new text characters
-     * @return Index/handle to the allocation
+     * @return Allocation handle
      */
-    uint32_t submit(const std::vector<CharacterInstance> &chars);
+    TextAllocation *submit(const std::vector<CharacterInstance> &chars);
 
     /**
      * @brief Update existing text allocation
      */
-    void update(uint32_t index, const std::vector<CharacterInstance> &chars);
+    void update(TextAllocation &alloc, const std::vector<CharacterInstance> &chars);
 
     /**
      * @brief Release an allocation
      */
-    void release(uint32_t index);
+    void release(TextAllocation &&alloc);
 
     /**
      * @brief Check if dirty and clear the flag
@@ -50,6 +60,7 @@ class TextRegistry {
     void rebuildFlatBuffer();
 
     std::vector<std::vector<CharacterInstance>> m_allocations;
+    std::vector<std::unique_ptr<TextAllocation>> m_handleMap;
     std::vector<CharacterInstance> m_flatBuffer;
     size_t m_flatBufferRequiredSize = 0;
     bool m_dirty = false;

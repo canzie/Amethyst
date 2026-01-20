@@ -24,8 +24,9 @@ class Instance {
     virtual ~Instance() = default;
 
     void setParent(Instance *newParent);
-    void addChild(Instance *child);
-    void removeChild(Instance *child);
+    virtual void addChild(Instance *child);
+    virtual void removeChild(Instance *child);
+    virtual std::vector<Instance *> getHittableInstances() { return children; }
 
     void markDirty();
     void markChildrenDirty();

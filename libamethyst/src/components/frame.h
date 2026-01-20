@@ -13,7 +13,11 @@ namespace Amethyst {
 class Frame : public UIObject {
   public:
     Frame() = default;
-    Frame(Instance *parent) { setParent(parent); };
+    Frame(Instance *parent)
+    {
+        setParent(parent);
+        zIndex = 2; // TODO: fix this by implementing z reordering
+    };
     virtual ~Frame() = default;
 
     void draw(DrawContext &ctx) override;

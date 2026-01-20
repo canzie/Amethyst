@@ -7,33 +7,47 @@
 
 namespace Amethyst {
 
-uint32_t TextRegistry::submit(const std::vector<CharacterInstance> &chars)
+TextAllocation *TextRegistry::submit(const std::vector<CharacterInstance> &chars)
 {
     uint32_t index = static_cast<uint32_t>(m_allocations.size());
     m_allocations.push_back(chars);
     m_flatBufferRequiredSize += chars.size();
+
+    auto alloc = std::make_unique<TextAllocation>(index, this);
+    TextAllocation *allocPtr = alloc.get();
+    m_handleMap.push_back(std::move(alloc));
     m_dirty = true;
-    return index;
+    return allocPtr;
 }
 
-void TextRegistry::update(uint32_t index, const std::vector<CharacterInstance> &chars)
+void TextRegistry::update(TextAllocation &alloc, const std::vector<CharacterInstance> &chars)
 {
-    size_t oldSize = m_allocations[index].size();
-    if (oldSize == chars.size()) {
-        m_allocations[index] = chars;
-        m_dirty = true; // TODO: mark this as some sort of partial dirty, so we dont fully rebuild
-    } else {
-        m_flatBufferRequiredSize -= oldSize;
-        m_flatBufferRequiredSize += chars.size();
-        m_allocations[index] = chars;
-        m_dirty = true;
+    if (!alloc.isValid()) return;
+
+    size_t oldSize = m_allocations[alloc.index].size();
+    m_flatBufferRequiredSize -= oldSize;
+    m_flatBufferRequiredSize += chars.size();
+    m_allocations[alloc.index] = chars;
+    m_dirty = true;
+}
+
+void TextRegistry::release(TextAllocation &&alloc)
+{
+    if (!alloc.isValid()) return;
+
+    uint32_t indexToRemove = alloc.index;
+    uint32_t lastIndex = static_cast<uint32_t>(m_allocations.size() - 1);
+
+    m_flatBufferRequiredSize -= m_allocations[indexToRemove].size();
+
+    if (indexToRemove != lastIndex) {
+        m_allocations[indexToRemove] = std::move(m_allocations[lastIndex]);
+        m_handleMap[lastIndex]->index = indexToRemove;
+        m_handleMap[indexToRemove] = std::move(m_handleMap[lastIndex]);
     }
-}
 
-void TextRegistry::release(uint32_t index)
-{
-    m_flatBufferRequiredSize -= m_allocations[index].size();
-    m_allocations[index].clear();
+    m_allocations.pop_back();
+    m_handleMap.pop_back();
     m_dirty = true;
 }
 

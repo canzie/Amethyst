@@ -31,6 +31,8 @@ void Window::draw(DrawContext &ctx)
         if (auto *drawable = child->as<UIObject>()) {
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(ctx);
+        } else if (auto *layer = child->as<UILayer>()) {
+            layer->draw(ctx);
         }
     }
 }
@@ -68,8 +70,9 @@ Instance *Window::findClickedObjectRecursive(const std::vector<Instance *> &inst
         bool pointInside = base2d->containsPoint(point);
         bool shouldCheckChildren = pointInside || (obj && !obj->clipsDescendants);
 
-        if (shouldCheckChildren && !inst->children.empty()) {
-            Instance *childResult = findClickedObjectRecursive(inst->children, point);
+        auto hittable = inst->getHittableInstances();
+        if (shouldCheckChildren && !hittable.empty()) {
+            Instance *childResult = findClickedObjectRecursive(hittable, point);
             if (childResult) {
                 return childResult;
             }
@@ -114,6 +117,9 @@ void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_
     }
 
     auto *uiObject = clicked->as<UIObject>();
+    if (!uiObject) {
+        return;
+    }
 
     switch (button) {
     case MOUSE_BUTTON_1:
@@ -157,18 +163,21 @@ void Window::onMouseMove(uint32_t x, uint32_t y)
     Instance *hovered = findClickedObject(x, y);
     if (hovered != m_lastHoveredInstance) {
         if (m_lastHoveredInstance) {
-            auto obj = m_lastHoveredInstance->as<UIObject>();
-            obj->onMouseLeave();
+            if (auto obj = m_lastHoveredInstance->as<UIObject>()) {
+                obj->onMouseLeave();
+            }
         }
         if (hovered) {
-            auto obj = hovered->as<UIObject>();
-            obj->onMouseEnter();
+            if (auto obj = hovered->as<UIObject>()) {
+                obj->onMouseEnter();
+            }
         }
     }
 
     if (hovered) {
-        auto *uiObject = hovered->as<UIObject>();
-        uiObject->onMouseMoved(x, y);
+        if (auto *uiObject = hovered->as<UIObject>()) {
+            uiObject->onMouseMoved(x, y);
+        }
     }
 
     m_lastHoveredInstance = hovered;
@@ -193,6 +202,9 @@ void Window::onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y)
 
     if (clicked) {
         auto *uiObject = clicked->as<UIObject>();
+        if (!uiObject) {
+            return;
+        }
         if (yoffset > 0) {
             uiObject->onMouseScrollUp();
         } else if (yoffset < 0) {

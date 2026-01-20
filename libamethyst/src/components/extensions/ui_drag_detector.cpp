@@ -1,4 +1,5 @@
-#include "components/extensions/ui_drag_detector.h"
+#include "ui_drag_detector.h"
+
 #include "components/ui_base_2d.h"
 #include "components/ui_object.h"
 #include "components/window.h"
@@ -12,6 +13,7 @@ void UIDragDetector::handleMouseDown(uint32_t x, uint32_t y)
     }
 
     m_isDragging = true;
+    m_softLockBroken = false;
 
     glm::vec2 mousePosParentRelative(x, y);
     if (m_owner->parent) {
@@ -57,6 +59,24 @@ void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
         break;
     case DragMode::VERTICAL:
         delta.x = 0.0f;
+        break;
+    case DragMode::SOFT_HORIZONTAL:
+        if (!m_softLockBroken) {
+            if (glm::abs(delta.y) > softLockDistance) {
+                m_softLockBroken = true;
+            } else {
+                delta.y = 0.0f;
+            }
+        }
+        break;
+    case DragMode::SOFT_VERTICAL:
+        if (!m_softLockBroken) {
+            if (glm::abs(delta.x) > softLockDistance) {
+                m_softLockBroken = true;
+            } else {
+                delta.x = 0.0f;
+            }
+        }
         break;
     }
 

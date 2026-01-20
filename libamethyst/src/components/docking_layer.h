@@ -1,9 +1,5 @@
 /*
  * DockingLayer - layer with BSP-based spatial partitioning for dockable frames
- *
- * The BSP tree determines layout, but DockableFrames remain children
- * in the scene graph. Normal propagation is unchanged.
- *
  */
 
 #ifndef AMETHYST__DOCKING_LAYER_H
@@ -13,11 +9,12 @@
 #include "components/tab_bar.h"
 #include "components/ui_layer.h"
 #include "components/ui_object.h"
+
+#include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace Amethyst {
-
-class TabBar;
 
 enum class DockZone {
     LEFT,
@@ -39,6 +36,7 @@ struct DockNode {
 
     int32_t firstChild = -1;
     int32_t secondChild = -1;
+    int32_t parentNode = -1;
 
     TabBar *content = nullptr;
 
@@ -52,26 +50,28 @@ class DockingLayer : public UILayer {
     virtual ~DockingLayer() = default;
 
     void draw(DrawContext &ctx) override;
+    std::vector<Instance *> getHittableInstances() override;
 
-    void dock(UIObject *obj, DockZone zone);
-    void dock(UIObject *obj, int32_t targetNode, DockZone zone);
+    // the node to split or create will be determined by the pos
+    void dock(UIObject *obj, glm::vec2 pos);
     void undock(UIObject *obj);
 
     DockZone hitTestZone(int32_t nodeIndex, glm::vec2 position);
-
-  public:
-    float zoneEdgeRatio = 0.2f;
-    float minSplitSize = 50.0f;
-
-    Color3 zoneHighlightColor = {0.3f, 0.5f, 0.8f};
-    float zoneHighlightTransparency = 0.5f;
+    int32_t findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
+    void splitNode(int32_t nodeIndex, DockZone targetZone, UIObject *newContent);
+    void recalculateChildren(int32_t parentIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
 
   private:
-    void computeLayout();
-    void computeNodeLayout(int32_t nodeIndex, glm::vec2 pos, glm::vec2 size);
+    int32_t createNode();
+    void swapAndRemoveNode(int32_t nodeIndex);
+    void collapseNode(int32_t nodeIndex);
+    void computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition);
+    void setupTabBarCallbacks(TabBar *tabBar);
 
+  private:
     std::vector<DockNode> m_nodes;
-    int32_t m_rootNode = 0;
+    std::vector<std::unique_ptr<TabBar>> m_tabBars;
+    int32_t m_rootNode = -1;
 };
 
 } // namespace Amethyst

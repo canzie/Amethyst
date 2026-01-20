@@ -3,13 +3,14 @@
 
 layout(location = 0) in vec2 fragUV;
 layout(location = 1) in flat uint fragPrimitiveType;
-layout(location = 2) in flat vec3 fragFillColor;
-layout(location = 3) in flat vec3 fragBorderColor;
+layout(location = 2) in flat vec4 fragFillColor;
+layout(location = 3) in flat vec4 fragBorderColor;
 layout(location = 4) in flat float fragBorderThickness;
 layout(location = 5) in flat float fragCornerRadius;
 layout(location = 6) in flat vec2 fragSize;
 layout(location = 7) in flat uint fragBorderMode;
 layout(location = 8) in flat uint fragTextureId;
+layout(location = 9) in flat uint fragVisible;
 
 layout(set = 0, binding = 1) uniform sampler2D gTextures[];
 
@@ -72,6 +73,8 @@ float sdfLine(vec2 p, vec2 halfSize, float thickness)
 
 void main()
 {
+    if (fragVisible == 0u) discard;
+
     vec2 p = (fragUV - 0.5) * fragSize;
     vec2 halfSize = fragSize * 0.5;
 
@@ -109,7 +112,7 @@ void main()
 
     float shapeAlpha = 1.0 - smoothstep(-aa, aa, dist - outerThreshold);
 
-    vec3 color;
+    vec4 color;
     if (fragBorderThickness > 0.0) {
         float fillMask = 1.0 - smoothstep(-aa, aa, dist - innerThreshold);
         color = mix(fragBorderColor, fragFillColor, fillMask);
@@ -119,10 +122,11 @@ void main()
 
     if (fragTextureId != INVALID_TEXTURE) {
         vec4 texColor = texture(gTextures[fragTextureId], fragUV);
-        color = mix(color, texColor.rgb, texColor.a);
+        color.rgb = mix(color.rgb, texColor.rgb, texColor.a);
     }
 
-    if (shapeAlpha < 0.001) discard;
+    float finalAlpha = shapeAlpha * color.a;
+    if (finalAlpha < 0.001) discard;
 
-    outColor = vec4(color, shapeAlpha);
+    outColor = vec4(color.rgb, finalAlpha);
 }

@@ -19,11 +19,13 @@ class UIButton : public UIObject {
   protected:
     void onMouseButton1Down(uint32_t x, uint32_t y) override
     {
+        UIObject::onMouseButton1Down(x, y);
         if (onMouseButton1DownCb) onMouseButton1DownCb(x, y);
     }
 
     void onMouseButton1Up(uint32_t x, uint32_t y) override
     {
+        UIObject::onMouseButton1Up(x, y);
         if (onMouseButton1UpCb) onMouseButton1UpCb(x, y);
     }
 

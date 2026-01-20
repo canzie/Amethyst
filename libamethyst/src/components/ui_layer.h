@@ -15,7 +15,7 @@ class UILayer : public UIBase2D {
     UILayer() = default;
     virtual ~UILayer() = default;
 
-    void draw(DrawContext &ctx) override;
+    void draw(DrawContext &ctx) = 0;
 
   public:
     bool resetOnSpawn = false;

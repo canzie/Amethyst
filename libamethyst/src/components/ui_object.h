@@ -79,7 +79,7 @@ class UIObject : public UIBase2D {
     UDim2 size;
     Degrees rotation = 0.0f;
     bool visible = true;
-    uint32_t zIndex = 0;
+    int32_t zIndex = 1;
 
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;

@@ -1,16 +1,25 @@
 #include "amethyst/Amethyst.h"
 #include "amethyst__vk13_glfw.h"
 #include "components/common.h"
+#include "components/docking_layer.h"
+#include "components/tab_bar.h"
 #include "components/text_button.h"
 #include "parsers/ttf/ttf_parser.h"
+#include "rendering/geometry_registry.h"
 #include "vk_context.h"
 
 #include <cstdint>
+
+namespace Amethyst {
+void testZIndexOrdering();
+}
 
 int main()
 {
     Amethyst::Log::Init();
     AM_LOG_INFO("Amethyst Test App");
+
+    Amethyst::testZIndexOrdering();
 
     // Test TTF parsing
     Amethyst::TTF::Parser ttfParser;
@@ -95,16 +104,22 @@ int main()
     frame2.anchorPoint = glm::vec2(0.5f);
     frame2.backgroundColor = {0.2f, 0.9f, 0.2f};
     frame2.cornerRadius = 0.0f;
+    frame2.zIndex = 1;
     frame2.markDirty();
     frame2.addExtension<Amethyst::UIDragDetector>();
 
     Amethyst::TextButton button1(&frame2);
     button1.name = "button";
+    button1.text = "Exit";
     button1.size = Amethyst::UDim2::fromScale(0.9f, 0.9f);
     button1.position = Amethyst::UDim2::fromScale(0.5f, 0.5f);
     button1.anchorPoint = glm::vec2(0.5f);
     button1.backgroundColor = {0.2f, 0.0f, 0.2f};
     button1.cornerRadius = 5.0f;
+    button1.zIndex = 2;
+    button1.textScaled = true;
+    button1.textXAlignment = Amethyst::TextXAlignment::CENTER;
+    button1.textYAlignment = Amethyst::TextYAlignment::CENTER;
     button1.onMouseEnterCb = [button1 = &button1]() {
         button1->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
         button1->markDirty();
@@ -126,30 +141,9 @@ int main()
     frame3.position = Amethyst::UDim2::fromOffset(550, 0);
     frame3.backgroundColor = {0.2f, 0.2f, 0.9f};
     frame3.cornerRadius = 50.0f;
+    frame3.zIndex = 10;
     frame3.markDirty();
     frame3.addExtension<Amethyst::UIDragDetector>();
-
-    Amethyst::TextLabel textLabel1(&window);
-    textLabel1.name = "pangram scaled full width";
-    textLabel1.text = "The quick brown fox jumps over the lazy dog";
-    textLabel1.textColor = {1.0f, 0.5f, 0.0f, 1.0f};
-    textLabel1.strokeThickness = 0.0f;
-    textLabel1.strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    textLabel1.position = Amethyst::UDim2::fromOffset(10, 20);
-    textLabel1.size = Amethyst::UDim2(0.98f, 0.0f, 0.0f, 80.0f);
-    textLabel1.textScaled = true;
-    textLabel1.markDirty();
-
-    Amethyst::TextLabel textLabel2(&window);
-    textLabel2.name = "pangram scaled half width";
-    textLabel2.text = "The quick brown fox jumps over the lazy dog";
-    textLabel2.textColor = {0.0f, 1.0f, 0.5f, 1.0f};
-    textLabel2.strokeThickness = 0.0f;
-    textLabel2.strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    textLabel2.position = Amethyst::UDim2::fromOffset(10, 120);
-    textLabel2.size = Amethyst::UDim2(0.5f, 0.0f, 0.0f, 50.0f);
-    textLabel2.textScaled = true;
-    textLabel2.markDirty();
 
     TextureInfo checkerboardTex = createCheckerboardTexture(ctx, 64, 8);
     Amethyst::AmTextureId checkerboardId = backend.registerTexture(checkerboardTex.view, checkerboardTex.sampler);
@@ -162,20 +156,70 @@ int main()
     imageLabel.cornerRadius = 20.0f;
     imageLabel.markDirty();
 
-    Amethyst::TextLabel textLabel3(&window);
-    textLabel3.name = "pangram fixed size";
-    textLabel3.text = "The quick brown fox jumps over the lazy dog";
-    textLabel3.fontSize = 24.0f;
-    textLabel3.textColor = {0.9f, 0.9f, 1.0f, 1.0f};
-    textLabel3.strokeThickness = 0.0f;
-    textLabel3.strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    textLabel3.position = Amethyst::UDim2::fromOffset(10, 190);
-    textLabel3.size = Amethyst::UDim2(0.98f, 0.0f, 0.0f, 200.0f);
-    textLabel3.backgroundColor = glm::vec3(0.0f);
-    textLabel3.textXAlignment = Amethyst::TextXAlignment::CENTER;
-    textLabel3.textYAlignment = Amethyst::TextYAlignment::CENTER;
-    textLabel3.addExtension<Amethyst::UIDragDetector>();
-    textLabel3.markDirty();
+    Amethyst::TextLabel textLabel(&window);
+    textLabel.name = "pangram fixed size";
+    textLabel.text = "The quick brown fox jumps over the lazy dog";
+    textLabel.fontSize = 24.0f;
+    textLabel.textColor = {0.9f, 0.9f, 1.0f, 1.0f};
+    textLabel.strokeThickness = 0.0f;
+    textLabel.strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    textLabel.position = Amethyst::UDim2::fromOffset(10, 20);
+    textLabel.size = Amethyst::UDim2(0.98f, 0.0f, 0.0f, 60.0f);
+    textLabel.backgroundColor = glm::vec3(0.0f);
+    textLabel.textXAlignment = Amethyst::TextXAlignment::CENTER;
+    textLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
+    textLabel.addExtension<Amethyst::UIDragDetector>();
+    textLabel.markDirty();
+
+    /*
+    Amethyst::TabBar tabBar(&window);
+    tabBar.name = "TabBar Example";
+    tabBar.size = Amethyst::UDim2::fromOffset(400, 300);
+    tabBar.position = Amethyst::UDim2::fromOffset(50, 500);
+    tabBar.backgroundColor = {0.2f, 0.2f, 0.2f};
+    tabBar.tabPosition = Amethyst::TabBarPosition::TOP;
+    tabBar.mode = Amethyst::TabBarMode::INSIDE;
+    tabBar.markDirty();
+
+    Amethyst::Frame tabContent1(&tabBar);
+    tabContent1.name = "Tab 1";
+    tabContent1.backgroundColor = {0.8f, 0.3f, 0.3f};
+    tabContent1.markDirty();
+
+    Amethyst::Frame tabContent2(&tabBar);
+    tabContent2.name = "Tab 2";
+    tabContent2.backgroundColor = {0.3f, 0.8f, 0.3f};
+    tabContent2.markDirty();
+
+    Amethyst::Frame tabContent3(&tabBar);
+    tabContent3.name = "Tab 3";
+    tabContent3.backgroundColor = {0.3f, 0.3f, 0.8f};
+    tabContent3.markDirty();
+    */
+
+    Amethyst::DockingLayer dockingLayer(&window);
+    dockingLayer.name = "Docking Example";
+    dockingLayer.absoluteSize = {500.0f, 400.0f};
+    dockingLayer.absolutePosition = {480.0f, 500.0f};
+    dockingLayer.markDirty();
+
+    Amethyst::Frame dockPanel1;
+    dockPanel1.name = "Panel A";
+    dockPanel1.backgroundColor = {0.6f, 0.2f, 0.2f};
+    dockPanel1.markDirty();
+    dockingLayer.dock(&dockPanel1, glm::vec2(600.0f, 600.0f));
+
+    Amethyst::Frame dockPanel2;
+    dockPanel2.name = "Panel B";
+    dockPanel2.backgroundColor = {0.2f, 0.6f, 0.2f};
+    dockPanel2.markDirty();
+    dockingLayer.dock(&dockPanel2, glm::vec2(900.0f, 600.0f));
+
+    Amethyst::Frame dockPanel3;
+    dockPanel3.name = "Panel C";
+    dockPanel3.backgroundColor = {0.2f, 0.2f, 0.6f};
+    dockPanel3.markDirty();
+    dockingLayer.dock(&dockPanel3, glm::vec2(600.0f, 850.0f));
 
     window.draw(drawCtx);
 

@@ -6,13 +6,15 @@ layout(push_constant) uniform PushConstants {
 
 struct InstanceData {
     mat4 transform;
-    vec3 fillColor;
-    vec3 borderColor;
+    vec4 fillColor;
+    vec4 borderColor;
     float borderThickness;
     float cornerRadius;
     uint primitiveType;
     uint borderMode;
     uint textureId;
+    uint visible;
+    int zIndex;
 };
 
 layout(std430, binding = 0) readonly buffer InstanceBuffer {
@@ -21,13 +23,14 @@ layout(std430, binding = 0) readonly buffer InstanceBuffer {
 
 layout(location = 0) out vec2 fragUV;
 layout(location = 1) out flat uint fragPrimitiveType;
-layout(location = 2) out flat vec3 fragFillColor;
-layout(location = 3) out flat vec3 fragBorderColor;
+layout(location = 2) out flat vec4 fragFillColor;
+layout(location = 3) out flat vec4 fragBorderColor;
 layout(location = 4) out flat float fragBorderThickness;
 layout(location = 5) out flat float fragCornerRadius;
 layout(location = 6) out flat vec2 fragSize;
 layout(location = 7) out flat uint fragBorderMode;
 layout(location = 8) out flat uint fragTextureId;
+layout(location = 9) out flat uint fragVisible;
 
 const vec2 positions[4] = vec2[](
     vec2(-0.5, -0.5),
@@ -62,4 +65,5 @@ void main()
     fragSize = vec2(length(inst.transform[0].xy), length(inst.transform[1].xy));
     fragBorderMode = inst.borderMode;
     fragTextureId = inst.textureId;
+    fragVisible = inst.visible;
 }

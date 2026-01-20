@@ -11,6 +11,13 @@
 
 namespace Amethyst {
 
+TextLabel::~TextLabel()
+{
+    if (m_textAlloc && m_textAlloc->isValid()) {
+        m_textAlloc->registry->release(std::move(*m_textAlloc));
+    }
+}
+
 void TextLabel::draw(DrawContext &ctx)
 {
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
@@ -28,13 +35,13 @@ void TextLabel::draw(DrawContext &ctx)
         }
 
         if (ctx.textProcessor && ctx.text && !text.empty()) {
+            m_textSize = ctx.textProcessor->measureText(text);
             float effectiveFontSize = fontSize;
 
             if (textScaled) {
-                glm::vec2 textSize = ctx.textProcessor->measureText(text);
-                if (textSize.x > 0.0f && textSize.y > 0.0f) {
-                    float scaleX = absoluteSize.x / textSize.x;
-                    float scaleY = absoluteSize.y / textSize.y;
+                if (m_textSize.x > 0.0f && m_textSize.y > 0.0f) {
+                    float scaleX = absoluteSize.x / m_textSize.x;
+                    float scaleY = absoluteSize.y / m_textSize.y;
                     effectiveFontSize = std::min(scaleX, scaleY);
                 }
             }
@@ -54,10 +61,10 @@ void TextLabel::draw(DrawContext &ctx)
 
             auto characters = ctx.textProcessor->layoutText(text, params);
 
-            if (m_textAllocationIndex == UINT32_MAX) {
-                m_textAllocationIndex = ctx.text->submit(characters);
+            if (m_textAlloc == nullptr) {
+                m_textAlloc = ctx.text->submit(characters);
             } else {
-                ctx.text->update(m_textAllocationIndex, characters);
+                ctx.text->update(*m_textAlloc, characters);
             }
         }
     }
