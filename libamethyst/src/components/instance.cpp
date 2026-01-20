@@ -36,6 +36,7 @@ void Instance::removeChild(Instance *child)
     auto it = std::find(children.begin(), children.end(), child);
     if (it != children.end()) {
         children.erase(it);
+        child->parent = nullptr;
     }
 }
 
