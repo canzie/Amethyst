@@ -6,6 +6,7 @@
 #define AMETHYST__DOCKING_LAYER_H
 
 #include "components/common.h"
+#include "components/frame.h"
 #include "components/tab_bar.h"
 #include "components/ui_layer.h"
 #include "components/ui_object.h"
@@ -76,9 +77,15 @@ class DockingLayer : public UILayer {
     void processPendingDeletions();
 
   private:
+    void initDockHints();
+    void updateDockHints(glm::vec2 mousePos);
+    void hideDockHints();
+
+  private:
     std::vector<DockNode> m_nodes;
     std::vector<std::unique_ptr<TabBar>> m_tabBars;
     int32_t m_rootNode = -1;
+    std::array<std::unique_ptr<Frame>, 5> m_dockHintComponents;
 
     std::vector<TabBar *> m_pendingDeletions;
 };

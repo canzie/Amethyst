@@ -48,7 +48,7 @@ void TabBar::addChild(Instance *child)
         m_tabTornOff = false;
     };
 
-    drag->onDragUpdate = [this, tabItemPtr, drag](glm::vec2, glm::vec2 pos) {
+    drag->onDragUpdate = [this, tabItemPtr, drag](glm::vec2, glm::vec2 absPos) {
         if (drag->isSoftLockBroken()) {
             if (!m_tabTornOff) {
                 m_tabTornOff = true;
@@ -57,7 +57,7 @@ void TabBar::addChild(Instance *child)
                 }
             }
             if (onTornOffTabMoved) {
-                onTornOffTabMoved(tabItemPtr->content, pos);
+                onTornOffTabMoved(tabItemPtr->content, absPos);
             }
             return;
         }
@@ -65,8 +65,9 @@ void TabBar::addChild(Instance *child)
         int32_t currentIdx = findTabIndex(tabItemPtr);
         if (currentIdx < 0) return;
 
+        glm::vec2 relPos = absPos - absolutePosition;
         bool isVert = (tabPosition == TabBarPosition::LEFT || tabPosition == TabBarPosition::RIGHT);
-        float dragPos = isVert ? pos.y : pos.x;
+        float dragPos = isVert ? relPos.y : relPos.x;
         int32_t targetIdx = computeTargetIndex(dragPos + tabWidth * 0.5f);
 
         if (targetIdx != currentIdx) {

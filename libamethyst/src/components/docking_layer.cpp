@@ -11,11 +11,15 @@
 
 namespace Amethyst {
 
-DockingLayer::DockingLayer() {}
+DockingLayer::DockingLayer()
+{
+    initDockHints();
+}
 
 DockingLayer::DockingLayer(Instance *parent)
 {
     setParent(parent);
+    initDockHints();
 }
 
 void DockingLayer::draw(DrawContext &ctx)
@@ -32,6 +36,11 @@ void DockingLayer::draw(DrawContext &ctx)
 
     for (auto &tabBar : m_tabBars) {
         tabBar->draw(ctx);
+    }
+
+    for (auto &hint : m_dockHintComponents) {
+        hint->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+        hint->draw(ctx);
     }
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
@@ -77,7 +86,6 @@ void DockingLayer::dock(UIObject *obj, glm::vec2 pos)
             DockNode &node = m_nodes[targetNode];
             node.content->addChild(obj);
         } else {
-            AM_LOG_INFO("Splitting {} {}", targetNode, static_cast<int32_t>(targetZone));
             splitNode(targetNode, targetZone, obj);
         }
     }
@@ -288,7 +296,7 @@ void DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, UIObject *newCont
     m_nodes[nodeIndex].content = nullptr;
     m_nodes[nodeIndex].firstChild = newFirst ? newChild : existingChild;
     m_nodes[nodeIndex].secondChild = newFirst ? existingChild : newChild;
-    m_nodes[nodeIndex].axis = (zone == DockZone::LEFT || zone == DockZone::RIGHT) ? SplitAxis::HORIZONTAL : SplitAxis::VERTICAL;
+    m_nodes[nodeIndex].axis = (zone == DockZone::LEFT || zone == DockZone::RIGHT) ? SplitAxis::VERTICAL : SplitAxis::HORIZONTAL;
 
     recalculateChildren(nodeIndex, nodeSize, nodePosition);
     m_tabBars.push_back(std::move(newTabBar));
@@ -367,6 +375,7 @@ int32_t DockingLayer::findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::
 void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
 {
     tabBar->onTornOffTabReleased = [this, tabBar](Instance *content, glm::vec2 dropPos) {
+        hideDockHints();
         int32_t sourceNode = findNodeByPosition(tabBar->absolutePosition, m_rootNode, absoluteSize, absolutePosition);
         tabBar->removeChild(content);
 
@@ -378,6 +387,90 @@ void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
             dock(obj, dropPos);
         }
     };
+
+    tabBar->onTornOffTabMoved = [this](Instance *, glm::vec2 pos) { updateDockHints(pos); };
+}
+
+void DockingLayer::initDockHints()
+{
+    const Color3 hintColor = {0.2f, 0.5f, 0.8f};
+    const float hintTransparency = 0.5f;
+
+    for (auto &hint : m_dockHintComponents) {
+        hint = std::make_unique<Frame>();
+        hint->parent = this;
+        hint->visible = false;
+        hint->interactable = false;
+        hint->backgroundColor = hintColor;
+        hint->backgroundTransparency = hintTransparency;
+        hint->borderPixelSize = 0.0f;
+        hint->cornerRadius = 0.0f;
+        hint->zIndex = 100;
+        hint->markDirty();
+    }
+}
+
+void DockingLayer::updateDockHints(glm::vec2 mousePos)
+{
+    if (m_rootNode < 0) {
+        hideDockHints();
+        return;
+    }
+
+    int32_t hoveredNode = findNodeByPosition(mousePos, m_rootNode, absoluteSize, absolutePosition);
+    if (hoveredNode < 0) {
+        hideDockHints();
+        return;
+    }
+
+    DockNode &node = m_nodes[hoveredNode];
+    glm::vec2 nodePos = node.content->absolutePosition;
+    glm::vec2 nodeSize = node.content->absoluteSize;
+
+    glm::vec2 layerPos = absolutePosition;
+
+    const float zoneSize = 0.33f;
+    const float centerSize = 0.34f;
+
+    auto &leftHint = m_dockHintComponents[0];
+    leftHint->visible = true;
+    leftHint->position = UDim2::fromOffset(nodePos.x - layerPos.x, nodePos.y - layerPos.y);
+    leftHint->size = UDim2::fromOffset(nodeSize.x * zoneSize, nodeSize.y);
+    leftHint->markDirty();
+
+    auto &rightHint = m_dockHintComponents[1];
+    rightHint->visible = true;
+    rightHint->position = UDim2::fromOffset(nodePos.x - layerPos.x + nodeSize.x * (1.0f - zoneSize), nodePos.y - layerPos.y);
+    rightHint->size = UDim2::fromOffset(nodeSize.x * zoneSize, nodeSize.y);
+    rightHint->markDirty();
+
+    auto &topHint = m_dockHintComponents[2];
+    topHint->visible = true;
+    topHint->position = UDim2::fromOffset(nodePos.x - layerPos.x, nodePos.y - layerPos.y);
+    topHint->size = UDim2::fromOffset(nodeSize.x, nodeSize.y * zoneSize);
+    topHint->markDirty();
+
+    auto &bottomHint = m_dockHintComponents[3];
+    bottomHint->visible = true;
+    bottomHint->position = UDim2::fromOffset(nodePos.x - layerPos.x, nodePos.y - layerPos.y + nodeSize.y * (1.0f - zoneSize));
+    bottomHint->size = UDim2::fromOffset(nodeSize.x, nodeSize.y * zoneSize);
+    bottomHint->markDirty();
+
+    auto &centerHint = m_dockHintComponents[4];
+    centerHint->visible = true;
+    centerHint->position =
+        UDim2::fromOffset(nodePos.x - layerPos.x + nodeSize.x * zoneSize, nodePos.y - layerPos.y + nodeSize.y * zoneSize);
+    centerHint->size = UDim2::fromOffset(nodeSize.x * centerSize, nodeSize.y * centerSize);
+    centerHint->markDirty();
+}
+
+void DockingLayer::hideDockHints()
+{
+
+    for (auto &hint : m_dockHintComponents) {
+        hint->visible = false;
+        hint->markDirty();
+    }
 }
 
 } // namespace Amethyst

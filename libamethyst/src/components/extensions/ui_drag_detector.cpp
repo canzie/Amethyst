@@ -84,7 +84,7 @@ void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
     m_owner->markDirty();
 
     if (onDragUpdate) {
-        onDragUpdate(delta, m_owner->position.offset);
+        onDragUpdate(delta, glm::vec2(x, y));
     }
 }
 
