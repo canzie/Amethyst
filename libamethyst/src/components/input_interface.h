@@ -25,6 +25,7 @@ class InputInterface {
     static inline std::vector<Window *> s_windows;
     static inline uint32_t s_mouseX = 0;
     static inline uint32_t s_mouseY = 0;
+    static inline bool isWindowFocussed = false;
 };
 
 } // namespace Amethyst

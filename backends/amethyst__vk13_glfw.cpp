@@ -16,6 +16,15 @@
 
 namespace Amethyst {
 
+struct Amethyst_glfw_Data {
+    GLFWwindow *window;
+    GLFWmousebuttonfun prevMouseButton = nullptr;
+    GLFWcursorposfun prevCursorPos = nullptr;
+    GLFWscrollfun prevScroll = nullptr;
+};
+
+static Amethyst_glfw_Data g_glfwData;
+
 constexpr size_t INITIAL_INSTANCE_CAPACITY = 64;
 constexpr size_t INITIAL_CHARACTER_CAPACITY = 1024;
 constexpr size_t INITIAL_FONT_DATA_CAPACITY = 512 * 1024; // 512KB for font data
@@ -25,9 +34,11 @@ struct PushConstants {
     glm::vec2 screenSize;
 };
 
-void VkBackend::init(const VulkanInitInfo &config)
+void VkBackend::init(const VulkanInitInfo &config, const GLFWInitInfo &info)
 {
     m_info = config;
+    m_glfwInfo = info;
+    setupGLFWCallbacks();
     allocateBufferArenas();
     allocateIndexBuffer();
     allocateInstanceBuffers();
@@ -859,31 +870,38 @@ void VkBackend::allocateTextDescriptorSet()
     vkUpdateDescriptorSets(m_info.device, std::size(descriptorWrites), descriptorWrites, 0, nullptr);
 }
 
-static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
+void VkBackend::mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 {
-    (void)window;
+    if (g_glfwData.prevMouseButton) {
+        g_glfwData.prevMouseButton(window, button, action, mods);
+    }
     InputInterface::onMouseButton(button, action, mods);
 }
 
-static void cursorPosCallback(GLFWwindow *window, double x, double y)
+void VkBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
 {
-    (void)window;
+    if (g_glfwData.prevCursorPos) {
+        g_glfwData.prevCursorPos(window, x, y);
+    }
     InputInterface::setMousePosition(static_cast<uint32_t>(x), static_cast<uint32_t>(y));
 }
 
-static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset)
+void VkBackend::scrollCallback(GLFWwindow *window, double xoffset, double yoffset)
 {
-    (void)window;
+    if (g_glfwData.prevScroll) {
+        g_glfwData.prevScroll(window, xoffset, yoffset);
+    }
     InputInterface::onMouseScroll(static_cast<float>(xoffset), static_cast<float>(yoffset));
 }
 
-void setupGLFWCallbacks(const GLFWInitInfo &info)
+void VkBackend::setupGLFWCallbacks()
 {
-    GLFWwindow *window = static_cast<GLFWwindow *>(info.window);
+    GLFWwindow *window = static_cast<GLFWwindow *>(m_glfwInfo.window);
+    g_glfwData.window = window;
 
-    glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    glfwSetCursorPosCallback(window, cursorPosCallback);
-    glfwSetScrollCallback(window, scrollCallback);
+    g_glfwData.prevMouseButton = glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    g_glfwData.prevCursorPos = glfwSetCursorPosCallback(window, cursorPosCallback);
+    g_glfwData.prevScroll = glfwSetScrollCallback(window, scrollCallback);
 }
 
 AmTextureId VkBackend::registerTexture(VkImageView imageView, VkSampler sampler)

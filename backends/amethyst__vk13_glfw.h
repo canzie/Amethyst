@@ -7,6 +7,7 @@
 #include "rendering/geometry_registry.h"
 #include "rendering/text_registry.h"
 
+#include <GLFW/glfw3.h>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -35,8 +36,6 @@ struct VulkanInitInfo {
     VkExtent2D extent;
 };
 
-void setupGLFWCallbacks(const GLFWInitInfo &info);
-
 struct BufferArena {
     VkBuffer buffer = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE;
@@ -54,9 +53,10 @@ struct BufferAllocation {
 
 class VkBackend {
   public:
-    void init(const VulkanInitInfo &config);
+    void init(const VulkanInitInfo &config, const GLFWInitInfo &info);
     void shutdown();
 
+  public:
     void beginFrame();
     void endFrame();
     void record(VkCommandBuffer cmd, GeometryRegistry &geometryRegistry, TextRegistry &textRegistry);
@@ -79,9 +79,14 @@ class VkBackend {
     void updateTextCharacters(TextRegistry &registry);
     void uploadToGpu(BufferAllocation &alloc, const void *data, size_t size, size_t offset);
     VkShaderModule loadShaderModule(const char *path);
+    void setupGLFWCallbacks();
+    static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
+    static void cursorPosCallback(GLFWwindow *window, double x, double y);
+    static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset);
 
   private:
     VulkanInitInfo m_info;
+    GLFWInitInfo m_glfwInfo;
 
     // UI geometry pipeline
     VkPipeline m_pipeline = VK_NULL_HANDLE;

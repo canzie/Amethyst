@@ -68,16 +68,15 @@ int main()
     initInfo.colorFormat = ctx.swapchainFormat;
     initInfo.extent = ctx.swapchainExtent;
 
+    Amethyst::GLFWInitInfo glfwInfo{};
+    glfwInfo.window = ctx.window;
+
     Amethyst::VkBackend backend;
-    backend.init(initInfo);
+    backend.init(initInfo, glfwInfo);
 
     if (fontData) {
         backend.uploadFontData(*fontData);
     }
-
-    Amethyst::GLFWInitInfo glfwInfo{};
-    glfwInfo.window = ctx.window;
-    setupGLFWCallbacks(glfwInfo);
 
     glm::vec2 screenSize = {static_cast<float>(ctx.swapchainExtent.width), static_cast<float>(ctx.swapchainExtent.height)};
 
