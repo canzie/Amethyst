@@ -57,6 +57,15 @@ class TextProcessor {
      */
     glm::vec2 measureText(const std::string &text, float letterSpacing = 0.0f) const;
 
+    /**
+     * @brief Get advance width for a character at given font size
+     * @param c The character
+     * @param fontSize Font size to scale by
+     * @param letterSpacing Additional spacing
+     * @return Advance width in pixels
+     */
+    float getCharAdvance(char c, float fontSize, float letterSpacing = 0.0f) const;
+
   private:
     const TTF::FontData *m_fontData = nullptr;
 };

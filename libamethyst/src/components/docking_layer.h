@@ -7,6 +7,7 @@
 
 #include "components/common.h"
 #include "components/frame.h"
+#include "components/invisible_button.h"
 #include "components/tab_bar.h"
 #include "components/ui_layer.h"
 #include "components/ui_object.h"
@@ -41,6 +42,11 @@ struct DockNode {
 
     TabBar *content = nullptr;
 
+    std::unique_ptr<InvisibleButton> resizeHandle;
+
+    glm::vec2 nodePosition = glm::vec2(0.0f);
+    glm::vec2 nodeSize = glm::vec2(0.0f);
+
     bool isLeaf() const { return axis == SplitAxis::NONE; }
 };
 
@@ -74,6 +80,8 @@ class DockingLayer : public UILayer {
     void collapseNode(int32_t nodeIndex);
     void computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition);
     void setupTabBarCallbacks(TabBar *tabBar);
+    void setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition);
+    int32_t findNodeByChildTabBar(TabBar *childTabBar);
     void processPendingDeletions();
 
   private:
@@ -88,6 +96,8 @@ class DockingLayer : public UILayer {
     std::array<std::unique_ptr<Frame>, 5> m_dockHintComponents;
 
     std::vector<TabBar *> m_pendingDeletions;
+
+    float m_resizeHandleThickness = 8.0f;
 };
 
 } // namespace Amethyst

@@ -21,10 +21,14 @@ struct Amethyst_glfw_Data {
     GLFWmousebuttonfun prevMouseButtonCallback = nullptr;
     GLFWcursorposfun prevCursorPosCallback = nullptr;
     GLFWscrollfun prevScrollCallback = nullptr;
+    GLFWkeyfun prevKeyCallback = nullptr;
+    GLFWcharfun prevCharCallback = nullptr;
     GLFWwindowcontentscalefun prevContentScaleCallback = nullptr;
     float contentScaleX = 1.0f;
     float contentScaleY = 1.0f;
 };
+
+static GLFWcursor *CURSOR_SHAPE_MAP[CURSOR_COUNT];
 
 static Amethyst_glfw_Data g_glfwData;
 
@@ -41,6 +45,14 @@ void VkBackend::init(const VulkanInitInfo &config, const GLFWInitInfo &info)
 {
     m_info = config;
     m_glfwInfo = info;
+
+    CURSOR_SHAPE_MAP[CURSOR_ARROW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+    CURSOR_SHAPE_MAP[CURSOR_CROSSHAIR] = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+    CURSOR_SHAPE_MAP[CURSOR_HAND] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+    CURSOR_SHAPE_MAP[CURSOR_HORI_RESIZE] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
+    CURSOR_SHAPE_MAP[CURSOR_VERT_RESIZE] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
+    CURSOR_SHAPE_MAP[CURSOR_IBEAM] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+
     setupGLFWCallbacks();
     allocateBufferArenas();
     allocateIndexBuffer();
@@ -49,6 +61,13 @@ void VkBackend::init(const VulkanInitInfo &config, const GLFWInitInfo &info)
     allocateDescriptorSet();
     createTextPipeline();
     allocateTextDescriptorSet();
+
+    InputInterface::onCursorShapeChanged = [](CursorShape shape) { glfwSetCursor(g_glfwData.window, CURSOR_SHAPE_MAP[shape]); };
+    InputInterface::onSetClipboardText = [](const std::string &text) { glfwSetClipboardString(g_glfwData.window, text.c_str()); };
+    InputInterface::onGetClipboardText = []() -> std::string {
+        const char *text = glfwGetClipboardString(g_glfwData.window);
+        return text ? std::string(text) : "";
+    };
 }
 
 void VkBackend::shutdown()
@@ -899,6 +918,22 @@ void VkBackend::scrollCallback(GLFWwindow *window, double xoffset, double yoffse
     InputInterface::onMouseScroll(static_cast<float>(xoffset), static_cast<float>(yoffset));
 }
 
+void VkBackend::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    if (g_glfwData.prevKeyCallback) {
+        g_glfwData.prevKeyCallback(window, key, scancode, action, mods);
+    }
+    InputInterface::onKey(key, scancode, action, mods);
+}
+
+void VkBackend::charCallback(GLFWwindow *window, unsigned int codepoint)
+{
+    if (g_glfwData.prevCharCallback) {
+        g_glfwData.prevCharCallback(window, codepoint);
+    }
+    InputInterface::onChar(codepoint);
+}
+
 void VkBackend::contentScaleCallback(GLFWwindow *window, float xscale, float yscale)
 {
     if (g_glfwData.prevContentScaleCallback) {
@@ -918,6 +953,8 @@ void VkBackend::setupGLFWCallbacks()
     g_glfwData.prevMouseButtonCallback = glfwSetMouseButtonCallback(window, mouseButtonCallback);
     g_glfwData.prevCursorPosCallback = glfwSetCursorPosCallback(window, cursorPosCallback);
     g_glfwData.prevScrollCallback = glfwSetScrollCallback(window, scrollCallback);
+    g_glfwData.prevKeyCallback = glfwSetKeyCallback(window, keyCallback);
+    g_glfwData.prevCharCallback = glfwSetCharCallback(window, charCallback);
     g_glfwData.prevContentScaleCallback = glfwSetWindowContentScaleCallback(window, contentScaleCallback);
 }
 

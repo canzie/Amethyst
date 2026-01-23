@@ -180,4 +180,24 @@ glm::vec2 TextProcessor::measureText(const std::string &text, float letterSpacin
     return {width, maxHeight};
 }
 
+float TextProcessor::getCharAdvance(char c, float fontSize, float letterSpacing) const
+{
+    if (!m_fontData) {
+        return 0.0f;
+    }
+
+    uint32_t codepoint = static_cast<uint32_t>(c);
+    uint32_t glyphIndex = m_fontData->getGlyphIndex(codepoint);
+
+    const TTF::Glyph *glyph = m_fontData->getGlyph(glyphIndex);
+    if (!glyph) {
+        glyph = m_fontData->getGlyph(0);
+    }
+    if (!glyph) {
+        return 0.0f;
+    }
+
+    return glyph->advanceWidth * fontSize + letterSpacing;
+}
+
 } // namespace Amethyst

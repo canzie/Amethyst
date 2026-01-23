@@ -4,6 +4,7 @@
 #include "components/docking_layer.h"
 #include "components/tab_bar.h"
 #include "components/text_button.h"
+#include "components/text_input.h"
 #include "parsers/ttf/ttf_parser.h"
 #include "rendering/geometry_registry.h"
 #include "vk_context.h"
@@ -162,6 +163,29 @@ int main()
     textLabel.addExtension<Amethyst::UIDragDetector>();
     textLabel.markDirty();
 
+    Amethyst::TextInput textInput(&window);
+    textInput.name = "text input example";
+    textInput.size = Amethyst::UDim2::fromOffset(400, 40);
+    textInput.position = Amethyst::UDim2::fromOffset(10, 100);
+    textInput.backgroundColor = {0.15f, 0.15f, 0.15f};
+    textInput.borderPixelSize = 2.0f;
+    textInput.borderColor = {0.3f, 0.5f, 0.8f};
+    textInput.cornerRadius = 5.0f;
+    textInput.fontSize = 18.0f;
+    textInput.textColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    textInput.placeholderText = "Type something here...";
+    textInput.placeholderColor = {0.5f, 0.5f, 0.5f, 1.0f};
+    textInput.selectionColor = {0.3f, 0.5f, 0.9f, 0.5f};
+    textInput.cursorColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    textInput.textXAlignment = Amethyst::TextXAlignment::LEFT;
+    textInput.onTextChanged = [](const std::string &text) {
+        AM_LOG_INFO("Text changed: '{}'", text);
+    };
+    textInput.onEnterPressed = []() {
+        AM_LOG_INFO("Enter pressed!");
+    };
+    textInput.markDirty();
+
     /*
     Amethyst::TabBar tabBar(&window);
     tabBar.name = "TabBar Example";
@@ -218,9 +242,16 @@ int main()
 
     double lastTime = glfwGetTime();
     int frameCount = 0;
+    double lastUpdateTime = glfwGetTime();
 
     while (!glfwWindowShouldClose(ctx.window) && running) {
         glfwPollEvents();
+
+        double currentUpdateTime = glfwGetTime();
+        float deltaTime = static_cast<float>(currentUpdateTime - lastUpdateTime);
+        lastUpdateTime = currentUpdateTime;
+
+        textInput.update(deltaTime);
 
         uint32_t imageIndex;
         if (!contextBeginFrame(ctx, imageIndex)) {

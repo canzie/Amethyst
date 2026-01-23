@@ -36,7 +36,7 @@ void TabBar::addChild(Instance *child)
     tabItem->button->backgroundColor = glm::vec3(0.0f);
     tabItem->button->text = child->name.empty() ? "Tab " + std::to_string(m_tabItems.size() + 1) : child->name;
     tabItem->button->textYAlignment = TextYAlignment::BOTTOM;
-    tabItem->button->zIndex = zIndex + 1;
+    tabItem->button->zIndex = zIndex + 2;
 
     bool isVertical = (tabPosition == TabBarPosition::LEFT || tabPosition == TabBarPosition::RIGHT);
     auto *drag = tabItem->button->addExtension<UIDragDetector>();

@@ -1,11 +1,13 @@
-- implement proper visibility culling, zindex
-    - eother use a middle man buffer
-    - or just rorder on the main data buffer
-    - for zIndex the objects have to be sorted, so need a fast sort algo, prob radix sort in this case, or dont sort at all? i guess we can try some fancy pants stuff
-    - 
-
 - add text editing
 - add addons like gizmo that can be enabled at compile time
+- tables
+    - ???
+- resizing docks and save the layouts
+    - make sure the resize handles are updated during a resize
+    - use proper resize cursors 
+        - add some kind of map going from glfw to the enum in input interface, then poll which cursors shape should be used in the current frame
+        - can even have a observer pattern that the backend subscribes to???
+
 - add a concpet of themes using a toml file
 - drag - drop with payloads, not just mindless dragging.
     - this will not drag the object itself but instead some sort of payload, mostly data but can be have some sortof configurable view (minified version of thing being dragged, or just some text etc.)

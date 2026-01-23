@@ -1,6 +1,9 @@
 #include "docking_layer.h"
 
 #include "components/common.h"
+#include "components/extensions/ui_drag_detector.h"
+#include "components/input_interface.h"
+#include "components/invisible_button.h"
 #include "components/tab_bar.h"
 #include "logging/log.h"
 #include "rendering/draw_context.h"
@@ -8,6 +11,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <memory>
 
 namespace Amethyst {
 
@@ -61,6 +65,11 @@ std::vector<Instance *> DockingLayer::getHittableInstances()
     std::vector<Instance *> result;
     for (auto &tabBar : m_tabBars) {
         result.push_back(tabBar.get());
+    }
+    for (auto &node : m_nodes) {
+        if (node.resizeHandle) {
+            result.push_back(node.resizeHandle.get());
+        }
     }
     return result;
 }
@@ -239,6 +248,8 @@ void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec
     }
 
     DockNode &node = m_nodes[nodeIndex];
+    node.nodePosition = nodePosition;
+    node.nodeSize = nodeSize;
 
     if (node.isLeaf()) {
         node.content->size = UDim2::fromScale(1.0f, 1.0f);
@@ -263,6 +274,87 @@ void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec
 
     computeLayout(node.firstChild, firstSize, firstPos);
     computeLayout(node.secondChild, secondSize, secondPos);
+
+    if (node.resizeHandle) {
+        if (node.axis == SplitAxis::VERTICAL) {
+            node.resizeHandle->position = UDim2(node.ratio, 0.0f, -m_resizeHandleThickness / 2.0f, 0.0f);
+            node.resizeHandle->size = UDim2(0.0f, 1.0f, m_resizeHandleThickness, 0.0f);
+        } else {
+            node.resizeHandle->position = UDim2(0.0f, node.ratio, 0.0f, -m_resizeHandleThickness / 2.0f);
+            node.resizeHandle->size = UDim2(1.0f, 0.0f, 0.0f, m_resizeHandleThickness);
+        }
+        node.resizeHandle->computeAbsolutes(nodeSize, nodePosition, 0.0f);
+    }
+}
+
+int32_t DockingLayer::findNodeByChildTabBar(TabBar *childTabBar)
+{
+    glm::vec2 pos = childTabBar->absolutePosition + glm::vec2(1.0f, 1.0f);
+    int32_t leafIndex = findNodeByPosition(pos, m_rootNode, absoluteSize, absolutePosition);
+    if (leafIndex < 0) {
+        return -1;
+    }
+    return m_nodes[leafIndex].parentNode;
+}
+
+void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition)
+{
+    DockNode &node = m_nodes[nodeIndex];
+    if (node.isLeaf()) {
+        return;
+    }
+
+    node.resizeHandle = std::make_unique<InvisibleButton>(nullptr);
+    node.resizeHandle->parent = this;
+
+    if (node.axis == SplitAxis::VERTICAL) {
+        node.resizeHandle->position = UDim2(node.ratio, 0.0f, -m_resizeHandleThickness / 2.0f, 0.0f);
+        node.resizeHandle->size = UDim2(0.0f, 1.0f, m_resizeHandleThickness, 0.0f);
+    } else {
+        node.resizeHandle->position = UDim2(0.0f, node.ratio, 0.0f, -m_resizeHandleThickness / 2.0f);
+        node.resizeHandle->size = UDim2(1.0f, 0.0f, 0.0f, m_resizeHandleThickness);
+    }
+
+    CursorShape cursorShape = (node.axis == SplitAxis::VERTICAL) ? CURSOR_HORI_RESIZE : CURSOR_VERT_RESIZE;
+
+    node.resizeHandle->onMouseEnterCb = [cursorShape]() { InputInterface::setCursorShape(cursorShape); };
+
+    node.resizeHandle->onMouseLeaveCb = []() { InputInterface::setCursorShape(CURSOR_ARROW); };
+
+    auto *drag = node.resizeHandle->addExtension<UIDragDetector>();
+    drag->mode = (node.axis == SplitAxis::VERTICAL) ? DragMode::HORIZONTAL : DragMode::VERTICAL;
+
+    DockNode &firstChild = m_nodes[node.firstChild];
+    TabBar *childTabBar = firstChild.isLeaf() ? firstChild.content : nullptr;
+    if (!childTabBar) {
+        DockNode &secondChild = m_nodes[node.secondChild];
+        childTabBar = secondChild.isLeaf() ? secondChild.content : nullptr;
+    }
+
+    drag->onDragStart = [cursorShape](glm::vec2) { InputInterface::setCursorShape(cursorShape); };
+
+    drag->onDragUpdate = [this, childTabBar](glm::vec2, glm::vec2 mousePos) {
+        int32_t parentIndex = findNodeByChildTabBar(childTabBar);
+        if (parentIndex < 0) {
+            return;
+        }
+
+        DockNode &parent = m_nodes[parentIndex];
+
+        if (parent.axis == SplitAxis::VERTICAL) {
+            float relativeX = mousePos.x - parent.nodePosition.x;
+            parent.ratio = glm::clamp(relativeX / parent.nodeSize.x, 0.1f, 0.9f);
+        } else {
+            float relativeY = mousePos.y - parent.nodePosition.y;
+            parent.ratio = glm::clamp(relativeY / parent.nodeSize.y, 0.1f, 0.9f);
+        }
+
+        markDirty();
+    };
+
+    drag->onDragEnd = [](glm::vec2) { InputInterface::setCursorShape(CURSOR_ARROW); };
+
+    node.resizeHandle->computeAbsolutes(nodeSize, nodePosition, 0.0f);
 }
 
 void DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, UIObject *newContent)
@@ -293,12 +385,14 @@ void DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, UIObject *newCont
     m_nodes[newChild].parentNode = nodeIndex;
 
     bool newFirst = (zone == DockZone::LEFT || zone == DockZone::TOP);
-    m_nodes[nodeIndex].content = nullptr;
-    m_nodes[nodeIndex].firstChild = newFirst ? newChild : existingChild;
-    m_nodes[nodeIndex].secondChild = newFirst ? existingChild : newChild;
-    m_nodes[nodeIndex].axis = (zone == DockZone::LEFT || zone == DockZone::RIGHT) ? SplitAxis::VERTICAL : SplitAxis::HORIZONTAL;
+    auto &parentNode = m_nodes[nodeIndex];
+    parentNode.content = nullptr;
+    parentNode.firstChild = newFirst ? newChild : existingChild;
+    parentNode.secondChild = newFirst ? existingChild : newChild;
+    parentNode.axis = (zone == DockZone::LEFT || zone == DockZone::RIGHT) ? SplitAxis::VERTICAL : SplitAxis::HORIZONTAL;
 
     recalculateChildren(nodeIndex, nodeSize, nodePosition);
+    setupResizeHandle(nodeIndex, nodeSize, nodePosition);
     m_tabBars.push_back(std::move(newTabBar));
 }
 

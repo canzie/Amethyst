@@ -34,6 +34,31 @@ enum KeyAction {
     KEY_ACTION_REPEAT = 2
 };
 
+enum KeyCode {
+    KEY_BACKSPACE = 259,
+    KEY_DELETE = 261,
+    KEY_LEFT = 263,
+    KEY_RIGHT = 262,
+    KEY_UP = 265,
+    KEY_DOWN = 264,
+    KEY_HOME = 268,
+    KEY_END = 269,
+    KEY_ENTER = 257,
+    KEY_ESCAPE = 256,
+    KEY_TAB = 258,
+    KEY_A = 65,
+    KEY_C = 67,
+    KEY_V = 86,
+    KEY_X = 88,
+};
+
+enum KeyModifier {
+    MOD_SHIFT = 0x0001,
+    MOD_CONTROL = 0x0002,
+    MOD_ALT = 0x0004,
+    MOD_SUPER = 0x0008,
+};
+
 struct MouseEvent {
     glm::vec2 position;
     MouseButton button;
