@@ -21,6 +21,10 @@ class UIObject : public UIBase2D {
   public:
     UIObject() = default;
     virtual ~UIObject();
+    UIObject(const UIObject &) = delete;
+    UIObject &operator=(const UIObject &) = delete;
+    UIObject(UIObject &&) = default;
+    UIObject &operator=(UIObject &&) = default;
 
     void computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation);
     glm::mat4 buildTransform() const;

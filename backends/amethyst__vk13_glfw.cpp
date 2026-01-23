@@ -32,6 +32,70 @@ static GLFWcursor *CURSOR_SHAPE_MAP[CURSOR_COUNT];
 
 static Amethyst_glfw_Data g_glfwData;
 
+static GLFWcursor *createCustomHorizontalResizeCursor()
+{
+    const int width = 16;
+    const int height = 16;
+    unsigned char pixels[width * height * 4];
+    memset(pixels, 0, sizeof(pixels));
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int idx = (y * width + x) * 4;
+            if ((x == 0 || x == width - 1) && y >= 6 && y <= 9) {
+                pixels[idx + 0] = 255;
+                pixels[idx + 1] = 255;
+                pixels[idx + 2] = 255;
+                pixels[idx + 3] = 255;
+            } else if (y == 7 || y == 8) {
+                pixels[idx + 0] = 255;
+                pixels[idx + 1] = 255;
+                pixels[idx + 2] = 255;
+                pixels[idx + 3] = 255;
+            }
+        }
+    }
+
+    GLFWimage image;
+    image.width = width;
+    image.height = height;
+    image.pixels = pixels;
+
+    return glfwCreateCursor(&image, width / 2, height / 2);
+}
+
+static GLFWcursor *createCustomVerticalResizeCursor()
+{
+    const int width = 16;
+    const int height = 16;
+    unsigned char pixels[width * height * 4];
+    memset(pixels, 0, sizeof(pixels));
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int idx = (y * width + x) * 4;
+            if ((y == 0 || y == height - 1) && x >= 6 && x <= 9) {
+                pixels[idx + 0] = 255;
+                pixels[idx + 1] = 255;
+                pixels[idx + 2] = 255;
+                pixels[idx + 3] = 255;
+            } else if (x == 7 || x == 8) {
+                pixels[idx + 0] = 255;
+                pixels[idx + 1] = 255;
+                pixels[idx + 2] = 255;
+                pixels[idx + 3] = 255;
+            }
+        }
+    }
+
+    GLFWimage image;
+    image.width = width;
+    image.height = height;
+    image.pixels = pixels;
+
+    return glfwCreateCursor(&image, width / 2, height / 2);
+}
+
 constexpr size_t INITIAL_INSTANCE_CAPACITY = 64;
 constexpr size_t INITIAL_CHARACTER_CAPACITY = 1024;
 constexpr size_t INITIAL_FONT_DATA_CAPACITY = 512 * 1024; // 512KB for font data
@@ -47,11 +111,23 @@ void VkBackend::init(const VulkanInitInfo &config, const GLFWInitInfo &info)
     m_glfwInfo = info;
 
     CURSOR_SHAPE_MAP[CURSOR_ARROW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-    CURSOR_SHAPE_MAP[CURSOR_CROSSHAIR] = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
     CURSOR_SHAPE_MAP[CURSOR_HAND] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
-    CURSOR_SHAPE_MAP[CURSOR_HORI_RESIZE] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
-    CURSOR_SHAPE_MAP[CURSOR_VERT_RESIZE] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
     CURSOR_SHAPE_MAP[CURSOR_IBEAM] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+
+    CURSOR_SHAPE_MAP[CURSOR_CROSSHAIR] = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+    if (!CURSOR_SHAPE_MAP[CURSOR_CROSSHAIR]) {
+        CURSOR_SHAPE_MAP[CURSOR_CROSSHAIR] = CURSOR_SHAPE_MAP[CURSOR_ARROW];
+    }
+
+    CURSOR_SHAPE_MAP[CURSOR_HORI_RESIZE] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
+    if (!CURSOR_SHAPE_MAP[CURSOR_HORI_RESIZE]) {
+        CURSOR_SHAPE_MAP[CURSOR_HORI_RESIZE] = createCustomHorizontalResizeCursor();
+    }
+
+    CURSOR_SHAPE_MAP[CURSOR_VERT_RESIZE] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
+    if (!CURSOR_SHAPE_MAP[CURSOR_VERT_RESIZE]) {
+        CURSOR_SHAPE_MAP[CURSOR_VERT_RESIZE] = createCustomVerticalResizeCursor();
+    }
 
     setupGLFWCallbacks();
     allocateBufferArenas();
