@@ -83,6 +83,7 @@ class VkBackend {
     static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
     static void cursorPosCallback(GLFWwindow *window, double x, double y);
     static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset);
+    static void contentScaleCallback(GLFWwindow *window, float xscale, float yscale);
 
   private:
     VulkanInitInfo m_info;

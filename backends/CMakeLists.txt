@@ -1,5 +1,8 @@
 find_package(Vulkan REQUIRED)
-find_package(glfw3 REQUIRED)
+# glfw3 may already be available via FetchContent in parent project
+if(NOT TARGET glfw)
+    find_package(glfw3 REQUIRED)
+endif()
 
 add_library(amethyst_vk13_glfw STATIC
     amethyst__vk13_glfw.cpp

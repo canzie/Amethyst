@@ -18,9 +18,12 @@ namespace Amethyst {
 
 struct Amethyst_glfw_Data {
     GLFWwindow *window;
-    GLFWmousebuttonfun prevMouseButton = nullptr;
-    GLFWcursorposfun prevCursorPos = nullptr;
-    GLFWscrollfun prevScroll = nullptr;
+    GLFWmousebuttonfun prevMouseButtonCallback = nullptr;
+    GLFWcursorposfun prevCursorPosCallback = nullptr;
+    GLFWscrollfun prevScrollCallback = nullptr;
+    GLFWwindowcontentscalefun prevContentScaleCallback = nullptr;
+    float contentScaleX = 1.0f;
+    float contentScaleY = 1.0f;
 };
 
 static Amethyst_glfw_Data g_glfwData;
@@ -872,26 +875,37 @@ void VkBackend::allocateTextDescriptorSet()
 
 void VkBackend::mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 {
-    if (g_glfwData.prevMouseButton) {
-        g_glfwData.prevMouseButton(window, button, action, mods);
+    if (g_glfwData.prevMouseButtonCallback) {
+        g_glfwData.prevMouseButtonCallback(window, button, action, mods);
     }
     InputInterface::onMouseButton(button, action, mods);
 }
 
 void VkBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
 {
-    if (g_glfwData.prevCursorPos) {
-        g_glfwData.prevCursorPos(window, x, y);
+    if (g_glfwData.prevCursorPosCallback) {
+        g_glfwData.prevCursorPosCallback(window, x, y);
     }
-    InputInterface::setMousePosition(static_cast<uint32_t>(x), static_cast<uint32_t>(y));
+    uint32_t scaledX = static_cast<uint32_t>(x * g_glfwData.contentScaleX);
+    uint32_t scaledY = static_cast<uint32_t>(y * g_glfwData.contentScaleY);
+    InputInterface::setMousePosition(scaledX, scaledY);
 }
 
 void VkBackend::scrollCallback(GLFWwindow *window, double xoffset, double yoffset)
 {
-    if (g_glfwData.prevScroll) {
-        g_glfwData.prevScroll(window, xoffset, yoffset);
+    if (g_glfwData.prevScrollCallback) {
+        g_glfwData.prevScrollCallback(window, xoffset, yoffset);
     }
     InputInterface::onMouseScroll(static_cast<float>(xoffset), static_cast<float>(yoffset));
+}
+
+void VkBackend::contentScaleCallback(GLFWwindow *window, float xscale, float yscale)
+{
+    if (g_glfwData.prevContentScaleCallback) {
+        g_glfwData.prevContentScaleCallback(window, xscale, yscale);
+    }
+    g_glfwData.contentScaleX = xscale;
+    g_glfwData.contentScaleY = yscale;
 }
 
 void VkBackend::setupGLFWCallbacks()
@@ -899,9 +913,12 @@ void VkBackend::setupGLFWCallbacks()
     GLFWwindow *window = static_cast<GLFWwindow *>(m_glfwInfo.window);
     g_glfwData.window = window;
 
-    g_glfwData.prevMouseButton = glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    g_glfwData.prevCursorPos = glfwSetCursorPosCallback(window, cursorPosCallback);
-    g_glfwData.prevScroll = glfwSetScrollCallback(window, scrollCallback);
+    glfwGetWindowContentScale(window, &g_glfwData.contentScaleX, &g_glfwData.contentScaleY);
+
+    g_glfwData.prevMouseButtonCallback = glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    g_glfwData.prevCursorPosCallback = glfwSetCursorPosCallback(window, cursorPosCallback);
+    g_glfwData.prevScrollCallback = glfwSetScrollCallback(window, scrollCallback);
+    g_glfwData.prevContentScaleCallback = glfwSetWindowContentScaleCallback(window, contentScaleCallback);
 }
 
 AmTextureId VkBackend::registerTexture(VkImageView imageView, VkSampler sampler)
