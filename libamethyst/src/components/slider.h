@@ -6,18 +6,20 @@
 #define AMETHYST__SLIDER_H
 
 #include "components/common.h"
+#include "components/frame.h"
+#include "components/text_label.h"
 #include "components/ui_object.h"
 #include <functional>
-#include <optional>
+#include <glm/glm.hpp>
 
 namespace Amethyst {
 
-struct Font;
+class UIDragDetector;
 
 class Slider : public UIObject {
   public:
-    Slider() = default;
-    Slider(Instance *parent) { setParent(parent); };
+    Slider();
+    Slider(Instance *parent);
     virtual ~Slider() = default;
 
   public:
@@ -25,19 +27,28 @@ class Slider : public UIObject {
     float sliderTransparency = 0.0f;
     Color3 thumbColor = {0.8f, 0.8f, 0.8f};
     float thumbTransparency = 0.0f;
-    float thumbSize = 10.0f;
+    float trackCornerRadius = 0.0f;
+    float thumbCornerRadius = 0.0f;
 
     std::string label;
-    Font *font = nullptr;
     Color4 labelColor = {0.0f, 0.0f, 0.0f, 1.0f};
     LabelSide labelSide = LabelSide::LEFT;
     UDim labelPadding = UDim::fromOffset(5.0f);
+
+    Color4 valueColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    std::string valueSuffix;
+    float fontSize = 14.0f;
+
+    ValueControlLayout layout = ValueControlLayout::SIDE_BY_SIDE;
+
+  protected:
+    TextLabel m_sideLabel;
 };
 
 class SliderFloat : public Slider {
   public:
-    SliderFloat() = default;
-    SliderFloat(Instance *parent) { setParent(parent); };
+    SliderFloat();
+    SliderFloat(Instance *parent);
     virtual ~SliderFloat() = default;
 
     void draw(DrawContext &ctx) override;
@@ -46,15 +57,23 @@ class SliderFloat : public Slider {
     float *valueRef = nullptr;
     std::function<void(float)> onValueChanged;
 
-    std::optional<float> min;
-    std::optional<float> max;
+    float min = 0.0f;
+    float max = 100.0f;
     float speed = 1.0f;
+
+  private:
+    void updateComponents();
+    std::string formatValue() const;
+
+    Frame m_track;
+    Frame m_thumb;
+    TextLabel m_valueLabel;
 };
 
 class SliderInt : public Slider {
   public:
-    SliderInt() = default;
-    SliderInt(Instance *parent) { setParent(parent); };
+    SliderInt();
+    SliderInt(Instance *parent);
     virtual ~SliderInt() = default;
 
     void draw(DrawContext &ctx) override;
@@ -63,15 +82,23 @@ class SliderInt : public Slider {
     int *valueRef = nullptr;
     std::function<void(int)> onValueChanged;
 
-    std::optional<int> min;
-    std::optional<int> max;
+    int min = 0;
+    int max = 100;
     float speed = 1.0f;
+
+  private:
+    void updateComponents();
+    std::string formatValue() const;
+
+    Frame m_track;
+    Frame m_thumb;
+    TextLabel m_valueLabel;
 };
 
 class SliderVec2 : public Slider {
   public:
-    SliderVec2() = default;
-    SliderVec2(Instance *parent) { setParent(parent); };
+    SliderVec2();
+    SliderVec2(Instance *parent);
     virtual ~SliderVec2() = default;
 
     void draw(DrawContext &ctx) override;
@@ -80,15 +107,23 @@ class SliderVec2 : public Slider {
     glm::vec2 *valueRef = nullptr;
     std::function<void(glm::vec2)> onValueChanged;
 
-    std::optional<glm::vec2> min;
-    std::optional<glm::vec2> max;
+    glm::vec2 min = glm::vec2(0.0f);
+    glm::vec2 max = glm::vec2(100.0f);
     float speed = 1.0f;
+
+  private:
+    void updateComponents();
+    std::string formatValue(int component) const;
+
+    Frame m_track[2];
+    Frame m_thumb[2];
+    TextLabel m_valueLabel[2];
 };
 
 class SliderVec3 : public Slider {
   public:
-    SliderVec3() = default;
-    SliderVec3(Instance *parent) { setParent(parent); };
+    SliderVec3();
+    SliderVec3(Instance *parent);
     virtual ~SliderVec3() = default;
 
     void draw(DrawContext &ctx) override;
@@ -97,9 +132,17 @@ class SliderVec3 : public Slider {
     glm::vec3 *valueRef = nullptr;
     std::function<void(glm::vec3)> onValueChanged;
 
-    std::optional<glm::vec3> min;
-    std::optional<glm::vec3> max;
+    glm::vec3 min = glm::vec3(0.0f);
+    glm::vec3 max = glm::vec3(100.0f);
     float speed = 1.0f;
+
+  private:
+    void updateComponents();
+    std::string formatValue(int component) const;
+
+    Frame m_track[3];
+    Frame m_thumb[3];
+    TextLabel m_valueLabel[3];
 };
 
 } // namespace Amethyst

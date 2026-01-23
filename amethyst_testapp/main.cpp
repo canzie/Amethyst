@@ -2,6 +2,7 @@
 #include "amethyst__vk13_glfw.h"
 #include "components/common.h"
 #include "components/docking_layer.h"
+#include "components/slider.h"
 #include "components/tab_bar.h"
 #include "components/text_button.h"
 #include "components/text_input.h"
@@ -185,6 +186,77 @@ int main()
         AM_LOG_INFO("Enter pressed!");
     };
     textInput.markDirty();
+
+    float sliderFloatValue = 50.0f;
+    Amethyst::SliderFloat sliderFloat(&window);
+    sliderFloat.name = "float slider";
+    sliderFloat.size = Amethyst::UDim2::fromOffset(300, 40);
+    sliderFloat.position = Amethyst::UDim2::fromOffset(10, 150);
+    sliderFloat.backgroundColor = {0.1f, 0.1f, 0.1f};
+    sliderFloat.label = "Volume";
+    sliderFloat.labelSide = Amethyst::LabelSide::LEFT;
+    sliderFloat.valueSuffix = "%";
+    sliderFloat.min = 0.0f;
+    sliderFloat.max = 100.0f;
+    sliderFloat.speed = 1.0f;
+    sliderFloat.valueRef = &sliderFloatValue;
+    sliderFloat.onValueChanged = [](float value) {
+        AM_LOG_INFO("Float slider value: {:.2f}", value);
+    };
+    sliderFloat.markDirty();
+
+    int sliderIntValue = 25;
+    Amethyst::SliderInt sliderInt(&window);
+    sliderInt.name = "int slider";
+    sliderInt.size = Amethyst::UDim2::fromOffset(300, 40);
+    sliderInt.position = Amethyst::UDim2::fromOffset(10, 200);
+    sliderInt.backgroundColor = {0.1f, 0.1f, 0.1f};
+    sliderInt.label = "Count";
+    sliderInt.labelSide = Amethyst::LabelSide::LEFT;
+    sliderInt.min = 0;
+    sliderInt.max = 50;
+    sliderInt.speed = 1.0f;
+    sliderInt.valueRef = &sliderIntValue;
+    sliderInt.onValueChanged = [](int value) {
+        AM_LOG_INFO("Int slider value: {}", value);
+    };
+    sliderInt.markDirty();
+
+    glm::vec2 sliderVec2Value = glm::vec2(50.0f, 75.0f);
+    Amethyst::SliderVec2 sliderVec2(&window);
+    sliderVec2.name = "vec2 slider";
+    sliderVec2.size = Amethyst::UDim2::fromOffset(300, 80);
+    sliderVec2.position = Amethyst::UDim2::fromOffset(10, 250);
+    sliderVec2.backgroundColor = {0.1f, 0.1f, 0.1f};
+    sliderVec2.label = "Position";
+    sliderVec2.labelSide = Amethyst::LabelSide::LEFT;
+    sliderVec2.layout = Amethyst::ValueControlLayout::STACKED;
+    sliderVec2.min = glm::vec2(0.0f);
+    sliderVec2.max = glm::vec2(100.0f);
+    sliderVec2.speed = 1.0f;
+    sliderVec2.valueRef = &sliderVec2Value;
+    sliderVec2.onValueChanged = [](glm::vec2 value) {
+        AM_LOG_INFO("Vec2 slider value: ({:.2f}, {:.2f})", value.x, value.y);
+    };
+    sliderVec2.markDirty();
+
+    glm::vec3 sliderVec3Value = glm::vec3(0.5f, 0.3f, 0.8f);
+    Amethyst::SliderVec3 sliderVec3(&window);
+    sliderVec3.name = "vec3 slider";
+    sliderVec3.size = Amethyst::UDim2::fromOffset(400, 40);
+    sliderVec3.position = Amethyst::UDim2::fromOffset(10, 340);
+    sliderVec3.backgroundColor = {0.1f, 0.1f, 0.1f};
+    sliderVec3.label = "Color";
+    sliderVec3.labelSide = Amethyst::LabelSide::LEFT;
+    sliderVec3.layout = Amethyst::ValueControlLayout::SIDE_BY_SIDE;
+    sliderVec3.min = glm::vec3(0.0f);
+    sliderVec3.max = glm::vec3(1.0f);
+    sliderVec3.speed = 0.01f;
+    sliderVec3.valueRef = &sliderVec3Value;
+    sliderVec3.onValueChanged = [](glm::vec3 value) {
+        AM_LOG_INFO("Vec3 slider value: ({:.2f}, {:.2f}, {:.2f})", value.x, value.y, value.z);
+    };
+    sliderVec3.markDirty();
 
     /*
     Amethyst::TabBar tabBar(&window);

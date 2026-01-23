@@ -181,6 +181,11 @@ enum class LabelSide {
     BOTTOM
 };
 
+enum class ValueControlLayout {
+    SIDE_BY_SIDE, // components arranged horizontally
+    STACKED       // components arranged vertically
+};
+
 struct InstanceData {
     alignas(16) glm::mat4 transform;
     alignas(16) Color4 fillColor;
