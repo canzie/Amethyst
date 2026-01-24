@@ -4,6 +4,7 @@
 #include "components/docking_layer.h"
 #include "components/panel_layer.h"
 #include "components/slider.h"
+#include "components/table.h"
 #include "components/text_button.h"
 #include "components/text_input.h"
 #include "parsers/ttf/ttf_parser.h"
@@ -237,6 +238,114 @@ int main()
         AM_LOG_INFO("Vec3 slider value: ({:.2f}, {:.2f}, {:.2f})", value.x, value.y, value.z);
     };
     sliderVec3.markDirty();
+
+    Amethyst::Table table(&window);
+    table.name = "Test Table";
+    table.size = Amethyst::UDim2::fromOffset(500, 160);
+    table.position = Amethyst::UDim2::fromOffset(10, 400);
+    table.backgroundColor = {0.15f, 0.15f, 0.15f};
+    table.numCols = 3;
+    table.columnWeights = {0.3f, 0.2f, 0.5f};
+    table.rowHeight = 40.0f;
+    table.showColumnSeparators = true;
+    table.columnSeparatorColor = {0.4f, 0.4f, 0.4f, 1.0f};
+    table.markDirty();
+
+    Amethyst::TextLabel tableLabel1(&table);
+    tableLabel1.text = "Row 1";
+    tableLabel1.textColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    tableLabel1.backgroundColor = {0.2f, 0.2f, 0.2f};
+    tableLabel1.fontSize = 16.0f;
+    tableLabel1.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    tableLabel1.markDirty();
+
+    Amethyst::Frame tableFrame1(&table);
+    tableFrame1.backgroundColor = {0.8f, 0.2f, 0.2f};
+    tableFrame1.cornerRadius = 4.0f;
+    tableFrame1.size = Amethyst::UDim2::fromOffset(30.0f, 30.0f);
+    tableFrame1.position = Amethyst::UDim2::fromOffset(5.0f, 5.0f);
+    tableFrame1.markDirty();
+
+    float tableSliderVal1 = 25.0f;
+    Amethyst::SliderFloat tableSlider1(&table);
+    tableSlider1.min = 0.0f;
+    tableSlider1.max = 100.0f;
+    tableSlider1.valueRef = &tableSliderVal1;
+    tableSlider1.size = Amethyst::UDim2::fromScale(0.95f, 0.8f);
+    tableSlider1.position = Amethyst::UDim2::fromScale(0.025f, 0.1f);
+    tableSlider1.markDirty();
+
+    Amethyst::TextLabel tableLabel2(&table);
+    tableLabel2.text = "Row 2";
+    tableLabel2.textColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    tableLabel2.backgroundColor = {0.2f, 0.2f, 0.2f};
+    tableLabel2.fontSize = 16.0f;
+    tableLabel2.size = Amethyst::UDim2::fromScale(0.98f, 1.0f);
+    tableLabel2.markDirty();
+
+    Amethyst::Frame tableFrame2(&table);
+    tableFrame2.backgroundColor = {0.2f, 0.8f, 0.2f};
+    tableFrame2.cornerRadius = 4.0f;
+    tableFrame2.size = Amethyst::UDim2::fromOffset(30.0f, 30.0f);
+    tableFrame2.position = Amethyst::UDim2::fromOffset(5.0f, 5.0f);
+    tableFrame2.markDirty();
+
+    float tableSliderVal2 = 50.0f;
+    Amethyst::SliderFloat tableSlider2(&table);
+    tableSlider2.min = 0.0f;
+    tableSlider2.max = 100.0f;
+    tableSlider2.valueRef = &tableSliderVal2;
+    tableSlider2.size = Amethyst::UDim2::fromScale(0.95f, 0.8f);
+    tableSlider2.position = Amethyst::UDim2::fromScale(0.025f, 0.1f);
+    tableSlider2.markDirty();
+
+    Amethyst::TextLabel tableLabel3(&table);
+    tableLabel3.text = "Row 3";
+    tableLabel3.textColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    tableLabel3.backgroundColor = {0.2f, 0.2f, 0.2f};
+    tableLabel3.fontSize = 16.0f;
+    tableLabel3.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    tableLabel3.markDirty();
+
+    Amethyst::Frame tableFrame3(&table);
+    tableFrame3.backgroundColor = {0.2f, 0.2f, 0.8f};
+    tableFrame3.cornerRadius = 4.0f;
+    tableFrame3.size = Amethyst::UDim2::fromOffset(30.0f, 30.0f);
+    tableFrame3.position = Amethyst::UDim2::fromOffset(5.0f, 5.0f);
+    tableFrame3.markDirty();
+
+    float tableSliderVal3 = 75.0f;
+    Amethyst::SliderFloat tableSlider3(&table);
+    tableSlider3.min = 0.0f;
+    tableSlider3.max = 100.0f;
+    tableSlider3.valueRef = &tableSliderVal3;
+    tableSlider3.size = Amethyst::UDim2::fromScale(0.95f, 0.8f);
+    tableSlider3.position = Amethyst::UDim2::fromScale(0.025f, 0.1f);
+    tableSlider3.markDirty();
+
+    Amethyst::TextLabel tableLabel4(&table);
+    tableLabel4.text = "Row 4";
+    tableLabel4.textColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    tableLabel4.backgroundColor = {0.2f, 0.2f, 0.2f};
+    tableLabel4.fontSize = 16.0f;
+    tableLabel4.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    tableLabel4.markDirty();
+
+    Amethyst::Frame tableFrame4(&table);
+    tableFrame4.backgroundColor = {0.8f, 0.8f, 0.2f};
+    tableFrame4.cornerRadius = 4.0f;
+    tableFrame4.size = Amethyst::UDim2::fromOffset(30.0f, 30.0f);
+    tableFrame4.position = Amethyst::UDim2::fromOffset(5.0f, 5.0f);
+    tableFrame4.markDirty();
+
+    float tableSliderVal4 = 100.0f;
+    Amethyst::SliderFloat tableSlider4(&table);
+    tableSlider4.min = 0.0f;
+    tableSlider4.max = 100.0f;
+    tableSlider4.valueRef = &tableSliderVal4;
+    tableSlider4.size = Amethyst::UDim2::fromScale(0.95f, 0.8f);
+    tableSlider4.position = Amethyst::UDim2::fromScale(0.025f, 0.1f);
+    tableSlider4.markDirty();
 
     /*
     Amethyst::TabBar tabBar(&window);

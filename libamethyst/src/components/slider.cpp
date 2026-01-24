@@ -160,7 +160,7 @@ void SliderFloat::updateComponents()
         dragDetector->onDragUpdate = [this, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
             if (!valueRef) return;
 
-            float mouseXRelative = position.x - trackX;
+            float mouseXRelative = position.x - absolutePosition.x - trackX;
             float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
             *valueRef = min + normalizedPos * (max - min);
 
@@ -244,7 +244,7 @@ void SliderInt::updateComponents()
         dragDetector->onDragUpdate = [this, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
             if (!valueRef) return;
 
-            float mouseXRelative = position.x - trackX;
+            float mouseXRelative = position.x - absolutePosition.x - trackX;
             float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
             float range = static_cast<float>(max - min);
             int newValue = static_cast<int>(std::round(min + normalizedPos * range));
@@ -344,7 +344,7 @@ void SliderVec2::updateComponents()
             dragDetector->onDragUpdate = [this, i, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
                 if (!valueRef) return;
 
-                float mouseXRelative = position.x - trackX;
+                float mouseXRelative = position.x - absolutePosition.x - trackX;
                 float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
                 (*valueRef)[i] = min[i] + normalizedPos * (max[i] - min[i]);
 
@@ -445,7 +445,7 @@ void SliderVec3::updateComponents()
             dragDetector->onDragUpdate = [this, i, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
                 if (!valueRef) return;
 
-                float mouseXRelative = position.x - trackX;
+                float mouseXRelative = position.x - absolutePosition.x - trackX;
                 float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
                 (*valueRef)[i] = min[i] + normalizedPos * (max[i] - min[i]);
 
