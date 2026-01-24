@@ -468,7 +468,6 @@ void TextInput::draw(DrawContext &ctx)
                                            .primitiveType = PRIMITIVE_RECT,
                                            .borderMode = 0,
                                            .textureId = UINT32_MAX,
-                                           .visible = 1,
                                            .zIndex = zIndex};
 
                 if (m_selectionAlloc == nullptr) {
@@ -507,7 +506,6 @@ void TextInput::draw(DrawContext &ctx)
                                     .primitiveType = PRIMITIVE_RECT,
                                     .borderMode = 0,
                                     .textureId = UINT32_MAX,
-                                    .visible = 1,
                                     .zIndex = zIndex};
 
             if (m_cursorAlloc == nullptr) {

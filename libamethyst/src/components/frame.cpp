@@ -28,13 +28,21 @@ void Frame::draw(DrawContext &ctx)
     }
 
     if (flags & FLAG_DIRTY) {
-        InstanceData data = createInstanceData();
-        data.primitiveType = PRIMITIVE_RECT;
+        if (visible) {
 
-        if (m_geometryAlloc == nullptr) {
-            m_geometryAlloc = ctx.geometry->submit(data);
+            InstanceData data = createInstanceData();
+            data.primitiveType = PRIMITIVE_RECT;
+
+            if (m_geometryAlloc == nullptr) {
+                m_geometryAlloc = ctx.geometry->submit(data);
+            } else {
+                ctx.geometry->update(*m_geometryAlloc, data);
+            }
         } else {
-            ctx.geometry->update(*m_geometryAlloc, data);
+            if (m_geometryAlloc != nullptr) {
+                m_geometryAlloc->registry->release(std::move(*m_geometryAlloc));
+                m_geometryAlloc = nullptr;
+            }
         }
     }
 

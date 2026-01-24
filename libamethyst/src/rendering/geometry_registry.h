@@ -1,9 +1,10 @@
-#ifndef AMETHYST_GEOMETRY_REGISTRY_H
-#define AMETHYST_GEOMETRY_REGISTRY_H
+#ifndef AMETHYST__GEOMETRY_REGISTRY_H
+#define AMETHYST__GEOMETRY_REGISTRY_H
 
 #include "components/common.h"
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
@@ -12,6 +13,9 @@
 namespace Amethyst {
 
 class GeometryRegistry;
+class UILayer;
+
+using GeometryRegistryDestroyCb = std::function<void(GeometryRegistry *)>;
 
 struct GeometryAllocation {
     uint32_t index = UINT32_MAX;
@@ -27,6 +31,28 @@ struct ZIndexBucket {
 
 class GeometryRegistry {
   public:
+    /**
+     * @brief Create a new GeometryRegistry owned by a UILayer
+     * @param owner The owning UILayer
+     * @return Unique pointer to the created registry
+     */
+    static std::unique_ptr<GeometryRegistry> create(UILayer *owner);
+
+    /**
+     * @brief Get all registries sorted by owner displayOrder
+     */
+    static const std::vector<GeometryRegistry *> &getRegistries();
+
+    /**
+     * @brief Re-sort registries by owner displayOrder
+     */
+    static void resortRegistries();
+
+    /**
+     * @brief Set callback invoked when a registry is destroyed
+     */
+    static void setDestroyCb(GeometryRegistryDestroyCb cb);
+
     /**
      * @brief Submit new instance data.
      * @return Allocation whose index may change on release of other allocations.
@@ -51,10 +77,22 @@ class GeometryRegistry {
     const std::vector<InstanceData> &getAllocations() const { return m_allocations; }
     size_t size() const { return m_allocations.size(); }
 
+    /**
+     * @brief Get the owning UILayer
+     */
+    UILayer *getOwningLayer() const { return m_owningLayer; }
+
+    ~GeometryRegistry();
+
   private:
+    GeometryRegistry(UILayer *owner);
     void validateOrdering() const;
 
   private:
+    static std::vector<GeometryRegistry *> s_registries;
+    static GeometryRegistryDestroyCb s_onDestroyCb;
+
+    UILayer *m_owningLayer = nullptr;
     std::vector<InstanceData> m_allocations;
     std::vector<std::unique_ptr<GeometryAllocation>> m_handleMap;
     std::set<uint32_t> m_dirtyIndices;
@@ -63,4 +101,4 @@ class GeometryRegistry {
 
 } // namespace Amethyst
 
-#endif // AMETHYST_GEOMETRY_REGISTRY_H
+#endif // AMETHYST__GEOMETRY_REGISTRY_H

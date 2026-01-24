@@ -2,26 +2,19 @@
 #include "amethyst__vk13_glfw.h"
 #include "components/common.h"
 #include "components/docking_layer.h"
+#include "components/panel_layer.h"
 #include "components/slider.h"
-#include "components/tab_bar.h"
 #include "components/text_button.h"
 #include "components/text_input.h"
 #include "parsers/ttf/ttf_parser.h"
-#include "rendering/geometry_registry.h"
 #include "vk_context.h"
 
 #include <cstdint>
-
-namespace Amethyst {
-void testZIndexOrdering();
-}
 
 int main()
 {
     Amethyst::Log::Init();
     AM_LOG_INFO("Amethyst Test App");
-
-    Amethyst::testZIndexOrdering();
 
     // Test TTF parsing
     Amethyst::TTF::Parser ttfParser;
@@ -46,16 +39,12 @@ int main()
         return 1;
     }
 
-    Amethyst::GeometryRegistry geometryRegistry;
-    Amethyst::TextRegistry textRegistry;
     Amethyst::TextProcessor textProcessor;
     if (fontData) {
         textProcessor.setFontData(&*fontData);
     }
 
     Amethyst::DrawContext drawCtx;
-    drawCtx.geometry = &geometryRegistry;
-    drawCtx.text = &textRegistry;
     drawCtx.textProcessor = &textProcessor;
 
     Amethyst::VulkanInitInfo initInfo{};
@@ -85,6 +74,7 @@ int main()
     Amethyst::Window window;
     window.absoluteSize = screenSize;
     window.absoluteRotation = 0.0f;
+    window.setDisplayOrder(10);
 
     Amethyst::Frame frame1(&window);
     frame1.name = "Frame 1";
@@ -179,12 +169,8 @@ int main()
     textInput.selectionColor = {0.3f, 0.5f, 0.9f, 0.5f};
     textInput.cursorColor = {1.0f, 1.0f, 1.0f, 1.0f};
     textInput.textXAlignment = Amethyst::TextXAlignment::LEFT;
-    textInput.onTextChanged = [](const std::string &text) {
-        AM_LOG_INFO("Text changed: '{}'", text);
-    };
-    textInput.onEnterPressed = []() {
-        AM_LOG_INFO("Enter pressed!");
-    };
+    textInput.onTextChanged = [](const std::string &text) { AM_LOG_INFO("Text changed: '{}'", text); };
+    textInput.onEnterPressed = []() { AM_LOG_INFO("Enter pressed!"); };
     textInput.markDirty();
 
     float sliderFloatValue = 50.0f;
@@ -200,9 +186,7 @@ int main()
     sliderFloat.max = 100.0f;
     sliderFloat.speed = 1.0f;
     sliderFloat.valueRef = &sliderFloatValue;
-    sliderFloat.onValueChanged = [](float value) {
-        AM_LOG_INFO("Float slider value: {:.2f}", value);
-    };
+    sliderFloat.onValueChanged = [](float value) { AM_LOG_INFO("Float slider value: {:.2f}", value); };
     sliderFloat.markDirty();
 
     int sliderIntValue = 25;
@@ -217,9 +201,7 @@ int main()
     sliderInt.max = 50;
     sliderInt.speed = 1.0f;
     sliderInt.valueRef = &sliderIntValue;
-    sliderInt.onValueChanged = [](int value) {
-        AM_LOG_INFO("Int slider value: {}", value);
-    };
+    sliderInt.onValueChanged = [](int value) { AM_LOG_INFO("Int slider value: {}", value); };
     sliderInt.markDirty();
 
     glm::vec2 sliderVec2Value = glm::vec2(50.0f, 75.0f);
@@ -235,9 +217,7 @@ int main()
     sliderVec2.max = glm::vec2(100.0f);
     sliderVec2.speed = 1.0f;
     sliderVec2.valueRef = &sliderVec2Value;
-    sliderVec2.onValueChanged = [](glm::vec2 value) {
-        AM_LOG_INFO("Vec2 slider value: ({:.2f}, {:.2f})", value.x, value.y);
-    };
+    sliderVec2.onValueChanged = [](glm::vec2 value) { AM_LOG_INFO("Vec2 slider value: ({:.2f}, {:.2f})", value.x, value.y); };
     sliderVec2.markDirty();
 
     glm::vec3 sliderVec3Value = glm::vec3(0.5f, 0.3f, 0.8f);
@@ -288,18 +268,26 @@ int main()
     dockingLayer.name = "Docking Example";
     dockingLayer.absoluteSize = {500.0f, 400.0f};
     dockingLayer.absolutePosition = {480.0f, 500.0f};
+    dockingLayer.innerSpacing = 2.0f;
+
     dockingLayer.markDirty();
 
-    Amethyst::Frame dockPanel1;
+    Amethyst::PanelLayer dockPanel1;
     dockPanel1.name = "Panel A";
-    dockPanel1.backgroundColor = {0.6f, 0.2f, 0.2f};
     dockPanel1.markDirty();
+    Amethyst::Frame dockPanel1Bg(&dockPanel1);
+    dockPanel1Bg.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    dockPanel1Bg.backgroundColor = {0.6f, 0.2f, 0.2f};
+    dockPanel1Bg.markDirty();
     dockingLayer.dock(&dockPanel1, glm::vec2(600.0f, 600.0f));
 
-    Amethyst::Frame dockPanel2;
+    Amethyst::PanelLayer dockPanel2;
     dockPanel2.name = "Panel B";
-    dockPanel2.backgroundColor = {0.2f, 0.6f, 0.2f};
     dockPanel2.markDirty();
+    Amethyst::Frame dockPanel2Bg(&dockPanel2);
+    dockPanel2Bg.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    dockPanel2Bg.backgroundColor = {0.2f, 0.6f, 0.2f};
+    dockPanel2Bg.markDirty();
     dockingLayer.dock(&dockPanel2, glm::vec2(900.0f, 600.0f));
 
     Amethyst::ImageLabel imageLabel;
@@ -332,7 +320,7 @@ int main()
 
         window.draw(drawCtx);
         VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];
-        backend.record(cmd, geometryRegistry, textRegistry);
+        backend.record(cmd);
 
         contextEndFrame(ctx, imageIndex);
 

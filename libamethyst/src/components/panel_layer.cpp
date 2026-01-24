@@ -1,0 +1,34 @@
+#include "components/panel_layer.h"
+#include "components/ui_object.h"
+#include "rendering/draw_context.h"
+
+namespace Amethyst {
+
+PanelLayer::PanelLayer() = default;
+
+PanelLayer::~PanelLayer() = default;
+
+void PanelLayer::draw(DrawContext &ctx)
+{
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
+    DrawContext layerCtx;
+    layerCtx.geometry = geometryRegistry();
+    layerCtx.text = textRegistry();
+    layerCtx.textProcessor = ctx.textProcessor;
+
+    for (Instance *child : children) {
+        if (auto *drawable = child->as<UIObject>()) {
+            drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            drawable->draw(layerCtx);
+        } else if (auto *layer = child->as<UILayer>()) {
+            layer->draw(ctx);
+        }
+    }
+
+    flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+}
+
+} // namespace Amethyst

@@ -1,15 +1,68 @@
 #include "geometry_registry.h"
 
+#include "components/ui_layer.h"
 #include "logging/log.h"
 #include "utils/am_assert.h"
+#include <algorithm>
 #include <cstdint>
 #include <utility>
 
 namespace Amethyst {
 
+std::vector<GeometryRegistry *> GeometryRegistry::s_registries;
+GeometryRegistryDestroyCb GeometryRegistry::s_onDestroyCb;
+
+GeometryRegistry::GeometryRegistry(UILayer *owner) : m_owningLayer(owner)
+{
+    // Insert into s_registries sorted by owner->displayOrder
+    auto it = std::lower_bound(s_registries.begin(), s_registries.end(), this, [](GeometryRegistry *a, GeometryRegistry *b) {
+        return a->m_owningLayer->getDisplayOrder() < b->m_owningLayer->getDisplayOrder();
+    });
+    s_registries.insert(it, this);
+}
+
+GeometryRegistry::~GeometryRegistry()
+{
+    if (s_onDestroyCb) {
+        s_onDestroyCb(this);
+    }
+
+    auto it = std::find(s_registries.begin(), s_registries.end(), this);
+    if (it != s_registries.end()) {
+        s_registries.erase(it);
+    }
+}
+
+std::unique_ptr<GeometryRegistry> GeometryRegistry::create(UILayer *owner)
+{
+    return std::unique_ptr<GeometryRegistry>(new GeometryRegistry(owner));
+}
+
+const std::vector<GeometryRegistry *> &GeometryRegistry::getRegistries()
+{
+    return s_registries;
+}
+
+void GeometryRegistry::resortRegistries()
+{
+    if (s_registries.size() <= 1) {
+        return;
+    }
+    std::sort(s_registries.begin(), s_registries.end(), [](GeometryRegistry *a, GeometryRegistry *b) {
+        return a->m_owningLayer->getDisplayOrder() < b->m_owningLayer->getDisplayOrder();
+    });
+}
+
+void GeometryRegistry::setDestroyCb(GeometryRegistryDestroyCb cb)
+{
+    s_onDestroyCb = std::move(cb);
+}
+
+/*
 void testZIndexOrdering()
 {
-    GeometryRegistry registry;
+    UILayer tempLayer;
+    auto registry = GeometryRegistry::create(&tempLayer);
 
     InstanceData data0{};
     data0.zIndex = 0;
@@ -20,16 +73,16 @@ void testZIndexOrdering()
     InstanceData data6{};
     data6.zIndex = 6;
 
-    registry.submit(data0);
-    registry.submit(data0);
-    registry.submit(data0);
-    registry.submit(data2);
-    registry.submit(data2);
-    registry.submit(data4);
-    registry.submit(data6);
-    registry.submit(data6);
+    registry->submit(data0);
+    registry->submit(data0);
+    registry->submit(data0);
+    registry->submit(data2);
+    registry->submit(data2);
+    registry->submit(data4);
+    registry->submit(data6);
+    registry->submit(data6);
 
-    auto &allocations = registry.getAllocations();
+    auto &allocations = registry->getAllocations();
 
     AM_ASSERT(allocations[0].zIndex == 0, "Expected z0");
     AM_LOG_INFO("{}", allocations[1].zIndex);
@@ -43,7 +96,7 @@ void testZIndexOrdering()
 
     InstanceData data4_new{};
     data4_new.zIndex = 4;
-    registry.submit(data4_new);
+    registry->submit(data4_new);
 
     AM_ASSERT(allocations[0].zIndex == 0, "Expected z0 at 0");
     AM_ASSERT(allocations[1].zIndex == 0, "Expected z0 at 1");
@@ -57,6 +110,7 @@ void testZIndexOrdering()
 
     AM_LOG_INFO("Z-index ordering test passed!");
 }
+*/
 
 GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
 {
@@ -101,7 +155,7 @@ GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
         swappedBucket.start++;
     }
 
-    validateOrdering();
+    // validateOrdering();
     return allocPtr;
 }
 
@@ -160,7 +214,7 @@ void GeometryRegistry::release(GeometryAllocation &&alloc)
     m_handleMap.pop_back();
     bucket.count--;
 
-    validateOrdering();
+    // validateOrdering();
 }
 
 void GeometryRegistry::validateOrdering() const

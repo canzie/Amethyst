@@ -5,7 +5,60 @@
 
 #include "rendering/text_registry.h"
 
+#include "components/ui_layer.h"
+#include <algorithm>
+
 namespace Amethyst {
+
+std::vector<TextRegistry *> TextRegistry::s_registries;
+TextRegistryDestroyCb TextRegistry::s_onDestroyCb;
+
+TextRegistry::TextRegistry(UILayer *owner) : m_owningLayer(owner)
+{
+    // Insert into s_registries sorted by owner->displayOrder
+    auto it = std::lower_bound(s_registries.begin(), s_registries.end(), this, [](TextRegistry *a, TextRegistry *b) {
+        return a->m_owningLayer->getDisplayOrder() < b->m_owningLayer->getDisplayOrder();
+    });
+    s_registries.insert(it, this);
+}
+
+TextRegistry::~TextRegistry()
+{
+    if (s_onDestroyCb) {
+        s_onDestroyCb(this);
+    }
+
+    auto it = std::find(s_registries.begin(), s_registries.end(), this);
+    if (it != s_registries.end()) {
+        s_registries.erase(it);
+    }
+}
+
+std::unique_ptr<TextRegistry> TextRegistry::create(UILayer *owner)
+{
+    return std::unique_ptr<TextRegistry>(new TextRegistry(owner));
+}
+
+const std::vector<TextRegistry *> &TextRegistry::getRegistries()
+{
+    return s_registries;
+}
+
+void TextRegistry::resortRegistries()
+{
+    if (s_registries.size() <= 1) {
+        return;
+    }
+
+    std::sort(s_registries.begin(), s_registries.end(), [](TextRegistry *a, TextRegistry *b) {
+        return a->m_owningLayer->getDisplayOrder() < b->m_owningLayer->getDisplayOrder();
+    });
+}
+
+void TextRegistry::setDestroyCb(TextRegistryDestroyCb cb)
+{
+    s_onDestroyCb = std::move(cb);
+}
 
 TextAllocation *TextRegistry::submit(const std::vector<CharacterInstance> &chars)
 {

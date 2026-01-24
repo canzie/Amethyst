@@ -9,12 +9,16 @@
 #include "components/common.h"
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <vector>
 
 namespace Amethyst {
 
 class TextRegistry;
+class UILayer;
+
+using TextRegistryDestroyCb = std::function<void(TextRegistry *)>;
 
 struct TextAllocation {
     uint32_t index = UINT32_MAX;
@@ -28,6 +32,28 @@ struct TextAllocation {
  */
 class TextRegistry {
   public:
+    /**
+     * @brief Create a new TextRegistry owned by a UILayer
+     * @param owner The owning UILayer
+     * @return Unique pointer to the created registry
+     */
+    static std::unique_ptr<TextRegistry> create(UILayer *owner);
+
+    /**
+     * @brief Get all registries sorted by owner displayOrder
+     */
+    static const std::vector<TextRegistry *> &getRegistries();
+
+    /**
+     * @brief Re-sort registries by owner displayOrder
+     */
+    static void resortRegistries();
+
+    /**
+     * @brief Set callback invoked when a registry is destroyed
+     */
+    static void setDestroyCb(TextRegistryDestroyCb cb);
+
     /**
      * @brief Submit new text characters
      * @return Allocation handle
@@ -56,9 +82,22 @@ class TextRegistry {
     size_t size() const { return m_flatBuffer.size(); }
     bool empty() const { return m_flatBuffer.empty(); }
 
+    /**
+     * @brief Get the owning UILayer
+     */
+    UILayer *getOwningLayer() const { return m_owningLayer; }
+
+    ~TextRegistry();
+
   private:
+    TextRegistry(UILayer *owner);
     void rebuildFlatBuffer();
 
+  private:
+    static std::vector<TextRegistry *> s_registries;
+    static TextRegistryDestroyCb s_onDestroyCb;
+
+    UILayer *m_owningLayer = nullptr;
     std::vector<std::vector<CharacterInstance>> m_allocations;
     std::vector<std::unique_ptr<TextAllocation>> m_handleMap;
     std::vector<CharacterInstance> m_flatBuffer;

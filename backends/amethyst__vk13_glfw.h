@@ -11,6 +11,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
@@ -51,6 +52,11 @@ struct BufferAllocation {
     size_t capacity = 0; // the amount of bytes allocated from the arena
 };
 
+struct FreeBlock {
+    size_t offset;
+    size_t size;
+};
+
 class VkBackend {
   public:
     void init(const VulkanInitInfo &config, const GLFWInitInfo &info);
@@ -59,7 +65,7 @@ class VkBackend {
   public:
     void beginFrame();
     void endFrame();
-    void record(VkCommandBuffer cmd, GeometryRegistry &geometryRegistry, TextRegistry &textRegistry);
+    void record(VkCommandBuffer cmd);
     void onResize(glm::vec2 extent);
 
     void uploadFontData(const TTF::FontData &fontData);
@@ -75,11 +81,17 @@ class VkBackend {
     void allocateBufferArenas();
     void allocateIndexBuffer();
     void allocateInstanceBuffers();
-    void updateInstances(GeometryRegistry &registry);
-    void updateTextCharacters(TextRegistry &registry);
+    void updateInstances(BufferAllocation &alloc, GeometryRegistry &registry);
+    void updateTextCharacters(BufferAllocation &alloc, TextRegistry &registry);
     void uploadToGpu(BufferAllocation &alloc, const void *data, size_t size, size_t offset);
     VkShaderModule loadShaderModule(const char *path);
     void setupGLFWCallbacks();
+    BufferAllocation* obtainGeometryAllocation(GeometryRegistry* registry);
+    BufferAllocation* obtainTextAllocation(TextRegistry* registry);
+    void freeGeometryAllocation(GeometryRegistry* registry);
+    void freeTextAllocation(TextRegistry* registry);
+    BufferAllocation allocateFromArena(BufferArena& arena, std::vector<FreeBlock>& freeList, size_t size);
+    void freeToArena(std::vector<FreeBlock>& freeList, const BufferAllocation& alloc);
     static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
     static void cursorPosCallback(GLFWwindow *window, double x, double y);
     static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset);
@@ -115,11 +127,14 @@ class VkBackend {
     BufferArena m_streamArena;
 
     BufferAllocation m_indexBuffer;
-    BufferAllocation m_instanceDataBuffer;
-
-    BufferAllocation m_characterBuffer;
     BufferAllocation m_fontDataBuffer;
     bool m_fontDataUploaded = false;
+
+    std::unordered_map<GeometryRegistry*, BufferAllocation> m_geometryAllocations;
+    std::unordered_map<TextRegistry*, BufferAllocation> m_textAllocations;
+
+    std::vector<FreeBlock> m_dynamicArenaFreeList;
+    std::vector<FreeBlock> m_streamArenaFreeList;
 
     std::vector<uint32_t> m_textureFreeList;
     uint32_t m_nextTextureSlot = 0;

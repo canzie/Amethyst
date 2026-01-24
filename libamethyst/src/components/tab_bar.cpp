@@ -2,6 +2,7 @@
 
 #include "components/common.h"
 #include "components/extensions/ui_drag_detector.h"
+#include "components/ui_layer.h"
 #include "logging/log.h"
 #include "rendering/geometry_registry.h"
 
@@ -27,6 +28,8 @@ void TabBar::addChild(Instance *child)
 
     if (auto *obj = child->as<UIObject>()) {
         obj->zIndex = zIndex + 1;
+    } else if (auto *layer = child->as<UILayer>()) {
+        layer->setDisplayOrder(2); // TODO: technically should get the sort order of the layer drawing the tabbar
     }
 
     auto tabItem = std::make_unique<TabItem>();
@@ -175,6 +178,8 @@ void TabBar::draw(DrawContext &ctx)
         if (auto *drawable = child->as<UIObject>()) {
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(ctx);
+        } else if (auto *layer = child->as<UILayer>()) {
+            layer->draw(ctx);
         }
     }
 
@@ -228,8 +233,9 @@ void TabBar::formatChildren()
                                     : nullptr;
 
     for (size_t i = 0; i < children.size(); ++i) {
+        bool isSelected = (children[i] == selectedContent);
+
         if (auto *drawable = children[i]->as<UIObject>()) {
-            bool isSelected = (children[i] == selectedContent);
             drawable->visible = isSelected;
             drawable->markDirty();
             if (!isSelected) continue;
@@ -258,6 +264,34 @@ void TabBar::formatChildren()
             } else {
                 drawable->position.offset = {0.0f, 0.0f};
                 drawable->size.offset = {0.0f, 0.0f};
+            }
+        } else if (auto *layer = children[i]->as<UILayer>()) {
+            layer->visible = isSelected;
+            layer->markDirty();
+            if (!isSelected) continue;
+
+            if (mode == TabBarMode::INSIDE) {
+                switch (tabPosition) {
+                case TabBarPosition::TOP:
+                    layer->absolutePosition = absolutePosition + glm::vec2(0.0f, tabBarSize);
+                    layer->absoluteSize = absoluteSize - glm::vec2(0.0f, tabBarSize);
+                    break;
+                case TabBarPosition::BOTTOM:
+                    layer->absolutePosition = absolutePosition;
+                    layer->absoluteSize = absoluteSize - glm::vec2(0.0f, tabBarSize);
+                    break;
+                case TabBarPosition::LEFT:
+                    layer->absolutePosition = absolutePosition + glm::vec2(tabBarSize, 0.0f);
+                    layer->absoluteSize = absoluteSize - glm::vec2(tabBarSize, 0.0f);
+                    break;
+                case TabBarPosition::RIGHT:
+                    layer->absolutePosition = absolutePosition;
+                    layer->absoluteSize = absoluteSize - glm::vec2(tabBarSize, 0.0f);
+                    break;
+                }
+            } else {
+                layer->absolutePosition = absolutePosition;
+                layer->absoluteSize = absoluteSize;
             }
         }
     }

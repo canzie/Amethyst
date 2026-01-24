@@ -28,12 +28,17 @@ Window::~Window()
 
 void Window::draw(DrawContext &ctx)
 {
+    DrawContext layerCtx;
+    layerCtx.geometry = geometryRegistry();
+    layerCtx.text = textRegistry();
+    layerCtx.textProcessor = ctx.textProcessor;
+
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-            drawable->draw(ctx);
+            drawable->draw(layerCtx);
         } else if (auto *layer = child->as<UILayer>()) {
-            layer->draw(ctx);
+            layer->draw(layerCtx);
         }
     }
 }
@@ -176,6 +181,9 @@ void Window::onMouseMove(uint32_t x, uint32_t y)
                 if (this->m_lastHoveredInstance == dead) {
                     this->m_lastHoveredInstance = nullptr;
                 }
+                if (this->m_mouseCapturedBy == dead) {
+                    this->m_mouseCapturedBy = nullptr;
+                }
             };
             if (auto obj = m_lastHoveredInstance->as<UIObject>()) {
                 obj->onMouseEnter();
@@ -194,12 +202,30 @@ void Window::onMouseMove(uint32_t x, uint32_t y)
 
 void Window::captureMouse(UIObject *object)
 {
+    if (m_mouseCapturedBy) {
+        m_mouseCapturedBy->onDestroy = nullptr;
+    }
+
     m_mouseCapturedBy = object;
+
+    if (m_mouseCapturedBy) {
+        m_mouseCapturedBy->onDestroy = [this](Instance *dead) {
+            if (this->m_mouseCapturedBy == dead) {
+                this->m_mouseCapturedBy = nullptr;
+            }
+            if (this->m_lastHoveredInstance == dead) {
+                this->m_lastHoveredInstance = nullptr;
+            }
+        };
+    }
 }
 
 void Window::releaseMouse(UIObject *object)
 {
     if (m_mouseCapturedBy == object) {
+        if (m_mouseCapturedBy) {
+            m_mouseCapturedBy->onDestroy = nullptr;
+        }
         m_mouseCapturedBy = nullptr;
     }
 }

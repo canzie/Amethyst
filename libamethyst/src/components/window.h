@@ -34,9 +34,6 @@ class Window : public UILayer {
     Instance *findClickedObject(uint32_t x, uint32_t y);
     Instance *findClickedObjectRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point);
 
-  public:
-    uint32_t displayOrder;
-
   private:
     Instance *m_lastHoveredInstance = nullptr;
     UIObject *m_mouseCapturedBy = nullptr;

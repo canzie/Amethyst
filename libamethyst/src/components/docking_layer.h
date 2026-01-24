@@ -5,7 +5,6 @@
 #ifndef AMETHYST__DOCKING_LAYER_H
 #define AMETHYST__DOCKING_LAYER_H
 
-#include "components/common.h"
 #include "components/frame.h"
 #include "components/invisible_button.h"
 #include "components/tab_bar.h"
@@ -65,13 +64,13 @@ class DockingLayer : public UILayer {
     void draw(DrawContext &ctx) override;
     std::vector<Instance *> getHittableInstances() override;
 
-    // the node to split or create will be determined by the pos
-    void dock(UIObject *obj, glm::vec2 pos);
-    void undock(UIObject *obj);
+    void dock(UIBase2D *obj, glm::vec2 pos);
+    void undock(UIBase2D *obj);
 
     DockZone hitTestZone(int32_t nodeIndex, glm::vec2 position);
     int32_t findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
-    void splitNode(int32_t nodeIndex, DockZone targetZone, UIObject *newContent);
+    int32_t findNodeByResizeHandlePosition(glm::vec2 pos, int32_t nodeIndex);
+    void splitNode(int32_t nodeIndex, DockZone targetZone, UIBase2D *newContent);
     void recalculateChildren(int32_t parentIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
 
   private:
@@ -81,13 +80,16 @@ class DockingLayer : public UILayer {
     void computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition);
     void setupTabBarCallbacks(TabBar *tabBar);
     void setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition);
-    int32_t findNodeByChildTabBar(TabBar *childTabBar);
     void processPendingDeletions();
 
   private:
     void initDockHints();
     void updateDockHints(glm::vec2 mousePos);
     void hideDockHints();
+
+  public:
+    float outerSpacing = 0.0f;
+    float innerSpacing = 0.0f;
 
   private:
     std::vector<DockNode> m_nodes;

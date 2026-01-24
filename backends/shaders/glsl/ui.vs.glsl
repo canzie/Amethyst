@@ -13,7 +13,6 @@ struct InstanceData {
     uint primitiveType;
     uint borderMode;
     uint textureId;
-    uint visible;
     int zIndex;
 };
 
@@ -30,7 +29,6 @@ layout(location = 5) out flat float fragCornerRadius;
 layout(location = 6) out flat vec2 fragSize;
 layout(location = 7) out flat uint fragBorderMode;
 layout(location = 8) out flat uint fragTextureId;
-layout(location = 9) out flat uint fragVisible;
 
 const vec2 positions[4] = vec2[](
     vec2(-0.5, -0.5),
@@ -65,5 +63,4 @@ void main()
     fragSize = vec2(length(inst.transform[0].xy), length(inst.transform[1].xy));
     fragBorderMode = inst.borderMode;
     fragTextureId = inst.textureId;
-    fragVisible = inst.visible;
 }

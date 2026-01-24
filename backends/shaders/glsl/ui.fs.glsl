@@ -10,7 +10,6 @@ layout(location = 5) in flat float fragCornerRadius;
 layout(location = 6) in flat vec2 fragSize;
 layout(location = 7) in flat uint fragBorderMode;
 layout(location = 8) in flat uint fragTextureId;
-layout(location = 9) in flat uint fragVisible;
 
 layout(set = 0, binding = 1) uniform sampler2D gTextures[];
 
@@ -73,8 +72,6 @@ float sdfLine(vec2 p, vec2 halfSize, float thickness)
 
 void main()
 {
-    if (fragVisible == 0u) discard;
-
     vec2 p = (fragUV - 0.5) * fragSize;
     vec2 halfSize = fragSize * 0.5;
 

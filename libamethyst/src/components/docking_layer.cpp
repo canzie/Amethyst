@@ -5,11 +5,11 @@
 #include "components/input_interface.h"
 #include "components/invisible_button.h"
 #include "components/tab_bar.h"
+#include "components/ui_base_2d.h"
 #include "logging/log.h"
 #include "rendering/draw_context.h"
 
 #include <algorithm>
-#include <chrono>
 #include <cstdint>
 #include <memory>
 
@@ -38,13 +38,18 @@ void DockingLayer::draw(DrawContext &ctx)
         computeLayout(m_rootNode, absoluteSize, absolutePosition);
     }
 
+    DrawContext layerCtx;
+    layerCtx.geometry = geometryRegistry();
+    layerCtx.text = textRegistry();
+    layerCtx.textProcessor = ctx.textProcessor;
+
     for (auto &tabBar : m_tabBars) {
-        tabBar->draw(ctx);
+        tabBar->draw(layerCtx);
     }
 
     for (auto &hint : m_dockHintComponents) {
         hint->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-        hint->draw(ctx);
+        hint->draw(ctx); // TODO: give the docking layer its own little composited layer it can use for all overlays, like the hints
     }
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
@@ -63,18 +68,19 @@ void DockingLayer::processPendingDeletions()
 std::vector<Instance *> DockingLayer::getHittableInstances()
 {
     std::vector<Instance *> result;
-    for (auto &tabBar : m_tabBars) {
-        result.push_back(tabBar.get());
-    }
     for (auto &node : m_nodes) {
         if (node.resizeHandle) {
             result.push_back(node.resizeHandle.get());
         }
     }
+
+    for (auto &tabBar : m_tabBars) {
+        result.push_back(tabBar.get());
+    }
     return result;
 }
 
-void DockingLayer::dock(UIObject *obj, glm::vec2 pos)
+void DockingLayer::dock(UIBase2D *obj, glm::vec2 pos)
 {
     if (m_rootNode < 0) {
         int32_t nodeIdx = createNode();
@@ -102,7 +108,7 @@ void DockingLayer::dock(UIObject *obj, glm::vec2 pos)
     markDirty();
 }
 
-void DockingLayer::undock(UIObject *obj)
+void DockingLayer::undock(UIBase2D *obj)
 {
     glm::vec2 objPos = obj->absolutePosition;
     int32_t nodeIndex = findNodeByPosition(objPos, m_rootNode, absoluteSize, absolutePosition);
@@ -252,9 +258,27 @@ void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec
     node.nodeSize = nodeSize;
 
     if (node.isLeaf()) {
+        glm::vec2 contentSize = nodeSize;
+        glm::vec2 contentPos = nodePosition;
+
+        bool isTopEdge = (nodePosition.y <= absolutePosition.y + 0.01f);
+        bool isBottomEdge = (nodePosition.y + nodeSize.y >= absolutePosition.y + absoluteSize.y - 0.01f);
+        bool isLeftEdge = (nodePosition.x <= absolutePosition.x + 0.01f);
+        bool isRightEdge = (nodePosition.x + nodeSize.x >= absolutePosition.x + absoluteSize.x - 0.01f);
+
+        float topSpacing = isTopEdge ? outerSpacing : innerSpacing;
+        float bottomSpacing = isBottomEdge ? outerSpacing : innerSpacing;
+        float leftSpacing = isLeftEdge ? outerSpacing : innerSpacing;
+        float rightSpacing = isRightEdge ? outerSpacing : innerSpacing;
+
+        contentPos.x += leftSpacing;
+        contentPos.y += topSpacing;
+        contentSize.x -= (leftSpacing + rightSpacing);
+        contentSize.y -= (topSpacing + bottomSpacing);
+
         node.content->size = UDim2::fromScale(1.0f, 1.0f);
         node.content->position = UDim2::fromScale(0.0f, 0.0f);
-        node.content->computeAbsolutes(nodeSize, nodePosition, 0.0f);
+        node.content->computeAbsolutes(contentSize, contentPos, 0.0f);
         node.content->markDirty();
         return;
     }
@@ -287,16 +311,6 @@ void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec
     }
 }
 
-int32_t DockingLayer::findNodeByChildTabBar(TabBar *childTabBar)
-{
-    glm::vec2 pos = childTabBar->absolutePosition + glm::vec2(1.0f, 1.0f);
-    int32_t leafIndex = findNodeByPosition(pos, m_rootNode, absoluteSize, absolutePosition);
-    if (leafIndex < 0) {
-        return -1;
-    }
-    return m_nodes[leafIndex].parentNode;
-}
-
 void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition)
 {
     DockNode &node = m_nodes[nodeIndex];
@@ -324,29 +338,26 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm:
     auto *drag = node.resizeHandle->addExtension<UIDragDetector>();
     drag->mode = (node.axis == SplitAxis::VERTICAL) ? DragMode::HORIZONTAL : DragMode::VERTICAL;
 
-    DockNode &firstChild = m_nodes[node.firstChild];
-    TabBar *childTabBar = firstChild.isLeaf() ? firstChild.content : nullptr;
-    if (!childTabBar) {
-        DockNode &secondChild = m_nodes[node.secondChild];
-        childTabBar = secondChild.isLeaf() ? secondChild.content : nullptr;
-    }
+    InvisibleButton *handlePtr = node.resizeHandle.get();
 
     drag->onDragStart = [cursorShape](glm::vec2) { InputInterface::setCursorShape(cursorShape); };
 
-    drag->onDragUpdate = [this, childTabBar](glm::vec2, glm::vec2 mousePos) {
-        int32_t parentIndex = findNodeByChildTabBar(childTabBar);
-        if (parentIndex < 0) {
+    drag->onDragUpdate = [this, handlePtr](glm::vec2, glm::vec2 mousePos) {
+        glm::vec2 handlePos = handlePtr->absolutePosition + handlePtr->absoluteSize * 0.5f;
+        int32_t ownerIndex = findNodeByResizeHandlePosition(handlePos, m_rootNode);
+
+        if (ownerIndex < 0 || ownerIndex >= static_cast<int32_t>(m_nodes.size())) {
             return;
         }
 
-        DockNode &parent = m_nodes[parentIndex];
+        DockNode &owner = m_nodes[ownerIndex];
 
-        if (parent.axis == SplitAxis::VERTICAL) {
-            float relativeX = mousePos.x - parent.nodePosition.x;
-            parent.ratio = glm::clamp(relativeX / parent.nodeSize.x, 0.1f, 0.9f);
+        if (owner.axis == SplitAxis::VERTICAL) {
+            float relativeX = mousePos.x - owner.nodePosition.x;
+            owner.ratio = glm::clamp(relativeX / owner.nodeSize.x, 0.1f, 0.9f);
         } else {
-            float relativeY = mousePos.y - parent.nodePosition.y;
-            parent.ratio = glm::clamp(relativeY / parent.nodeSize.y, 0.1f, 0.9f);
+            float relativeY = mousePos.y - owner.nodePosition.y;
+            owner.ratio = glm::clamp(relativeY / owner.nodeSize.y, 0.1f, 0.9f);
         }
 
         markDirty();
@@ -357,7 +368,7 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm:
     node.resizeHandle->computeAbsolutes(nodeSize, nodePosition, 0.0f);
 }
 
-void DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, UIObject *newContent)
+void DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, UIBase2D *newContent)
 {
     if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(m_nodes.size())) {
         return;
@@ -466,6 +477,47 @@ int32_t DockingLayer::findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::
     return findNodeByPosition(pos, node.secondChild, secondSize, secondPos);
 }
 
+int32_t DockingLayer::findNodeByResizeHandlePosition(glm::vec2 pos, int32_t nodeIndex)
+{
+    if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(m_nodes.size())) {
+        return -1;
+    }
+
+    DockNode &node = m_nodes[nodeIndex];
+
+    if (node.resizeHandle) {
+        glm::vec2 handlePos = node.resizeHandle->absolutePosition;
+        glm::vec2 handleSize = node.resizeHandle->absoluteSize;
+        if (pos.x >= handlePos.x && pos.x < handlePos.x + handleSize.x && pos.y >= handlePos.y &&
+            pos.y < handlePos.y + handleSize.y) {
+            return nodeIndex;
+        }
+    }
+
+    if (node.isLeaf()) {
+        return -1;
+    }
+
+    glm::vec2 nodePos = node.nodePosition;
+    glm::vec2 nodeSize = node.nodeSize;
+
+    if (node.axis == SplitAxis::HORIZONTAL) {
+        float splitY = nodePos.y + nodeSize.y * node.ratio;
+        if (pos.y < splitY) {
+            return findNodeByResizeHandlePosition(pos, node.firstChild);
+        } else {
+            return findNodeByResizeHandlePosition(pos, node.secondChild);
+        }
+    } else {
+        float splitX = nodePos.x + nodeSize.x * node.ratio;
+        if (pos.x < splitX) {
+            return findNodeByResizeHandlePosition(pos, node.firstChild);
+        } else {
+            return findNodeByResizeHandlePosition(pos, node.secondChild);
+        }
+    }
+}
+
 void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
 {
     tabBar->onTornOffTabReleased = [this, tabBar](Instance *content, glm::vec2 dropPos) {
@@ -477,7 +529,7 @@ void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
             collapseNode(sourceNode);
         }
 
-        if (UIObject *obj = content->as<UIObject>()) {
+        if (auto *obj = content->as<UIBase2D>()) {
             dock(obj, dropPos);
         }
     };

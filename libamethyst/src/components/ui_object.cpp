@@ -44,7 +44,6 @@ InstanceData UIObject::createInstanceData() const
                         .primitiveType = PRIMITIVE_TRIANGLE,
                         .borderMode = static_cast<uint32_t>(borderMode),
                         .textureId = UINT32_MAX,
-                        .visible = visible ? 1u : 0u,
                         .zIndex = zIndex};
 }
 

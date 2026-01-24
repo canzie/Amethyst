@@ -1,6 +1,7 @@
 #include "amethyst__vk13_glfw.h"
 
 #include "components/input_interface.h"
+#include "components/ui_layer.h"
 #include "logging/log.h"
 
 #include <GLFW/glfw3.h>
@@ -96,8 +97,8 @@ static GLFWcursor *createCustomVerticalResizeCursor()
     return glfwCreateCursor(&image, width / 2, height / 2);
 }
 
-constexpr size_t INITIAL_INSTANCE_CAPACITY = 64;
-constexpr size_t INITIAL_CHARACTER_CAPACITY = 1024;
+constexpr size_t INITIAL_INSTANCE_CAPACITY = 256 * 32;  // 8192 instances, ~32 layers @ 256 each
+constexpr size_t INITIAL_CHARACTER_CAPACITY = 1024 * 32; // 32768 chars, ~32 layers @ 1024 each
 constexpr size_t INITIAL_FONT_DATA_CAPACITY = 512 * 1024; // 512KB for font data
 constexpr size_t INDEX_COUNT_RECT = 6;
 
@@ -144,6 +145,10 @@ void VkBackend::init(const VulkanInitInfo &config, const GLFWInitInfo &info)
         const char *text = glfwGetClipboardString(g_glfwData.window);
         return text ? std::string(text) : "";
     };
+
+    // Register callbacks to free allocations when registries are destroyed
+    GeometryRegistry::setDestroyCb([this](GeometryRegistry *reg) { freeGeometryAllocation(reg); });
+    TextRegistry::setDestroyCb([this](TextRegistry *reg) { freeTextAllocation(reg); });
 }
 
 void VkBackend::shutdown()
@@ -214,10 +219,30 @@ void VkBackend::onResize(glm::vec2 extent)
     m_info.extent = VkExtent2D(extent.x, extent.y);
 }
 
-void VkBackend::record(VkCommandBuffer cmd, GeometryRegistry &geometryRegistry, TextRegistry &textRegistry)
+void VkBackend::record(VkCommandBuffer cmd)
 {
-    updateInstances(geometryRegistry);
-    updateTextCharacters(textRegistry);
+    const auto &geometryRegistries = GeometryRegistry::getRegistries();
+    const auto &textRegistries = TextRegistry::getRegistries();
+
+    for (auto *registry : geometryRegistries) {
+        UILayer *layer = registry->getOwningLayer();
+        if (!layer || !layer->visible) continue;
+
+        BufferAllocation* alloc = obtainGeometryAllocation(registry);
+        if (alloc) {
+            updateInstances(*alloc, *registry);
+        }
+    }
+
+    for (auto *registry : textRegistries) {
+        UILayer *layer = registry->getOwningLayer();
+        if (!layer || !layer->visible) continue;
+
+        BufferAllocation* alloc = obtainTextAllocation(registry);
+        if (alloc) {
+            updateTextCharacters(*alloc, *registry);
+        }
+    }
 
     VkViewport viewport = {
         .x = 0.0f,
@@ -239,22 +264,44 @@ void VkBackend::record(VkCommandBuffer cmd, GeometryRegistry &geometryRegistry, 
         .screenSize = {static_cast<float>(m_info.extent.width), static_cast<float>(m_info.extent.height)},
     };
 
-    // Draw UI geometry
-    if (m_instanceDataBuffer.size > 0) {
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-        vkCmdPushConstants(cmd, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, nullptr);
-        vkCmdBindIndexBuffer(cmd, m_indexBuffer.arena->buffer, m_indexBuffer.offset, VK_INDEX_TYPE_UINT32);
-        vkCmdDrawIndexed(cmd, INDEX_COUNT_RECT, static_cast<uint32_t>(m_instanceDataBuffer.size), 0, 0, 0);
+    bool pipelineBound = false;
+    for (auto *registry : geometryRegistries) {
+        UILayer *layer = registry->getOwningLayer();
+        if (!layer || !layer->visible) continue;
+
+        auto it = m_geometryAllocations.find(registry);
+        if (it != m_geometryAllocations.end() && it->second.size > 0) {
+            if (!pipelineBound) {
+                vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+                vkCmdPushConstants(cmd, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, nullptr);
+                vkCmdBindIndexBuffer(cmd, m_indexBuffer.arena->buffer, m_indexBuffer.offset, VK_INDEX_TYPE_UINT32);
+                pipelineBound = true;
+            }
+            uint32_t firstInstance = static_cast<uint32_t>(it->second.offset / sizeof(InstanceData));
+            vkCmdDrawIndexed(cmd, INDEX_COUNT_RECT, static_cast<uint32_t>(it->second.size), 0, 0, firstInstance);
+        }
     }
 
-    // Draw text
-    if (m_characterBuffer.size > 0 && m_fontDataUploaded) {
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_textPipeline);
-        vkCmdPushConstants(cmd, m_textPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_textPipelineLayout, 0, 1, &m_textDescriptorSet, 0, nullptr);
-        vkCmdBindIndexBuffer(cmd, m_indexBuffer.arena->buffer, m_indexBuffer.offset, VK_INDEX_TYPE_UINT32);
-        vkCmdDrawIndexed(cmd, INDEX_COUNT_RECT, static_cast<uint32_t>(m_characterBuffer.size), 0, 0, 0);
+    pipelineBound = false;
+    if (m_fontDataUploaded) {
+        for (auto *registry : textRegistries) {
+            UILayer *layer = registry->getOwningLayer();
+            if (!layer || !layer->visible) continue;
+
+            auto it = m_textAllocations.find(registry);
+            if (it != m_textAllocations.end() && it->second.size > 0) {
+                if (!pipelineBound) {
+                    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_textPipeline);
+                    vkCmdPushConstants(cmd, m_textPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
+                    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_textPipelineLayout, 0, 1, &m_textDescriptorSet, 0, nullptr);
+                    vkCmdBindIndexBuffer(cmd, m_indexBuffer.arena->buffer, m_indexBuffer.offset, VK_INDEX_TYPE_UINT32);
+                    pipelineBound = true;
+                }
+                uint32_t firstInstance = static_cast<uint32_t>(it->second.offset / sizeof(CharacterInstance));
+                vkCmdDrawIndexed(cmd, INDEX_COUNT_RECT, static_cast<uint32_t>(it->second.size), 0, 0, firstInstance);
+            }
+        }
     }
 }
 
@@ -355,28 +402,6 @@ void VkBackend::allocateIndexBuffer()
 
 void VkBackend::allocateInstanceBuffers()
 {
-    // Geometry instance buffer (dynamic arena)
-    size_t neededSize = sizeof(InstanceData) * INITIAL_INSTANCE_CAPACITY;
-    if (neededSize > (m_dynamicArena.capacity - m_dynamicArena.size)) {
-        AM_LOG_ERROR("Failed to allocate instance buffer");
-        return;
-    }
-
-    m_instanceDataBuffer = {};
-    m_instanceDataBuffer.arena = &m_dynamicArena;
-    m_instanceDataBuffer.capacity = neededSize;
-    m_instanceDataBuffer.offset = m_dynamicArena.size;
-    m_dynamicArena.size += neededSize;
-
-    // Character buffer (stream arena)
-    size_t charSize = sizeof(CharacterInstance) * INITIAL_CHARACTER_CAPACITY;
-    m_characterBuffer = {};
-    m_characterBuffer.arena = &m_streamArena;
-    m_characterBuffer.capacity = charSize;
-    m_characterBuffer.offset = m_streamArena.size;
-    m_streamArena.size += charSize;
-
-    // Font data buffer (stream arena)
     m_fontDataBuffer = {};
     m_fontDataBuffer.arena = &m_streamArena;
     m_fontDataBuffer.capacity = INITIAL_FONT_DATA_CAPACITY;
@@ -384,18 +409,21 @@ void VkBackend::allocateInstanceBuffers()
     m_streamArena.size += INITIAL_FONT_DATA_CAPACITY;
 }
 
-void VkBackend::updateInstances(GeometryRegistry &registry)
+void VkBackend::updateInstances(BufferAllocation &alloc, GeometryRegistry &registry)
 {
     auto dirtyIndices = registry.consumeDirtyIndices();
     const auto &allocations = registry.getAllocations();
 
-    if (allocations.size() > m_instanceDataBuffer.capacity) {
-        // grow
+    size_t requiredSize = allocations.size() * sizeof(InstanceData);
+    if (requiredSize > alloc.capacity) {
+        AM_LOG_WARN("Geometry allocation capacity exceeded, need to reallocate");
+        // TODO: implement reallocation logic
+        return;
     }
 
     if (!dirtyIndices.empty()) {
-        auto *basePtr = static_cast<uint8_t *>(m_instanceDataBuffer.arena->mappedMemory);
-        auto *instances = reinterpret_cast<InstanceData *>(basePtr + m_instanceDataBuffer.offset);
+        auto *basePtr = static_cast<uint8_t *>(alloc.arena->mappedMemory);
+        auto *instances = reinterpret_cast<InstanceData *>(basePtr + alloc.offset);
 
         for (uint32_t idx : dirtyIndices) {
             instances[idx] = allocations[idx];
@@ -403,16 +431,16 @@ void VkBackend::updateInstances(GeometryRegistry &registry)
 
         VkMappedMemoryRange memoryRange{};
         memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-        memoryRange.memory = m_instanceDataBuffer.arena->memory;
-        memoryRange.offset = m_instanceDataBuffer.offset;
+        memoryRange.memory = alloc.arena->memory;
+        memoryRange.offset = alloc.offset;
         memoryRange.size = VK_WHOLE_SIZE;
         vkFlushMappedMemoryRanges(m_info.device, 1, &memoryRange);
     }
 
-    m_instanceDataBuffer.size = allocations.size();
+    alloc.size = allocations.size();
 }
 
-void VkBackend::updateTextCharacters(TextRegistry &registry)
+void VkBackend::updateTextCharacters(BufferAllocation &alloc, TextRegistry &registry)
 {
     if (!registry.consumeDirty()) {
         return;
@@ -421,18 +449,19 @@ void VkBackend::updateTextCharacters(TextRegistry &registry)
     const auto &characters = registry.getCharacters();
     size_t dataSize = characters.size() * sizeof(CharacterInstance);
 
-    if (dataSize > m_characterBuffer.capacity) {
-        AM_LOG_WARN("Character buffer overflow, truncating");
-        dataSize = m_characterBuffer.capacity;
+    if (dataSize > alloc.capacity) {
+        AM_LOG_WARN("Text allocation capacity exceeded, need to reallocate");
+        // TODO: implement reallocation logic
+        return;
     }
 
     if (!characters.empty()) {
-        auto *basePtr = static_cast<uint8_t *>(m_characterBuffer.arena->mappedMemory);
-        auto *dst = basePtr + m_characterBuffer.offset;
+        auto *basePtr = static_cast<uint8_t *>(alloc.arena->mappedMemory);
+        auto *dst = basePtr + alloc.offset;
         std::memcpy(dst, characters.data(), dataSize);
     }
 
-    m_characterBuffer.size = characters.size();
+    alloc.size = characters.size();
 }
 
 void VkBackend::uploadFontData(const TTF::FontData &fontData)
@@ -710,9 +739,9 @@ void VkBackend::allocateDescriptorSet()
     vkAllocateDescriptorSets(m_info.device, &allocInfo, &m_descriptorSet);
 
     VkDescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer = m_instanceDataBuffer.arena->buffer;
-    bufferInfo.offset = m_instanceDataBuffer.offset;
-    bufferInfo.range = m_instanceDataBuffer.capacity;
+    bufferInfo.buffer = m_dynamicArena.buffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = VK_WHOLE_SIZE;
 
     VkWriteDescriptorSet descriptorWrite = {};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -928,9 +957,9 @@ void VkBackend::allocateTextDescriptorSet()
     vkAllocateDescriptorSets(m_info.device, &allocInfo, &m_textDescriptorSet);
 
     VkDescriptorBufferInfo characterBufferInfo = {
-        .buffer = m_characterBuffer.arena->buffer,
-        .offset = m_characterBuffer.offset,
-        .range = m_characterBuffer.capacity,
+        .buffer = m_streamArena.buffer,
+        .offset = 0,
+        .range = VK_WHOLE_SIZE,
     };
 
     VkDescriptorBufferInfo fontDataBufferInfo = {
@@ -966,6 +995,119 @@ void VkBackend::allocateTextDescriptorSet()
         },
     };
     vkUpdateDescriptorSets(m_info.device, std::size(descriptorWrites), descriptorWrites, 0, nullptr);
+}
+
+BufferAllocation VkBackend::allocateFromArena(BufferArena &arena, std::vector<FreeBlock> &freeList, size_t size)
+{
+    for (auto it = freeList.begin(); it != freeList.end(); ++it) {
+        if (it->size >= size) {
+            BufferAllocation alloc;
+            alloc.arena = &arena;
+            alloc.offset = it->offset;
+            alloc.capacity = size;
+            alloc.size = 0;
+
+            if (it->size > size * 2) {
+                it->offset += size;
+                it->size -= size;
+            } else {
+                alloc.capacity = it->size;
+                freeList.erase(it);
+            }
+            return alloc;
+        }
+    }
+
+    if (arena.size + size > arena.capacity) {
+        AM_LOG_ERROR("Arena out of memory: size={}, capacity={}, requested={}", arena.size, arena.capacity, size);
+        return {};
+    }
+
+    BufferAllocation alloc;
+    alloc.arena = &arena;
+    alloc.offset = arena.size;
+    alloc.capacity = size;
+    alloc.size = 0;
+    arena.size += size;
+    return alloc;
+}
+
+void VkBackend::freeToArena(std::vector<FreeBlock> &freeList, const BufferAllocation &alloc)
+{
+    FreeBlock block;
+    block.offset = alloc.offset;
+    block.size = alloc.capacity;
+
+    for (auto it = freeList.begin(); it != freeList.end(); ++it) {
+        if (it->offset + it->size == block.offset) {
+            it->size += block.size;
+            auto next = std::next(it);
+            if (next != freeList.end() && it->offset + it->size == next->offset) {
+                it->size += next->size;
+                freeList.erase(next);
+            }
+            return;
+        }
+        if (block.offset + block.size == it->offset) {
+            it->offset = block.offset;
+            it->size += block.size;
+            return;
+        }
+    }
+
+    freeList.push_back(block);
+}
+
+BufferAllocation *VkBackend::obtainGeometryAllocation(GeometryRegistry *registry)
+{
+    auto it = m_geometryAllocations.find(registry);
+    if (it != m_geometryAllocations.end()) {
+        return &it->second;
+    }
+
+    size_t initialSize = sizeof(InstanceData) * 256;
+    BufferAllocation alloc = allocateFromArena(m_dynamicArena, m_dynamicArenaFreeList, initialSize);
+    if (alloc.arena == nullptr) {
+        return nullptr;
+    }
+
+    auto [inserted, _] = m_geometryAllocations.emplace(registry, alloc);
+    return &inserted->second;
+}
+
+BufferAllocation *VkBackend::obtainTextAllocation(TextRegistry *registry)
+{
+    auto it = m_textAllocations.find(registry);
+    if (it != m_textAllocations.end()) {
+        return &it->second;
+    }
+
+    size_t initialSize = sizeof(CharacterInstance) * 1024;
+    BufferAllocation alloc = allocateFromArena(m_streamArena, m_streamArenaFreeList, initialSize);
+    if (alloc.arena == nullptr) {
+        return nullptr;
+    }
+
+    auto [inserted, _] = m_textAllocations.emplace(registry, alloc);
+    return &inserted->second;
+}
+
+void VkBackend::freeGeometryAllocation(GeometryRegistry *registry)
+{
+    auto it = m_geometryAllocations.find(registry);
+    if (it != m_geometryAllocations.end()) {
+        freeToArena(m_dynamicArenaFreeList, it->second);
+        m_geometryAllocations.erase(it);
+    }
+}
+
+void VkBackend::freeTextAllocation(TextRegistry *registry)
+{
+    auto it = m_textAllocations.find(registry);
+    if (it != m_textAllocations.end()) {
+        freeToArena(m_streamArenaFreeList, it->second);
+        m_textAllocations.erase(it);
+    }
 }
 
 void VkBackend::mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
