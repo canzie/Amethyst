@@ -88,6 +88,7 @@ void Table::draw(DrawContext &ctx)
 
     if (flags & FLAG_DIRTY) {
         updateSeparators();
+        m_resolvedPadding = cellPadding.resolve(absoluteSize);
     }
 
     float effectiveRowHeight = rowHeight;
@@ -129,8 +130,13 @@ void Table::draw(DrawContext &ctx)
                     cellWidth -= indent;
                 }
 
-                glm::vec2 cellSize = {cellWidth, effectiveRowHeight};
-                glm::vec2 cellPos = absolutePosition + glm::vec2(cellX, rowY);
+                float paddedX = cellX + m_resolvedPadding.w;
+                float paddedY = rowY + m_resolvedPadding.x;
+                float paddedWidth = cellWidth - m_resolvedPadding.w - m_resolvedPadding.y;
+                float paddedHeight = effectiveRowHeight - m_resolvedPadding.x - m_resolvedPadding.z;
+
+                glm::vec2 cellSize = {paddedWidth, paddedHeight};
+                glm::vec2 cellPos = absolutePosition + glm::vec2(paddedX, paddedY);
 
                 drawable->computeAbsolutes(cellSize, cellPos, absoluteRotation);
                 drawable->draw(ctx);

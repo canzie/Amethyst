@@ -56,6 +56,11 @@ class Table : public UIObject {
      */
     float rowHeight = 0.0f;
 
+    /**
+     * @brief Cell padding (scale is relative to table size, not cell size)
+     */
+    UDim4 cellPadding;
+
     bool showColumnSeparators = false;
     float columnSeparatorWidth = 1.0f;
     Color4 columnSeparatorColor = {0.3f, 0.3f, 0.3f, 1.0f};
@@ -75,6 +80,7 @@ class Table : public UIObject {
 
   protected:
     float m_computedRowHeight = 0.0f;
+    glm::vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f}; // top, right, bottom, left
     std::vector<std::unique_ptr<Frame>> m_separators;
 };
 

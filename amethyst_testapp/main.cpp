@@ -7,6 +7,7 @@
 #include "components/table.h"
 #include "components/text_button.h"
 #include "components/text_input.h"
+#include "components/tree_view.h"
 #include "parsers/ttf/ttf_parser.h"
 #include "vk_context.h"
 
@@ -346,6 +347,104 @@ int main()
     tableSlider4.size = Amethyst::UDim2::fromScale(0.95f, 0.8f);
     tableSlider4.position = Amethyst::UDim2::fromScale(0.025f, 0.1f);
     tableSlider4.markDirty();
+
+    Amethyst::TreeView treeView(&window);
+    treeView.name = "Test TreeView";
+    treeView.size = Amethyst::UDim2::fromOffset(300, 250);
+    treeView.position = Amethyst::UDim2::fromOffset(520, 400);
+    treeView.backgroundColor = {0.12f, 0.12f, 0.14f};
+    treeView.numCols = 1;
+    treeView.rowHeight = 24.0f;
+    treeView.indentPerLevel = 20.0f;
+    treeView.markDirty();
+
+    uint32_t scene = treeView.beginRow();
+    Amethyst::TextLabel sceneLabel(&treeView);
+    sceneLabel.text = "Scene";
+    sceneLabel.textColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    sceneLabel.backgroundTransparency = 1.0f;
+    sceneLabel.fontSize = 14.0f;
+    sceneLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
+    sceneLabel.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    sceneLabel.markDirty();
+
+    treeView.beginRow(scene);
+    Amethyst::TextLabel cameraLabel(&treeView);
+    cameraLabel.text = "Camera";
+    cameraLabel.textColor = {0.8f, 0.9f, 1.0f, 1.0f};
+    cameraLabel.backgroundTransparency = 1.0f;
+    cameraLabel.fontSize = 14.0f;
+    cameraLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
+    cameraLabel.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    cameraLabel.markDirty();
+    treeView.endRow();
+
+    uint32_t player = treeView.beginRow(scene);
+    Amethyst::TextLabel playerLabel(&treeView);
+    playerLabel.text = "Player";
+    playerLabel.textColor = {0.5f, 1.0f, 0.5f, 1.0f};
+    playerLabel.backgroundTransparency = 1.0f;
+    playerLabel.fontSize = 14.0f;
+    playerLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
+    playerLabel.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    playerLabel.markDirty();
+
+    treeView.beginRow(player);
+    Amethyst::TextLabel meshLabel(&treeView);
+    meshLabel.text = "Mesh";
+    meshLabel.textColor = {0.9f, 0.9f, 0.9f, 1.0f};
+    meshLabel.backgroundTransparency = 1.0f;
+    meshLabel.fontSize = 14.0f;
+    meshLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
+    meshLabel.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    meshLabel.markDirty();
+    treeView.endRow();
+
+    treeView.beginRow(player);
+    Amethyst::TextLabel colliderLabel(&treeView);
+    colliderLabel.text = "Collider";
+    colliderLabel.textColor = {0.9f, 0.9f, 0.9f, 1.0f};
+    colliderLabel.backgroundTransparency = 1.0f;
+    colliderLabel.fontSize = 14.0f;
+    colliderLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
+    colliderLabel.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    colliderLabel.markDirty();
+    treeView.endRow();
+    treeView.endRow();
+
+    uint32_t lights = treeView.beginRow(scene);
+    Amethyst::TextLabel lightsLabel(&treeView);
+    lightsLabel.text = "Lights";
+    lightsLabel.textColor = {1.0f, 1.0f, 0.5f, 1.0f};
+    lightsLabel.backgroundTransparency = 1.0f;
+    lightsLabel.fontSize = 14.0f;
+    lightsLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
+    lightsLabel.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    lightsLabel.markDirty();
+
+    treeView.beginRow(lights);
+    Amethyst::TextLabel sunLabel(&treeView);
+    sunLabel.text = "Sun";
+    sunLabel.textColor = {1.0f, 0.9f, 0.6f, 1.0f};
+    sunLabel.backgroundTransparency = 1.0f;
+    sunLabel.fontSize = 14.0f;
+    sunLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
+    sunLabel.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    sunLabel.markDirty();
+    treeView.endRow();
+
+    treeView.beginRow(lights);
+    Amethyst::TextLabel pointLabel(&treeView);
+    pointLabel.text = "Point Light";
+    pointLabel.textColor = {0.6f, 0.8f, 1.0f, 1.0f};
+    pointLabel.backgroundTransparency = 1.0f;
+    pointLabel.fontSize = 14.0f;
+    pointLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
+    pointLabel.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    pointLabel.markDirty();
+    treeView.endRow();
+    treeView.endRow();
+    treeView.endRow();
 
     /*
     Amethyst::TabBar tabBar(&window);
