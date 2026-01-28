@@ -133,6 +133,7 @@ enum PrimitiveType : uint8_t {
     PRIMITIVE_CIRCLE,
     PRIMITIVE_TRIANGLE,
     PRIMITIVE_LINE,
+    PRIMITIVE_TEXT,
     PRIMITIVE_COUNT,
 };
 

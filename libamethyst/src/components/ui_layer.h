@@ -12,7 +12,6 @@
 namespace Amethyst {
 
 class GeometryRegistry;
-class TextRegistry;
 
 class UILayer : public UIBase2D {
   public:
@@ -25,11 +24,6 @@ class UILayer : public UIBase2D {
      * @brief Get the geometry registry for this layer
      */
     GeometryRegistry *geometryRegistry() { return m_geometryRegistry.get(); }
-
-    /**
-     * @brief Get the text registry for this layer
-     */
-    TextRegistry *textRegistry() { return m_textRegistry.get(); }
 
     /**
      * @brief Set the display order for this layer
@@ -48,7 +42,6 @@ class UILayer : public UIBase2D {
 
   private:
     std::unique_ptr<GeometryRegistry> m_geometryRegistry;
-    std::unique_ptr<TextRegistry> m_textRegistry;
     int32_t m_displayOrder = 0;
 };
 

@@ -3,14 +3,15 @@
 #include "modules/text_processor.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
-#include "rendering/text_registry.h"
 
 namespace Amethyst {
 
 TextButton::~TextButton()
 {
-    if (m_textAlloc && m_textAlloc->isValid()) {
-        m_textAlloc->registry->release(std::move(*m_textAlloc));
+    for (auto *alloc : m_textAllocations) {
+        if (alloc && alloc->isValid()) {
+            alloc->registry->release(std::move(*alloc));
+        }
     }
 }
 
@@ -31,15 +32,16 @@ void TextButton::draw(DrawContext &ctx)
             ctx.geometry->update(*m_geometryAlloc, data);
         }
 
-        if (ctx.textProcessor && ctx.text && !text.empty()) {
-            m_textSize = ctx.textProcessor->measureText(text);
+        if (ctx.textProcessor && ctx.geometry && !text.empty()) {
+            uint32_t pixelSize = static_cast<uint32_t>(fontSize);
+            m_textSize = ctx.textProcessor->measureTextAtlas(text, pixelSize);
             float effectiveFontSize = fontSize;
 
             if (textScaled) {
                 if (m_textSize.x > 0.0f && m_textSize.y > 0.0f) {
                     float scaleX = absoluteSize.x / m_textSize.x;
                     float scaleY = absoluteSize.y / m_textSize.y;
-                    effectiveFontSize = std::min(scaleX, scaleY);
+                    effectiveFontSize = fontSize * std::min(scaleX, scaleY);
                 }
             }
 
@@ -56,12 +58,27 @@ void TextButton::draw(DrawContext &ctx)
             params.truncate = textTruncate;
             params.wrap = textWrapped;
 
-            auto characters = ctx.textProcessor->layoutText(text, params);
+            auto glyphs = ctx.textProcessor->layoutTextAtlas(text, params);
 
-            if (m_textAlloc == nullptr) {
-                m_textAlloc = ctx.text->submit(characters);
+            for (auto &glyphData : glyphs) {
+                glyphData.zIndex = zIndex + 1;
+            }
+
+            if (glyphs.size() != m_textAllocations.size()) {
+                for (auto *alloc : m_textAllocations) {
+                    if (alloc && alloc->isValid()) {
+                        ctx.geometry->release(std::move(*alloc));
+                    }
+                }
+                m_textAllocations.clear();
+                m_textAllocations.reserve(glyphs.size());
+                for (const auto &glyphData : glyphs) {
+                    m_textAllocations.push_back(ctx.geometry->submit(glyphData));
+                }
             } else {
-                ctx.text->update(*m_textAlloc, characters);
+                for (size_t i = 0; i < glyphs.size(); ++i) {
+                    ctx.geometry->update(*m_textAllocations[i], glyphs[i]);
+                }
             }
         }
     }

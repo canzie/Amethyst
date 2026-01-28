@@ -7,13 +7,14 @@
 
 #include "components/common.h"
 #include "components/ui_button.h"
-#include "rendering/text_registry.h"
 
 #include <string>
+#include <vector>
 
 namespace Amethyst {
 
 struct Font;
+struct GeometryAllocation;
 
 class TextButton : public UIButton {
   public:
@@ -45,7 +46,7 @@ class TextButton : public UIButton {
 
   private:
     glm::vec2 m_textSize = {0.0f, 0.0f};
-    TextAllocation *m_textAlloc = nullptr;
+    std::vector<GeometryAllocation *> m_textAllocations;
 };
 
 } // namespace Amethyst

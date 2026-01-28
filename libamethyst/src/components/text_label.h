@@ -7,11 +7,13 @@
 
 #include "components/instance.h"
 #include "components/ui_label.h"
-#include "rendering/text_registry.h"
 
 #include <string>
+#include <vector>
 
 namespace Amethyst {
+
+struct GeometryAllocation;
 
 class TextLabel : public UILabel {
   public:
@@ -39,7 +41,7 @@ class TextLabel : public UILabel {
     glm::vec2 getTextSize() const { return m_textSize; }
 
   private:
-    TextAllocation *m_textAlloc = nullptr;
+    std::vector<GeometryAllocation *> m_textAllocations;
     glm::vec2 m_textSize = {0.0f, 0.0f};
 };
 

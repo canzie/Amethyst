@@ -9,16 +9,16 @@
 namespace Amethyst {
 
 class GeometryRegistry;
-class TextRegistry;
 class TextProcessor;
+class GlyphAtlas;
 
 /**
  * @brief Container for all registries used during drawing
  */
 struct DrawContext {
     GeometryRegistry *geometry = nullptr;
-    TextRegistry *text = nullptr;
     TextProcessor *textProcessor = nullptr;
+    GlyphAtlas *glyphAtlas = nullptr;
 };
 
 } // namespace Amethyst

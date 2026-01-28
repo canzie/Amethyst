@@ -209,12 +209,10 @@ void GeometryRegistry::release(GeometryAllocation &&alloc)
         nextBucketStart = currTargetPos + 1;
     }
 
-    // the element we want to delete should now be at the end
+    m_dirtyIndices.erase(endPos);
     m_allocations.pop_back();
     m_handleMap.pop_back();
     bucket.count--;
-
-    // validateOrdering();
 }
 
 void GeometryRegistry::validateOrdering() const

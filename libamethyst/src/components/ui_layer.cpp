@@ -5,14 +5,12 @@
 #include "components/ui_layer.h"
 
 #include "rendering/geometry_registry.h"
-#include "rendering/text_registry.h"
 
 namespace Amethyst {
 
 UILayer::UILayer()
 {
     m_geometryRegistry = GeometryRegistry::create(this);
-    m_textRegistry = TextRegistry::create(this);
 }
 
 UILayer::~UILayer() = default;
@@ -24,7 +22,6 @@ void UILayer::setDisplayOrder(int32_t order)
     }
     m_displayOrder = order;
     GeometryRegistry::resortRegistries();
-    TextRegistry::resortRegistries();
 }
 
 } // namespace Amethyst

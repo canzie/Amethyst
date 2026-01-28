@@ -7,39 +7,79 @@
 
 namespace Amethyst {
 
-constexpr float TEXT_AA_PADDING = 1.0f;
-
-std::vector<CharacterInstance> TextProcessor::layoutText(const std::string &text, const TextLayoutParams &params) const
+glm::vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing) const
 {
-    std::vector<CharacterInstance> result;
+    if (!m_glyphAtlas || text.empty()) {
+        return {0.0f, 0.0f};
+    }
 
-    if (!m_fontData || text.empty()) {
+    FontMetrics metrics = m_glyphAtlas->getMetrics(pixelSize);
+    float width = 0.0f;
+
+    for (size_t i = 0; i < text.size(); i++) {
+        uint32_t codepoint = static_cast<uint32_t>(text[i]);
+        const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(codepoint, pixelSize);
+
+        if (!glyphInfo) {
+            continue;
+        }
+
+        width += glyphInfo->advance;
+        if (i < text.size() - 1) {
+            width += letterSpacing;
+        }
+    }
+
+    return {width, metrics.lineHeight};
+}
+
+float TextProcessor::getCharAdvanceAtlas(uint32_t codepoint, uint32_t pixelSize, float letterSpacing) const
+{
+    if (!m_glyphAtlas) {
+        return 0.0f;
+    }
+
+    const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(codepoint, pixelSize);
+    if (!glyphInfo) {
+        return 0.0f;
+    }
+
+    return glyphInfo->advance + letterSpacing;
+}
+
+std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text, const TextLayoutParams &params) const
+{
+    std::vector<InstanceData> result;
+
+    if (!m_glyphAtlas || text.empty()) {
         return result;
     }
 
     result.reserve(text.size());
 
-    float scale = params.fontSize;
-    float padding = params.strokeThickness + TEXT_AA_PADDING;
-    uint32_t packedColor = packColor(params.color);
-    uint32_t packedStrokeColor = packColor(params.strokeColor);
+    uint32_t pixelSize = static_cast<uint32_t>(params.fontSize);
+    FontMetrics metrics = m_glyphAtlas->getMetrics(pixelSize);
 
-    float maxAscent = 0.0f;
-    for (char c : text) {
-        uint32_t idx = m_fontData->getGlyphIndex(static_cast<uint32_t>(c));
-        const TTF::Glyph *g = m_fontData->getGlyph(idx);
-        if (g) maxAscent = std::max(maxAscent, g->bboxMax.y);
+    float atlasWidth = static_cast<float>(m_glyphAtlas->getWidth());
+    float atlasHeight = static_cast<float>(m_glyphAtlas->getHeight());
+    float lineHeightPx = metrics.lineHeight * params.lineHeight;
+
+    for (size_t i = 0; i < text.size(); i++) {
+        m_glyphAtlas->getGlyph(static_cast<uint32_t>(text[i]), pixelSize);
     }
 
-    glm::vec2 textSize = measureText(text, params.letterSpacing) * scale;
-    float lineHeightPx = textSize.y * params.lineHeight;
+    struct GlyphInstance {
+        uint32_t codepoint;
+        float localX;
+    };
 
-    std::vector<std::vector<CharacterInstance>> lines;
+    std::vector<std::vector<GlyphInstance>> lines;
     std::vector<float> lineWidths;
-    std::vector<CharacterInstance> currentLine;
+    std::vector<GlyphInstance> currentLine;
     float currentLineWidth = 0.0f;
+
     size_t wordStartIdx = 0;
-    size_t wordStartCharIdx = 0;
+    size_t wordStartGlyphIdx = 0;
     float wordStartWidth = 0.0f;
 
     auto flushLine = [&]() {
@@ -49,24 +89,24 @@ std::vector<CharacterInstance> TextProcessor::layoutText(const std::string &text
             currentLine.clear();
             currentLineWidth = 0.0f;
         }
-        wordStartCharIdx = 0;
+        wordStartGlyphIdx = 0;
         wordStartWidth = 0.0f;
     };
 
     for (size_t i = 0; i < text.size(); i++) {
         char c = text[i];
         uint32_t codepoint = static_cast<uint32_t>(c);
-        uint32_t glyphIndex = m_fontData->getGlyphIndex(codepoint);
+        const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(codepoint, pixelSize);
 
-        const TTF::Glyph *glyph = m_fontData->getGlyph(glyphIndex);
-        if (!glyph) glyph = m_fontData->getGlyph(0);
-        if (!glyph) continue;
+        if (!glyphInfo) {
+            continue;
+        }
 
-        float advance = glyph->advanceWidth * scale + params.letterSpacing;
+        float advance = glyphInfo->advance + params.letterSpacing;
 
         if (c == ' ') {
             wordStartIdx = i + 1;
-            wordStartCharIdx = currentLine.size();
+            wordStartGlyphIdx = currentLine.size();
             wordStartWidth = currentLineWidth + advance;
         }
 
@@ -74,9 +114,9 @@ std::vector<CharacterInstance> TextProcessor::layoutText(const std::string &text
             if (currentLineWidth + advance > params.bounds.x && !currentLine.empty()) {
                 if (params.truncate == TextTruncate::SPLIT_WORD || c == ' ') {
                     flushLine();
-                } else if (wordStartCharIdx > 0 && wordStartCharIdx < currentLine.size()) {
+                } else if (wordStartGlyphIdx > 0 && wordStartGlyphIdx < currentLine.size()) {
                     float removeWidth = currentLineWidth - wordStartWidth;
-                    currentLine.erase(currentLine.begin() + wordStartCharIdx, currentLine.end());
+                    currentLine.erase(currentLine.begin() + wordStartGlyphIdx, currentLine.end());
                     currentLineWidth -= removeWidth;
                     flushLine();
                     i = wordStartIdx - 1;
@@ -93,25 +133,13 @@ std::vector<CharacterInstance> TextProcessor::layoutText(const std::string &text
             }
         }
 
-        if (TTF_IS_EMPTY(glyph->flags)) {
-            currentLineWidth += advance;
-            continue;
+        if (glyphInfo->width > 0 && glyphInfo->height > 0) {
+            GlyphInstance gi;
+            gi.codepoint = codepoint;
+            gi.localX = currentLineWidth;
+            currentLine.push_back(gi);
         }
 
-        glm::vec2 glyphSize = (glyph->bboxMax - glyph->bboxMin) * scale;
-        float xOffset = glyph->leftSideBearing * scale;
-        float yOffset = (maxAscent - glyph->bboxMax.y) * scale;
-        glm::vec2 paddedSize = glyphSize + glm::vec2(padding * 2.0f);
-
-        CharacterInstance ch;
-        ch.position = {currentLineWidth + xOffset - padding, yOffset - padding};
-        ch.size = paddedSize;
-        ch.glyphIndex = glyphIndex;
-        ch.color = packedColor;
-        ch.strokeColor = packedStrokeColor;
-        ch.strokeThickness = params.strokeThickness;
-
-        currentLine.push_back(ch);
         currentLineWidth += advance;
     }
     flushLine();
@@ -135,69 +163,43 @@ std::vector<CharacterInstance> TextProcessor::layoutText(const std::string &text
             offsetX += params.bounds.x - lineWidth;
         }
 
-        float offsetY = startY + lineIdx * lineHeightPx;
+        float baseline = startY + lineIdx * lineHeightPx + metrics.ascender;
 
-        for (auto &ch : lines[lineIdx]) {
-            ch.position.x += offsetX;
-            ch.position.y += offsetY;
-            result.push_back(ch);
+        for (const auto &gi : lines[lineIdx]) {
+            const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(gi.codepoint, pixelSize);
+
+            float posX = offsetX + gi.localX + glyphInfo->bearingX;
+            float posY = baseline - glyphInfo->bearingY;
+
+            float uvMinX = glyphInfo->x / atlasWidth;
+            float uvMinY = glyphInfo->y / atlasHeight;
+            float uvMaxX = (glyphInfo->x + glyphInfo->width) / atlasWidth;
+            float uvMaxY = (glyphInfo->y + glyphInfo->height) / atlasHeight;
+
+            float centerX = posX + glyphInfo->width * 0.5f;
+            float centerY = posY + glyphInfo->height * 0.5f;
+
+            InstanceData inst;
+            inst.transform = glm::mat4(1.0f);
+            inst.transform[0] = glm::vec4(glyphInfo->width, 0.0f, 0.0f, 0.0f);
+            inst.transform[1] = glm::vec4(0.0f, glyphInfo->height, 0.0f, 0.0f);
+            inst.transform[2] = glm::vec4(uvMinX, uvMinY, uvMaxX, uvMaxY);
+            inst.transform[3] = glm::vec4(centerX, centerY, 0.0f, 1.0f);
+
+            inst.fillColor = params.color;
+            inst.borderColor = glm::vec4(0.0f);
+            inst.borderThickness = 0.0f;
+            inst.cornerRadius = 0.0f;
+            inst.primitiveType = PRIMITIVE_TEXT;
+            inst.borderMode = 0;
+            inst.textureId = m_glyphAtlas->getTextureId().id;
+            inst.zIndex = 0;
+
+            result.push_back(inst);
         }
     }
 
     return result;
-}
-
-glm::vec2 TextProcessor::measureText(const std::string &text, float letterSpacing) const
-{
-    if (!m_fontData || text.empty()) {
-        return {0.0f, 0.0f};
-    }
-
-    float width = 0.0f;
-    float maxHeight = 0.0f;
-
-    for (size_t i = 0; i < text.size(); i++) {
-        uint32_t codepoint = static_cast<uint32_t>(text[i]);
-        uint32_t glyphIndex = m_fontData->getGlyphIndex(codepoint);
-
-        const TTF::Glyph *glyph = m_fontData->getGlyph(glyphIndex);
-        if (!glyph) {
-            glyph = m_fontData->getGlyph(0);
-        }
-        if (!glyph) {
-            continue;
-        }
-
-        width += glyph->advanceWidth;
-        if (i < text.size() - 1) {
-            width += letterSpacing;
-        }
-
-        float glyphHeight = glyph->bboxMax.y - glyph->bboxMin.y;
-        maxHeight = std::max(maxHeight, glyphHeight);
-    }
-
-    return {width, maxHeight};
-}
-
-float TextProcessor::getCharAdvance(char c, float fontSize, float letterSpacing) const
-{
-    if (!m_fontData) {
-        return 0.0f;
-    }
-
-    uint32_t codepoint = static_cast<uint32_t>(c);
-    uint32_t glyphIndex = m_fontData->getGlyphIndex(codepoint);
-
-    const TTF::Glyph *glyph = m_fontData->getGlyph(glyphIndex);
-    if (!glyph) {
-        glyph = m_fontData->getGlyph(0);
-    }
-    if (!glyph) {
-        return 0.0f;
-    }
-
-    return glyph->advanceWidth * fontSize + letterSpacing;
 }
 
 } // namespace Amethyst

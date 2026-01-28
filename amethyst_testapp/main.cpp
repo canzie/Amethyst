@@ -8,7 +8,6 @@
 #include "components/text_button.h"
 #include "components/text_input.h"
 #include "components/tree_view.h"
-#include "parsers/ttf/ttf_parser.h"
 #include "vk_context.h"
 
 #include <cstdint>
@@ -18,36 +17,26 @@ int main()
     Amethyst::Log::Init();
     AM_LOG_INFO("Amethyst Test App");
 
-    // Test TTF parsing
-    Amethyst::TTF::Parser ttfParser;
-    auto fontData = ttfParser.parse("/home/Thomas/dev/Amethyst/libamethyst/assets/fonts/OpenSans-Regular.ttf");
-    if (fontData) {
-        AM_LOG_INFO("TTF parsed: {} glyphs, {} points, {} contours", fontData->glyphs.size(), fontData->points.size(),
-                    fontData->contours.size());
-
-        // Test looking up 'A' (codepoint 65)
-        uint32_t glyphIdx = fontData->getGlyphIndex('A');
-        const auto *glyph = fontData->getGlyph(glyphIdx);
-        if (glyph) {
-            AM_LOG_INFO("Glyph 'A': {} contours, advance={:.3f}", glyph->contourCount, glyph->advanceWidth);
-        }
-    } else {
-        AM_LOG_ERROR("Failed to parse TTF");
-    }
-
     VkContext ctx;
     if (!contextInit(ctx, 1000, 1000, "Amethyst Test")) {
         AM_LOG_ERROR("Failed to initialize Vulkan context");
         return 1;
     }
 
-    Amethyst::TextProcessor textProcessor;
-    if (fontData) {
-        textProcessor.setFontData(&*fontData);
+    Amethyst::FontLoader fontLoader;
+    if (!fontLoader.loadFont("/home/Thomas/dev/Amethyst/libamethyst/assets/fonts/OpenSans-Regular.ttf")) {
+        AM_LOG_ERROR("Failed to load font");
+        return 1;
     }
+
+    Amethyst::GlyphAtlas glyphAtlas(&fontLoader);
+
+    Amethyst::TextProcessor textProcessor;
+    textProcessor.setGlyphAtlas(&glyphAtlas);
 
     Amethyst::DrawContext drawCtx;
     drawCtx.textProcessor = &textProcessor;
+    drawCtx.glyphAtlas = &glyphAtlas;
 
     Amethyst::VulkanInitInfo initInfo{};
     initInfo.device = ctx.device;
@@ -67,9 +56,8 @@ int main()
     Amethyst::VkBackend backend;
     backend.init(initInfo, glfwInfo);
 
-    if (fontData) {
-        backend.uploadFontData(*fontData);
-    }
+    backend.createAtlasTexture(glyphAtlas.getWidth(), glyphAtlas.getHeight());
+    glyphAtlas.setTextureId(backend.getAtlasTextureId());
 
     glm::vec2 screenSize = {static_cast<float>(ctx.swapchainExtent.width), static_cast<float>(ctx.swapchainExtent.height)};
 
@@ -149,6 +137,7 @@ int main()
     textLabel.strokeThickness = 0.0f;
     textLabel.strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
     textLabel.position = Amethyst::UDim2::fromOffset(10, 20);
+    textLabel.backgroundTransparency = 1.0f;
     textLabel.size = Amethyst::UDim2(0.98f, 0.0f, 0.0f, 60.0f);
     textLabel.backgroundColor = glm::vec3(0.0f);
     textLabel.textXAlignment = Amethyst::TextXAlignment::CENTER;
@@ -526,8 +515,14 @@ int main()
             continue;
         }
 
-        window.draw(drawCtx);
         VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];
+
+        if (glyphAtlas.isDirty()) {
+            backend.uploadAtlasData(cmd, glyphAtlas.getPixels(), glyphAtlas.getWidth(), glyphAtlas.getHeight());
+            glyphAtlas.clearDirty();
+        }
+
+        window.draw(drawCtx);
         backend.record(cmd);
 
         contextEndFrame(ctx, imageIndex);

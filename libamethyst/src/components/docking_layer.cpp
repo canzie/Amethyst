@@ -40,8 +40,8 @@ void DockingLayer::draw(DrawContext &ctx)
 
     DrawContext layerCtx;
     layerCtx.geometry = geometryRegistry();
-    layerCtx.text = textRegistry();
     layerCtx.textProcessor = ctx.textProcessor;
+    layerCtx.glyphAtlas = ctx.glyphAtlas;
 
     for (auto &tabBar : m_tabBars) {
         tabBar->draw(layerCtx);

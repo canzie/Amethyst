@@ -21,6 +21,7 @@ const uint PRIMITIVE_RECT = 0;
 const uint PRIMITIVE_CIRCLE = 1;
 const uint PRIMITIVE_TRIANGLE = 2;
 const uint PRIMITIVE_LINE = 3;
+const uint PRIMITIVE_TEXT = 4;
 
 const uint BORDER_OUTLINE = 0;
 const uint BORDER_MIDDLE = 1;
@@ -72,6 +73,14 @@ float sdfLine(vec2 p, vec2 halfSize, float thickness)
 
 void main()
 {
+    if (fragPrimitiveType == PRIMITIVE_TEXT) {
+        float texAlpha = texture(gTextures[fragTextureId], fragUV).r;
+        float alpha = texAlpha * fragFillColor.a;
+        if (alpha < 0.001) discard;
+        outColor = vec4(fragFillColor.rgb, alpha);
+        return;
+    }
+
     vec2 p = (fragUV - 0.5) * fragSize;
     vec2 halfSize = fragSize * 0.5;
 

@@ -97,9 +97,7 @@ static GLFWcursor *createCustomVerticalResizeCursor()
     return glfwCreateCursor(&image, width / 2, height / 2);
 }
 
-constexpr size_t INITIAL_INSTANCE_CAPACITY = 256 * 32;  // 8192 instances, ~32 layers @ 256 each
-constexpr size_t INITIAL_CHARACTER_CAPACITY = 1024 * 32; // 32768 chars, ~32 layers @ 1024 each
-constexpr size_t INITIAL_FONT_DATA_CAPACITY = 512 * 1024; // 512KB for font data
+constexpr size_t INITIAL_INSTANCE_CAPACITY = 256 * 32; // 8192 instances, ~32 layers @ 256 each
 constexpr size_t INDEX_COUNT_RECT = 6;
 
 struct PushConstants {
@@ -136,8 +134,6 @@ void VkBackend::init(const VulkanInitInfo &config, const GLFWInitInfo &info)
     allocateInstanceBuffers();
     createPipeline();
     allocateDescriptorSet();
-    createTextPipeline();
-    allocateTextDescriptorSet();
 
     InputInterface::onCursorShapeChanged = [](CursorShape shape) { glfwSetCursor(g_glfwData.window, CURSOR_SHAPE_MAP[shape]); };
     InputInterface::onSetClipboardText = [](const std::string &text) { glfwSetClipboardString(g_glfwData.window, text.c_str()); };
@@ -146,9 +142,7 @@ void VkBackend::init(const VulkanInitInfo &config, const GLFWInitInfo &info)
         return text ? std::string(text) : "";
     };
 
-    // Register callbacks to free allocations when registries are destroyed
     GeometryRegistry::setDestroyCb([this](GeometryRegistry *reg) { freeGeometryAllocation(reg); });
-    TextRegistry::setDestroyCb([this](TextRegistry *reg) { freeTextAllocation(reg); });
 }
 
 void VkBackend::shutdown()
@@ -167,12 +161,25 @@ void VkBackend::shutdown()
         vkDestroyBuffer(device, m_staticArena.buffer, nullptr);
         vkFreeMemory(device, m_staticArena.memory, nullptr);
     }
-    if (m_streamArena.mappedMemory) {
-        vkUnmapMemory(device, m_streamArena.memory);
+    // Atlas texture cleanup
+    if (m_atlasSampler != VK_NULL_HANDLE) {
+        vkDestroySampler(device, m_atlasSampler, nullptr);
     }
-    if (m_streamArena.buffer != VK_NULL_HANDLE) {
-        vkDestroyBuffer(device, m_streamArena.buffer, nullptr);
-        vkFreeMemory(device, m_streamArena.memory, nullptr);
+    if (m_atlasView != VK_NULL_HANDLE) {
+        vkDestroyImageView(device, m_atlasView, nullptr);
+    }
+    if (m_atlasImage != VK_NULL_HANDLE) {
+        vkDestroyImage(device, m_atlasImage, nullptr);
+    }
+    if (m_atlasMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(device, m_atlasMemory, nullptr);
+    }
+    if (m_atlasStagingMapped) {
+        vkUnmapMemory(device, m_atlasStagingMemory);
+    }
+    if (m_atlasStagingBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, m_atlasStagingBuffer, nullptr);
+        vkFreeMemory(device, m_atlasStagingMemory, nullptr);
     }
 
     // UI pipeline cleanup
@@ -191,23 +198,6 @@ void VkBackend::shutdown()
     if (m_fragShader != VK_NULL_HANDLE) {
         vkDestroyShaderModule(device, m_fragShader, nullptr);
     }
-
-    // Text pipeline cleanup
-    if (m_textPipeline != VK_NULL_HANDLE) {
-        vkDestroyPipeline(device, m_textPipeline, nullptr);
-    }
-    if (m_textPipelineLayout != VK_NULL_HANDLE) {
-        vkDestroyPipelineLayout(device, m_textPipelineLayout, nullptr);
-    }
-    if (m_textDescriptorSetLayout != VK_NULL_HANDLE) {
-        vkDestroyDescriptorSetLayout(device, m_textDescriptorSetLayout, nullptr);
-    }
-    if (m_textVertShader != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(device, m_textVertShader, nullptr);
-    }
-    if (m_textFragShader != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(device, m_textFragShader, nullptr);
-    }
 }
 
 void VkBackend::beginFrame() {}
@@ -222,25 +212,14 @@ void VkBackend::onResize(glm::vec2 extent)
 void VkBackend::record(VkCommandBuffer cmd)
 {
     const auto &geometryRegistries = GeometryRegistry::getRegistries();
-    const auto &textRegistries = TextRegistry::getRegistries();
 
     for (auto *registry : geometryRegistries) {
         UILayer *layer = registry->getOwningLayer();
         if (!layer || !layer->visible) continue;
 
-        BufferAllocation* alloc = obtainGeometryAllocation(registry);
+        BufferAllocation *alloc = obtainGeometryAllocation(registry);
         if (alloc) {
             updateInstances(*alloc, *registry);
-        }
-    }
-
-    for (auto *registry : textRegistries) {
-        UILayer *layer = registry->getOwningLayer();
-        if (!layer || !layer->visible) continue;
-
-        BufferAllocation* alloc = obtainTextAllocation(registry);
-        if (alloc) {
-            updateTextCharacters(*alloc, *registry);
         }
     }
 
@@ -280,27 +259,6 @@ void VkBackend::record(VkCommandBuffer cmd)
             }
             uint32_t firstInstance = static_cast<uint32_t>(it->second.offset / sizeof(InstanceData));
             vkCmdDrawIndexed(cmd, INDEX_COUNT_RECT, static_cast<uint32_t>(it->second.size), 0, 0, firstInstance);
-        }
-    }
-
-    pipelineBound = false;
-    if (m_fontDataUploaded) {
-        for (auto *registry : textRegistries) {
-            UILayer *layer = registry->getOwningLayer();
-            if (!layer || !layer->visible) continue;
-
-            auto it = m_textAllocations.find(registry);
-            if (it != m_textAllocations.end() && it->second.size > 0) {
-                if (!pipelineBound) {
-                    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_textPipeline);
-                    vkCmdPushConstants(cmd, m_textPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
-                    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_textPipelineLayout, 0, 1, &m_textDescriptorSet, 0, nullptr);
-                    vkCmdBindIndexBuffer(cmd, m_indexBuffer.arena->buffer, m_indexBuffer.offset, VK_INDEX_TYPE_UINT32);
-                    pipelineBound = true;
-                }
-                uint32_t firstInstance = static_cast<uint32_t>(it->second.offset / sizeof(CharacterInstance));
-                vkCmdDrawIndexed(cmd, INDEX_COUNT_RECT, static_cast<uint32_t>(it->second.size), 0, 0, firstInstance);
-            }
         }
     }
 }
@@ -352,18 +310,11 @@ static void s_createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buf
 
 void VkBackend::allocateBufferArenas()
 {
-    // static: gpu only, for indices
-    // dynamic: host visible, for geometry instances
-    // stream: host visible + coherent, for text (no flush needed)
-
     m_staticArena = {};
     m_staticArena.capacity = sizeof(uint32_t) * INDEX_COUNT_RECT;
 
     m_dynamicArena = {};
     m_dynamicArena.capacity = sizeof(InstanceData) * INITIAL_INSTANCE_CAPACITY;
-
-    m_streamArena = {};
-    m_streamArena.capacity = sizeof(CharacterInstance) * INITIAL_CHARACTER_CAPACITY + INITIAL_FONT_DATA_CAPACITY;
 
     VkBufferUsageFlags staticUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     VkMemoryPropertyFlags staticProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -373,12 +324,7 @@ void VkBackend::allocateBufferArenas()
     VkMemoryPropertyFlags dynamicProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
     s_createBuffer(m_info.device, m_info.physicalDevice, m_dynamicArena, dynamicUsage, dynamicProperties);
 
-    VkBufferUsageFlags streamUsage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    VkMemoryPropertyFlags streamProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    s_createBuffer(m_info.device, m_info.physicalDevice, m_streamArena, streamUsage, streamProperties);
-
     vkMapMemory(m_info.device, m_dynamicArena.memory, 0, VK_WHOLE_SIZE, 0, &m_dynamicArena.mappedMemory);
-    vkMapMemory(m_info.device, m_streamArena.memory, 0, VK_WHOLE_SIZE, 0, &m_streamArena.mappedMemory);
 }
 
 void VkBackend::allocateIndexBuffer()
@@ -400,117 +346,52 @@ void VkBackend::allocateIndexBuffer()
     uploadToGpu(m_indexBuffer, quadIndices, sizeof(quadIndices), 0);
 }
 
-void VkBackend::allocateInstanceBuffers()
-{
-    m_fontDataBuffer = {};
-    m_fontDataBuffer.arena = &m_streamArena;
-    m_fontDataBuffer.capacity = INITIAL_FONT_DATA_CAPACITY;
-    m_fontDataBuffer.offset = m_streamArena.size;
-    m_streamArena.size += INITIAL_FONT_DATA_CAPACITY;
-}
+void VkBackend::allocateInstanceBuffers() {}
 
 void VkBackend::updateInstances(BufferAllocation &alloc, GeometryRegistry &registry)
 {
-    auto dirtyIndices = registry.consumeDirtyIndices();
     const auto &allocations = registry.getAllocations();
-
     size_t requiredSize = allocations.size() * sizeof(InstanceData);
-    if (requiredSize > alloc.capacity) {
-        AM_LOG_WARN("Geometry allocation capacity exceeded, need to reallocate");
-        // TODO: implement reallocation logic
-        return;
-    }
 
-    if (!dirtyIndices.empty()) {
+    if (requiredSize > alloc.capacity) {
+        freeToArena(m_dynamicArenaFreeList, alloc);
+        AM_LOG_TRACE("Buffer needs to be resized");
+
+        size_t newCapacity = requiredSize * 2;
+        BufferAllocation newAlloc = allocateFromArena(m_dynamicArena, m_dynamicArenaFreeList, newCapacity);
+        if (newAlloc.arena == nullptr) {
+            AM_LOG_ERROR("Failed to reallocate geometry buffer");
+            return;
+        }
+        alloc = newAlloc;
+
         auto *basePtr = static_cast<uint8_t *>(alloc.arena->mappedMemory);
         auto *instances = reinterpret_cast<InstanceData *>(basePtr + alloc.offset);
-
-        for (uint32_t idx : dirtyIndices) {
-            instances[idx] = allocations[idx];
+        for (size_t i = 0; i < allocations.size(); ++i) {
+            instances[i] = allocations[i];
         }
 
-        VkMappedMemoryRange memoryRange{};
-        memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-        memoryRange.memory = alloc.arena->memory;
-        memoryRange.offset = alloc.offset;
-        memoryRange.size = VK_WHOLE_SIZE;
-        vkFlushMappedMemoryRanges(m_info.device, 1, &memoryRange);
+        registry.consumeDirtyIndices();
+    } else {
+        auto dirtyIndices = registry.consumeDirtyIndices();
+        if (!dirtyIndices.empty()) {
+            auto *basePtr = static_cast<uint8_t *>(alloc.arena->mappedMemory);
+            auto *instances = reinterpret_cast<InstanceData *>(basePtr + alloc.offset);
+
+            for (uint32_t idx : dirtyIndices) {
+                instances[idx] = allocations[idx];
+            }
+        }
     }
+
+    VkMappedMemoryRange memoryRange{};
+    memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+    memoryRange.memory = alloc.arena->memory;
+    memoryRange.offset = alloc.offset;
+    memoryRange.size = VK_WHOLE_SIZE;
+    vkFlushMappedMemoryRanges(m_info.device, 1, &memoryRange);
 
     alloc.size = allocations.size();
-}
-
-void VkBackend::updateTextCharacters(BufferAllocation &alloc, TextRegistry &registry)
-{
-    if (!registry.consumeDirty()) {
-        return;
-    }
-
-    const auto &characters = registry.getCharacters();
-    size_t dataSize = characters.size() * sizeof(CharacterInstance);
-
-    if (dataSize > alloc.capacity) {
-        AM_LOG_WARN("Text allocation capacity exceeded, need to reallocate");
-        // TODO: implement reallocation logic
-        return;
-    }
-
-    if (!characters.empty()) {
-        auto *basePtr = static_cast<uint8_t *>(alloc.arena->mappedMemory);
-        auto *dst = basePtr + alloc.offset;
-        std::memcpy(dst, characters.data(), dataSize);
-    }
-
-    alloc.size = characters.size();
-}
-
-void VkBackend::uploadFontData(const TTF::FontData &fontData)
-{
-    // Pack font data: header (offsets) + points + contours + glyphs
-    struct FontDataHeader {
-        uint32_t pointsOffset;
-        uint32_t contoursOffset;
-        uint32_t glyphsOffset;
-        uint32_t _pad;
-    };
-
-    size_t headerSize = sizeof(FontDataHeader);
-    size_t pointsSize = fontData.points.size() * sizeof(TTF::Point);
-    size_t contoursSize = fontData.contours.size() * sizeof(TTF::Contour);
-    size_t glyphsSize = fontData.glyphs.size() * sizeof(TTF::Glyph);
-    size_t totalSize = headerSize + pointsSize + contoursSize + glyphsSize;
-
-    if (totalSize > m_fontDataBuffer.capacity) {
-        AM_LOG_ERROR("Font data too large: {} bytes, capacity: {}", totalSize, m_fontDataBuffer.capacity);
-        return;
-    }
-
-    auto *basePtr = static_cast<uint8_t *>(m_fontDataBuffer.arena->mappedMemory);
-    auto *dst = basePtr + m_fontDataBuffer.offset;
-
-    // Write header (offsets are in uint32_t units after header)
-    FontDataHeader header;
-    header.pointsOffset = 0;
-    header.contoursOffset = static_cast<uint32_t>(fontData.points.size() * 3);                         // Point is 3 uint32_t
-    header.glyphsOffset = header.contoursOffset + static_cast<uint32_t>(fontData.contours.size() * 2); // Contour is 2 uint32_t
-    header._pad = 0;
-
-    std::memcpy(dst, &header, headerSize);
-    dst += headerSize;
-
-    std::memcpy(dst, fontData.points.data(), pointsSize);
-    dst += pointsSize;
-
-    std::memcpy(dst, fontData.contours.data(), contoursSize);
-    dst += contoursSize;
-
-    std::memcpy(dst, fontData.glyphs.data(), glyphsSize);
-
-    m_fontDataBuffer.size = totalSize;
-    m_fontDataUploaded = true;
-
-    AM_LOG_INFO("Uploaded font data: {} points, {} contours, {} glyphs", fontData.points.size(), fontData.contours.size(),
-                fontData.glyphs.size());
 }
 
 void VkBackend::uploadToGpu(BufferAllocation &alloc, const void *data, size_t size, size_t offset)
@@ -753,250 +634,6 @@ void VkBackend::allocateDescriptorSet()
     vkUpdateDescriptorSets(m_info.device, 1, &descriptorWrite, 0, nullptr);
 }
 
-void VkBackend::createTextPipeline()
-{
-    m_textVertShader = loadShaderModule("/home/Thomas/dev/Amethyst/backends/shaders/spirv/text.vs.spv");
-    m_textFragShader = loadShaderModule("/home/Thomas/dev/Amethyst/backends/shaders/spirv/text.fs.spv");
-
-    // Two bindings: character buffer (binding 0) and font data buffer (binding 1)
-    VkDescriptorSetLayoutBinding bindings[] = {
-        {
-            .binding = 0,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-            .pImmutableSamplers = nullptr,
-        },
-        {
-            .binding = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .descriptorCount = 1,
-            .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .pImmutableSamplers = nullptr,
-        },
-    };
-
-    VkDescriptorSetLayoutCreateInfo layoutInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .bindingCount = std::size(bindings),
-        .pBindings = bindings,
-    };
-    vkCreateDescriptorSetLayout(m_info.device, &layoutInfo, nullptr, &m_textDescriptorSetLayout);
-
-    VkPushConstantRange pushConstant = {
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        .offset = 0,
-        .size = sizeof(PushConstants),
-    };
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .setLayoutCount = 1,
-        .pSetLayouts = &m_textDescriptorSetLayout,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &pushConstant,
-    };
-    vkCreatePipelineLayout(m_info.device, &pipelineLayoutInfo, nullptr, &m_textPipelineLayout);
-
-    VkPipelineShaderStageCreateInfo shaderStages[] = {
-        {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .stage = VK_SHADER_STAGE_VERTEX_BIT,
-            .module = m_textVertShader,
-            .pName = "main",
-            .pSpecializationInfo = nullptr,
-        },
-        {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-            .module = m_textFragShader,
-            .pName = "main",
-            .pSpecializationInfo = nullptr,
-        },
-    };
-
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .vertexBindingDescriptionCount = 0,
-        .pVertexBindingDescriptions = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions = nullptr,
-    };
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-        .primitiveRestartEnable = VK_FALSE,
-    };
-
-    VkPipelineViewportStateCreateInfo viewportState = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .viewportCount = 1,
-        .pViewports = nullptr,
-        .scissorCount = 1,
-        .pScissors = nullptr,
-    };
-
-    VkPipelineRasterizationStateCreateInfo rasterizer = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .depthClampEnable = VK_FALSE,
-        .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = VK_CULL_MODE_NONE,
-        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
-        .depthBiasEnable = VK_FALSE,
-        .depthBiasConstantFactor = 0.0f,
-        .depthBiasClamp = 0.0f,
-        .depthBiasSlopeFactor = 0.0f,
-        .lineWidth = 1.0f,
-    };
-
-    VkPipelineMultisampleStateCreateInfo multisampling = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-        .sampleShadingEnable = VK_FALSE,
-        .minSampleShading = 0.0f,
-        .pSampleMask = nullptr,
-        .alphaToCoverageEnable = VK_FALSE,
-        .alphaToOneEnable = VK_FALSE,
-    };
-
-    VkPipelineColorBlendAttachmentState blendAttachment = {
-        .blendEnable = VK_TRUE,
-        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-        .colorBlendOp = VK_BLEND_OP_ADD,
-        .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-        .alphaBlendOp = VK_BLEND_OP_ADD,
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-    };
-
-    VkPipelineColorBlendStateCreateInfo colorBlending = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .logicOpEnable = VK_FALSE,
-        .logicOp = VK_LOGIC_OP_COPY,
-        .attachmentCount = 1,
-        .pAttachments = &blendAttachment,
-        .blendConstants = {0.0f, 0.0f, 0.0f, 0.0f},
-    };
-
-    VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-    VkPipelineDynamicStateCreateInfo dynamicState = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
-        .dynamicStateCount = std::size(dynamicStates),
-        .pDynamicStates = dynamicStates,
-    };
-
-    VkPipelineRenderingCreateInfo renderingInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-        .pNext = nullptr,
-        .viewMask = 0,
-        .colorAttachmentCount = 1,
-        .pColorAttachmentFormats = &m_info.colorFormat,
-        .depthAttachmentFormat = VK_FORMAT_UNDEFINED,
-        .stencilAttachmentFormat = VK_FORMAT_UNDEFINED,
-    };
-
-    VkGraphicsPipelineCreateInfo pipelineInfo = {
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext = &renderingInfo,
-        .flags = 0,
-        .stageCount = std::size(shaderStages),
-        .pStages = shaderStages,
-        .pVertexInputState = &vertexInputInfo,
-        .pInputAssemblyState = &inputAssembly,
-        .pTessellationState = nullptr,
-        .pViewportState = &viewportState,
-        .pRasterizationState = &rasterizer,
-        .pMultisampleState = &multisampling,
-        .pDepthStencilState = nullptr,
-        .pColorBlendState = &colorBlending,
-        .pDynamicState = &dynamicState,
-        .layout = m_textPipelineLayout,
-        .renderPass = VK_NULL_HANDLE,
-        .subpass = 0,
-        .basePipelineHandle = VK_NULL_HANDLE,
-        .basePipelineIndex = -1,
-    };
-
-    vkCreateGraphicsPipelines(m_info.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_textPipeline);
-}
-
-void VkBackend::allocateTextDescriptorSet()
-{
-    VkDescriptorSetAllocateInfo allocInfo = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext = nullptr,
-        .descriptorPool = m_info.pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &m_textDescriptorSetLayout,
-    };
-    vkAllocateDescriptorSets(m_info.device, &allocInfo, &m_textDescriptorSet);
-
-    VkDescriptorBufferInfo characterBufferInfo = {
-        .buffer = m_streamArena.buffer,
-        .offset = 0,
-        .range = VK_WHOLE_SIZE,
-    };
-
-    VkDescriptorBufferInfo fontDataBufferInfo = {
-        .buffer = m_fontDataBuffer.arena->buffer,
-        .offset = m_fontDataBuffer.offset,
-        .range = m_fontDataBuffer.capacity,
-    };
-
-    VkWriteDescriptorSet descriptorWrites[] = {
-        {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = m_textDescriptorSet,
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .pImageInfo = nullptr,
-            .pBufferInfo = &characterBufferInfo,
-            .pTexelBufferView = nullptr,
-        },
-        {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,
-            .dstSet = m_textDescriptorSet,
-            .dstBinding = 1,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            .pImageInfo = nullptr,
-            .pBufferInfo = &fontDataBufferInfo,
-            .pTexelBufferView = nullptr,
-        },
-    };
-    vkUpdateDescriptorSets(m_info.device, std::size(descriptorWrites), descriptorWrites, 0, nullptr);
-}
-
 BufferAllocation VkBackend::allocateFromArena(BufferArena &arena, std::vector<FreeBlock> &freeList, size_t size)
 {
     for (auto it = freeList.begin(); it != freeList.end(); ++it) {
@@ -1075,38 +712,12 @@ BufferAllocation *VkBackend::obtainGeometryAllocation(GeometryRegistry *registry
     return &inserted->second;
 }
 
-BufferAllocation *VkBackend::obtainTextAllocation(TextRegistry *registry)
-{
-    auto it = m_textAllocations.find(registry);
-    if (it != m_textAllocations.end()) {
-        return &it->second;
-    }
-
-    size_t initialSize = sizeof(CharacterInstance) * 1024;
-    BufferAllocation alloc = allocateFromArena(m_streamArena, m_streamArenaFreeList, initialSize);
-    if (alloc.arena == nullptr) {
-        return nullptr;
-    }
-
-    auto [inserted, _] = m_textAllocations.emplace(registry, alloc);
-    return &inserted->second;
-}
-
 void VkBackend::freeGeometryAllocation(GeometryRegistry *registry)
 {
     auto it = m_geometryAllocations.find(registry);
     if (it != m_geometryAllocations.end()) {
         freeToArena(m_dynamicArenaFreeList, it->second);
         m_geometryAllocations.erase(it);
-    }
-}
-
-void VkBackend::freeTextAllocation(TextRegistry *registry)
-{
-    auto it = m_textAllocations.find(registry);
-    if (it != m_textAllocations.end()) {
-        freeToArena(m_streamArenaFreeList, it->second);
-        m_textAllocations.erase(it);
     }
 }
 
@@ -1214,6 +825,166 @@ void VkBackend::unregisterTexture(AmTextureId id)
         return;
     }
     m_textureFreeList.push_back(id.id);
+}
+
+void VkBackend::createAtlasTexture(uint32_t width, uint32_t height)
+{
+    VkDevice device = m_info.device;
+
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.format = VK_FORMAT_R8_UNORM;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    if (vkCreateImage(device, &imageInfo, nullptr, &m_atlasImage) != VK_SUCCESS) {
+        AM_LOG_ERROR("Failed to create atlas image");
+        return;
+    }
+
+    VkMemoryRequirements memReqs;
+    vkGetImageMemoryRequirements(device, m_atlasImage, &memReqs);
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memReqs.size;
+    allocInfo.memoryTypeIndex = findMemoryType(m_info.physicalDevice, memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    if (vkAllocateMemory(device, &allocInfo, nullptr, &m_atlasMemory) != VK_SUCCESS) {
+        AM_LOG_ERROR("Failed to allocate atlas memory");
+        return;
+    }
+
+    vkBindImageMemory(device, m_atlasImage, m_atlasMemory, 0);
+
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = m_atlasImage;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = VK_FORMAT_R8_UNORM;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    if (vkCreateImageView(device, &viewInfo, nullptr, &m_atlasView) != VK_SUCCESS) {
+        AM_LOG_ERROR("Failed to create atlas image view");
+        return;
+    }
+
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.anisotropyEnable = VK_FALSE;
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+    if (vkCreateSampler(device, &samplerInfo, nullptr, &m_atlasSampler) != VK_SUCCESS) {
+        AM_LOG_ERROR("Failed to create atlas sampler");
+        return;
+    }
+
+    size_t stagingSize = width * height;
+    VkBufferCreateInfo stagingBufferInfo{};
+    stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    stagingBufferInfo.size = stagingSize;
+    stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    stagingBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateBuffer(device, &stagingBufferInfo, nullptr, &m_atlasStagingBuffer) != VK_SUCCESS) {
+        AM_LOG_ERROR("Failed to create atlas staging buffer");
+        return;
+    }
+
+    VkMemoryRequirements stagingMemReqs;
+    vkGetBufferMemoryRequirements(device, m_atlasStagingBuffer, &stagingMemReqs);
+
+    VkMemoryAllocateInfo stagingAllocInfo{};
+    stagingAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    stagingAllocInfo.allocationSize = stagingMemReqs.size;
+    stagingAllocInfo.memoryTypeIndex = findMemoryType(m_info.physicalDevice, stagingMemReqs.memoryTypeBits,
+                                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    if (vkAllocateMemory(device, &stagingAllocInfo, nullptr, &m_atlasStagingMemory) != VK_SUCCESS) {
+        AM_LOG_ERROR("Failed to allocate atlas staging memory");
+        return;
+    }
+
+    vkBindBufferMemory(device, m_atlasStagingBuffer, m_atlasStagingMemory, 0);
+    vkMapMemory(device, m_atlasStagingMemory, 0, stagingSize, 0, &m_atlasStagingMapped);
+
+    m_atlasWidth = width;
+    m_atlasHeight = height;
+    m_atlasTextureId = registerTexture(m_atlasView, m_atlasSampler);
+}
+
+void VkBackend::uploadAtlasData(VkCommandBuffer cmd, const uint8_t *pixels, uint32_t width, uint32_t height)
+{
+    // TODO: This is inefficient - it uploads the entire atlas every time.
+    // A better approach would be to track dirty regions and only upload changed areas.
+    // For now, this works but should be optimized later.
+
+    if (!m_atlasStagingMapped) {
+        return;
+    }
+
+    size_t imageSize = width * height;
+    std::memcpy(m_atlasStagingMapped, pixels, imageSize);
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = m_atlasImage;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.srcAccessMask = 0;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                         &barrier);
+
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = {0, 0, 0};
+    region.imageExtent = {width, height, 1};
+
+    vkCmdCopyBufferToImage(cmd, m_atlasStagingBuffer, m_atlasImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                         &barrier);
 }
 
 } // namespace Amethyst

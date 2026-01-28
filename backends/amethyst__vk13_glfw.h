@@ -3,9 +3,7 @@
 
 #include "components/common.h"
 #include "components/input_interface.h"
-#include "parsers/ttf/ttf_types.h"
 #include "rendering/geometry_registry.h"
-#include "rendering/text_registry.h"
 
 #include <GLFW/glfw3.h>
 #include <array>
@@ -68,28 +66,25 @@ class VkBackend {
     void record(VkCommandBuffer cmd);
     void onResize(glm::vec2 extent);
 
-    void uploadFontData(const TTF::FontData &fontData);
+    void createAtlasTexture(uint32_t width, uint32_t height);
+    void uploadAtlasData(VkCommandBuffer cmd, const uint8_t *pixels, uint32_t width, uint32_t height);
+    AmTextureId getAtlasTextureId() const { return m_atlasTextureId; }
 
     AmTextureId registerTexture(VkImageView imageView, VkSampler sampler);
     void unregisterTexture(AmTextureId id);
 
   private:
     void createPipeline();
-    void createTextPipeline();
     void allocateDescriptorSet();
-    void allocateTextDescriptorSet();
     void allocateBufferArenas();
     void allocateIndexBuffer();
     void allocateInstanceBuffers();
     void updateInstances(BufferAllocation &alloc, GeometryRegistry &registry);
-    void updateTextCharacters(BufferAllocation &alloc, TextRegistry &registry);
     void uploadToGpu(BufferAllocation &alloc, const void *data, size_t size, size_t offset);
     VkShaderModule loadShaderModule(const char *path);
     void setupGLFWCallbacks();
     BufferAllocation* obtainGeometryAllocation(GeometryRegistry* registry);
-    BufferAllocation* obtainTextAllocation(TextRegistry* registry);
     void freeGeometryAllocation(GeometryRegistry* registry);
-    void freeTextAllocation(TextRegistry* registry);
     BufferAllocation allocateFromArena(BufferArena& arena, std::vector<FreeBlock>& freeList, size_t size);
     void freeToArena(std::vector<FreeBlock>& freeList, const BufferAllocation& alloc);
     static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
@@ -111,13 +106,17 @@ class VkBackend {
     VkShaderModule m_vertShader = VK_NULL_HANDLE;
     VkShaderModule m_fragShader = VK_NULL_HANDLE;
 
-    // Text pipeline
-    VkPipeline m_textPipeline = VK_NULL_HANDLE;
-    VkPipelineLayout m_textPipelineLayout = VK_NULL_HANDLE;
-    VkDescriptorSetLayout m_textDescriptorSetLayout = VK_NULL_HANDLE;
-    VkDescriptorSet m_textDescriptorSet = VK_NULL_HANDLE;
-    VkShaderModule m_textVertShader = VK_NULL_HANDLE;
-    VkShaderModule m_textFragShader = VK_NULL_HANDLE;
+    // Glyph atlas texture
+    VkImage m_atlasImage = VK_NULL_HANDLE;
+    VkDeviceMemory m_atlasMemory = VK_NULL_HANDLE;
+    VkImageView m_atlasView = VK_NULL_HANDLE;
+    VkSampler m_atlasSampler = VK_NULL_HANDLE;
+    AmTextureId m_atlasTextureId = AM_INVALID_TEXTURE;
+    VkBuffer m_atlasStagingBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory m_atlasStagingMemory = VK_NULL_HANDLE;
+    void *m_atlasStagingMapped = nullptr;
+    uint32_t m_atlasWidth = 0;
+    uint32_t m_atlasHeight = 0;
 
     // used for indices
     BufferArena m_staticArena;
@@ -127,14 +126,10 @@ class VkBackend {
     BufferArena m_streamArena;
 
     BufferAllocation m_indexBuffer;
-    BufferAllocation m_fontDataBuffer;
-    bool m_fontDataUploaded = false;
 
     std::unordered_map<GeometryRegistry*, BufferAllocation> m_geometryAllocations;
-    std::unordered_map<TextRegistry*, BufferAllocation> m_textAllocations;
 
     std::vector<FreeBlock> m_dynamicArenaFreeList;
-    std::vector<FreeBlock> m_streamArenaFreeList;
 
     std::vector<uint32_t> m_textureFreeList;
     uint32_t m_nextTextureSlot = 0;

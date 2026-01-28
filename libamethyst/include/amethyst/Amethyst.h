@@ -15,8 +15,9 @@
 #include "components/window.h"
 #include "logging/log.h"
 #include "modules/text_processor.h"
+#include "modules/glyph_atlas.h"
+#include "parsers/freetype/font_loader.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
-#include "rendering/text_registry.h"
 
 #endif // AMETHYST__AMETHYST_H

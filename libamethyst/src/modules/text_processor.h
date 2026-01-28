@@ -7,6 +7,7 @@
 #define AMETHYST_TEXT_PROCESSOR_H
 
 #include "components/common.h"
+#include "modules/glyph_atlas.h"
 #include "parsers/ttf/ttf_types.h"
 
 #include <glm/glm.hpp>
@@ -39,35 +40,39 @@ struct TextLayoutParams {
 class TextProcessor {
   public:
     /**
-     * @brief Set the font data to use for layout
+     * @brief Set the glyph atlas to use for layout
      */
-    void setFontData(const TTF::FontData *fontData) { m_fontData = fontData; }
+    void setGlyphAtlas(GlyphAtlas *atlas) { m_glyphAtlas = atlas; }
 
     /**
-     * @brief Layout a single line of text
+     * @brief Layout text using glyph atlas (new implementation)
      * @param text The text to layout
      * @param params Layout parameters
-     * @return Vector of CharacterInstance data for rendering
+     * @return Vector of InstanceData for rendering
      */
-    std::vector<CharacterInstance> layoutText(const std::string &text, const TextLayoutParams &params) const;
+    std::vector<InstanceData> layoutTextAtlas(const std::string &text, const TextLayoutParams &params) const;
 
     /**
-     * @brief Measure text dimensions at fontSize = 1.0
+     * @brief Measure text dimensions using glyph atlas
+     * @param text The text to measure
+     * @param pixelSize Font size in pixels
+     * @param letterSpacing Additional spacing between characters
      * @return Width and height of text
      */
-    glm::vec2 measureText(const std::string &text, float letterSpacing = 0.0f) const;
+    glm::vec2 measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing = 0.0f) const;
 
     /**
-     * @brief Get advance width for a character at given font size
-     * @param c The character
-     * @param fontSize Font size to scale by
+     * @brief Get advance width for a character using glyph atlas
+     * @param codepoint Unicode codepoint
+     * @param pixelSize Font size in pixels
      * @param letterSpacing Additional spacing
      * @return Advance width in pixels
      */
-    float getCharAdvance(char c, float fontSize, float letterSpacing = 0.0f) const;
+    float getCharAdvanceAtlas(uint32_t codepoint, uint32_t pixelSize, float letterSpacing = 0.0f) const;
 
   private:
     const TTF::FontData *m_fontData = nullptr;
+    GlyphAtlas *m_glyphAtlas = nullptr;
 };
 
 } // namespace Amethyst

@@ -44,6 +44,8 @@ const vec2 uvs[4] = vec2[](
     vec2(0.0, 1.0)
 );
 
+const uint PRIMITIVE_TEXT = 4;
+
 void main()
 {
     InstanceData inst = instances[gl_InstanceIndex];
@@ -55,6 +57,12 @@ void main()
     gl_Position = vec4(ndc, 0.0, 1.0);
 
     fragUV = uvs[gl_VertexIndex];
+
+    if (inst.primitiveType == PRIMITIVE_TEXT) {
+        vec4 uvRect = inst.transform[2];
+        fragUV = mix(uvRect.xy, uvRect.zw, uvs[gl_VertexIndex]);
+    }
+
     fragPrimitiveType = inst.primitiveType;
     fragFillColor = inst.fillColor;
     fragBorderColor = inst.borderColor;

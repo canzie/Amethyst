@@ -7,13 +7,14 @@
 
 #include "components/ui_object.h"
 #include "rendering/geometry_registry.h"
-#include "rendering/text_registry.h"
 
 #include <functional>
 #include <optional>
 #include <string>
 
 namespace Amethyst {
+
+struct DrawContext;
 
 class TextInput : public UIObject {
   public:
@@ -36,6 +37,7 @@ class TextInput : public UIObject {
     void onMouseEnter() override;
     void onMouseLeave() override;
 
+  private:
     void processKeyboardInput();
     void insertText(const std::string &text);
     void deleteSelection();
@@ -47,6 +49,11 @@ class TextInput : public UIObject {
     void paste();
     void cut();
     void selectAll();
+
+    void releaseTextAllocations(GeometryRegistry *geometry);
+    void drawText(DrawContext &ctx);
+    void drawSelection(DrawContext &ctx);
+    void drawCursor(DrawContext &ctx);
 
   public:
     std::string placeholderText;
@@ -76,12 +83,13 @@ class TextInput : public UIObject {
     bool m_cursorVisible = true;
     bool m_draggingSelection = false;
 
-    TextAllocation *m_textAlloc = nullptr;
+    std::vector<GeometryAllocation *> m_textAllocations;
     GeometryAllocation *m_selectionAlloc = nullptr;
     GeometryAllocation *m_cursorAlloc = nullptr;
 
     glm::vec2 m_textSize = {0.0f, 0.0f};
     std::vector<float> m_charPositions;
+    bool m_showingPlaceholder = false;
 };
 
 } // namespace Amethyst

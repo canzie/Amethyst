@@ -16,8 +16,8 @@ void PanelLayer::draw(DrawContext &ctx)
 
     DrawContext layerCtx;
     layerCtx.geometry = geometryRegistry();
-    layerCtx.text = textRegistry();
     layerCtx.textProcessor = ctx.textProcessor;
+    layerCtx.glyphAtlas = ctx.glyphAtlas;
 
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {

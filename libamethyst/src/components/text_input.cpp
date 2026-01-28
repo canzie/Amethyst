@@ -17,8 +17,10 @@ namespace Amethyst {
 
 TextInput::~TextInput()
 {
-    if (m_textAlloc && m_textAlloc->isValid()) {
-        m_textAlloc->registry->release(std::move(*m_textAlloc));
+    for (auto *alloc : m_textAllocations) {
+        if (alloc && alloc->isValid()) {
+            alloc->registry->release(std::move(*alloc));
+        }
     }
     if (m_selectionAlloc && m_selectionAlloc->isValid()) {
         m_selectionAlloc->registry->release(std::move(*m_selectionAlloc));
@@ -82,9 +84,7 @@ void TextInput::onMouseButton1Up(uint32_t x, uint32_t y)
     }
 }
 
-void TextInput::onMouseButton1Click()
-{
-}
+void TextInput::onMouseButton1Click() {}
 
 void TextInput::onMouseMoved(uint32_t x, uint32_t y)
 {
@@ -390,6 +390,150 @@ void TextInput::selectAll()
     markDirty();
 }
 
+void TextInput::releaseTextAllocations(GeometryRegistry *)
+{
+    for (auto *alloc : m_textAllocations) {
+        if (alloc && alloc->isValid()) {
+            alloc->registry->release(std::move(*alloc));
+        }
+    }
+    m_textAllocations.clear();
+}
+
+void TextInput::drawText(DrawContext &ctx)
+{
+    bool shouldShowPlaceholder = m_text.empty() && !placeholderText.empty();
+    bool modeChanged = (shouldShowPlaceholder != m_showingPlaceholder);
+    m_showingPlaceholder = shouldShowPlaceholder;
+
+    const std::string &textToRender = m_showingPlaceholder ? placeholderText : m_text;
+    const Color4 &colorToUse = m_showingPlaceholder ? placeholderColor : textColor;
+
+    if (textToRender.empty()) {
+        releaseTextAllocations(ctx.geometry);
+        m_charPositions.clear();
+        return;
+    }
+
+    TextLayoutParams params;
+    params.position = absolutePosition;
+    params.bounds = absoluteSize;
+    params.fontSize = fontSize;
+    params.color = colorToUse;
+    params.xAlign = textXAlignment;
+    params.yAlign = TextYAlignment::TOP;
+    params.wrap = multiline;
+
+    auto glyphs = ctx.textProcessor->layoutTextAtlas(textToRender, params);
+    for (auto &g : glyphs) {
+        g.zIndex = zIndex + 1;
+    }
+
+    if (modeChanged || glyphs.size() != m_textAllocations.size()) {
+        releaseTextAllocations(ctx.geometry);
+        m_textAllocations.reserve(glyphs.size());
+        for (const auto &glyphData : glyphs) {
+            m_textAllocations.push_back(ctx.geometry->submit(glyphData));
+        }
+    } else {
+        for (size_t i = 0; i < glyphs.size(); ++i) {
+            ctx.geometry->update(*m_textAllocations[i], glyphs[i]);
+        }
+    }
+
+    m_charPositions.clear();
+    if (m_showingPlaceholder) {
+        m_charPositions.push_back(0.0f);
+    } else {
+        m_charPositions.reserve(m_text.size() + 1);
+        uint32_t pixelSize = static_cast<uint32_t>(fontSize);
+        float currentX = 0.0f;
+        for (size_t i = 0; i <= m_text.size(); ++i) {
+            m_charPositions.push_back(currentX);
+            if (i < m_text.size()) {
+                currentX += ctx.textProcessor->getCharAdvanceAtlas(static_cast<uint32_t>(m_text[i]), pixelSize);
+            }
+        }
+    }
+}
+
+void TextInput::drawSelection(DrawContext &ctx)
+{
+    if (m_focused && m_selectionStart.has_value() && !m_text.empty() && m_charPositions.size() > 1) {
+        size_t selStart = std::min(m_cursorPosition, *m_selectionStart);
+        size_t selEnd = std::max(m_cursorPosition, *m_selectionStart);
+
+        if (selEnd > selStart && selStart < m_charPositions.size() && selEnd < m_charPositions.size()) {
+            glm::vec2 selPos = {absolutePosition.x + m_charPositions[selStart], absolutePosition.y};
+            glm::vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], fontSize * 1.2f};
+            glm::vec2 centerPos = selPos + selSize * 0.5f;
+
+            InstanceData data{
+                .transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
+                             glm::scale(glm::mat4(1.0f), glm::vec3(selSize, 1.0f)),
+                .fillColor = selectionColor,
+                .borderColor = Color4(0.0f),
+                .borderThickness = 0.0f,
+                .cornerRadius = 0.0f,
+                .primitiveType = PRIMITIVE_RECT,
+                .borderMode = 0,
+                .textureId = UINT32_MAX,
+                .zIndex = zIndex};
+
+            if (m_selectionAlloc == nullptr) {
+                m_selectionAlloc = ctx.geometry->submit(data);
+            } else {
+                ctx.geometry->update(*m_selectionAlloc, data);
+            }
+            return;
+        }
+    }
+
+    if (m_selectionAlloc && m_selectionAlloc->isValid()) {
+        ctx.geometry->release(std::move(*m_selectionAlloc));
+        m_selectionAlloc = nullptr;
+    }
+}
+
+void TextInput::drawCursor(DrawContext &ctx)
+{
+    if (m_focused && m_cursorVisible) {
+        float cursorX = 0.0f;
+        if (!m_charPositions.empty()) {
+            cursorX = (m_cursorPosition < m_charPositions.size()) ? m_charPositions[m_cursorPosition]
+                                                                   : m_charPositions.back();
+        }
+
+        glm::vec2 cursorPos = {absolutePosition.x + cursorX, absolutePosition.y};
+        glm::vec2 cursorSize = {1.0f, fontSize * 1.2f};
+        glm::vec2 centerPos = cursorPos + cursorSize * 0.5f;
+
+        InstanceData data{
+            .transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
+                         glm::scale(glm::mat4(1.0f), glm::vec3(cursorSize, 1.0f)),
+            .fillColor = cursorColor,
+            .borderColor = Color4(0.0f),
+            .borderThickness = 0.0f,
+            .cornerRadius = 0.0f,
+            .primitiveType = PRIMITIVE_RECT,
+            .borderMode = 0,
+            .textureId = UINT32_MAX,
+            .zIndex = zIndex};
+
+        if (m_cursorAlloc == nullptr) {
+            m_cursorAlloc = ctx.geometry->submit(data);
+        } else {
+            ctx.geometry->update(*m_cursorAlloc, data);
+        }
+        return;
+    }
+
+    if (m_cursorAlloc && m_cursorAlloc->isValid()) {
+        ctx.geometry->release(std::move(*m_cursorAlloc));
+        m_cursorAlloc = nullptr;
+    }
+}
+
 void TextInput::draw(DrawContext &ctx)
 {
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
@@ -405,118 +549,9 @@ void TextInput::draw(DrawContext &ctx)
             ctx.geometry->update(*m_geometryAlloc, bgData);
         }
 
-        const std::string &displayText = m_text.empty() ? placeholderText : m_text;
-        const Color4 &displayColor = m_text.empty() ? placeholderColor : textColor;
-
-        if (!displayText.empty()) {
-            TextLayoutParams params;
-            params.position = absolutePosition;
-            params.bounds = absoluteSize;
-            params.fontSize = fontSize;
-            params.color = displayColor;
-            params.xAlign = textXAlignment;
-            params.yAlign = TextYAlignment::TOP;
-            params.wrap = multiline;
-
-            std::vector<CharacterInstance> chars = ctx.textProcessor->layoutText(displayText, params);
-
-            m_charPositions.clear();
-            m_charPositions.reserve(displayText.size() + 1);
-
-            float currentX = 0.0f;
-            for (size_t i = 0; i <= displayText.size(); ++i) {
-                m_charPositions.push_back(currentX);
-
-                if (i < displayText.size()) {
-                    currentX += ctx.textProcessor->getCharAdvance(displayText[i], fontSize);
-                }
-            }
-
-            if (m_textAlloc == nullptr) {
-                m_textAlloc = ctx.text->submit(chars);
-            } else {
-                ctx.text->update(*m_textAlloc, chars);
-            }
-        } else {
-            if (m_textAlloc && m_textAlloc->isValid()) {
-                m_textAlloc->registry->release(std::move(*m_textAlloc));
-                m_textAlloc = nullptr;
-            }
-            m_charPositions.clear();
-        }
-
-        if (m_focused && m_selectionStart.has_value() && !m_text.empty() && m_charPositions.size() > 1) {
-            size_t selStart = std::min(m_cursorPosition, *m_selectionStart);
-            size_t selEnd = std::max(m_cursorPosition, *m_selectionStart);
-
-            if (selEnd > selStart && selStart < m_charPositions.size() && selEnd < m_charPositions.size()) {
-                float startX = m_charPositions[selStart];
-                float endX = m_charPositions[selEnd];
-
-                glm::vec2 selPos = glm::vec2(absolutePosition.x + startX, absolutePosition.y);
-                glm::vec2 selSize = glm::vec2(endX - startX, fontSize * 1.2f);
-
-                glm::vec2 centerPos = selPos + selSize * 0.5f;
-                glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
-                                      glm::scale(glm::mat4(1.0f), glm::vec3(selSize, 1.0f));
-
-                InstanceData selectionData{.transform = transform,
-                                           .fillColor = selectionColor,
-                                           .borderColor = Color4(0.0f, 0.0f, 0.0f, 0.0f),
-                                           .borderThickness = 0.0f,
-                                           .cornerRadius = 0.0f,
-                                           .primitiveType = PRIMITIVE_RECT,
-                                           .borderMode = 0,
-                                           .textureId = UINT32_MAX,
-                                           .zIndex = zIndex};
-
-                if (m_selectionAlloc == nullptr) {
-                    m_selectionAlloc = ctx.geometry->submit(selectionData);
-                } else {
-                    ctx.geometry->update(*m_selectionAlloc, selectionData);
-                }
-            }
-        } else if (m_selectionAlloc && m_selectionAlloc->isValid()) {
-            m_selectionAlloc->registry->release(std::move(*m_selectionAlloc));
-            m_selectionAlloc = nullptr;
-        }
-
-        if (m_focused && m_cursorVisible) {
-            float cursorX = 0.0f;
-            if (!m_charPositions.empty()) {
-                if (m_cursorPosition < m_charPositions.size()) {
-                    cursorX = m_charPositions[m_cursorPosition];
-                } else {
-                    cursorX = m_charPositions.back();
-                }
-            }
-
-            glm::vec2 cursorPos = glm::vec2(absolutePosition.x + cursorX, absolutePosition.y);
-            glm::vec2 cursorSize = glm::vec2(1.0f, fontSize * 1.2f);
-
-            glm::vec2 centerPos = cursorPos + cursorSize * 0.5f;
-            glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
-                                  glm::scale(glm::mat4(1.0f), glm::vec3(cursorSize, 1.0f));
-
-            InstanceData cursorData{.transform = transform,
-                                    .fillColor = cursorColor,
-                                    .borderColor = Color4(0.0f, 0.0f, 0.0f, 0.0f),
-                                    .borderThickness = 0.0f,
-                                    .cornerRadius = 0.0f,
-                                    .primitiveType = PRIMITIVE_RECT,
-                                    .borderMode = 0,
-                                    .textureId = UINT32_MAX,
-                                    .zIndex = zIndex};
-
-            if (m_cursorAlloc == nullptr) {
-                m_cursorAlloc = ctx.geometry->submit(cursorData);
-            } else {
-                ctx.geometry->update(*m_cursorAlloc, cursorData);
-            }
-        } else if (m_cursorAlloc && m_cursorAlloc->isValid()) {
-            m_cursorAlloc->registry->release(std::move(*m_cursorAlloc));
-            m_cursorAlloc = nullptr;
-        }
+        drawText(ctx);
+        drawSelection(ctx);
+        drawCursor(ctx);
     }
 
     for (Instance *child : children) {

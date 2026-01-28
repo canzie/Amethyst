@@ -7,7 +7,8 @@ layout(location = 3) in flat vec2 fragSize;
 layout(location = 4) in flat float fragStrokeThickness;
 layout(location = 5) in flat vec4 fragStrokeColor;
 
-layout(location = 0) out vec4 outColor;
+layout(location = 0, index = 0) out vec4 outColor;
+layout(location = 0, index = 1) out vec4 outBlendFactor;
 
 struct Point {
     vec2 pos;
@@ -148,7 +149,7 @@ float distanceToBezier(vec2 p, vec2 p0, vec2 p1, vec2 p2) {
     float bestT = 0.0;
     float bestDist = length(p - p0);
 
-    const int SAMPLES = 8;
+    const int SAMPLES = 16;
     for (int i = 0; i <= SAMPLES; i++) {
         float t = float(i) / float(SAMPLES);
         vec2 pt = evalBezier(p0, p1, p2, t);
@@ -160,7 +161,7 @@ float distanceToBezier(vec2 p, vec2 p0, vec2 p1, vec2 p2) {
     }
 
     // Newton-Raphson refinement
-    for (int iter = 0; iter < 3; iter++) {
+    for (int iter = 0; iter < 5; iter++) {
         float t = bestT;
         vec2 bp = evalBezier(p0, p1, p2, t);
         vec2 d1 = 2.0 * ((1.0 - t) * (p1 - p0) + t * (p2 - p1));
@@ -202,7 +203,6 @@ void main()
     int winding = 0;
     float minDist = 1e10;
 
-    // Iterate contours
     for (uint c = 0; c < glyph.contourCount; c++) {
         Contour contour = getContour(glyph.contourStart + c);
 
@@ -224,23 +224,50 @@ void main()
     float pixelDist = minDist * scale;
     bool inside = (winding != 0);
 
-    // Signed distance: negative inside, positive outside
     float signedDist = inside ? -pixelDist : pixelDist;
 
-    float aa = fwidth(pixelDist);
+    // Fixed AA half-width in pixel space: 0.5 gives a 1-pixel transition band.
+    // Using fwidth(pixelDist) is unstable at bezier segment boundaries.
+    float aa = 0.5;
 
-    // Fill: inside the glyph
-    float fillAlpha = 1.0 - smoothstep(-aa, aa, signedDist);
+    // Subpixel AA: offset pixelDist (always positive, smooth) per RGB subpixel,
+    // then reconstruct signed distance. Using dFdx(signedDist) directly is broken
+    // at glyph edges where adjacent fragments in the 2x2 quad straddle the
+    // inside/outside boundary, causing a sign flip and a huge derivative spike.
+    float dpdx = dFdx(pixelDist);
+    float subpixelOffset = 1.0 / 3.0;
 
-    // Stroke: within strokeThickness of the edge
-    float strokeAlpha = 1.0 - smoothstep(fragStrokeThickness - aa, fragStrokeThickness + aa, pixelDist);
+    vec3 pixelDist3 = vec3(
+        pixelDist - dpdx * subpixelOffset,
+        pixelDist,
+        pixelDist + dpdx * subpixelOffset
+    );
+    pixelDist3 = max(pixelDist3, vec3(0.0));
 
-    // Combine: stroke on top of fill (for now just stroke since we don't have fill color yet)
-    float alpha = max(fillAlpha * fragColor.a, strokeAlpha * fragStrokeColor.a);
+    float sign = inside ? -1.0 : 1.0;
+    vec3 signedDist3 = sign * pixelDist3;
 
-    if (alpha < 0.01) discard;
+    vec3 fillAlpha3 = vec3(
+        1.0 - smoothstep(-aa, aa, signedDist3.r),
+        1.0 - smoothstep(-aa, aa, signedDist3.g),
+        1.0 - smoothstep(-aa, aa, signedDist3.b)
+    ) * fragColor.a;
 
-    // Blend colors based on which contributes more
-    vec3 color = mix(fragColor.rgb, fragStrokeColor.rgb, strokeAlpha / max(alpha, 0.001));
-    outColor = vec4(color, alpha);
+    vec3 strokeAlpha3 = vec3(
+        1.0 - smoothstep(fragStrokeThickness - aa, fragStrokeThickness + aa, pixelDist3.r),
+        1.0 - smoothstep(fragStrokeThickness - aa, fragStrokeThickness + aa, pixelDist3.g),
+        1.0 - smoothstep(fragStrokeThickness - aa, fragStrokeThickness + aa, pixelDist3.b)
+    ) * fragStrokeColor.a;
+
+    vec3 alpha3 = max(fillAlpha3, strokeAlpha3);
+
+    if (max(max(alpha3.r, alpha3.g), alpha3.b) < 0.01) discard;
+
+    // Per-channel color blend based on stroke vs fill contribution
+    vec3 color = mix(fragColor.rgb, fragStrokeColor.rgb, strokeAlpha3 / max(alpha3, vec3(0.001)));
+
+    // Dual-source blending: outColor carries premultiplied color,
+    // outBlendFactor carries per-channel coverage for dst attenuation
+    outColor = vec4(color * alpha3, max(max(alpha3.r, alpha3.g), alpha3.b));
+    outBlendFactor = vec4(alpha3, max(max(alpha3.r, alpha3.g), alpha3.b));
 }

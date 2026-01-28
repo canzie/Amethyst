@@ -14,7 +14,13 @@ FetchContent_Declare(
     GIT_TAG v1.14.1
 )
 
-FetchContent_MakeAvailable(glm spdlog)
+FetchContent_Declare(
+    freetype
+    GIT_REPOSITORY https://github.com/freetype/freetype.git
+    GIT_TAG VER-2-13-3
+)
+
+FetchContent_MakeAvailable(glm spdlog freetype)
 
 file(GLOB_RECURSE AMETHYST_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
@@ -26,7 +32,7 @@ target_include_directories(amethyst
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(amethyst PUBLIC glm::glm spdlog::spdlog)
+target_link_libraries(amethyst PUBLIC glm::glm spdlog::spdlog freetype)
 
 target_compile_options(amethyst PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
