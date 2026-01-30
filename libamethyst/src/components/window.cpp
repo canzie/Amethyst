@@ -233,17 +233,28 @@ void Window::releaseMouse(UIObject *object)
 void Window::onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y)
 {
     (void)xoffset;
-    Instance *clicked = findClickedObject(x, y);
+    Instance *target = findClickedObject(x, y);
+    glm::vec2 point(x, y);
 
-    if (clicked) {
-        auto *uiObject = clicked->as<UIObject>();
-        if (!uiObject) {
-            return;
+    while (target) {
+        auto *uiObject = target->as<UIObject>();
+        if (uiObject) {
+            bool consumed = false;
+            if (yoffset > 0) {
+                consumed = uiObject->onMouseScrollUp();
+            } else if (yoffset < 0) {
+                consumed = uiObject->onMouseScrollDown();
+            }
+            if (consumed) {
+                return;
+            }
         }
-        if (yoffset > 0) {
-            uiObject->onMouseScrollUp();
-        } else if (yoffset < 0) {
-            uiObject->onMouseScrollDown();
+
+        target = target->parent;
+        if (auto *parentObj = target ? target->as<UIBase2D>() : nullptr) {
+            if (!parentObj->containsPoint(point)) {
+                target = nullptr;
+            }
         }
     }
 }

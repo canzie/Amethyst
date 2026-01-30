@@ -70,6 +70,16 @@ class GeometryRegistry {
     void release(GeometryAllocation &alloc);
 
     /**
+     * @brief Submit multiple instances. More efficient than repeated submit() calls.
+     */
+    std::vector<GeometryAllocation *> submitBatch(const std::vector<InstanceData> &dataList);
+
+    /**
+     * @brief Release multiple allocations. More efficient than repeated release() calls.
+     */
+    void releaseBatch(std::vector<GeometryAllocation *> &allocs);
+
+    /**
      * @brief Get dirty indices and clear the list.
      */
     std::set<uint32_t> consumeDirtyIndices();

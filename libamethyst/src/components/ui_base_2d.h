@@ -35,6 +35,7 @@ class UIBase2D : public Instance {
     glm::vec2 absolutePosition = glm::vec2(0.0f);
     Degrees absoluteRotation = 0.0f;
     glm::vec2 absoluteSize;
+    glm::vec4 clipRect = {0.0f, 0.0f, 0.0f, 0.0f};
 
   protected:
     GeometryAllocation *m_geometryAlloc = nullptr;

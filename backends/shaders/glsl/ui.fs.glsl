@@ -10,6 +10,8 @@ layout(location = 5) in flat float fragCornerRadius;
 layout(location = 6) in flat vec2 fragSize;
 layout(location = 7) in flat uint fragBorderMode;
 layout(location = 8) in flat uint fragTextureId;
+layout(location = 9) in flat vec4 fragClipRect;
+layout(location = 10) in vec2 fragWorldPos;
 
 layout(set = 0, binding = 1) uniform sampler2D gTextures[];
 
@@ -73,6 +75,13 @@ float sdfLine(vec2 p, vec2 halfSize, float thickness)
 
 void main()
 {
+    if (fragClipRect.z > 0.0 && fragClipRect.w > 0.0) {
+        if (fragWorldPos.x < fragClipRect.x || fragWorldPos.y < fragClipRect.y ||
+            fragWorldPos.x > fragClipRect.z || fragWorldPos.y > fragClipRect.w) {
+            discard;
+        }
+    }
+
     if (fragPrimitiveType == PRIMITIVE_TEXT) {
         float texAlpha = texture(gTextures[fragTextureId], fragUV).r;
         float alpha = texAlpha * fragFillColor.a;

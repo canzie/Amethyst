@@ -39,6 +39,7 @@ InstanceData UIObject::createInstanceData() const
     return InstanceData{.transform = buildTransform(),
                         .fillColor = Color4(backgroundColor, 1.0f - backgroundTransparency),
                         .borderColor = Color4(borderColor, 1.0f - borderTransparency),
+                        .clipRect = clipRect,
                         .borderThickness = borderPixelSize,
                         .cornerRadius = cornerRadius,
                         .primitiveType = PRIMITIVE_TRIANGLE,

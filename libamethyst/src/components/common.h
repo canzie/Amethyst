@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <glm/glm.hpp>
+#include <glm/gtc/packing.hpp>
 
 namespace Amethyst {
 
@@ -97,6 +98,13 @@ enum class GuiState {
     HOVER,
     PRESS,
     NON_INTERCTABLE
+};
+
+enum class StartCorner {
+    TOP_LEFT,
+    TOP_RIGHT,
+    BOTTOM_LEFT,
+    BOTTOM_RIGHT
 };
 
 enum class ZIndexBehavior {
@@ -191,6 +199,7 @@ struct InstanceData {
     alignas(16) glm::mat4 transform;
     alignas(16) Color4 fillColor;
     alignas(16) Color4 borderColor;
+    alignas(16) glm::vec4 clipRect;
     float borderThickness;
     float cornerRadius;
     uint32_t primitiveType;

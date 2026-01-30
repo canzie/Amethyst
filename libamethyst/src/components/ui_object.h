@@ -57,8 +57,8 @@ class UIObject : public UIBase2D {
     virtual void onMouseButton2Down(uint32_t, uint32_t) {}
     virtual void onMouseButton2Up(uint32_t, uint32_t) {}
     virtual void onMouseButton2Click(void) {}
-    virtual void onMouseScrollUp(void) {}
-    virtual void onMouseScrollDown(void) {}
+    virtual bool onMouseScrollUp(void) { return false; }
+    virtual bool onMouseScrollDown(void) { return false; }
 
   public:
     bool active = false;

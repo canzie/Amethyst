@@ -179,7 +179,7 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
             float centerX = posX + glyphInfo->width * 0.5f;
             float centerY = posY + glyphInfo->height * 0.5f;
 
-            InstanceData inst;
+            InstanceData inst{};
             inst.transform = glm::mat4(1.0f);
             inst.transform[0] = glm::vec4(glyphInfo->width, 0.0f, 0.0f, 0.0f);
             inst.transform[1] = glm::vec4(0.0f, glyphInfo->height, 0.0f, 0.0f);

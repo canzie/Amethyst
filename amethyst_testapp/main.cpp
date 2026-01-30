@@ -2,7 +2,9 @@
 #include "amethyst__vk13_glfw.h"
 #include "components/common.h"
 #include "components/docking_layer.h"
+#include "components/extensions/ui_grid_layout.h"
 #include "components/panel_layer.h"
+#include "components/scrolling_frame.h"
 #include "components/slider.h"
 #include "components/table.h"
 #include "components/text_button.h"
@@ -215,6 +217,83 @@ int main()
     sliderVec3.speed = 0.01f;
     sliderVec3.valueRef = &sliderVec3Value;
     sliderVec3.markDirty();
+
+    Amethyst::ScrollingFrame scrollFrame(&window);
+    scrollFrame.name = "Scroll Test";
+    scrollFrame.size = Amethyst::UDim2::fromOffset(250, 200);
+    scrollFrame.position = Amethyst::UDim2::fromOffset(530, 100);
+    scrollFrame.backgroundColor = {0.12f, 0.12f, 0.15f};
+    scrollFrame.canvasSize = Amethyst::UDim2::fromOffset(250, 350);
+    scrollFrame.scrollBarColor = {0.25f, 0.25f, 0.3f};
+    scrollFrame.scrollBarThumbColor = {0.5f, 0.5f, 0.6f};
+    scrollFrame.cornerRadius = 5.0f;
+    scrollFrame.clipsDescendants = true;
+    auto *scrollLayout = scrollFrame.addExtension<Amethyst::UIGridLayout>();
+    scrollLayout->cellSize = Amethyst::UDim2::fromOffset(70, 70);
+    scrollLayout->cellPadding = Amethyst::UDim2::fromOffset(10, 10);
+    scrollLayout->fillDirection = Amethyst::FillDirection::FILL_HORIZONTAL;
+    scrollLayout->fillDirectionMaxCells = 3;
+    scrollFrame.markDirty();
+
+    Amethyst::Frame scrollItem1(&scrollFrame);
+    scrollItem1.backgroundColor = {0.8f, 0.3f, 0.3f};
+    scrollItem1.cornerRadius = 8.0f;
+    scrollItem1.markDirty();
+
+    Amethyst::Frame scrollItem2(&scrollFrame);
+    scrollItem2.backgroundColor = {0.3f, 0.8f, 0.3f};
+    scrollItem2.cornerRadius = 8.0f;
+    scrollItem2.markDirty();
+
+    Amethyst::Frame scrollItem3(&scrollFrame);
+    scrollItem3.backgroundColor = {0.3f, 0.3f, 0.8f};
+    scrollItem3.cornerRadius = 8.0f;
+    scrollItem3.markDirty();
+
+    Amethyst::Frame scrollItem4(&scrollFrame);
+    scrollItem4.backgroundColor = {0.8f, 0.8f, 0.3f};
+    scrollItem4.cornerRadius = 8.0f;
+    scrollItem4.markDirty();
+
+    Amethyst::Frame scrollItem5(&scrollFrame);
+    scrollItem5.backgroundColor = {0.8f, 0.3f, 0.8f};
+    scrollItem5.cornerRadius = 8.0f;
+    scrollItem5.markDirty();
+
+    Amethyst::Frame scrollItem6(&scrollFrame);
+    scrollItem6.backgroundColor = {0.3f, 0.8f, 0.8f};
+    scrollItem6.cornerRadius = 8.0f;
+    scrollItem6.markDirty();
+
+    Amethyst::Frame scrollItem7(&scrollFrame);
+    scrollItem7.backgroundColor = {0.6f, 0.4f, 0.2f};
+    scrollItem7.cornerRadius = 8.0f;
+    scrollItem7.markDirty();
+
+    Amethyst::Frame scrollItem8(&scrollFrame);
+    scrollItem8.backgroundColor = {0.4f, 0.2f, 0.6f};
+    scrollItem8.cornerRadius = 8.0f;
+    scrollItem8.markDirty();
+
+    Amethyst::Frame scrollItem9(&scrollFrame);
+    scrollItem9.backgroundColor = {0.2f, 0.6f, 0.4f};
+    scrollItem9.cornerRadius = 8.0f;
+    scrollItem9.markDirty();
+
+    Amethyst::Frame scrollItem10(&scrollFrame);
+    scrollItem10.backgroundColor = {0.5f, 0.5f, 0.5f};
+    scrollItem10.cornerRadius = 8.0f;
+    scrollItem10.markDirty();
+
+    Amethyst::Frame scrollItem11(&scrollFrame);
+    scrollItem11.backgroundColor = {0.9f, 0.6f, 0.3f};
+    scrollItem11.cornerRadius = 8.0f;
+    scrollItem11.markDirty();
+
+    Amethyst::Frame scrollItem12(&scrollFrame);
+    scrollItem12.backgroundColor = {0.3f, 0.6f, 0.9f};
+    scrollItem12.cornerRadius = 8.0f;
+    scrollItem12.markDirty();
 
     Amethyst::Table table(&window);
     table.name = "Test Table";

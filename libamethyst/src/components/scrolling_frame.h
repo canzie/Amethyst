@@ -7,8 +7,11 @@
 
 #include "components/common.h"
 #include "components/ui_object.h"
+#include <memory>
 
 namespace Amethyst {
+
+class Frame;
 
 enum class ScrollBarVisibility {
     ALWAYS,
@@ -31,8 +34,8 @@ class ScrollingFrame : public UIObject {
     void draw(DrawContext &ctx) override;
 
   protected:
-    void onMouseScrollUp() override;
-    void onMouseScrollDown() override;
+    bool onMouseScrollUp() override;
+    bool onMouseScrollDown() override;
 
   public:
     ScrollAxis scrollAxis = ScrollAxis::Y;
@@ -52,7 +55,13 @@ class ScrollingFrame : public UIObject {
     bool elasticScrolling = false;
 
   private:
+    void drawScrollbars(DrawContext &ctx);
+
     glm::vec2 m_scrollOffset = {0.0f, 0.0f};
+    std::unique_ptr<Frame> m_verticalBar;
+    std::unique_ptr<Frame> m_verticalThumb;
+    std::unique_ptr<Frame> m_horizontalBar;
+    std::unique_ptr<Frame> m_horizontalThumb;
 };
 
 } // namespace Amethyst

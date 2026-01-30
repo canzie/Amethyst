@@ -1,7 +1,3 @@
-/*
- * UIListLayout implementation
- */
-
 #include "components/extensions/ui_list_layout.h"
 
 #include "components/common.h"
