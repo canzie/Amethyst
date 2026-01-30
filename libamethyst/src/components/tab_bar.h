@@ -1,10 +1,6 @@
-// container for other containers
-// it will provide options to select 1 of the n containers that are children
-
 #ifndef AMETHYST__TAB_BAR_H
 #define AMETHYST__TAB_BAR_H
 
-#include "components/image_button.h"
 #include "components/text_button.h"
 #include "components/ui_object.h"
 #include "rendering/draw_context.h"
@@ -16,19 +12,13 @@
 
 namespace Amethyst {
 
-struct TabItem {
-    std::unique_ptr<TextButton> button;
-    // std::unique_ptr<ImageButton> closeBtn;
-    Instance *content;
-};
-
 enum class TabBarMode {
     INSIDE,
     OUTSIDE
 };
 
 enum class TabBarVisibility {
-    AUTO, // hides when only 1 item is present
+    AUTO,
     NEVER,
     ALWAYS
 };
@@ -43,36 +33,59 @@ enum class TabBarPosition {
 class TabBar : public UIObject {
   public:
     TabBar();
-    TabBar(Instance *parent);
-    virtual ~TabBar();
+    explicit TabBar(Instance *parent);
+    ~TabBar() override = default;
 
     void draw(DrawContext &ctx) override;
     void addChild(Instance *child) override;
     void removeChild(Instance *child) override;
     std::vector<Instance *> getHittableInstances() override;
 
-  private:
-    void formatChildren();
-    int32_t findTabIndex(TabItem *item) const;
-    int32_t computeTargetIndex(float dragPosition) const;
+    void select(int32_t index);
+    void select(Instance *content);
+    Instance *getSelectedContent() const;
+    int32_t getTabCount() const { return static_cast<int32_t>(m_tabs.size()); }
 
   public:
-    bool closeable = false; /// Whether a close button per tab item will be rendered
+    bool closeable = false;
     TabBarMode mode = TabBarMode::INSIDE;
     TabBarPosition tabPosition = TabBarPosition::TOP;
-    float tabThickness = 30.0f; /// The width/height (depending on position) of the tab bar itself
-    float tabWidth = 100.0f;
     TabBarVisibility visibility = TabBarVisibility::ALWAYS;
+    float barThickness = 30.0f;
+    float tabWidth = 100.0f;
     int32_t selectedIndex = 0;
 
     std::function<void(Instance *content)> onTabTornOff;
     std::function<void(Instance *content, glm::vec2 pos)> onTornOffTabMoved;
     std::function<void(Instance *content, glm::vec2 dropPos)> onTornOffTabReleased;
+    std::function<void(int32_t index)> onSelectionChanged;
 
   private:
-    std::vector<std::unique_ptr<TabItem>> m_tabItems;
-    TabItem *m_draggedTab = nullptr;
-    bool m_tabTornOff = false;
+    struct Tab {
+        std::unique_ptr<TextButton> button;
+        Instance *content = nullptr;
+    };
+
+    void setupTabButton(Tab &tab, int32_t index);
+    void layoutTabs();
+    void layoutContent();
+    void updateTabVisuals();
+    void markAllTabsDirty();
+
+    bool isVertical() const;
+    bool shouldShowTabs() const;
+    float getBarSize() const;
+    glm::vec2 getContentOffset() const;
+    glm::vec2 getContentSizeAdjust() const;
+
+    int32_t findTabIndex(const Tab *tab) const;
+    int32_t indexFromPosition(float pos) const;
+
+  private:
+    std::vector<std::unique_ptr<Tab>> m_tabs;
+    Tab *m_draggedTab = nullptr;
+    bool m_tornOff = false;
+    int32_t m_lastSelectedIndex = 0;
 };
 
 } // namespace Amethyst
