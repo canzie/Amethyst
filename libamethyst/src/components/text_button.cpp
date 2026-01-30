@@ -10,7 +10,7 @@ TextButton::~TextButton()
 {
     for (auto *alloc : m_textAllocations) {
         if (alloc && alloc->isValid()) {
-            alloc->registry->release(std::move(*alloc));
+            alloc->registry->release(*alloc);
         }
     }
 }
@@ -67,7 +67,7 @@ void TextButton::draw(DrawContext &ctx)
             if (glyphs.size() != m_textAllocations.size()) {
                 for (auto *alloc : m_textAllocations) {
                     if (alloc && alloc->isValid()) {
-                        ctx.geometry->release(std::move(*alloc));
+                        ctx.geometry->release(*alloc);
                     }
                 }
                 m_textAllocations.clear();

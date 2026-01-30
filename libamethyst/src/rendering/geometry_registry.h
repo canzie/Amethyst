@@ -67,7 +67,7 @@ class GeometryRegistry {
     /**
      * @brief Release an allocation. Swaps with last element to keep buffer compact.
      */
-    void release(GeometryAllocation &&alloc);
+    void release(GeometryAllocation &alloc);
 
     /**
      * @brief Get dirty indices and clear the list.

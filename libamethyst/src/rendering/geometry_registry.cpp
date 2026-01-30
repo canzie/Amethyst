@@ -14,7 +14,9 @@ GeometryRegistryDestroyCb GeometryRegistry::s_onDestroyCb;
 
 GeometryRegistry::GeometryRegistry(UILayer *owner) : m_owningLayer(owner)
 {
-    // Insert into s_registries sorted by owner->displayOrder
+    if (!m_owningLayer) {
+        return;
+    }
     auto it = std::lower_bound(s_registries.begin(), s_registries.end(), this, [](GeometryRegistry *a, GeometryRegistry *b) {
         return a->m_owningLayer->getDisplayOrder() < b->m_owningLayer->getDisplayOrder();
     });
@@ -57,60 +59,6 @@ void GeometryRegistry::setDestroyCb(GeometryRegistryDestroyCb cb)
 {
     s_onDestroyCb = std::move(cb);
 }
-
-/*
-void testZIndexOrdering()
-{
-    UILayer tempLayer;
-    auto registry = GeometryRegistry::create(&tempLayer);
-
-    InstanceData data0{};
-    data0.zIndex = 0;
-    InstanceData data2{};
-    data2.zIndex = 2;
-    InstanceData data4{};
-    data4.zIndex = 4;
-    InstanceData data6{};
-    data6.zIndex = 6;
-
-    registry->submit(data0);
-    registry->submit(data0);
-    registry->submit(data0);
-    registry->submit(data2);
-    registry->submit(data2);
-    registry->submit(data4);
-    registry->submit(data6);
-    registry->submit(data6);
-
-    auto &allocations = registry->getAllocations();
-
-    AM_ASSERT(allocations[0].zIndex == 0, "Expected z0");
-    AM_LOG_INFO("{}", allocations[1].zIndex);
-    AM_ASSERT(allocations[1].zIndex == 0, "Expected z0");
-    AM_ASSERT(allocations[2].zIndex == 0, "Expected z0");
-    AM_ASSERT(allocations[3].zIndex == 2, "Expected z2");
-    AM_ASSERT(allocations[4].zIndex == 2, "Expected z2");
-    AM_ASSERT(allocations[5].zIndex == 4, "Expected z4");
-    AM_ASSERT(allocations[6].zIndex == 6, "Expected z6");
-    AM_ASSERT(allocations[7].zIndex == 6, "Expected z6");
-
-    InstanceData data4_new{};
-    data4_new.zIndex = 4;
-    registry->submit(data4_new);
-
-    AM_ASSERT(allocations[0].zIndex == 0, "Expected z0 at 0");
-    AM_ASSERT(allocations[1].zIndex == 0, "Expected z0 at 1");
-    AM_ASSERT(allocations[2].zIndex == 0, "Expected z0 at 2");
-    AM_ASSERT(allocations[3].zIndex == 2, "Expected z2 at 3");
-    AM_ASSERT(allocations[4].zIndex == 2, "Expected z2 at 4");
-    AM_ASSERT(allocations[5].zIndex == 4, "Expected z4 at 5");
-    AM_ASSERT(allocations[6].zIndex == 4, "Expected z4 at 6");
-    AM_ASSERT(allocations[7].zIndex == 6, "Expected z6 at 7");
-    AM_ASSERT(allocations[8].zIndex == 6, "Expected z6 at 8");
-
-    AM_LOG_INFO("Z-index ordering test passed!");
-}
-*/
 
 GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
 {
@@ -155,7 +103,7 @@ GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
         swappedBucket.start++;
     }
 
-    // validateOrdering();
+    validateOrdering();
     return allocPtr;
 }
 
@@ -166,9 +114,11 @@ void GeometryRegistry::update(GeometryAllocation &alloc, const InstanceData &dat
 
     m_allocations[alloc.index] = data;
     m_dirtyIndices.insert(alloc.index);
+
+    validateOrdering();
 }
 
-void GeometryRegistry::release(GeometryAllocation &&alloc)
+void GeometryRegistry::release(GeometryAllocation &alloc)
 {
     if (!alloc.isValid()) return;
 
@@ -185,6 +135,7 @@ void GeometryRegistry::release(GeometryAllocation &&alloc)
         std::swap(m_handleMap[indexToRemove], m_handleMap[bucketEnd]);
         m_handleMap[indexToRemove]->index = indexToRemove;
         m_handleMap[bucketEnd]->index = bucketEnd;
+        m_dirtyIndices.insert(indexToRemove);
     }
 
     uint32_t currTargetPos = bucketEnd;
@@ -213,12 +164,15 @@ void GeometryRegistry::release(GeometryAllocation &&alloc)
     m_allocations.pop_back();
     m_handleMap.pop_back();
     bucket.count--;
+
+    validateOrdering();
 }
 
 void GeometryRegistry::validateOrdering() const
 {
     for (size_t i = 1; i < m_allocations.size(); ++i) {
         AM_ASSERT(m_allocations[i].zIndex >= m_allocations[i - 1].zIndex, "Z-index ordering violation");
+        AM_ASSERT(m_handleMap[i]->index == i, "handle index out of sync");
     }
 }
 

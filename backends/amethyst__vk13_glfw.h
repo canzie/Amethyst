@@ -33,6 +33,8 @@ struct VulkanInitInfo {
     uint32_t imageCount;
     VkFormat colorFormat;
     VkExtent2D extent;
+    const char* vertexShaderPath;
+    const char* fragmentShaderPath;
 };
 
 struct BufferArena {

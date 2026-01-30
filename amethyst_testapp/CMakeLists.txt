@@ -16,6 +16,11 @@ target_include_directories(amethyst_testapp PRIVATE
     ${CMAKE_SOURCE_DIR}/backends
 )
 
+target_compile_definitions(amethyst_testapp PRIVATE
+    AMETHYST_SHADER_DIR="${CMAKE_SOURCE_DIR}/backends/shaders/spirv"
+    AMETHYST_ASSETS_DIR="${CMAKE_SOURCE_DIR}/libamethyst/assets"
+)
+
 target_compile_options(amethyst_testapp PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>

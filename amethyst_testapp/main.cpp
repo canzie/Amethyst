@@ -24,7 +24,7 @@ int main()
     }
 
     Amethyst::FontLoader fontLoader;
-    if (!fontLoader.loadFont("/home/Thomas/dev/Amethyst/libamethyst/assets/fonts/OpenSans-Regular.ttf")) {
+    if (!fontLoader.loadFont(AMETHYST_ASSETS_DIR "/fonts/OpenSans-Regular.ttf")) {
         AM_LOG_ERROR("Failed to load font");
         return 1;
     }
@@ -49,6 +49,8 @@ int main()
     initInfo.imageCount = static_cast<uint32_t>(ctx.swapchainImages.size());
     initInfo.colorFormat = ctx.swapchainFormat;
     initInfo.extent = ctx.swapchainExtent;
+    initInfo.vertexShaderPath = AMETHYST_SHADER_DIR "/ui.vs.spv";
+    initInfo.fragmentShaderPath = AMETHYST_SHADER_DIR "/ui.fs.spv";
 
     Amethyst::GLFWInitInfo glfwInfo{};
     glfwInfo.window = ctx.window;
@@ -75,6 +77,7 @@ int main()
     frame1.borderMode = Amethyst::BorderMode::INSET;
     frame1.borderColor = glm::vec3(1.0f);
     frame1.cornerRadius = 10.0f;
+    frame1.zIndex = 5.0f;
     frame1.markDirty();
     frame1.addExtension<Amethyst::UIDragDetector>();
 
@@ -115,16 +118,6 @@ int main()
     button1.onMouseButton1ClickCb = [running = &running]() { *running = false; };
 
     button1.markDirty();
-
-    Amethyst::Frame frame3(&window);
-    frame3.name = "long bar";
-    frame3.size = Amethyst::UDim2(0.0f, 100.0f, 0.9f, 0.0f);
-    frame3.position = Amethyst::UDim2::fromOffset(550, 0);
-    frame3.backgroundColor = {0.2f, 0.2f, 0.9f};
-    frame3.cornerRadius = 50.0f;
-    frame3.zIndex = 10;
-    frame3.markDirty();
-    frame3.addExtension<Amethyst::UIDragDetector>();
 
     TextureInfo checkerboardTex = createCheckerboardTexture(ctx, 64, 8);
     Amethyst::AmTextureId checkerboardId = backend.registerTexture(checkerboardTex.view, checkerboardTex.sampler);
@@ -177,7 +170,6 @@ int main()
     sliderFloat.max = 100.0f;
     sliderFloat.speed = 1.0f;
     sliderFloat.valueRef = &sliderFloatValue;
-    sliderFloat.onValueChanged = [](float value) { AM_LOG_INFO("Float slider value: {:.2f}", value); };
     sliderFloat.markDirty();
 
     int sliderIntValue = 25;
@@ -192,7 +184,6 @@ int main()
     sliderInt.max = 50;
     sliderInt.speed = 1.0f;
     sliderInt.valueRef = &sliderIntValue;
-    sliderInt.onValueChanged = [](int value) { AM_LOG_INFO("Int slider value: {}", value); };
     sliderInt.markDirty();
 
     glm::vec2 sliderVec2Value = glm::vec2(50.0f, 75.0f);
@@ -208,7 +199,6 @@ int main()
     sliderVec2.max = glm::vec2(100.0f);
     sliderVec2.speed = 1.0f;
     sliderVec2.valueRef = &sliderVec2Value;
-    sliderVec2.onValueChanged = [](glm::vec2 value) { AM_LOG_INFO("Vec2 slider value: ({:.2f}, {:.2f})", value.x, value.y); };
     sliderVec2.markDirty();
 
     glm::vec3 sliderVec3Value = glm::vec3(0.5f, 0.3f, 0.8f);
@@ -224,9 +214,6 @@ int main()
     sliderVec3.max = glm::vec3(1.0f);
     sliderVec3.speed = 0.01f;
     sliderVec3.valueRef = &sliderVec3Value;
-    sliderVec3.onValueChanged = [](glm::vec3 value) {
-        AM_LOG_INFO("Vec3 slider value: ({:.2f}, {:.2f}, {:.2f})", value.x, value.y, value.z);
-    };
     sliderVec3.markDirty();
 
     Amethyst::Table table(&window);
@@ -430,6 +417,7 @@ int main()
     pointLabel.fontSize = 14.0f;
     pointLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
     pointLabel.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    pointLabel.zIndex = 100;
     pointLabel.markDirty();
     treeView.endRow();
     treeView.endRow();
@@ -489,8 +477,7 @@ int main()
 
     Amethyst::ImageLabel imageLabel;
     imageLabel.name = "checkerboard";
-    imageLabel.image = checkerboardId;
-    imageLabel.cornerRadius = 20.0f;
+    imageLabel.image = backend.getAtlasTextureId();
     imageLabel.markDirty();
 
     dockingLayer.dock(&imageLabel, glm::vec2(600.0f, 850.0f));

@@ -19,7 +19,7 @@ class UIBase2D : public Instance {
     virtual ~UIBase2D()
     {
         if (m_geometryAlloc && m_geometryAlloc->isValid()) {
-            m_geometryAlloc->registry->release(std::move(*m_geometryAlloc));
+            m_geometryAlloc->registry->release(*m_geometryAlloc);
         }
     }
 

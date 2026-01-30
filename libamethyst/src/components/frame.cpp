@@ -40,7 +40,7 @@ void Frame::draw(DrawContext &ctx)
             }
         } else {
             if (m_geometryAlloc != nullptr) {
-                m_geometryAlloc->registry->release(std::move(*m_geometryAlloc));
+                m_geometryAlloc->registry->release(*m_geometryAlloc);
                 m_geometryAlloc = nullptr;
             }
         }

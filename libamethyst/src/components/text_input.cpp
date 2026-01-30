@@ -19,14 +19,14 @@ TextInput::~TextInput()
 {
     for (auto *alloc : m_textAllocations) {
         if (alloc && alloc->isValid()) {
-            alloc->registry->release(std::move(*alloc));
+            alloc->registry->release(*alloc);
         }
     }
     if (m_selectionAlloc && m_selectionAlloc->isValid()) {
-        m_selectionAlloc->registry->release(std::move(*m_selectionAlloc));
+        m_selectionAlloc->registry->release(*m_selectionAlloc);
     }
     if (m_cursorAlloc && m_cursorAlloc->isValid()) {
-        m_cursorAlloc->registry->release(std::move(*m_cursorAlloc));
+        m_cursorAlloc->registry->release(*m_cursorAlloc);
     }
 }
 
@@ -394,7 +394,7 @@ void TextInput::releaseTextAllocations(GeometryRegistry *)
 {
     for (auto *alloc : m_textAllocations) {
         if (alloc && alloc->isValid()) {
-            alloc->registry->release(std::move(*alloc));
+            alloc->registry->release(*alloc);
         }
     }
     m_textAllocations.clear();
@@ -468,17 +468,16 @@ void TextInput::drawSelection(DrawContext &ctx)
             glm::vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], fontSize * 1.2f};
             glm::vec2 centerPos = selPos + selSize * 0.5f;
 
-            InstanceData data{
-                .transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
-                             glm::scale(glm::mat4(1.0f), glm::vec3(selSize, 1.0f)),
-                .fillColor = selectionColor,
-                .borderColor = Color4(0.0f),
-                .borderThickness = 0.0f,
-                .cornerRadius = 0.0f,
-                .primitiveType = PRIMITIVE_RECT,
-                .borderMode = 0,
-                .textureId = UINT32_MAX,
-                .zIndex = zIndex};
+            InstanceData data{.transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
+                                           glm::scale(glm::mat4(1.0f), glm::vec3(selSize, 1.0f)),
+                              .fillColor = selectionColor,
+                              .borderColor = Color4(0.0f),
+                              .borderThickness = 0.0f,
+                              .cornerRadius = 0.0f,
+                              .primitiveType = PRIMITIVE_RECT,
+                              .borderMode = 0,
+                              .textureId = UINT32_MAX,
+                              .zIndex = zIndex};
 
             if (m_selectionAlloc == nullptr) {
                 m_selectionAlloc = ctx.geometry->submit(data);
@@ -490,7 +489,7 @@ void TextInput::drawSelection(DrawContext &ctx)
     }
 
     if (m_selectionAlloc && m_selectionAlloc->isValid()) {
-        ctx.geometry->release(std::move(*m_selectionAlloc));
+        ctx.geometry->release(*m_selectionAlloc);
         m_selectionAlloc = nullptr;
     }
 }
@@ -500,25 +499,23 @@ void TextInput::drawCursor(DrawContext &ctx)
     if (m_focused && m_cursorVisible) {
         float cursorX = 0.0f;
         if (!m_charPositions.empty()) {
-            cursorX = (m_cursorPosition < m_charPositions.size()) ? m_charPositions[m_cursorPosition]
-                                                                   : m_charPositions.back();
+            cursorX = (m_cursorPosition < m_charPositions.size()) ? m_charPositions[m_cursorPosition] : m_charPositions.back();
         }
 
         glm::vec2 cursorPos = {absolutePosition.x + cursorX, absolutePosition.y};
         glm::vec2 cursorSize = {1.0f, fontSize * 1.2f};
         glm::vec2 centerPos = cursorPos + cursorSize * 0.5f;
 
-        InstanceData data{
-            .transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
-                         glm::scale(glm::mat4(1.0f), glm::vec3(cursorSize, 1.0f)),
-            .fillColor = cursorColor,
-            .borderColor = Color4(0.0f),
-            .borderThickness = 0.0f,
-            .cornerRadius = 0.0f,
-            .primitiveType = PRIMITIVE_RECT,
-            .borderMode = 0,
-            .textureId = UINT32_MAX,
-            .zIndex = zIndex};
+        InstanceData data{.transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
+                                       glm::scale(glm::mat4(1.0f), glm::vec3(cursorSize, 1.0f)),
+                          .fillColor = cursorColor,
+                          .borderColor = Color4(0.0f),
+                          .borderThickness = 0.0f,
+                          .cornerRadius = 0.0f,
+                          .primitiveType = PRIMITIVE_RECT,
+                          .borderMode = 0,
+                          .textureId = UINT32_MAX,
+                          .zIndex = zIndex};
 
         if (m_cursorAlloc == nullptr) {
             m_cursorAlloc = ctx.geometry->submit(data);
@@ -529,7 +526,7 @@ void TextInput::drawCursor(DrawContext &ctx)
     }
 
     if (m_cursorAlloc && m_cursorAlloc->isValid()) {
-        ctx.geometry->release(std::move(*m_cursorAlloc));
+        ctx.geometry->release(*m_cursorAlloc);
         m_cursorAlloc = nullptr;
     }
 }

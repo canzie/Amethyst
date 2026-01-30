@@ -388,7 +388,7 @@ void VkBackend::updateInstances(BufferAllocation &alloc, GeometryRegistry &regis
     memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
     memoryRange.memory = alloc.arena->memory;
     memoryRange.offset = alloc.offset;
-    memoryRange.size = VK_WHOLE_SIZE;
+    memoryRange.size = allocations.size() * sizeof(InstanceData);
     vkFlushMappedMemoryRanges(m_info.device, 1, &memoryRange);
 
     alloc.size = allocations.size();
@@ -490,8 +490,8 @@ VkShaderModule VkBackend::loadShaderModule(const char *path)
 
 void VkBackend::createPipeline()
 {
-    m_vertShader = loadShaderModule("/home/Thomas/dev/Amethyst/backends/shaders/spirv/ui.vs.spv");
-    m_fragShader = loadShaderModule("/home/Thomas/dev/Amethyst/backends/shaders/spirv/ui.fs.spv");
+    m_vertShader = loadShaderModule(m_info.vertexShaderPath);
+    m_fragShader = loadShaderModule(m_info.fragmentShaderPath);
 
     VkDescriptorSetLayoutBinding bindings[2] = {};
     bindings[0].binding = 0;
