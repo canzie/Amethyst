@@ -71,8 +71,6 @@ void TextLabel::draw(DrawContext &ctx)
             }
 
             if (glyphs.size() != m_textAllocations.size()) {
-
-                AM_LOG_INFO("redoing it");
                 for (auto *alloc : m_textAllocations) {
                     if (alloc && alloc->isValid()) {
                         alloc->registry->release(*alloc);
@@ -82,11 +80,9 @@ void TextLabel::draw(DrawContext &ctx)
                 m_textAllocations.reserve(glyphs.size());
                 for (const auto &glyphData : glyphs) {
                     m_textAllocations.push_back(ctx.geometry->submit(glyphData));
-                    AM_LOG_INFO("allocing it {}", glyphData.zIndex);
                 }
             } else {
                 for (size_t i = 0; i < glyphs.size(); ++i) {
-                    AM_LOG_INFO("updating it {}", glyphs[i].zIndex);
                     ctx.geometry->update(*m_textAllocations[i], glyphs[i]);
                 }
             }
