@@ -9,9 +9,9 @@
 #include "components/window.h"
 #include "modules/text_processor.h"
 #include "rendering/draw_context.h"
+#include "rendering/instance_data.h"
 
 #include <algorithm>
-#include <glm/gtc/matrix_transform.hpp>
 
 namespace Amethyst {
 
@@ -468,16 +468,12 @@ void TextInput::drawSelection(DrawContext &ctx)
             glm::vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], fontSize * 1.2f};
             glm::vec2 centerPos = selPos + selSize * 0.5f;
 
-            InstanceData data{.transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
-                                           glm::scale(glm::mat4(1.0f), glm::vec3(selSize, 1.0f)),
-                              .fillColor = selectionColor,
-                              .borderColor = Color4(0.0f),
-                              .borderThickness = 0.0f,
-                              .cornerRadius = 0.0f,
-                              .primitiveType = PRIMITIVE_RECT,
-                              .borderMode = 0,
-                              .textureId = UINT32_MAX,
-                              .zIndex = zIndex};
+            InstanceData data{};
+            data.translation = centerPos;
+            data.scale = selSize;
+            data.setFillColor(selectionColor);
+            data.setPrimitiveType(PRIMITIVE_RECT);
+            data.zIndex = zIndex;
 
             if (m_selectionAlloc == nullptr) {
                 m_selectionAlloc = ctx.geometry->submit(data);
@@ -506,16 +502,12 @@ void TextInput::drawCursor(DrawContext &ctx)
         glm::vec2 cursorSize = {1.0f, fontSize * 1.2f};
         glm::vec2 centerPos = cursorPos + cursorSize * 0.5f;
 
-        InstanceData data{.transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
-                                       glm::scale(glm::mat4(1.0f), glm::vec3(cursorSize, 1.0f)),
-                          .fillColor = cursorColor,
-                          .borderColor = Color4(0.0f),
-                          .borderThickness = 0.0f,
-                          .cornerRadius = 0.0f,
-                          .primitiveType = PRIMITIVE_RECT,
-                          .borderMode = 0,
-                          .textureId = UINT32_MAX,
-                          .zIndex = zIndex};
+        InstanceData data{};
+        data.translation = centerPos;
+        data.scale = cursorSize;
+        data.setFillColor(cursorColor);
+        data.setPrimitiveType(PRIMITIVE_RECT);
+        data.zIndex = zIndex;
 
         if (m_cursorAlloc == nullptr) {
             m_cursorAlloc = ctx.geometry->submit(data);
@@ -539,7 +531,7 @@ void TextInput::draw(DrawContext &ctx)
 
     if (flags & FLAG_DIRTY) {
         InstanceData bgData = createInstanceData();
-        bgData.primitiveType = PRIMITIVE_RECT;
+        bgData.setPrimitiveType(PRIMITIVE_RECT);
         if (m_geometryAlloc == nullptr) {
             m_geometryAlloc = ctx.geometry->submit(bgData);
         } else {

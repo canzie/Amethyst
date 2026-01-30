@@ -180,20 +180,12 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
             float centerY = posY + glyphInfo->height * 0.5f;
 
             InstanceData inst{};
-            inst.transform = glm::mat4(1.0f);
-            inst.transform[0] = glm::vec4(glyphInfo->width, 0.0f, 0.0f, 0.0f);
-            inst.transform[1] = glm::vec4(0.0f, glyphInfo->height, 0.0f, 0.0f);
-            inst.transform[2] = glm::vec4(uvMinX, uvMinY, uvMaxX, uvMaxY);
-            inst.transform[3] = glm::vec4(centerX, centerY, 0.0f, 1.0f);
-
-            inst.fillColor = params.color;
-            inst.borderColor = glm::vec4(0.0f);
-            inst.borderThickness = 0.0f;
-            inst.cornerRadius = 0.0f;
-            inst.primitiveType = PRIMITIVE_TEXT;
-            inst.borderMode = 0;
+            inst.translation = glm::vec2(centerX, centerY);
+            inst.scale = glm::vec2(glyphInfo->width, glyphInfo->height);
+            inst.setFillColor(params.color);
+            inst.setUvRect(glm::vec4(uvMinX, uvMinY, uvMaxX, uvMaxY));
+            inst.setPrimitiveType(PRIMITIVE_TEXT);
             inst.textureId = m_glyphAtlas->getTextureId().id;
-            inst.zIndex = 0;
 
             result.push_back(inst);
         }

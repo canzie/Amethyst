@@ -5,16 +5,16 @@ layout(push_constant) uniform PushConstants {
 } pc;
 
 struct InstanceData {
-    mat4 transform;
-    vec4 fillColor;
-    vec4 borderColor;
-    vec4 clipRect;
-    float borderThickness;
-    float cornerRadius;
-    uint primitiveType;
-    uint borderMode;
-    uint textureId;
-    int zIndex;
+    vec2 translation;             // 8B position
+    vec2 scale;                   // 8B size
+    vec4 clipRect;                // 16B clip rect
+    uint fillColor;               // 4B packed RGBA
+    uint borderColor;             // 4B packed RGBA
+    uint shapeData[4];            // 16B packed half2 pairs for text UV etc
+    uint rotationBorderThickness; // 4B: rotation(16) | borderThickness(16 half)
+    uint cornerPrimitiveMode;     // 4B: cornerRadius(16 half) | primitiveType(8) | borderMode(8)
+    uint textureId;               // 4B texture handle
+    int zIndex;                   // 4B z-index
 };
 
 layout(std430, binding = 0) readonly buffer InstanceBuffer {
@@ -48,32 +48,72 @@ const vec2 uvs[4] = vec2[](
 );
 
 const uint PRIMITIVE_TEXT = 4;
+const float PI = 3.14159265359;
+
+vec4 unpackColor(uint packed) {
+    return vec4(
+        float(packed & 0xFFu) / 255.0,
+        float((packed >> 8u) & 0xFFu) / 255.0,
+        float((packed >> 16u) & 0xFFu) / 255.0,
+        float((packed >> 24u) & 0xFFu) / 255.0
+    );
+}
+
+float unpackHalf(uint packed) {
+    return unpackHalf2x16(packed).x;
+}
+
+float unpackRotation(uint packed) {
+    return float(packed) * (2.0 * PI / 65535.0);
+}
 
 void main()
 {
     InstanceData inst = instances[gl_InstanceIndex];
 
-    vec2 localPos = positions[gl_VertexIndex];
-    vec4 worldPos = inst.transform * vec4(localPos, 0.0, 1.0);
+    // Unpack rotation from lower 16 bits
+    uint rotationPacked = inst.rotationBorderThickness & 0xFFFFu;
+    float rotation = unpackRotation(rotationPacked);
+    float c = cos(rotation);
+    float s = sin(rotation);
 
-    vec2 ndc = (worldPos.xy / pc.screenSize) * 2.0 - 1.0;
+    // Build transform: scale, rotate, translate
+    vec2 localPos = positions[gl_VertexIndex];
+    vec2 scaled = localPos * inst.scale;
+    vec2 rotated = vec2(scaled.x * c - scaled.y * s, scaled.x * s + scaled.y * c);
+    vec2 worldPos = rotated + inst.translation;
+
+    vec2 ndc = (worldPos / pc.screenSize) * 2.0 - 1.0;
     gl_Position = vec4(ndc, 0.0, 1.0);
 
     fragUV = uvs[gl_VertexIndex];
 
-    if (inst.primitiveType == PRIMITIVE_TEXT) {
-        vec4 uvRect = inst.transform[2];
-        fragUV = mix(uvRect.xy, uvRect.zw, uvs[gl_VertexIndex]);
+    // Unpack primitive type from bits 16-23
+    uint primitiveType = (inst.cornerPrimitiveMode >> 16u) & 0xFFu;
+
+    if (primitiveType == PRIMITIVE_TEXT) {
+        // For text, shapeData[0] and shapeData[1] contain UV rect as packed halves
+        vec2 uvMin = unpackHalf2x16(inst.shapeData[0]);
+        vec2 uvMax = unpackHalf2x16(inst.shapeData[1]);
+        fragUV = mix(uvMin, uvMax, uvs[gl_VertexIndex]);
     }
 
-    fragPrimitiveType = inst.primitiveType;
-    fragFillColor = inst.fillColor;
-    fragBorderColor = inst.borderColor;
-    fragBorderThickness = inst.borderThickness;
-    fragCornerRadius = inst.cornerRadius;
-    fragSize = vec2(length(inst.transform[0].xy), length(inst.transform[1].xy));
-    fragBorderMode = inst.borderMode;
+    fragPrimitiveType = primitiveType;
+    fragFillColor = unpackColor(inst.fillColor);
+    fragBorderColor = unpackColor(inst.borderColor);
+
+    // Unpack border thickness from upper 16 bits as half float
+    fragBorderThickness = unpackHalf(inst.rotationBorderThickness >> 16u);
+
+    // Unpack corner radius from lower 16 bits as half float
+    fragCornerRadius = unpackHalf(inst.cornerPrimitiveMode & 0xFFFFu);
+
+    fragSize = inst.scale;
+
+    // Unpack border mode from bits 24-31
+    fragBorderMode = (inst.cornerPrimitiveMode >> 24u) & 0xFFu;
+
     fragTextureId = inst.textureId;
     fragClipRect = inst.clipRect;
-    fragWorldPos = worldPos.xy;
+    fragWorldPos = worldPos;
 }

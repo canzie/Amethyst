@@ -9,6 +9,7 @@
 #include "components/common.h"
 #include "modules/glyph_atlas.h"
 #include "parsers/ttf/ttf_types.h"
+#include "rendering/instance_data.h"
 
 #include <glm/glm.hpp>
 #include <string>

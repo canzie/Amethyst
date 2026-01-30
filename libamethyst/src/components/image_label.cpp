@@ -17,7 +17,7 @@ void ImageLabel::draw(DrawContext &ctx)
 
     if (flags & FLAG_DIRTY) {
         InstanceData data = createInstanceData();
-        data.primitiveType = PRIMITIVE_RECT;
+        data.setPrimitiveType(PRIMITIVE_RECT);
         data.textureId = image.id;
 
         if (m_geometryAlloc == nullptr) {

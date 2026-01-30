@@ -3,6 +3,7 @@
 
 #include "components/common.h"
 #include "components/input_interface.h"
+#include "rendering/instance_data.h"
 #include "rendering/geometry_registry.h"
 
 #include <GLFW/glfw3.h>

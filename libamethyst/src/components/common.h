@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <glm/glm.hpp>
-#include <glm/gtc/packing.hpp>
 
 namespace Amethyst {
 
@@ -194,38 +193,6 @@ enum class ValueControlLayout {
     SIDE_BY_SIDE, // components arranged horizontally
     STACKED       // components arranged vertically
 };
-
-struct InstanceData {
-    alignas(16) glm::mat4 transform;
-    alignas(16) Color4 fillColor;
-    alignas(16) Color4 borderColor;
-    alignas(16) glm::vec4 clipRect;
-    float borderThickness;
-    float cornerRadius;
-    uint32_t primitiveType;
-    uint32_t borderMode;
-    uint32_t textureId = UINT32_MAX;
-    int32_t zIndex = 0;
-};
-
-inline constexpr uint32_t packColor(const Color4 &c)
-{
-    uint32_t r = static_cast<uint32_t>(c.r * 255.0f) & 0xFF;
-    uint32_t g = static_cast<uint32_t>(c.g * 255.0f) & 0xFF;
-    uint32_t b = static_cast<uint32_t>(c.b * 255.0f) & 0xFF;
-    uint32_t a = static_cast<uint32_t>(c.a * 255.0f) & 0xFF;
-    return r | (g << 8) | (b << 16) | (a << 24);
-}
-
-inline constexpr uint32_t packColor(const Color3 &c)
-{
-    return packColor(Color4(c, 1.0f));
-}
-
-inline constexpr uint32_t packColor(int r, int g, int b, int a)
-{
-    return packColor(Color4(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f));
-}
 
 /**
  * @brief Per-character render data for text (GPU-aligned, 40 bytes)

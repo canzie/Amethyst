@@ -17,7 +17,7 @@ void ImageButton::draw(DrawContext &ctx)
 
     if (flags & FLAG_DIRTY) {
         InstanceData data = createInstanceData();
-        data.primitiveType = PRIMITIVE_RECT;
+        data.setPrimitiveType(PRIMITIVE_RECT);
 
         if (guiState == GuiState::HOVER && hoverImage.isValid()) {
             data.textureId = hoverImage.id;

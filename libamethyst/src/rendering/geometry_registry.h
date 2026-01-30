@@ -2,6 +2,7 @@
 #define AMETHYST__GEOMETRY_REGISTRY_H
 
 #include "components/common.h"
+#include "rendering/instance_data.h"
 
 #include <cstdint>
 #include <functional>

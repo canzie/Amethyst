@@ -31,7 +31,7 @@ void Frame::draw(DrawContext &ctx)
         if (visible) {
 
             InstanceData data = createInstanceData();
-            data.primitiveType = PRIMITIVE_RECT;
+            data.setPrimitiveType(PRIMITIVE_RECT);
 
             if (m_geometryAlloc == nullptr) {
                 m_geometryAlloc = ctx.geometry->submit(data);

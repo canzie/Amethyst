@@ -2,9 +2,9 @@
 #include "components/common.h"
 #include "components/extensions/ui_drag_detector.h"
 #include "components/window.h"
+#include "rendering/instance_data.h"
 
 #include <cstdint>
-#include <glm/gtc/matrix_transform.hpp>
 
 namespace Amethyst {
 
@@ -22,30 +22,23 @@ void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degre
     absoluteRotation = rotation + parentRotation;
 }
 
-glm::mat4 UIObject::buildTransform() const
-{
-
-    glm::vec2 centerPos = absolutePosition + absoluteSize * glm::vec2(0.5f);
-
-    glm::mat4 transform = glm::translate(glm::mat4(1.0f), glm::vec3(centerPos, 0.0f)) *
-                          glm::rotate(glm::mat4(1.0f), glm::radians(absoluteRotation), glm::vec3(0.0f, 0.0f, 1.0f)) *
-                          glm::scale(glm::mat4(1.0f), glm::vec3(absoluteSize, 1.0f));
-
-    return transform;
-}
-
 InstanceData UIObject::createInstanceData() const
 {
-    return InstanceData{.transform = buildTransform(),
-                        .fillColor = Color4(backgroundColor, 1.0f - backgroundTransparency),
-                        .borderColor = Color4(borderColor, 1.0f - borderTransparency),
-                        .clipRect = clipRect,
-                        .borderThickness = borderPixelSize,
-                        .cornerRadius = cornerRadius,
-                        .primitiveType = PRIMITIVE_TRIANGLE,
-                        .borderMode = static_cast<uint32_t>(borderMode),
-                        .textureId = UINT32_MAX,
-                        .zIndex = zIndex};
+    glm::vec2 centerPos = absolutePosition + absoluteSize * 0.5f;
+
+    InstanceData data{};
+    data.translation = centerPos;
+    data.scale = absoluteSize;
+    data.clipRect = clipRect;
+    data.setFillColor(Color4(backgroundColor, 1.0f - backgroundTransparency));
+    data.setBorderColor(Color4(borderColor, 1.0f - borderTransparency));
+    data.setRotation(glm::radians(absoluteRotation));
+    data.setBorderThickness(borderPixelSize);
+    data.setCornerRadius(cornerRadius);
+    data.setPrimitiveType(PRIMITIVE_TRIANGLE);
+    data.setBorderMode(borderMode);
+    data.zIndex = zIndex;
+    return data;
 }
 
 Window *UIObject::getWindow()

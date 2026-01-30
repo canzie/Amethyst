@@ -8,6 +8,7 @@
 #include "components/common.h"
 #include "components/extensions/ui_extension.h"
 #include "components/ui_base_2d.h"
+#include "rendering/instance_data.h"
 #include <cstdint>
 #include <memory>
 #include <typeindex>
@@ -27,7 +28,6 @@ class UIObject : public UIBase2D {
     UIObject &operator=(UIObject &&) = default;
 
     void computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation);
-    glm::mat4 buildTransform() const;
     InstanceData createInstanceData() const;
     Window *getWindow();
 
@@ -70,7 +70,7 @@ class UIObject : public UIBase2D {
     float borderPixelSize = 0.0f;
     Color3 borderColor = {0.0f, 0.0f, 0.0f};
     float borderTransparency = 0.0f;
-    bool clipsDescendants = true;
+    bool clipsDescendants = false;
     float cornerRadius = 0.0f;
     GuiState guiState = GuiState::IDLE;
     bool interactable = true;
