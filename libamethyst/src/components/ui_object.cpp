@@ -3,6 +3,7 @@
 #include "components/extensions/ui_drag_detector.h"
 #include "components/window.h"
 #include "rendering/instance_data.h"
+#include "utils/profiling.h"
 
 #include <cstdint>
 
@@ -17,6 +18,7 @@ UIObject::~UIObject()
 
 void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation)
 {
+    AM_PROFILE_FUNCTION();
     absoluteSize = size.resolve(parentSize);
     absolutePosition = parentPos + position.resolve(parentSize) - anchorPoint * absoluteSize;
     absoluteRotation = rotation + parentRotation;
@@ -24,6 +26,7 @@ void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degre
 
 InstanceData UIObject::createInstanceData() const
 {
+    AM_PROFILE_FUNCTION();
     glm::vec2 centerPos = absolutePosition + absoluteSize * 0.5f;
 
     InstanceData data{};

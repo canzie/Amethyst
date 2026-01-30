@@ -8,6 +8,7 @@
 #include "modules/text_processor.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
+#include "utils/profiling.h"
 
 namespace Amethyst {
 
@@ -22,6 +23,7 @@ TextLabel::~TextLabel()
 
 void TextLabel::draw(DrawContext &ctx)
 {
+    AM_PROFILE_FUNCTION();
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }

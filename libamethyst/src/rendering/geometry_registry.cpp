@@ -3,6 +3,7 @@
 #include "components/ui_layer.h"
 #include "logging/log.h"
 #include "utils/am_assert.h"
+#include "utils/profiling.h"
 #include <algorithm>
 #include <cstdint>
 #include <utility>
@@ -62,6 +63,7 @@ void GeometryRegistry::setDestroyCb(GeometryRegistryDestroyCb cb)
 
 GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
 {
+    AM_PROFILE_FUNCTION();
     int32_t bucketIndex = data.zIndex;
     auto &currBucket = m_zIndexBuckets[bucketIndex];
     const uint32_t endPos = static_cast<uint32_t>(m_allocations.size());
@@ -109,6 +111,7 @@ GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
 
 void GeometryRegistry::update(GeometryAllocation &alloc, const InstanceData &data)
 {
+    AM_PROFILE_FUNCTION();
     AM_ASSERT(alloc.isValid(), "Trying to update an Invalid allocation");
     AM_ASSERT(alloc.index < static_cast<uint32_t>(m_allocations.size()), "Allocation index out of bounds");
 
@@ -120,6 +123,7 @@ void GeometryRegistry::update(GeometryAllocation &alloc, const InstanceData &dat
 
 void GeometryRegistry::release(GeometryAllocation &alloc)
 {
+    AM_PROFILE_FUNCTION();
     if (!alloc.isValid()) return;
 
     uint32_t indexToRemove = alloc.index;
@@ -229,6 +233,7 @@ std::vector<GeometryAllocation *> GeometryRegistry::submitBatch(const std::vecto
 
 void GeometryRegistry::releaseBatch(std::vector<GeometryAllocation *> &allocs)
 {
+    AM_PROFILE_FUNCTION();
     if (allocs.empty()) return;
 
     int32_t zIndex = m_allocations[allocs[0]->index].zIndex;

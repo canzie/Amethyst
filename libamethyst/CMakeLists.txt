@@ -20,7 +20,23 @@ FetchContent_Declare(
     GIT_TAG VER-2-13-3
 )
 
-FetchContent_MakeAvailable(glm spdlog freetype)
+FetchContent_Declare(
+    tracy
+    GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+    GIT_TAG v0.13.1
+)
+
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    set(TRACY_ENABLE ON CACHE BOOL "Enable Tracy profiling" FORCE)
+    set(TRACY_ON_DEMAND ON CACHE BOOL "Tracy on-demand mode" FORCE)
+    set(TRACY_NO_BROADCAST OFF CACHE BOOL "Enable Tracy broadcast" FORCE)
+    set(TRACY_NO_SYSTEM_TRACING ON CACHE BOOL "Disable system tracing" FORCE)
+    set(TRACY_NO_SAMPLING ON CACHE BOOL "Disable call stack sampling" FORCE)
+else()
+    set(TRACY_ENABLE OFF CACHE BOOL "Enable Tracy profiling" FORCE)
+endif()
+
+FetchContent_MakeAvailable(glm spdlog freetype tracy)
 
 file(GLOB_RECURSE AMETHYST_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
@@ -32,7 +48,7 @@ target_include_directories(amethyst
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(amethyst PUBLIC glm::glm spdlog::spdlog freetype)
+target_link_libraries(amethyst PUBLIC glm::glm spdlog::spdlog freetype TracyClient)
 
 target_compile_options(amethyst PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>

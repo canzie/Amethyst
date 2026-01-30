@@ -13,6 +13,7 @@
 #include "components/ui_object.h"
 #include "logging/log.h"
 #include "rendering/draw_context.h"
+#include "utils/profiling.h"
 
 namespace Amethyst {
 
@@ -28,6 +29,7 @@ Window::~Window()
 
 void Window::draw(DrawContext &ctx)
 {
+    AM_PROFILE_FUNCTION();
     DrawContext layerCtx;
     layerCtx.geometry = geometryRegistry();
     layerCtx.textProcessor = ctx.textProcessor;
@@ -45,12 +47,14 @@ void Window::draw(DrawContext &ctx)
 
 Instance *Window::findClickedObject(uint32_t x, uint32_t y)
 {
+    AM_PROFILE_FUNCTION();
     glm::vec2 point(x, y);
     return findClickedObjectRecursive(children, point);
 }
 
 Instance *Window::findClickedObjectRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point)
 {
+    AM_PROFILE_FUNCTION();
     std::vector<Instance *> sortedInstances(instances.begin(), instances.end());
     std::sort(sortedInstances.begin(), sortedInstances.end(), [](Instance *a, Instance *b) {
         auto *aObj = a->as<UIObject>();
@@ -94,6 +98,7 @@ Instance *Window::findClickedObjectRecursive(const std::vector<Instance *> &inst
 
 void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_t y)
 {
+    AM_PROFILE_FUNCTION();
     (void)mods;
 
     if (m_mouseCapturedBy && action == MOUSE_ACTION_RELEASE) {
@@ -161,6 +166,7 @@ void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_
 
 void Window::onMouseMove(uint32_t x, uint32_t y)
 {
+    AM_PROFILE_FUNCTION();
     if (m_mouseCapturedBy) {
         m_mouseCapturedBy->onMouseMoved(x, y);
         return;
@@ -232,6 +238,7 @@ void Window::releaseMouse(UIObject *object)
 
 void Window::onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y)
 {
+    AM_PROFILE_FUNCTION();
     (void)xoffset;
     Instance *target = findClickedObject(x, y);
     glm::vec2 point(x, y);

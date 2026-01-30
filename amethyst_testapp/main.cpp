@@ -10,6 +10,7 @@
 #include "components/text_button.h"
 #include "components/text_input.h"
 #include "components/tree_view.h"
+#include "utils/profiling.h"
 #include "vk_context.h"
 
 #include <cstdint>
@@ -592,6 +593,8 @@ int main()
         backend.record(cmd);
 
         contextEndFrame(ctx, imageIndex);
+
+        AM_PROFILE_FRAME();
 
         frameCount++;
         double currentTime = glfwGetTime();

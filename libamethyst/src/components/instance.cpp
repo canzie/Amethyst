@@ -3,6 +3,7 @@
  */
 
 #include "components/instance.h"
+#include "utils/profiling.h"
 #include <algorithm>
 #include <cstddef>
 
@@ -46,6 +47,7 @@ void Instance::removeChild(Instance *child)
 
 void Instance::markChildrenDirty()
 {
+    AM_PROFILE_FUNCTION();
     for (size_t i = 0; i < children.size(); i++) {
         children[i]->markChildrenDirty();
         children[i]->flags |= FLAG_DIRTY;
@@ -54,6 +56,7 @@ void Instance::markChildrenDirty()
 
 void Instance::markDirty()
 {
+    AM_PROFILE_FUNCTION();
     flags |= FLAG_DIRTY;
     for (Instance *p = parent; p && !(p->flags & FLAG_CHILD_DIRTY); p = p->parent) {
         p->flags |= FLAG_CHILD_DIRTY;

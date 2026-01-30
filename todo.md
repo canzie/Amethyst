@@ -1,5 +1,8 @@
-- Add a batch release and submit to the geometry allocation, so text can use it nicer.
-- move zindex away from the instance data
+- unlock fps in the testapp
+- profile, EVERYTHING (using tracy), disable in case of using release build, and cpu only, use tag v0.13.1
+- debug issue with mark dirty where unrelated things are being marked dirty
+- just hovering over tabitems completly nukes performance
+
 
 
 - some way to draw primitives, like let the user give 3 points on a triangle, or 2 for a line etc.

@@ -8,6 +8,7 @@
 #include "logging/log.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
+#include "utils/profiling.h"
 
 namespace Amethyst {
 
@@ -23,6 +24,7 @@ void Frame::onMouseButton2Click()
 
 void Frame::draw(DrawContext &ctx)
 {
+    AM_PROFILE_FUNCTION();
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }

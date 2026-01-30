@@ -3,6 +3,7 @@
 #include "components/input_interface.h"
 #include "components/ui_layer.h"
 #include "logging/log.h"
+#include "utils/profiling.h"
 
 #include <GLFW/glfw3.h>
 
@@ -16,6 +17,14 @@
 #include <vulkan/vulkan_core.h>
 
 namespace Amethyst {
+
+/**
+ * @brief Align a size up to the specified alignment
+ */
+static inline size_t alignUp(size_t size, size_t alignment)
+{
+    return (size + alignment - 1) & ~(alignment - 1);
+}
 
 struct Amethyst_glfw_Data {
     GLFWwindow *window;
@@ -211,6 +220,7 @@ void VkBackend::onResize(glm::vec2 extent)
 
 void VkBackend::record(VkCommandBuffer cmd)
 {
+    AM_PROFILE_FUNCTION();
     const auto &geometryRegistries = GeometryRegistry::getRegistries();
 
     for (auto *registry : geometryRegistries) {
@@ -350,6 +360,7 @@ void VkBackend::allocateInstanceBuffers() {}
 
 void VkBackend::updateInstances(BufferAllocation &alloc, GeometryRegistry &registry)
 {
+    AM_PROFILE_FUNCTION();
     const auto &allocations = registry.getAllocations();
     size_t requiredSize = allocations.size() * sizeof(InstanceData);
 
@@ -388,7 +399,8 @@ void VkBackend::updateInstances(BufferAllocation &alloc, GeometryRegistry &regis
     memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
     memoryRange.memory = alloc.arena->memory;
     memoryRange.offset = alloc.offset;
-    memoryRange.size = allocations.size() * sizeof(InstanceData);
+    size_t flushSize = allocations.size() * sizeof(InstanceData);
+    memoryRange.size = alignUp(flushSize, 64);
     vkFlushMappedMemoryRanges(m_info.device, 1, &memoryRange);
 
     alloc.size = allocations.size();

@@ -1,5 +1,6 @@
 #include "components/tree_view.h"
 
+#include "logging/log.h"
 #include "rendering/draw_context.h"
 #include "utils/am_assert.h"
 
@@ -361,8 +362,7 @@ void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, float y, b
     triangle->draw(ctx);
 }
 
-void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIndex,
-                              const std::vector<float> &colPositions)
+void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIndex, const std::vector<float> &colPositions)
 {
     const TreeRow &r = m_rows[row];
     float rowY = static_cast<float>(visibleIndex) * m_computedRowHeight;
@@ -389,8 +389,7 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIn
     bg->backgroundColor = Color3(bgColor);
     bg->backgroundTransparency = 1.0f - bgColor.a;
     bg->markDirty();
-    bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight},
-                         absolutePosition + glm::vec2(0.0f, rowY), absoluteRotation);
+    bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + glm::vec2(0.0f, rowY), absoluteRotation);
     bg->draw(ctx);
 
     drawDisclosureTriangle(ctx, row, absolutePosition.y + rowY, r.expanded);
@@ -438,6 +437,11 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIn
 
 void TreeView::draw(DrawContext &ctx)
 {
+
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
     if (numCols == 0) {
         flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
         return;
