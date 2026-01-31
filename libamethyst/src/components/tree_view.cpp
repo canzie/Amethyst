@@ -7,8 +7,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 namespace Amethyst {
+
+inline static float calculateRowY(uint32_t row, float rowHeight)
+{
+    return static_cast<float>(row) * (rowHeight - 1.0f);
+}
 
 TreeView::TreeView(Instance *parent)
 {
@@ -414,7 +420,7 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t slotIndex
     AM_PROFILE_FUNCTION();
 
     const TreeRow &r = m_rows[row];
-    float rowY = static_cast<float>(slotIndex) * m_computedRowHeight;
+    float rowY = calculateRowY(row, m_computedRowHeight);
     float indent = getRowIndent(row);
 
     Frame *bg = m_rowBackgrounds[slotIndex].get();
@@ -560,7 +566,7 @@ void TreeView::drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint3
     AM_PROFILE_FUNCTION();
 
     for (uint32_t i = fromSlot; i < slotCount; i++) {
-        float rowY = static_cast<float>(i) * m_computedRowHeight;
+        float rowY = calculateRowY(i, m_computedRowHeight);
         Frame *bg = m_rowBackgrounds[i].get();
         Color4 bgColor = (i % 2 == 1 && rowAlternateColor.a > 0.0f) ? rowAlternateColor : rowBackgroundColor;
         bg->backgroundColor = Color3(bgColor);
