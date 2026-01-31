@@ -15,6 +15,16 @@ TreeView::TreeView(Instance *parent)
     setParent(parent);
 }
 
+TreeView::~TreeView()
+{
+    for (auto &bg : m_rowBackgrounds) {
+        bg->parent = nullptr;
+    }
+    for (auto &btn : m_rowDisclosures) {
+        btn->parent = nullptr;
+    }
+}
+
 uint32_t TreeView::allocateSlot()
 {
     uint32_t index;
@@ -475,12 +485,14 @@ void TreeView::ensureSlotCapacity(uint32_t slotCount)
 {
     while (m_rowBackgrounds.size() < slotCount) {
         auto frame = std::make_unique<Frame>();
+        frame->parent = this;
         frame->zIndex = zIndex;
         frame->size = UDim2::fromScale(1.0f, 1.0f);
         m_rowBackgrounds.push_back(std::move(frame));
     }
     while (m_rowDisclosures.size() < slotCount) {
         auto btn = std::make_unique<TextButton>(nullptr);
+        btn->parent = this;
         btn->zIndex = zIndex + 2;
         btn->size = UDim2::fromScale(1.0f, 1.0f);
         btn->autoButtonColor = false;
@@ -591,11 +603,7 @@ void TreeView::draw(DrawContext &ctx)
         m_resolvedPadding = cellPadding.resolve(absoluteSize);
     }
 
-    glm::vec4 childClip = clipRect;
-    if (clipsDescendants) {
-        childClip = {absolutePosition.x, absolutePosition.y, absolutePosition.x + absoluteSize.x,
-                     absolutePosition.y + absoluteSize.y};
-    }
+    glm::vec4 childClip = computeChildClipRect();
 
     m_computedRowHeight = rowHeight > 0.0f ? rowHeight : 24.0f;
     uint32_t slotCount = static_cast<uint32_t>(std::ceil(absoluteSize.y / m_computedRowHeight)) + 1;

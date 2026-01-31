@@ -32,11 +32,7 @@ void ImageButton::draw(DrawContext &ctx)
         }
     }
 
-    glm::vec4 childClip = clipRect;
-    if (clipsDescendants) {
-        childClip = {absolutePosition.x, absolutePosition.y,
-                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
-    }
+    glm::vec4 childClip = computeChildClipRect();
 
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {

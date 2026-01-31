@@ -36,11 +36,7 @@ void ScrollingFrame::draw(DrawContext &ctx)
         listLayout->apply(children);
     }
 
-    glm::vec4 childClip = clipRect;
-    if (clipsDescendants) {
-        childClip = {absolutePosition.x, absolutePosition.y,
-                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
-    }
+    glm::vec4 childClip = computeChildClipRect();
 
     for (Instance *child : children) {
         auto *obj = child->as<UIObject>();

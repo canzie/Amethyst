@@ -47,7 +47,7 @@ class TreeView : public Table {
   public:
     TreeView() = default;
     TreeView(Instance *parent);
-    virtual ~TreeView() = default;
+    virtual ~TreeView();
 
     void draw(DrawContext &ctx) override;
 

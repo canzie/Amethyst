@@ -31,6 +31,20 @@ class UIObject : public UIBase2D {
     InstanceData createInstanceData() const;
     Window *getWindow();
 
+    glm::vec4 computeChildClipRect() const
+    {
+        if (!clipsDescendants) {
+            return clipRect;
+        }
+        glm::vec4 myBounds = {absolutePosition.x, absolutePosition.y, absolutePosition.x + absoluteSize.x,
+                              absolutePosition.y + absoluteSize.y};
+        if (clipRect == glm::vec4(0.0f)) {
+            return myBounds;
+        }
+        return {glm::max(clipRect.x, myBounds.x), glm::max(clipRect.y, myBounds.y),
+                glm::min(clipRect.z, myBounds.z), glm::min(clipRect.w, myBounds.w)};
+    }
+
     template <typename T> T *getExtension()
     {
         auto it = m_extensions.find(std::type_index(typeid(T)));

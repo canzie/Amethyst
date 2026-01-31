@@ -35,9 +35,9 @@ static void setupSideLabel(TextLabel &label, const Slider *slider, float &outLab
     label.backgroundTransparency = slider->backgroundTransparency;
     label.visible = true;
 
-    float padding = slider->labelPadding.resolve(
-        slider->labelSide == LabelSide::LEFT || slider->labelSide == LabelSide::RIGHT ? slider->absoluteSize.x
-                                                                                       : slider->absoluteSize.y);
+    float padding = slider->labelPadding.resolve(slider->labelSide == LabelSide::LEFT || slider->labelSide == LabelSide::RIGHT
+                                                     ? slider->absoluteSize.x
+                                                     : slider->absoluteSize.y);
 
     if (slider->labelSide == LabelSide::LEFT || slider->labelSide == LabelSide::RIGHT) {
         outLabelWidth = slider->fontSize * slider->label.length() * 0.6f + padding;
@@ -75,7 +75,7 @@ static void setupThumb(Frame &thumb, float x, float y, float width, float height
 }
 
 static void setupValueLabel(TextLabel &label, float x, float y, float width, float height, const Slider *slider,
-                             const std::string &text)
+                            const std::string &text)
 {
     label.text = text;
     label.fontSize = slider->fontSize * 0.8f;
@@ -122,11 +122,7 @@ void SliderFloat::draw(DrawContext &ctx)
         updateComponents();
     }
 
-    glm::vec4 childClip = clipRect;
-    if (clipsDescendants) {
-        childClip = {absolutePosition.x, absolutePosition.y,
-                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
-    }
+    glm::vec4 childClip = computeChildClipRect();
 
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
@@ -213,11 +209,7 @@ void SliderInt::draw(DrawContext &ctx)
         updateComponents();
     }
 
-    glm::vec4 childClip = clipRect;
-    if (clipsDescendants) {
-        childClip = {absolutePosition.x, absolutePosition.y,
-                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
-    }
+    glm::vec4 childClip = computeChildClipRect();
 
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
@@ -306,11 +298,7 @@ void SliderVec2::draw(DrawContext &ctx)
         updateComponents();
     }
 
-    glm::vec4 childClip = clipRect;
-    if (clipsDescendants) {
-        childClip = {absolutePosition.x, absolutePosition.y,
-                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
-    }
+    glm::vec4 childClip = computeChildClipRect();
 
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
@@ -414,11 +402,7 @@ void SliderVec3::draw(DrawContext &ctx)
         updateComponents();
     }
 
-    glm::vec4 childClip = clipRect;
-    if (clipsDescendants) {
-        childClip = {absolutePosition.x, absolutePosition.y,
-                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
-    }
+    glm::vec4 childClip = computeChildClipRect();
 
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {

@@ -362,11 +362,7 @@ void TabBar::draw(DrawContext &ctx)
         }
     }
 
-    glm::vec4 childClip = clipRect;
-    if (clipsDescendants) {
-        childClip = {absolutePosition.x, absolutePosition.y, absolutePosition.x + absoluteSize.x,
-                     absolutePosition.y + absoluteSize.y};
-    }
+    glm::vec4 childClip = computeChildClipRect();
 
     if (shouldShowTabs()) {
         DrawContext buttonCtx = ctx;

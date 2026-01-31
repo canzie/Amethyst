@@ -408,13 +408,24 @@ int main()
     treePanel.name = "Tree Panel";
     treePanel.markDirty();
 
-    Amethyst::TreeView treeView(&treePanel);
+    Amethyst::ScrollingFrame treeScrollFrame(&treePanel);
+    treeScrollFrame.name = "Tree Scroll Container";
+    treeScrollFrame.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
+    treeScrollFrame.backgroundColor = {0.12f, 0.12f, 0.14f};
+    treeScrollFrame.canvasSize = Amethyst::UDim2::fromOffset(250, 500);
+    treeScrollFrame.scrollBarColor = {0.2f, 0.2f, 0.25f};
+    treeScrollFrame.scrollBarThumbColor = {0.4f, 0.4f, 0.5f};
+    treeScrollFrame.clipsDescendants = true;
+    treeScrollFrame.markDirty();
+
+    Amethyst::TreeView treeView(&treeScrollFrame);
     treeView.name = "Test TreeView";
     treeView.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
     treeView.backgroundColor = {0.12f, 0.12f, 0.14f};
     treeView.numCols = 1;
     treeView.rowHeight = 24.0f;
     treeView.indentPerLevel = 20.0f;
+    treeView.clipsDescendants = true;
     treeView.markDirty();
 
     uint32_t scene = treeView.beginRow();

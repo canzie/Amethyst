@@ -97,11 +97,7 @@ void Table::draw(DrawContext &ctx)
     }
     m_computedRowHeight = effectiveRowHeight;
 
-    glm::vec4 childClip = clipRect;
-    if (clipsDescendants) {
-        childClip = {absolutePosition.x, absolutePosition.y,
-                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
-    }
+    glm::vec4 childClip = computeChildClipRect();
 
     std::vector<float> columnPositions = computeColumnPositions(absoluteSize.x);
     uint32_t rowCount = getRowCount();
