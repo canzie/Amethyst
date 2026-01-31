@@ -398,9 +398,11 @@ void VkBackend::updateInstances(BufferAllocation &alloc, GeometryRegistry &regis
     VkMappedMemoryRange memoryRange{};
     memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
     memoryRange.memory = alloc.arena->memory;
-    memoryRange.offset = alloc.offset;
     size_t flushSize = allocations.size() * sizeof(InstanceData);
-    memoryRange.size = alignUp(flushSize, 64);
+    size_t alignedOffset = (alloc.offset / 64) * 64;
+    size_t alignedEnd = alignUp(alloc.offset + flushSize, 64);
+    memoryRange.offset = alignedOffset;
+    memoryRange.size = alignedEnd - alignedOffset;
     vkFlushMappedMemoryRanges(m_info.device, 1, &memoryRange);
 
     alloc.size = allocations.size();
