@@ -22,6 +22,7 @@ void OverlayLayer::draw(DrawContext &ctx)
 
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
+            drawable->clipRect = clipRect;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(layerCtx);
         } else if (auto *layer = child->as<UILayer>()) {

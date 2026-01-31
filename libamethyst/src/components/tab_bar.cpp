@@ -363,12 +363,19 @@ void TabBar::draw(DrawContext &ctx)
         }
     }
 
+    glm::vec4 childClip = clipRect;
+    if (clipsDescendants) {
+        childClip = {absolutePosition.x, absolutePosition.y,
+                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
+    }
+
     if (shouldShowTabs()) {
         DrawContext buttonCtx = ctx;
         if (ctx.overlay) {
             buttonCtx.geometry = ctx.overlay;
         }
         for (auto &tab : m_tabs) {
+            tab->button->clipRect = childClip;
             tab->button->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             tab->button->draw(buttonCtx);
         }
@@ -376,6 +383,7 @@ void TabBar::draw(DrawContext &ctx)
 
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
+            drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(ctx);
         } else if (auto *layer = child->as<UILayer>()) {

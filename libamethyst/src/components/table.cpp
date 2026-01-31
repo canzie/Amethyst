@@ -97,11 +97,18 @@ void Table::draw(DrawContext &ctx)
     }
     m_computedRowHeight = effectiveRowHeight;
 
+    glm::vec4 childClip = clipRect;
+    if (clipsDescendants) {
+        childClip = {absolutePosition.x, absolutePosition.y,
+                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
+    }
+
     std::vector<float> columnPositions = computeColumnPositions(absoluteSize.x);
     uint32_t rowCount = getRowCount();
     uint32_t visibleRowIndex = 0;
 
     for (auto &sep : m_separators) {
+        sep->clipRect = childClip;
         sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
         sep->draw(ctx);
     }
@@ -138,6 +145,7 @@ void Table::draw(DrawContext &ctx)
                 glm::vec2 cellSize = {paddedWidth, paddedHeight};
                 glm::vec2 cellPos = absolutePosition + glm::vec2(paddedX, paddedY);
 
+                drawable->clipRect = childClip;
                 drawable->computeAbsolutes(cellSize, cellPos, absoluteRotation);
                 drawable->draw(ctx);
             }

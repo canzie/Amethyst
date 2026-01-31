@@ -92,8 +92,8 @@ class TreeView : public Table {
     float getRowIndent(uint32_t row) const override;
 
   private:
-    void drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIndex, const std::vector<float> &colPositions);
-    void drawDisclosureTriangle(DrawContext &ctx, uint32_t row, float y, bool expanded);
+    void drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIndex, const std::vector<float> &colPositions, const glm::vec4 &childClip);
+    void drawDisclosureTriangle(DrawContext &ctx, uint32_t row, float y, bool expanded, const glm::vec4 &childClip);
     void linkRowToParent(uint32_t row, uint32_t parentRow);
     void unlinkRow(uint32_t row);
 

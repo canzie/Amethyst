@@ -122,8 +122,15 @@ void SliderFloat::draw(DrawContext &ctx)
         updateComponents();
     }
 
+    glm::vec4 childClip = clipRect;
+    if (clipsDescendants) {
+        childClip = {absolutePosition.x, absolutePosition.y,
+                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
+    }
+
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
+            drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(ctx);
         }
@@ -206,8 +213,15 @@ void SliderInt::draw(DrawContext &ctx)
         updateComponents();
     }
 
+    glm::vec4 childClip = clipRect;
+    if (clipsDescendants) {
+        childClip = {absolutePosition.x, absolutePosition.y,
+                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
+    }
+
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
+            drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(ctx);
         }
@@ -292,8 +306,15 @@ void SliderVec2::draw(DrawContext &ctx)
         updateComponents();
     }
 
+    glm::vec4 childClip = clipRect;
+    if (clipsDescendants) {
+        childClip = {absolutePosition.x, absolutePosition.y,
+                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
+    }
+
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
+            drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(ctx);
         }
@@ -393,8 +414,15 @@ void SliderVec3::draw(DrawContext &ctx)
         updateComponents();
     }
 
+    glm::vec4 childClip = clipRect;
+    if (clipsDescendants) {
+        childClip = {absolutePosition.x, absolutePosition.y,
+                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
+    }
+
     for (Instance *child : children) {
         if (auto *drawable = child->as<UIObject>()) {
+            drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(ctx);
         }

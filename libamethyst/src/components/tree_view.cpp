@@ -332,7 +332,7 @@ float TreeView::getRowIndent(uint32_t row) const
     return indent;
 }
 
-void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, float y, bool expanded)
+void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, float y, bool expanded, const glm::vec4 &childClip)
 {
     if (!showDisclosureTriangles || !hasChildren(row)) {
         return;
@@ -354,6 +354,7 @@ void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, float y, b
     triangle->backgroundTransparency = 1.0f - disclosureTriangleColor.a;
     triangle->rotation = expanded ? 90.0f : 0.0f;
     triangle->anchorPoint = {0.5f, 0.5f};
+    triangle->clipRect = childClip;
     triangle->markDirty();
 
     glm::vec2 triSize = {disclosureTriangleSize, disclosureTriangleSize};
@@ -362,7 +363,7 @@ void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, float y, b
     triangle->draw(ctx);
 }
 
-void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIndex, const std::vector<float> &colPositions)
+void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIndex, const std::vector<float> &colPositions, const glm::vec4 &childClip)
 {
     const TreeRow &r = m_rows[row];
     float rowY = static_cast<float>(visibleIndex) * m_computedRowHeight;
@@ -388,11 +389,12 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIn
 
     bg->backgroundColor = Color3(bgColor);
     bg->backgroundTransparency = 1.0f - bgColor.a;
+    bg->clipRect = childClip;
     bg->markDirty();
     bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + glm::vec2(0.0f, rowY), absoluteRotation);
     bg->draw(ctx);
 
-    drawDisclosureTriangle(ctx, row, absolutePosition.y + rowY, r.expanded);
+    drawDisclosureTriangle(ctx, row, absolutePosition.y + rowY, r.expanded, childClip);
 
     if (r.firstCellIndex == INVALID_ROW) {
         return;
@@ -430,6 +432,7 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIn
         glm::vec2 cellSize = {paddedWidth, paddedHeight};
         glm::vec2 cellPos = absolutePosition + glm::vec2(paddedX, paddedY);
 
+        drawable->clipRect = childClip;
         drawable->computeAbsolutes(cellSize, cellPos, absoluteRotation);
         drawable->draw(ctx);
     }
@@ -452,6 +455,12 @@ void TreeView::draw(DrawContext &ctx)
         m_resolvedPadding = cellPadding.resolve(absoluteSize);
     }
 
+    glm::vec4 childClip = clipRect;
+    if (clipsDescendants) {
+        childClip = {absolutePosition.x, absolutePosition.y,
+                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
+    }
+
     float effectiveRowHeight = rowHeight;
     if (effectiveRowHeight <= 0.0f) {
         effectiveRowHeight = 24.0f;
@@ -461,13 +470,14 @@ void TreeView::draw(DrawContext &ctx)
     std::vector<float> colPositions = computeColumnPositions(absoluteSize.x);
 
     for (auto &sep : m_separators) {
+        sep->clipRect = childClip;
         sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
         sep->draw(ctx);
     }
 
     uint32_t visibleIndex = 0;
     forEachVisibleRow([&](uint32_t row) {
-        drawRowContent(ctx, row, visibleIndex, colPositions);
+        drawRowContent(ctx, row, visibleIndex, colPositions, childClip);
         visibleIndex++;
     });
 
