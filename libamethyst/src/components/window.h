@@ -6,8 +6,10 @@
 #define AMETHYST__WINDOW_H
 
 #include "components/input_events.h"
+#include "components/overlay_layer.h"
 #include "components/ui_layer.h"
 #include <glm/glm.hpp>
+#include <memory>
 #include <vector>
 
 namespace Amethyst {
@@ -37,6 +39,7 @@ class Window : public UILayer {
   private:
     Instance *m_lastHoveredInstance = nullptr;
     UIObject *m_mouseCapturedBy = nullptr;
+    std::unique_ptr<OverlayLayer> m_overlayLayer;
 };
 
 } // namespace Amethyst

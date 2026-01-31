@@ -40,6 +40,7 @@ void DockingLayer::draw(DrawContext &ctx)
 
     DrawContext layerCtx;
     layerCtx.geometry = geometryRegistry();
+    layerCtx.overlay = ctx.overlay;
     layerCtx.textProcessor = ctx.textProcessor;
     layerCtx.glyphAtlas = ctx.glyphAtlas;
 
@@ -47,9 +48,13 @@ void DockingLayer::draw(DrawContext &ctx)
         tabBar->draw(layerCtx);
     }
 
+    DrawContext hintCtx = ctx;
+    if (ctx.overlay) {
+        hintCtx.geometry = ctx.overlay;
+    }
     for (auto &hint : m_dockHintComponents) {
         hint->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-        hint->draw(ctx); // TODO: give the docking layer its own little composited layer it can use for all overlays, like the hints
+        hint->draw(hintCtx);
     }
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);

@@ -17,6 +17,7 @@ class GlyphAtlas;
  */
 struct DrawContext {
     GeometryRegistry *geometry = nullptr;
+    GeometryRegistry *overlay = nullptr;
     TextProcessor *textProcessor = nullptr;
     GlyphAtlas *glyphAtlas = nullptr;
 };

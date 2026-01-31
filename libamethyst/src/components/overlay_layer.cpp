@@ -1,14 +1,14 @@
-#include "components/panel_layer.h"
+#include "components/overlay_layer.h"
 #include "components/ui_object.h"
 #include "rendering/draw_context.h"
 
 namespace Amethyst {
 
-PanelLayer::PanelLayer() = default;
+OverlayLayer::OverlayLayer() = default;
 
-PanelLayer::~PanelLayer() = default;
+OverlayLayer::~OverlayLayer() = default;
 
-void PanelLayer::draw(DrawContext &ctx)
+void OverlayLayer::draw(DrawContext &ctx)
 {
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;

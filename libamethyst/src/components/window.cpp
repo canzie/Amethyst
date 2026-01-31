@@ -20,6 +20,8 @@ namespace Amethyst {
 Window::Window()
 {
     InputInterface::registerWindow(this);
+    m_overlayLayer = std::make_unique<OverlayLayer>();
+    m_overlayLayer->setDisplayOrder(1000);
 }
 
 Window::~Window()
@@ -32,6 +34,7 @@ void Window::draw(DrawContext &ctx)
     AM_PROFILE_FUNCTION();
     DrawContext layerCtx;
     layerCtx.geometry = geometryRegistry();
+    layerCtx.overlay = m_overlayLayer->geometryRegistry();
     layerCtx.textProcessor = ctx.textProcessor;
     layerCtx.glyphAtlas = ctx.glyphAtlas;
 

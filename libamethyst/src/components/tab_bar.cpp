@@ -364,9 +364,13 @@ void TabBar::draw(DrawContext &ctx)
     }
 
     if (shouldShowTabs()) {
+        DrawContext buttonCtx = ctx;
+        if (ctx.overlay) {
+            buttonCtx.geometry = ctx.overlay;
+        }
         for (auto &tab : m_tabs) {
             tab->button->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-            tab->button->draw(ctx);
+            tab->button->draw(buttonCtx);
         }
     }
 
