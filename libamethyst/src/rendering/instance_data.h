@@ -14,6 +14,10 @@
 
 namespace Amethyst {
 
+enum GpuInstanceFlags : uint32_t {
+    INSTANCE_FLAG_VISIBLE = 0x00000001,
+};
+
 struct InstanceData {
     alignas(8) glm::vec2 translation;     // 8B position
     alignas(8) glm::vec2 scale;           // 8B size
@@ -25,6 +29,7 @@ struct InstanceData {
     uint32_t cornerPrimitiveMode = 0;     // 4B: cornerRadius(16 bits half) | primitiveType(8) | borderMode(8)
     uint32_t textureId = UINT32_MAX;      // 4B texture handle
     int32_t zIndex = 0;                   // 4B z-index for sorting
+    uint32_t flags = INSTANCE_FLAG_VISIBLE; // 4B: visible(1 bit) | padding(31 bits)
 
     void setFillColor(const Color4 &c) { fillColor = packColor(c); }
     void setBorderColor(const Color4 &c) { borderColor = packColor(c); }
@@ -61,6 +66,15 @@ struct InstanceData {
     {
         shapeData[0] = glm::packHalf2x16(glm::vec2(uvRect.x, uvRect.y));
         shapeData[1] = glm::packHalf2x16(glm::vec2(uvRect.z, uvRect.w));
+    }
+
+    void setVisible(bool visible)
+    {
+        if (visible) {
+            flags |= INSTANCE_FLAG_VISIBLE;
+        } else {
+            flags &= ~INSTANCE_FLAG_VISIBLE;
+        }
     }
 };
 

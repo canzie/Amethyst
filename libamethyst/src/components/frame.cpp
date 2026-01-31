@@ -30,21 +30,13 @@ void Frame::draw(DrawContext &ctx)
     }
 
     if (flags & FLAG_DIRTY) {
-        if (visible) {
+        InstanceData data = createInstanceData();
+        data.setPrimitiveType(PRIMITIVE_RECT);
 
-            InstanceData data = createInstanceData();
-            data.setPrimitiveType(PRIMITIVE_RECT);
-
-            if (m_geometryAlloc == nullptr) {
-                m_geometryAlloc = ctx.geometry->submit(data);
-            } else {
-                ctx.geometry->update(*m_geometryAlloc, data);
-            }
+        if (m_geometryAlloc == nullptr) {
+            m_geometryAlloc = ctx.geometry->submit(data);
         } else {
-            if (m_geometryAlloc != nullptr) {
-                m_geometryAlloc->registry->release(*m_geometryAlloc);
-                m_geometryAlloc = nullptr;
-            }
+            ctx.geometry->update(*m_geometryAlloc, data);
         }
     }
 

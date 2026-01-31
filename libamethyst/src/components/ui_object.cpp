@@ -41,6 +41,7 @@ InstanceData UIObject::createInstanceData() const
     data.setPrimitiveType(PRIMITIVE_TRIANGLE);
     data.setBorderMode(borderMode);
     data.zIndex = zIndex;
+    data.setVisible(visible);
     return data;
 }
 

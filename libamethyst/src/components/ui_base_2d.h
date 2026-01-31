@@ -18,7 +18,7 @@ class UIBase2D : public Instance {
     UIBase2D() = default;
     virtual ~UIBase2D()
     {
-        if (m_geometryAlloc && m_geometryAlloc->isValid()) {
+        if (m_geometryAlloc && m_geometryAlloc->isValid() && m_geometryAlloc->owning) {
             m_geometryAlloc->registry->release(*m_geometryAlloc);
         }
     }

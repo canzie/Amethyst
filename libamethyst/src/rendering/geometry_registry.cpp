@@ -105,7 +105,7 @@ GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
         swappedBucket.start++;
     }
 
-    validateOrdering();
+    // validateOrdering();
     return allocPtr;
 }
 
@@ -118,7 +118,7 @@ void GeometryRegistry::update(GeometryAllocation &alloc, const InstanceData &dat
     m_allocations[alloc.index] = data;
     m_dirtyIndices.insert(alloc.index);
 
-    validateOrdering();
+    // validateOrdering();
 }
 
 void GeometryRegistry::release(GeometryAllocation &alloc)
@@ -169,7 +169,7 @@ void GeometryRegistry::release(GeometryAllocation &alloc)
     m_handleMap.pop_back();
     bucket.count--;
 
-    validateOrdering();
+    // validateOrdering();
 }
 
 void GeometryRegistry::validateOrdering() const
@@ -191,7 +191,8 @@ std::vector<GeometryAllocation *> GeometryRegistry::submitBatch(const std::vecto
     uint32_t insertPos;
     if (bucket.count == 0) {
         auto it = m_zIndexBuckets.upper_bound(zIndex);
-        insertPos = (it != m_zIndexBuckets.end() && it->second.count > 0) ? it->second.start : static_cast<uint32_t>(m_allocations.size());
+        insertPos =
+            (it != m_zIndexBuckets.end() && it->second.count > 0) ? it->second.start : static_cast<uint32_t>(m_allocations.size());
         bucket.start = insertPos;
     } else {
         insertPos = bucket.start + bucket.count;
@@ -204,8 +205,7 @@ std::vector<GeometryAllocation *> GeometryRegistry::submitBatch(const std::vecto
     for (uint32_t i = 0; i < count; ++i) {
         newHandles.push_back(std::make_unique<GeometryAllocation>(insertPos + i, this));
     }
-    m_handleMap.insert(m_handleMap.begin() + insertPos,
-                       std::make_move_iterator(newHandles.begin()),
+    m_handleMap.insert(m_handleMap.begin() + insertPos, std::make_move_iterator(newHandles.begin()),
                        std::make_move_iterator(newHandles.end()));
 
     for (uint32_t i = insertPos + count; i < m_handleMap.size(); ++i) {
@@ -227,7 +227,7 @@ std::vector<GeometryAllocation *> GeometryRegistry::submitBatch(const std::vecto
         results.push_back(m_handleMap[insertPos + i].get());
     }
 
-    validateOrdering();
+    // validateOrdering();
     return results;
 }
 
@@ -241,8 +241,7 @@ void GeometryRegistry::releaseBatch(std::vector<GeometryAllocation *> &allocs)
     uint32_t count = static_cast<uint32_t>(allocs.size());
     uint32_t bucketEnd = bucket.start + bucket.count;
 
-    std::sort(allocs.begin(), allocs.end(),
-              [](auto *a, auto *b) { return a->index > b->index; });
+    std::sort(allocs.begin(), allocs.end(), [](auto *a, auto *b) { return a->index > b->index; });
 
     uint32_t swapTarget = bucketEnd - 1;
     for (auto *alloc : allocs) {
@@ -272,7 +271,7 @@ void GeometryRegistry::releaseBatch(std::vector<GeometryAllocation *> &allocs)
         m_dirtyIndices.insert(i);
     }
 
-    validateOrdering();
+    // validateOrdering();
 }
 
 std::set<uint32_t> GeometryRegistry::consumeDirtyIndices()

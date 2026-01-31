@@ -21,8 +21,11 @@ using GeometryRegistryDestroyCb = std::function<void(GeometryRegistry *)>;
 struct GeometryAllocation {
     uint32_t index = UINT32_MAX;
     GeometryRegistry *registry = nullptr;
+    bool owning = true; // used for children, if a component could possibly not own the allocation they use, this will be false,
+                        // true in case they litterly called submit themselves or if the component explicitly knows it owns it, and
+                        // can just ignore the flag
 
-    bool isValid() const { return index != UINT32_MAX && registry != nullptr; }
+    inline bool isValid() const { return index != UINT32_MAX && registry != nullptr; }
 };
 
 struct ZIndexBucket {
@@ -85,13 +88,13 @@ class GeometryRegistry {
      */
     std::set<uint32_t> consumeDirtyIndices();
 
-    const std::vector<InstanceData> &getAllocations() const { return m_allocations; }
-    size_t size() const { return m_allocations.size(); }
+    inline const std::vector<InstanceData> &getAllocations() const { return m_allocations; }
+    inline size_t size() const { return m_allocations.size(); }
 
     /**
      * @brief Get the owning UILayer
      */
-    UILayer *getOwningLayer() const { return m_owningLayer; }
+    inline UILayer *getOwningLayer() const { return m_owningLayer; }
 
     ~GeometryRegistry();
 

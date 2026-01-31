@@ -15,6 +15,7 @@ struct InstanceData {
     uint cornerPrimitiveMode;     // 4B: cornerRadius(16 half) | primitiveType(8) | borderMode(8)
     uint textureId;               // 4B texture handle
     int zIndex;                   // 4B z-index
+    uint flags;                   // 4B: visible(1) | padding(31)
 };
 
 layout(std430, binding = 0) readonly buffer InstanceBuffer {
@@ -49,6 +50,7 @@ const vec2 uvs[4] = vec2[](
 
 const uint PRIMITIVE_TEXT = 4;
 const float PI = 3.14159265359;
+const uint INSTANCE_FLAG_VISIBLE = 0x00000001u;
 
 vec4 unpackColor(uint packed) {
     return vec4(
@@ -70,6 +72,12 @@ float unpackRotation(uint packed) {
 void main()
 {
     InstanceData inst = instances[gl_InstanceIndex];
+
+    // GPU-side visibility culling
+    if ((inst.flags & INSTANCE_FLAG_VISIBLE) == 0u) {
+        gl_Position = vec4(0.0, 0.0, 0.0, 0.0);
+        return;
+    }
 
     // Unpack rotation from lower 16 bits
     uint rotationPacked = inst.rotationBorderThickness & 0xFFFFu;
