@@ -39,9 +39,12 @@ glm::vec2 TabBar::getContentOffset() const
 
     float bar = getBarSize();
     switch (tabPosition) {
-    case TabBarPosition::TOP:  return {0.0f, bar};
-    case TabBarPosition::LEFT: return {bar, 0.0f};
-    default:                   return {0.0f, 0.0f};
+    case TabBarPosition::TOP:
+        return {0.0f, bar};
+    case TabBarPosition::LEFT:
+        return {bar, 0.0f};
+    default:
+        return {0.0f, 0.0f};
     }
 }
 
@@ -108,9 +111,7 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     tab.button->zIndex = zIndex + 2;
 
     if (tab.content) {
-        tab.button->text = tab.content->name.empty()
-            ? "Tab " + std::to_string(index + 1)
-            : tab.content->name;
+        tab.button->text = tab.content->name.empty() ? "Tab " + std::to_string(index + 1) : tab.content->name;
     }
 
     auto *drag = tab.button->addExtension<UIDragDetector>();
@@ -182,8 +183,7 @@ void TabBar::markAllTabsDirty()
 
 void TabBar::addChild(Instance *child)
 {
-    auto existing = std::find_if(m_tabs.begin(), m_tabs.end(),
-        [child](const auto &t) { return t->content == child; });
+    auto existing = std::find_if(m_tabs.begin(), m_tabs.end(), [child](const auto &t) { return t->content == child; });
     if (existing != m_tabs.end()) return;
 
     Instance::addChild(child);
@@ -207,8 +207,7 @@ void TabBar::addChild(Instance *child)
 
 void TabBar::removeChild(Instance *child)
 {
-    auto it = std::find_if(m_tabs.begin(), m_tabs.end(),
-        [child](const auto &t) { return t->content == child; });
+    auto it = std::find_if(m_tabs.begin(), m_tabs.end(), [child](const auto &t) { return t->content == child; });
 
     if (it != m_tabs.end()) {
         int32_t removedIdx = static_cast<int32_t>(std::distance(m_tabs.begin(), it));
@@ -365,8 +364,8 @@ void TabBar::draw(DrawContext &ctx)
 
     glm::vec4 childClip = clipRect;
     if (clipsDescendants) {
-        childClip = {absolutePosition.x, absolutePosition.y,
-                     absolutePosition.x + absoluteSize.x, absolutePosition.y + absoluteSize.y};
+        childClip = {absolutePosition.x, absolutePosition.y, absolutePosition.x + absoluteSize.x,
+                     absolutePosition.y + absoluteSize.y};
     }
 
     if (shouldShowTabs()) {
@@ -387,6 +386,7 @@ void TabBar::draw(DrawContext &ctx)
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(ctx);
         } else if (auto *layer = child->as<UILayer>()) {
+            layer->clipRect = childClip;
             layer->draw(ctx);
         }
     }

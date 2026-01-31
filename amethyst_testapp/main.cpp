@@ -404,10 +404,13 @@ int main()
     tableSlider4.position = Amethyst::UDim2::fromScale(0.025f, 0.1f);
     tableSlider4.markDirty();
 
-    Amethyst::TreeView treeView(&window);
+    Amethyst::PanelLayer treePanel;
+    treePanel.name = "Tree Panel";
+    treePanel.markDirty();
+
+    Amethyst::TreeView treeView(&treePanel);
     treeView.name = "Test TreeView";
-    treeView.size = Amethyst::UDim2::fromOffset(300, 250);
-    treeView.position = Amethyst::UDim2::fromOffset(520, 400);
+    treeView.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
     treeView.backgroundColor = {0.12f, 0.12f, 0.14f};
     treeView.numCols = 1;
     treeView.rowHeight = 24.0f;
@@ -561,6 +564,7 @@ int main()
     imageLabel.markDirty();
 
     dockingLayer.dock(&imageLabel, glm::vec2(600.0f, 850.0f));
+    dockingLayer.dock(&treePanel, glm::vec2(750.0f, 600.0f));
 
     window.draw(drawCtx);
 

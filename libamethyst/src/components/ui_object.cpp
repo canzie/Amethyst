@@ -11,9 +11,6 @@ namespace Amethyst {
 
 UIObject::~UIObject()
 {
-    if (Window *window = getWindow()) {
-        window->releaseMouse(this);
-    }
 }
 
 void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation)

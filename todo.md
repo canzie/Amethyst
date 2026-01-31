@@ -1,3 +1,9 @@
+treeview
+    - make it so one can "scroll" in a treeview
+
+
+
+
 - visibility issue
     - allow allocs to be non owning, this means they wont be freed automatically
     - make certain componments own some allocation pool, then allow its children to use them, depending on who is visible

@@ -53,13 +53,12 @@ class DockingLayer : public UILayer {
   public:
     DockingLayer();
     DockingLayer(Instance *parent);
-    virtual ~DockingLayer() = default;
+    virtual ~DockingLayer();
 
     DockingLayer(const DockingLayer &) = delete;
     DockingLayer &operator=(const DockingLayer &) = delete;
-
-    DockingLayer(DockingLayer &&) = default;
-    DockingLayer &operator=(DockingLayer &&) = default;
+    DockingLayer(DockingLayer &&) = delete;
+    DockingLayer &operator=(DockingLayer &&) = delete;
 
     void draw(DrawContext &ctx) override;
     std::vector<Instance *> getHittableInstances() override;

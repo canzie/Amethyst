@@ -26,6 +26,15 @@ DockingLayer::DockingLayer(Instance *parent)
     initDockHints();
 }
 
+DockingLayer::~DockingLayer()
+{
+    for (auto &tabBar : m_tabBars) {
+        while (!tabBar->children.empty()) {
+            tabBar->removeChild(tabBar->children.back());
+        }
+    }
+}
+
 void DockingLayer::draw(DrawContext &ctx)
 {
     processPendingDeletions();

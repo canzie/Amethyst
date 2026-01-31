@@ -12,6 +12,7 @@
 
 #include "components/frame.h"
 #include "components/table.h"
+#include "components/text_button.h"
 
 #include <cstdint>
 #include <functional>
@@ -32,6 +33,7 @@ struct TreeRow {
     uint32_t firstCellIndex = INVALID_ROW;
     bool expanded = true;
     bool alive = false;
+    bool isDirty = true;
 };
 
 struct TreeRowHandle {
@@ -87,15 +89,24 @@ class TreeView : public Table {
     void expandAll();
     void collapseAll();
 
+    std::vector<Instance *> getHittableInstances() override;
+
   protected:
     bool isRowVisible(uint32_t row) const override;
     float getRowIndent(uint32_t row) const override;
 
   private:
     void drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIndex, const std::vector<float> &colPositions, const glm::vec4 &childClip);
-    void drawDisclosureTriangle(DrawContext &ctx, uint32_t row, float y, bool expanded, const glm::vec4 &childClip);
+    void drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t visibleIndex, float y, bool expanded, const glm::vec4 &childClip);
     void linkRowToParent(uint32_t row, uint32_t parentRow);
     void unlinkRow(uint32_t row);
+    void markRowDirty(uint32_t row);
+    void clearRowCells(DrawContext &ctx, uint32_t row);
+
+    void ensureSlotCapacity(uint32_t slotCount);
+    uint32_t drawVisibleRows(DrawContext &ctx, const std::vector<float> &colPositions, const glm::vec4 &childClip, uint32_t slotCount);
+    void drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint32_t fromSlot, uint32_t slotCount);
+    void clearUnusedSlots(DrawContext &ctx, uint32_t fromSlot);
 
   public:
     float indentPerLevel = 16.0f;
@@ -111,6 +122,7 @@ class TreeView : public Table {
     Color4 rowAlternateColor = {0.22f, 0.22f, 0.24f, 1.0f};
     Color4 rowHoverColor = {0.3f, 0.3f, 0.35f, 1.0f};
     Color4 rowSelectedColor = {0.25f, 0.4f, 0.65f, 1.0f};
+    bool fillRows = true;
 
     std::function<void(uint32_t)> onRowClicked;
     std::function<void(uint32_t, bool)> onRowToggled;
@@ -128,7 +140,7 @@ class TreeView : public Table {
     std::vector<uint32_t> m_buildStack;
 
     std::vector<std::unique_ptr<Frame>> m_rowBackgrounds;
-    std::vector<std::unique_ptr<Frame>> m_disclosureFrames;
+    std::vector<std::unique_ptr<TextButton>> m_rowDisclosures;
 };
 
 template <typename Fn> void TreeView::forEachRow(Fn &&fn) const
