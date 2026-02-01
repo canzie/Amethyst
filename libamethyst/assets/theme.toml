@@ -1,0 +1,85 @@
+[metadata]
+name = "Default Dark Theme"
+version = "1.0"
+
+[general]
+backgroundColor = "#2d2d30"
+backgroundTransparency = 0.0
+borderColor = "#3c3c3c"
+borderPixelSize = 1.0
+cornerRadius = 4.0
+fontFamily = "default"
+fontSize = 14.0
+textColor = "#e0e0e0"
+labelColor = [224, 224, 224, 255]
+valueColor = [200, 200, 200, 255]
+
+[frames]
+backgroundColor = "#252526"
+borderColor = "#1e1e1e"
+cornerRadius = 0.0
+
+[buttons]
+backgroundColor = "#3c3c3c"
+cornerRadius = 4.0
+padding = 8
+textColor = "#ffffff"
+
+[textButtons]
+backgroundColor = "#0e639c"
+cornerRadius = 4.0
+textColor = "#ffffff"
+
+[labels]
+backgroundTransparency = 1.0
+borderPixelSize = 0.0
+
+[scrollingFrames]
+backgroundColor = "#1e1e1e"
+scrollbarColor = "#3c3c3c"
+scrollbarThumbColor = "#686868"
+scrollbarThickness = 10.0
+cornerRadius = 0.0
+
+[tables]
+backgroundColor = "#1e1e1e"
+rowHeight = 32.0
+cellPadding = 4
+columnSeparatorWidth = 1.0
+columnSeparatorColor = [60, 60, 60, 255]
+
+[treeViews]
+backgroundColor = "#1e1e1e"
+rowHeight = 24.0
+rowBackgroundColor = [30, 30, 30, 255]
+rowAlternateColor = [35, 35, 38, 255]
+rowHoverColor = [45, 45, 48, 255]
+rowSelectedColor = [14, 99, 156, 255]
+indentPerLevel = 20.0
+disclosureTriangleSize = 8.0
+disclosureTrianglePadding = 4.0
+disclosureTriangleColor = [150, 150, 150, 255]
+
+[sliders]
+backgroundColor = "#252526"
+sliderColor = "#3c3c3c"
+thumbColor = "#0e639c"
+trackCornerRadius = 2.0
+thumbCornerRadius = 2.0
+labelPadding = 8
+
+[checkboxes]
+backgroundColor = "#252526"
+checkColor = "#0e639c"
+checkboxSize = 18.0
+cornerRadius = 2.0
+
+[dropdowns]
+backgroundColor = "#3c3c3c"
+highlightColor = "#0e639c"
+cornerRadius = 4.0
+
+[tabBars]
+backgroundColor = "#252526"
+tabWidth = 120.0
+barThickness = 35.0

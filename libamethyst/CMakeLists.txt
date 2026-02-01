@@ -26,6 +26,12 @@ FetchContent_Declare(
     GIT_TAG v0.13.1
 )
 
+FetchContent_Declare(
+    tomlplusplus
+    GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
+    GIT_TAG v3.4.0
+)
+
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     set(TRACY_ENABLE ON CACHE BOOL "Enable Tracy profiling" FORCE)
     set(TRACY_ON_DEMAND ON CACHE BOOL "Tracy on-demand mode" FORCE)
@@ -36,7 +42,7 @@ else()
     set(TRACY_ENABLE OFF CACHE BOOL "Enable Tracy profiling" FORCE)
 endif()
 
-FetchContent_MakeAvailable(glm spdlog freetype tracy)
+FetchContent_MakeAvailable(glm spdlog freetype tracy tomlplusplus)
 
 file(GLOB_RECURSE AMETHYST_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
@@ -48,7 +54,7 @@ target_include_directories(amethyst
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(amethyst PUBLIC glm::glm spdlog::spdlog freetype TracyClient)
+target_link_libraries(amethyst PUBLIC glm::glm spdlog::spdlog freetype TracyClient tomlplusplus::tomlplusplus)
 
 target_compile_options(amethyst PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>

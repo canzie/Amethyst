@@ -1,9 +1,33 @@
-// parse am themes from toml files using toml++
-// i guess i need to define some categories like
-// [general], [buttons], [labels], [containers] (like frames), [metadata]
-// assuming when someting like border thickness is defned in general but not buttons, and also in labels, the buttons will use the
-// general setting but the labels their own, and ofcourse you can still overwrite any specific object via code, this would just be a
-// general theme,
-//
-// the main cpu datatype will be a palette, not a "theme".
-//
+#ifndef AMETHYST__AM_THEME_PARSER_H
+#define AMETHYST__AM_THEME_PARSER_H
+
+#include "modules/style.h"
+
+#include <filesystem>
+#include <optional>
+#include <string>
+
+namespace Amethyst {
+
+/**
+ * @brief Parses .toml theme files into a Style object.
+ *
+ * Supports shorthand properties:
+ *   padding = 10                  -> all sides
+ *   padding = [10, 20]            -> vertical, horizontal
+ *   padding = [10, 20, 30, 40]    -> top, right, bottom, left
+ *   margin follows the same pattern
+ *
+ * Colors can be specified as:
+ *   backgroundColor = "#ff0000"   -> hex
+ *   backgroundColor = [255, 0, 0] -> RGB array
+ */
+class AmThemeParser {
+public:
+    static std::optional<Style> parseFile(const std::filesystem::path& path);
+    static std::optional<Style> parseString(const std::string& tomlContent);
+};
+
+} // namespace Amethyst
+
+#endif // AMETHYST__AM_THEME_PARSER_H

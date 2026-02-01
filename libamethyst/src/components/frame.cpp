@@ -6,11 +6,33 @@
 
 #include "components/ui_object.h"
 #include "logging/log.h"
+#include "modules/style.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 #include "utils/profiling.h"
 
 namespace Amethyst {
+
+static void applyStyle(Frame& frame) {
+    const auto& style = Style::instance();
+    frame.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::FRAME);
+    frame.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::FRAME);
+    frame.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::FRAME);
+    frame.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::FRAME);
+    frame.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::FRAME);
+    frame.borderMode = style.get<BorderMode>(StyleProperty::BORDER_MODE, ComponentType::FRAME);
+    frame.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::FRAME);
+}
+
+Frame::Frame() {
+    applyStyle(*this);
+}
+
+Frame::Frame(Instance *parent) {
+    setParent(parent);
+    zIndex = 2;
+    applyStyle(*this);
+}
 
 void Frame::onMouseButton1Click()
 {

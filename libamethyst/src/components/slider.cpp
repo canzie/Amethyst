@@ -8,6 +8,7 @@
 #include "components/frame.h"
 #include "components/text_label.h"
 #include "components/window.h"
+#include "modules/style.h"
 #include "rendering/draw_context.h"
 
 #include <algorithm>
@@ -16,6 +17,22 @@
 #include <sstream>
 
 namespace Amethyst {
+
+static void applyStyle(Slider& slider) {
+    const auto& style = Style::instance();
+    slider.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SLIDER);
+    slider.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SLIDER);
+    slider.sliderColor = style.get<Color3>(StyleProperty::SLIDER_COLOR, ComponentType::SLIDER);
+    slider.sliderTransparency = style.get<float>(StyleProperty::SLIDER_TRANSPARENCY, ComponentType::SLIDER);
+    slider.thumbColor = style.get<Color3>(StyleProperty::THUMB_COLOR, ComponentType::SLIDER);
+    slider.thumbTransparency = style.get<float>(StyleProperty::THUMB_TRANSPARENCY, ComponentType::SLIDER);
+    slider.trackCornerRadius = style.get<float>(StyleProperty::TRACK_CORNER_RADIUS, ComponentType::SLIDER);
+    slider.thumbCornerRadius = style.get<float>(StyleProperty::THUMB_CORNER_RADIUS, ComponentType::SLIDER);
+    slider.labelColor = style.get<Color4>(StyleProperty::LABEL_COLOR, ComponentType::SLIDER);
+    slider.labelPadding = style.get<UDim>(StyleProperty::LABEL_PADDING, ComponentType::SLIDER);
+    slider.valueColor = style.get<Color4>(StyleProperty::VALUE_COLOR, ComponentType::SLIDER);
+    slider.fontSize = style.get<float>(StyleProperty::FONT_SIZE, ComponentType::SLIDER);
+}
 
 static void setupSideLabel(TextLabel &label, const Slider *slider, float &outLabelWidth, float &outLabelHeight)
 {
@@ -93,6 +110,7 @@ static void setupValueLabel(TextLabel &label, float x, float y, float width, flo
 Slider::Slider()
 {
     m_sideLabel.setParent(this);
+    applyStyle(*this);
 }
 
 Slider::Slider(Instance *parent) : Slider()

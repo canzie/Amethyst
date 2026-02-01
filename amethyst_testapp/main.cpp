@@ -1,4 +1,5 @@
 #include "amethyst/Amethyst.h"
+#include "modules/style.h"
 #include "amethyst__vk13_glfw.h"
 #include "components/common.h"
 #include "components/docking_layer.h"
@@ -19,6 +20,8 @@ int main()
 {
     Amethyst::Log::Init();
     AM_LOG_INFO("Amethyst Test App");
+
+    Amethyst::Style::load(AMETHYST_ASSETS_DIR "/theme.toml");
 
     VkContext ctx;
     if (!contextInit(ctx, 1000, 1000, "Amethyst Test")) {
