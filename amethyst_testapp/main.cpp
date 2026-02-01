@@ -101,7 +101,7 @@ int main()
     button1.size = Amethyst::UDim2::fromScale(0.9f, 0.9f);
     button1.position = Amethyst::UDim2::fromScale(0.5f, 0.5f);
     button1.anchorPoint = glm::vec2(0.5f);
-    button1.backgroundColor = {0.2f, 0.0f, 0.2f};
+    button1.backgroundColor = {0.5f, 0.0f, 0.5f};
     button1.cornerRadius = 5.0f;
     button1.zIndex = 2;
     button1.textScaled = true;
@@ -165,7 +165,7 @@ int main()
     sliderFloat.name = "float slider";
     sliderFloat.size = Amethyst::UDim2::fromOffset(300, 40);
     sliderFloat.position = Amethyst::UDim2::fromOffset(10, 150);
-    sliderFloat.backgroundColor = {0.1f, 0.1f, 0.1f};
+    sliderFloat.backgroundColor = {0.9f, 0.9f, 0.9f};
     sliderFloat.label = "Volume";
     sliderFloat.labelSide = Amethyst::LabelSide::LEFT;
     sliderFloat.valueSuffix = "%";
@@ -411,7 +411,7 @@ int main()
     Amethyst::ScrollingFrame treeScrollFrame(&treePanel);
     treeScrollFrame.name = "Tree Scroll Container";
     treeScrollFrame.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
-    treeScrollFrame.backgroundColor = {0.12f, 0.12f, 0.14f};
+    treeScrollFrame.backgroundColor = Amethyst::Color3::fromHex(0x282828);
     treeScrollFrame.canvasSize = Amethyst::UDim2::fromOffset(250, 500);
     treeScrollFrame.scrollBarColor = {0.2f, 0.2f, 0.25f};
     treeScrollFrame.scrollBarThumbColor = {0.4f, 0.4f, 0.5f};
@@ -421,7 +421,10 @@ int main()
     Amethyst::TreeView treeView(&treeScrollFrame);
     treeView.name = "Test TreeView";
     treeView.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
-    treeView.backgroundColor = {0.12f, 0.12f, 0.14f};
+    treeView.backgroundColor = Amethyst::Color3(1.0f, 0.0f, 0.0f);
+    treeView.backgroundTransparency = 0.0f;
+    treeView.rowBackgroundColor = Amethyst::Color4::fromHex(0x282828);
+    treeView.rowAlternateColor = Amethyst::Color4::fromHex(0x2B2B2B);
     treeView.numCols = 1;
     treeView.rowHeight = 24.0f;
     treeView.indentPerLevel = 20.0f;

@@ -5,24 +5,12 @@
 #ifndef AMETHYST__COMMON_H
 #define AMETHYST__COMMON_H
 
+#include "modules/color.h"
+
 #include <cstdint>
 #include <glm/glm.hpp>
 
 namespace Amethyst {
-
-// normalized rgb
-using Color3 = glm::vec3;
-using Color4 = glm::vec4;
-
-inline Color3 Color3FromRgb(uint8_t r, uint8_t g, uint8_t b)
-{
-    return Color3(glm::vec3(r, g, b) / 255.0f);
-};
-
-inline Color4 Color4FromRgb(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
-{
-    return Color4(glm::vec4(r, g, b, a) / 255.0f);
-};
 
 using Degrees = float;
 
