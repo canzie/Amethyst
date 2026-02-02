@@ -17,8 +17,8 @@ struct GeometryAllocation;
 
 class TextLabel : public UILabel {
   public:
-    TextLabel() = default;
-    TextLabel(Instance *parent) { setParent(parent); }
+    TextLabel();
+    TextLabel(Instance *parent);
     virtual ~TextLabel();
 
     void draw(DrawContext &ctx) override;

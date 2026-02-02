@@ -4,13 +4,34 @@
 
 #include "components/table.h"
 
+#include "modules/style.h"
 #include "rendering/draw_context.h"
 
 namespace Amethyst {
 
+static void applyStyle(Table &table)
+{
+    const auto &style = Style::instance();
+    table.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TABLE);
+    table.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TABLE);
+    table.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TABLE);
+    table.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TABLE);
+    table.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TABLE);
+    table.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TABLE);
+    table.rowHeight = style.get<float>(StyleProperty::ROW_HEIGHT, ComponentType::TABLE);
+    table.columnSeparatorWidth = style.get<float>(StyleProperty::COLUMN_SEPARATOR_WIDTH, ComponentType::TABLE);
+    table.columnSeparatorColor = style.get<Color4>(StyleProperty::COLUMN_SEPARATOR_COLOR, ComponentType::TABLE);
+}
+
+Table::Table()
+{
+    applyStyle(*this);
+}
+
 Table::Table(Instance *parent) : UIObject()
 {
     setParent(parent);
+    applyStyle(*this);
 }
 
 uint32_t Table::getRowCount() const

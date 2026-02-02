@@ -27,8 +27,8 @@ enum class ScrollAxis {
 
 class ScrollingFrame : public UIObject {
   public:
-    ScrollingFrame() = default;
-    ScrollingFrame(Instance *parent) { setParent(parent); };
+    ScrollingFrame();
+    ScrollingFrame(Instance *parent);
     virtual ~ScrollingFrame() = default;
 
     void draw(DrawContext &ctx) override;

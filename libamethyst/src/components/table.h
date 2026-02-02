@@ -27,7 +27,7 @@ namespace Amethyst {
  */
 class Table : public UIObject {
   public:
-    Table() = default;
+    Table();
     Table(Instance *parent);
     virtual ~Table() = default;
 

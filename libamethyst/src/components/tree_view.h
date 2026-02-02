@@ -45,7 +45,7 @@ struct TreeRowHandle {
 
 class TreeView : public Table {
   public:
-    TreeView() = default;
+    TreeView();
     TreeView(Instance *parent);
     virtual ~TreeView();
 

@@ -3,17 +3,35 @@
 #include "components/common.h"
 #include "components/extensions/ui_drag_detector.h"
 #include "components/ui_layer.h"
+#include "modules/style.h"
 #include "rendering/geometry_registry.h"
 
 #include <algorithm>
 
 namespace Amethyst {
 
-TabBar::TabBar() {}
+static void applyStyle(TabBar &tabBar)
+{
+    const auto &style = Style::instance();
+    tabBar.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TAB_BAR);
+    tabBar.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TAB_BAR);
+    tabBar.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TAB_BAR);
+    tabBar.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TAB_BAR);
+    tabBar.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TAB_BAR);
+    tabBar.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TAB_BAR);
+    tabBar.tabWidth = style.get<float>(StyleProperty::TAB_WIDTH, ComponentType::TAB_BAR);
+    tabBar.barThickness = style.get<float>(StyleProperty::BAR_THICKNESS, ComponentType::TAB_BAR);
+}
+
+TabBar::TabBar()
+{
+    applyStyle(*this);
+}
 
 TabBar::TabBar(Instance *parent)
 {
     setParent(parent);
+    applyStyle(*this);
 }
 
 bool TabBar::isVertical() const

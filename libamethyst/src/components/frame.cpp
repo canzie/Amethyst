@@ -4,6 +4,8 @@
 
 #include "components/frame.h"
 
+#include "components/extensions/ui_grid_layout.h"
+#include "components/extensions/ui_list_layout.h"
 #include "components/ui_object.h"
 #include "logging/log.h"
 #include "modules/style.h"
@@ -62,6 +64,12 @@ void Frame::draw(DrawContext &ctx)
         } else {
             ctx.geometry->update(*m_geometryAlloc, data);
         }
+    }
+
+    if (auto *gridLayout = getExtension<UIGridLayout>()) {
+        gridLayout->apply(children);
+    } else if (auto *listLayout = getExtension<UIListLayout>()) {
+        listLayout->apply(children);
     }
 
     glm::vec4 childClip = computeChildClipRect();

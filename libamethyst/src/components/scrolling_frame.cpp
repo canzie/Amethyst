@@ -3,10 +3,38 @@
 #include "components/extensions/ui_grid_layout.h"
 #include "components/extensions/ui_list_layout.h"
 #include "components/frame.h"
+#include "modules/style.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 
 namespace Amethyst {
+
+static void applyStyle(ScrollingFrame &frame)
+{
+    const auto &style = Style::instance();
+    frame.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SCROLLING_FRAME);
+    frame.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
+    frame.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::SCROLLING_FRAME);
+    frame.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
+    frame.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::SCROLLING_FRAME);
+    frame.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::SCROLLING_FRAME);
+    frame.scrollBarColor = style.get<Color3>(StyleProperty::SCROLLBAR_COLOR, ComponentType::SCROLLING_FRAME);
+    frame.scrollBarTransparency = style.get<float>(StyleProperty::SCROLLBAR_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
+    frame.scrollBarThickness = style.get<float>(StyleProperty::SCROLLBAR_THICKNESS, ComponentType::SCROLLING_FRAME);
+    frame.scrollBarThumbColor = style.get<Color3>(StyleProperty::SCROLLBAR_THUMB_COLOR, ComponentType::SCROLLING_FRAME);
+    frame.scrollBarThumbTransparency = style.get<float>(StyleProperty::SCROLLBAR_THUMB_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
+}
+
+ScrollingFrame::ScrollingFrame()
+{
+    applyStyle(*this);
+}
+
+ScrollingFrame::ScrollingFrame(Instance *parent)
+{
+    setParent(parent);
+    applyStyle(*this);
+}
 
 void ScrollingFrame::draw(DrawContext &ctx)
 {

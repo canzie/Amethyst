@@ -1,6 +1,7 @@
 #include "components/tree_view.h"
 
 #include "logging/log.h"
+#include "modules/style.h"
 #include "rendering/draw_context.h"
 #include "utils/am_assert.h"
 #include "utils/profiling.h"
@@ -11,14 +12,40 @@
 
 namespace Amethyst {
 
+static void applyStyle(TreeView &tree)
+{
+    const auto &style = Style::instance();
+    tree.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TREE_VIEW);
+    tree.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TREE_VIEW);
+    tree.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TREE_VIEW);
+    tree.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TREE_VIEW);
+    tree.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TREE_VIEW);
+    tree.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TREE_VIEW);
+    tree.rowHeight = style.get<float>(StyleProperty::ROW_HEIGHT, ComponentType::TREE_VIEW);
+    tree.rowBackgroundColor = style.get<Color4>(StyleProperty::ROW_BACKGROUND_COLOR, ComponentType::TREE_VIEW);
+    tree.rowAlternateColor = style.get<Color4>(StyleProperty::ROW_ALTERNATE_COLOR, ComponentType::TREE_VIEW);
+    tree.rowHoverColor = style.get<Color4>(StyleProperty::ROW_HOVER_COLOR, ComponentType::TREE_VIEW);
+    tree.rowSelectedColor = style.get<Color4>(StyleProperty::ROW_SELECTED_COLOR, ComponentType::TREE_VIEW);
+    tree.indentPerLevel = style.get<float>(StyleProperty::INDENT_PER_LEVEL, ComponentType::TREE_VIEW);
+    tree.disclosureTriangleSize = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_SIZE, ComponentType::TREE_VIEW);
+    tree.disclosureTrianglePadding = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_PADDING, ComponentType::TREE_VIEW);
+    tree.disclosureTriangleColor = style.get<Color4>(StyleProperty::DISCLOSURE_TRIANGLE_COLOR, ComponentType::TREE_VIEW);
+}
+
 inline static float calculateRowY(uint32_t row, float rowHeight)
 {
     return static_cast<float>(row) * (rowHeight - 1.0f);
 }
 
+TreeView::TreeView()
+{
+    applyStyle(*this);
+}
+
 TreeView::TreeView(Instance *parent)
 {
     setParent(parent);
+    applyStyle(*this);
 }
 
 TreeView::~TreeView()
