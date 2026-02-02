@@ -108,7 +108,6 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     tab.button->parent = this;
     tab.button->backgroundColor = Color3{0.5f, 0.5f, 0.5f};
     tab.button->textYAlignment = TextYAlignment::BOTTOM;
-    tab.button->zIndex = zIndex + 2;
 
     if (tab.content) {
         tab.button->text = tab.content->name.empty() ? "Tab " + std::to_string(index + 1) : tab.content->name;
@@ -188,9 +187,7 @@ void TabBar::addChild(Instance *child)
 
     Instance::addChild(child);
 
-    if (auto *obj = child->as<UIObject>()) {
-        obj->zIndex = zIndex + 1;
-    } else if (auto *layer = child->as<UILayer>()) {
+    if (auto *layer = child->as<UILayer>()) {
         layer->setDisplayOrder(2);
     }
 

@@ -18,11 +18,7 @@ struct GeometryAllocation;
 
 class TextButton : public UIButton {
   public:
-    TextButton(Instance *parent)
-    {
-        setParent(parent);
-        zIndex = 2; // TODO: fix this by allowing z reordering
-    };
+    TextButton(Instance *parent) { setParent(parent); };
     virtual ~TextButton();
 
     void draw(DrawContext &ctx) override;

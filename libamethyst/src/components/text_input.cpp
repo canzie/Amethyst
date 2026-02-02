@@ -12,6 +12,7 @@
 #include "rendering/instance_data.h"
 
 #include <algorithm>
+#include <cstdint>
 
 namespace Amethyst {
 
@@ -425,8 +426,9 @@ void TextInput::drawText(DrawContext &ctx)
     params.wrap = multiline;
 
     auto glyphs = ctx.textProcessor->layoutTextAtlas(textToRender, params);
+    int32_t desiredZIndex = getZIndex() + 1;
     for (auto &g : glyphs) {
-        g.zIndex = zIndex + 1;
+        g.zIndex = desiredZIndex;
     }
 
     if (modeChanged || glyphs.size() != m_textAllocations.size()) {
@@ -473,7 +475,7 @@ void TextInput::drawSelection(DrawContext &ctx)
             data.scale = selSize;
             data.setFillColor(selectionColor);
             data.setPrimitiveType(PRIMITIVE_RECT);
-            data.zIndex = zIndex;
+            data.zIndex = getZIndex();
 
             if (m_selectionAlloc == nullptr) {
                 m_selectionAlloc = ctx.geometry->submit(data);
@@ -507,7 +509,7 @@ void TextInput::drawCursor(DrawContext &ctx)
         data.scale = cursorSize;
         data.setFillColor(cursorColor);
         data.setPrimitiveType(PRIMITIVE_RECT);
-        data.zIndex = zIndex;
+        data.zIndex = getZIndex();
 
         if (m_cursorAlloc == nullptr) {
             m_cursorAlloc = ctx.geometry->submit(data);

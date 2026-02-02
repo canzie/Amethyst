@@ -68,7 +68,7 @@ void TextLabel::draw(DrawContext &ctx)
 
             for (auto &glyphData : glyphs) {
                 glyphData.clipRect = clipRect;
-                glyphData.zIndex = zIndex + 1;
+                glyphData.zIndex = data.zIndex + 1;
                 glyphData.setVisible(visible);
             }
 

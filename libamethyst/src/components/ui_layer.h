@@ -38,7 +38,7 @@ class UILayer : public UIBase2D {
   public:
     bool visible = true;
     bool resetOnSpawn = false;
-    ZIndexBehavior zindexBehavior;
+    ZIndexBehavior zindexBehavior = ZIndexBehavior::GLOBAL;
 
   private:
     std::unique_ptr<GeometryRegistry> m_geometryRegistry;

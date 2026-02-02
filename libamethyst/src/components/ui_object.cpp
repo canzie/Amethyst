@@ -5,13 +5,12 @@
 #include "rendering/instance_data.h"
 #include "utils/profiling.h"
 
+#include "ui_object.h"
 #include <cstdint>
 
 namespace Amethyst {
 
-UIObject::~UIObject()
-{
-}
+UIObject::~UIObject() {}
 
 void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation)
 {
@@ -37,7 +36,7 @@ InstanceData UIObject::createInstanceData() const
     data.setCornerRadius(cornerRadius);
     data.setPrimitiveType(PRIMITIVE_TRIANGLE);
     data.setBorderMode(borderMode);
-    data.zIndex = zIndex;
+    data.zIndex = getZIndex();
     data.setVisible(visible);
     return data;
 }
@@ -53,6 +52,29 @@ Window *UIObject::getWindow()
 }
 
 void UIObject::onMouseEnter() {}
+
+int32_t UIObject::getAbsoluteZIndex() const
+{
+    if (!parent) {
+        return zIndex;
+    }
+
+    if (auto *obj = parent->as<UIObject>()) {
+        return obj->getAbsoluteZIndex() + zIndex;
+    } else if (auto *layer = parent->as<UILayer>()) {
+        return layer->getDisplayOrder() + zIndex;
+    }
+
+    return zIndex;
+}
+
+int32_t UIObject::getZIndex() const
+{
+    if (zindexBehavior == ZIndexBehavior::GLOBAL) {
+        return getAbsoluteZIndex();
+    }
+    return zIndex;
+}
 
 void UIObject::onMouseLeave() {}
 

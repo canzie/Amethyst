@@ -41,8 +41,8 @@ class UIObject : public UIBase2D {
         if (clipRect == glm::vec4(0.0f)) {
             return myBounds;
         }
-        return {glm::max(clipRect.x, myBounds.x), glm::max(clipRect.y, myBounds.y),
-                glm::min(clipRect.z, myBounds.z), glm::min(clipRect.w, myBounds.w)};
+        return {glm::max(clipRect.x, myBounds.x), glm::max(clipRect.y, myBounds.y), glm::min(clipRect.z, myBounds.z),
+                glm::min(clipRect.w, myBounds.w)};
     }
 
     template <typename T> T *getExtension()
@@ -59,6 +59,10 @@ class UIObject : public UIBase2D {
     }
 
     template <typename T> void removeExtension() { m_extensions.erase(std::type_index(typeid(T))); }
+
+    int32_t getRelativeZIndex() const { return zIndex; }
+    int32_t getAbsoluteZIndex() const;
+    int32_t getZIndex() const;
 
   protected:
     friend class Window;
@@ -98,6 +102,7 @@ class UIObject : public UIBase2D {
     Degrees rotation = 0.0f;
     bool visible = true;
     int32_t zIndex = 1;
+    ZIndexBehavior zindexBehavior = ZIndexBehavior::SIBLING;
 
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;

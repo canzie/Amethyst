@@ -61,7 +61,7 @@ void TextButton::draw(DrawContext &ctx)
             auto glyphs = ctx.textProcessor->layoutTextAtlas(text, params);
 
             for (auto &glyphData : glyphs) {
-                glyphData.zIndex = zIndex + 1;
+                glyphData.zIndex = data.zIndex + 1;
             }
 
             if (glyphs.size() != m_textAllocations.size()) {

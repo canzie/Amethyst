@@ -61,7 +61,7 @@ void Table::updateSeparators()
         sep->size = UDim2(0.0f, columnSeparatorWidth, 1.0f, 0.0f);
         sep->backgroundColor = Color3(columnSeparatorColor);
         sep->backgroundTransparency = 1.0f - columnSeparatorColor.a;
-        sep->zIndex = zIndex + 1;
+        sep->zIndex = getZIndex() + 1;
         sep->markDirty();
         m_separators.push_back(std::move(sep));
     }

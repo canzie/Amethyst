@@ -565,7 +565,6 @@ void DockingLayer::initDockHints()
         hint->backgroundTransparency = hintTransparency;
         hint->borderPixelSize = 0.0f;
         hint->cornerRadius = 0.0f;
-        hint->zIndex = 100;
         hint->markDirty();
     }
 }

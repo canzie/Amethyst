@@ -399,7 +399,7 @@ void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t s
     float rowDepth = static_cast<float>(depth(row));
     float x = absolutePosition.x + rowDepth * indentPerLevel + disclosureTrianglePadding;
     float centerY = y + m_computedRowHeight * 0.5f;
-    btn->zIndex = zIndex + 2;
+    btn->zIndex = getZIndex() + 2;
     btn->backgroundColor = Color3(disclosureTriangleColor);
     btn->backgroundTransparency = 1.0f - disclosureTriangleColor.a;
     btn->rotation = expanded ? 90.0f : 0.0f;
@@ -492,14 +492,14 @@ void TreeView::ensureSlotCapacity(uint32_t slotCount)
     while (m_rowBackgrounds.size() < slotCount) {
         auto frame = std::make_unique<Frame>();
         frame->parent = this;
-        frame->zIndex = zIndex;
+        frame->zIndex = getZIndex();
         frame->size = UDim2::fromScale(1.0f, 1.0f);
         m_rowBackgrounds.push_back(std::move(frame));
     }
     while (m_rowDisclosures.size() < slotCount) {
         auto btn = std::make_unique<TextButton>(nullptr);
         btn->parent = this;
-        btn->zIndex = zIndex + 2;
+        btn->zIndex = getZIndex() + 2;
         btn->size = UDim2::fromScale(1.0f, 1.0f);
         btn->autoButtonColor = false;
         m_rowDisclosures.push_back(std::move(btn));

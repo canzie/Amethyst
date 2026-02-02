@@ -13,7 +13,6 @@ class InvisibleButton : public UIButton {
     {
         backgroundTransparency = 1.0f;
         setParent(parent);
-        zIndex = 2; // TODO: fix this by allowing z reordering
     };
     virtual ~InvisibleButton();
 

@@ -45,8 +45,8 @@ void ScrollingFrame::draw(DrawContext &ctx)
         glm::vec2 childPos = obj->position.resolve(absCanvasSize) - m_scrollOffset;
         glm::vec2 childSize = obj->size.resolve(absCanvasSize);
 
-        bool inViewport = (childPos.x + childSize.x > 0.0f) && (childPos.x < absoluteSize.x) &&
-                          (childPos.y + childSize.y > 0.0f) && (childPos.y < absoluteSize.y);
+        bool inViewport = (childPos.x + childSize.x > 0.0f) && (childPos.x < absoluteSize.x) && (childPos.y + childSize.y > 0.0f) &&
+                          (childPos.y < absoluteSize.y);
 
         bool wasVisible = obj->visible;
         obj->visible = inViewport;
@@ -79,12 +79,12 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
     if (needsVertical) {
         if (m_verticalBar == nullptr) {
             m_verticalBar = std::make_unique<Frame>();
-            m_verticalBar->zIndex = zIndex + 1;
+            m_verticalBar->zIndex = getZIndex() + 1;
             m_verticalBar->size = UDim2::fromScale(1.0f, 1.0f);
         }
         if (m_verticalThumb == nullptr) {
             m_verticalThumb = std::make_unique<Frame>();
-            m_verticalThumb->zIndex = zIndex + 2;
+            m_verticalThumb->zIndex = getZIndex() + 2;
             m_verticalThumb->size = UDim2::fromScale(1.0f, 1.0f);
         }
 
@@ -97,19 +97,16 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
         m_verticalBar->backgroundColor = scrollBarColor;
         m_verticalBar->backgroundTransparency = scrollBarTransparency;
         m_verticalBar->markDirty();
-        m_verticalBar->computeAbsolutes(
-            glm::vec2(scrollBarThickness, trackHeight),
-            absolutePosition + glm::vec2(absoluteSize.x - scrollBarThickness, 0.0f),
-            absoluteRotation);
+        m_verticalBar->computeAbsolutes(glm::vec2(scrollBarThickness, trackHeight),
+                                        absolutePosition + glm::vec2(absoluteSize.x - scrollBarThickness, 0.0f), absoluteRotation);
         m_verticalBar->draw(ctx);
 
         m_verticalThumb->backgroundColor = scrollBarThumbColor;
         m_verticalThumb->backgroundTransparency = scrollBarThumbTransparency;
         m_verticalThumb->markDirty();
-        m_verticalThumb->computeAbsolutes(
-            glm::vec2(scrollBarThickness, thumbHeight),
-            absolutePosition + glm::vec2(absoluteSize.x - scrollBarThickness, thumbY),
-            absoluteRotation);
+        m_verticalThumb->computeAbsolutes(glm::vec2(scrollBarThickness, thumbHeight),
+                                          absolutePosition + glm::vec2(absoluteSize.x - scrollBarThickness, thumbY),
+                                          absoluteRotation);
         m_verticalThumb->draw(ctx);
     } else {
         m_verticalBar.reset();
@@ -119,12 +116,12 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
     if (needsHorizontal) {
         if (m_horizontalBar == nullptr) {
             m_horizontalBar = std::make_unique<Frame>();
-            m_horizontalBar->zIndex = zIndex + 1;
+            m_horizontalBar->zIndex = getZIndex() + 1;
             m_horizontalBar->size = UDim2::fromScale(1.0f, 1.0f);
         }
         if (m_horizontalThumb == nullptr) {
             m_horizontalThumb = std::make_unique<Frame>();
-            m_horizontalThumb->zIndex = zIndex + 2;
+            m_horizontalThumb->zIndex = getZIndex() + 2;
             m_horizontalThumb->size = UDim2::fromScale(1.0f, 1.0f);
         }
 
@@ -137,19 +134,17 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
         m_horizontalBar->backgroundColor = scrollBarColor;
         m_horizontalBar->backgroundTransparency = scrollBarTransparency;
         m_horizontalBar->markDirty();
-        m_horizontalBar->computeAbsolutes(
-            glm::vec2(trackWidth, scrollBarThickness),
-            absolutePosition + glm::vec2(0.0f, absoluteSize.y - scrollBarThickness),
-            absoluteRotation);
+        m_horizontalBar->computeAbsolutes(glm::vec2(trackWidth, scrollBarThickness),
+                                          absolutePosition + glm::vec2(0.0f, absoluteSize.y - scrollBarThickness),
+                                          absoluteRotation);
         m_horizontalBar->draw(ctx);
 
         m_horizontalThumb->backgroundColor = scrollBarThumbColor;
         m_horizontalThumb->backgroundTransparency = scrollBarThumbTransparency;
         m_horizontalThumb->markDirty();
-        m_horizontalThumb->computeAbsolutes(
-            glm::vec2(thumbWidth, scrollBarThickness),
-            absolutePosition + glm::vec2(thumbX, absoluteSize.y - scrollBarThickness),
-            absoluteRotation);
+        m_horizontalThumb->computeAbsolutes(glm::vec2(thumbWidth, scrollBarThickness),
+                                            absolutePosition + glm::vec2(thumbX, absoluteSize.y - scrollBarThickness),
+                                            absoluteRotation);
         m_horizontalThumb->draw(ctx);
     } else {
         m_horizontalBar.reset();

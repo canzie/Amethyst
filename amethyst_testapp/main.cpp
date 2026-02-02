@@ -1,5 +1,4 @@
 #include "amethyst/Amethyst.h"
-#include "modules/style.h"
 #include "amethyst__vk13_glfw.h"
 #include "components/common.h"
 #include "components/docking_layer.h"
@@ -11,6 +10,7 @@
 #include "components/text_button.h"
 #include "components/text_input.h"
 #include "components/tree_view.h"
+#include "modules/style.h"
 #include "utils/profiling.h"
 #include "vk_context.h"
 
@@ -83,7 +83,6 @@ int main()
     frame1.borderMode = Amethyst::BorderMode::INSET;
     frame1.borderColor = glm::vec3(1.0f);
     frame1.cornerRadius = 10.0f;
-    frame1.zIndex = 5.0f;
     frame1.markDirty();
     frame1.addExtension<Amethyst::UIDragDetector>();
 
@@ -94,7 +93,6 @@ int main()
     frame2.anchorPoint = glm::vec2(0.5f);
     frame2.backgroundColor = {0.2f, 0.9f, 0.2f};
     frame2.cornerRadius = 0.0f;
-    frame2.zIndex = 1;
     frame2.markDirty();
     frame2.addExtension<Amethyst::UIDragDetector>();
 
@@ -106,7 +104,6 @@ int main()
     button1.anchorPoint = glm::vec2(0.5f);
     button1.backgroundColor = {0.5f, 0.0f, 0.5f};
     button1.cornerRadius = 5.0f;
-    button1.zIndex = 2;
     button1.textScaled = true;
     button1.textXAlignment = Amethyst::TextXAlignment::CENTER;
     button1.textYAlignment = Amethyst::TextYAlignment::CENTER;
@@ -517,7 +514,6 @@ int main()
     pointLabel.fontSize = 14.0f;
     pointLabel.textYAlignment = Amethyst::TextYAlignment::CENTER;
     pointLabel.size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
-    pointLabel.zIndex = 100;
     pointLabel.markDirty();
     treeView.endRow();
     treeView.endRow();

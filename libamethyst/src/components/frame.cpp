@@ -13,8 +13,9 @@
 
 namespace Amethyst {
 
-static void applyStyle(Frame& frame) {
-    const auto& style = Style::instance();
+static void applyStyle(Frame &frame)
+{
+    const auto &style = Style::instance();
     frame.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::FRAME);
     frame.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::FRAME);
     frame.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::FRAME);
@@ -24,13 +25,14 @@ static void applyStyle(Frame& frame) {
     frame.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::FRAME);
 }
 
-Frame::Frame() {
+Frame::Frame()
+{
     applyStyle(*this);
 }
 
-Frame::Frame(Instance *parent) {
+Frame::Frame(Instance *parent)
+{
     setParent(parent);
-    zIndex = 2;
     applyStyle(*this);
 }
 
