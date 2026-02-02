@@ -16,6 +16,7 @@
 #include <vulkan/vulkan_core.h>
 
 constexpr uint32_t MAX_BINDLESS_TEXTURES = 1024;
+constexpr size_t MAX_BUFFER_ARENA_SIZE = 10 * 1024 * 1024; // 10MB hard limit
 
 namespace Amethyst {
 
@@ -90,6 +91,7 @@ class VkBackend {
     void freeGeometryAllocation(GeometryRegistry* registry);
     BufferAllocation allocateFromArena(BufferArena& arena, std::vector<FreeBlock>& freeList, size_t size);
     void freeToArena(std::vector<FreeBlock>& freeList, const BufferAllocation& alloc);
+    bool reallocBufferArena(BufferArena& arena, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
     static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
     static void cursorPosCallback(GLFWwindow *window, double x, double y);
     static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset);

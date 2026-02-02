@@ -670,8 +670,20 @@ BufferAllocation VkBackend::allocateFromArena(BufferArena &arena, std::vector<Fr
     }
 
     if (arena.size + size > arena.capacity) {
-        AM_LOG_ERROR("Arena out of memory: size={}, capacity={}, requested={}", arena.size, arena.capacity, size);
-        return {};
+        VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+        if (!reallocBufferArena(arena, usage, properties)) {
+            AM_LOG_ERROR("Arena out of memory and resize failed: size={}, capacity={}, requested={}",
+                         arena.size, arena.capacity, size);
+            return {};
+        }
+
+        if (arena.size + size > arena.capacity) {
+            AM_LOG_ERROR("Arena still insufficient after resize: size={}, capacity={}, requested={}",
+                         arena.size, arena.capacity, size);
+            return {};
+        }
     }
 
     BufferAllocation alloc;
@@ -707,6 +719,70 @@ void VkBackend::freeToArena(std::vector<FreeBlock> &freeList, const BufferAlloca
     }
 
     freeList.push_back(block);
+}
+
+bool VkBackend::reallocBufferArena(BufferArena &arena, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
+{
+    size_t newCapacity = arena.capacity * 2;
+    if (newCapacity > MAX_BUFFER_ARENA_SIZE) {
+        if (arena.capacity >= MAX_BUFFER_ARENA_SIZE) {
+            AM_LOG_ERROR("Buffer arena already at max size (10MB), cannot resize");
+            return false;
+        }
+        newCapacity = MAX_BUFFER_ARENA_SIZE;
+    }
+
+    AM_LOG_INFO("Resizing buffer arena from {} to {} bytes", arena.capacity, newCapacity);
+
+    BufferArena newArena{};
+    newArena.capacity = newCapacity;
+    s_createBuffer(m_info.device, m_info.physicalDevice, newArena, usage, properties);
+
+    if (newArena.buffer == VK_NULL_HANDLE) {
+        AM_LOG_ERROR("Failed to create resized buffer");
+        return false;
+    }
+
+    if (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+        if (vkMapMemory(m_info.device, newArena.memory, 0, VK_WHOLE_SIZE, 0, &newArena.mappedMemory) != VK_SUCCESS) {
+            AM_LOG_ERROR("Failed to map resized buffer memory");
+            vkDestroyBuffer(m_info.device, newArena.buffer, nullptr);
+            vkFreeMemory(m_info.device, newArena.memory, nullptr);
+            return false;
+        }
+
+        if (arena.mappedMemory && arena.size > 0) {
+            std::memcpy(newArena.mappedMemory, arena.mappedMemory, arena.size);
+        }
+    }
+
+    newArena.size = arena.size;
+
+    if (arena.buffer != VK_NULL_HANDLE) {
+        if (arena.mappedMemory) {
+            vkUnmapMemory(m_info.device, arena.memory);
+        }
+        vkDestroyBuffer(m_info.device, arena.buffer, nullptr);
+        vkFreeMemory(m_info.device, arena.memory, nullptr);
+    }
+
+    arena = newArena;
+
+    VkDescriptorBufferInfo bufferInfo = {};
+    bufferInfo.buffer = m_dynamicArena.buffer;
+    bufferInfo.offset = 0;
+    bufferInfo.range = VK_WHOLE_SIZE;
+
+    VkWriteDescriptorSet descriptorWrite = {};
+    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.dstSet = m_descriptorSet;
+    descriptorWrite.dstBinding = 0;
+    descriptorWrite.descriptorCount = 1;
+    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptorWrite.pBufferInfo = &bufferInfo;
+    vkUpdateDescriptorSets(m_info.device, 1, &descriptorWrite, 0, nullptr);
+
+    return true;
 }
 
 BufferAllocation *VkBackend::obtainGeometryAllocation(GeometryRegistry *registry)
