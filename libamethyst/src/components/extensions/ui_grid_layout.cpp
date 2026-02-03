@@ -54,6 +54,7 @@ void UIGridLayout::apply(std::vector<Instance *> &children)
     for (auto child : sortedChildren) {
         auto *obj = child->as<UIObject>();
         if (obj == nullptr) continue;
+        if (!obj->visible) continue;
 
         uint32_t mainIndex = childIndex % maxCells;
         uint32_t crossIndex = childIndex / maxCells;

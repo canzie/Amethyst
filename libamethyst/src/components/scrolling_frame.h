@@ -32,6 +32,8 @@ class ScrollingFrame : public UIObject {
     virtual ~ScrollingFrame() = default;
 
     void draw(DrawContext &ctx) override;
+    void addChild(Instance *child) override;
+    void removeChild(Instance *child) override;
 
   protected:
     bool onMouseScrollUp() override;
@@ -62,6 +64,8 @@ class ScrollingFrame : public UIObject {
     std::unique_ptr<Frame> m_verticalThumb;
     std::unique_ptr<Frame> m_horizontalBar;
     std::unique_ptr<Frame> m_horizontalThumb;
+
+    std::unordered_map<Instance *, bool> m_childViewportVisibility;
 };
 
 } // namespace Amethyst

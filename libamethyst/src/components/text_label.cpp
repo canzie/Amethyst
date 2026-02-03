@@ -94,7 +94,7 @@ void TextLabel::draw(DrawContext &ctx)
             for (auto &glyphData : glyphs) {
                 glyphData.clipRect = clipRect;
                 glyphData.zIndex = data.zIndex + 1;
-                glyphData.setVisible(visible);
+                glyphData.setVisible(isVisible());
             }
 
             if (glyphs.size() != m_textAllocations.size()) {

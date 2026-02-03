@@ -36,6 +36,22 @@ ScrollingFrame::ScrollingFrame(Instance *parent)
     applyStyle(*this);
 }
 
+void ScrollingFrame::addChild(Instance *child)
+{
+    UIObject::addChild(child);
+    if (auto *obj = child->as<UIObject>()) {
+        m_childViewportVisibility[child] = obj->visible;
+    }
+}
+
+void ScrollingFrame::removeChild(Instance *child)
+{
+    if (child->as<UIObject>()) {
+        m_childViewportVisibility.erase(child);
+    }
+    UIObject::removeChild(child);
+}
+
 void ScrollingFrame::draw(DrawContext &ctx)
 {
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
@@ -76,16 +92,20 @@ void ScrollingFrame::draw(DrawContext &ctx)
         bool inViewport = (childPos.x + childSize.x > 0.0f) && (childPos.x < absoluteSize.x) && (childPos.y + childSize.y > 0.0f) &&
                           (childPos.y < absoluteSize.y);
 
-        bool wasVisible = obj->visible;
-        obj->visible = inViewport;
+        bool original = obj->visible;
+        bool effective = original && inViewport;
 
-        if (wasVisible != inViewport) {
+        auto &lastViewport = m_childViewportVisibility[child];
+        if (effective != lastViewport) {
             obj->markDirty();
+            lastViewport = effective;
         }
 
+        obj->visible = effective;
         obj->clipRect = childClip;
         obj->computeAbsolutes(absCanvasSize, absolutePosition - m_scrollOffset, absoluteRotation);
         obj->draw(ctx);
+        obj->visible = original;
     }
 
     drawScrollbars(ctx);

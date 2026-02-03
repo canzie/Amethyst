@@ -60,6 +60,7 @@ class UIObject : public UIBase2D {
 
     template <typename T> void removeExtension() { m_extensions.erase(std::type_index(typeid(T))); }
 
+    bool isVisible() const;
     int32_t getRelativeZIndex() const { return zIndex; }
     int32_t getAbsoluteZIndex() const;
     int32_t getZIndex() const;

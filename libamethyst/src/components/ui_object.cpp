@@ -37,7 +37,7 @@ InstanceData UIObject::createInstanceData() const
     data.setPrimitiveType(PRIMITIVE_TRIANGLE);
     data.setBorderMode(borderMode);
     data.zIndex = getZIndex();
-    data.setVisible(visible);
+    data.setVisible(isVisible());
     return data;
 }
 
@@ -52,6 +52,16 @@ Window *UIObject::getWindow()
 }
 
 void UIObject::onMouseEnter() {}
+
+bool UIObject::isVisible() const
+{
+    if (!visible) return false;
+    if (!parent) return true;
+    if (auto *obj = parent->as<UIObject>()) {
+        return obj->isVisible();
+    }
+    return true;
+}
 
 int32_t UIObject::getAbsoluteZIndex() const
 {
