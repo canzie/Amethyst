@@ -1,13 +1,8 @@
-- Fix the srgb color issue
+- make sure every component uses padding, could maybe even do it in ui_object
 - Fix the treeview empty line issue
 - implement the rest of the rapture engine
 - implement a way to serialise a layout, like docking layout and sizes
 - fix docking horizontal resize handle (up and down)
-- implement a way to define color palettes in a toml file
-    - general and per class
-    - will immitate the current class hierarchy
-    - priortising the palette closest to the target class
-    - cached in memory layout for this, the constuctors of components will look for their color, not touching them afterwards to allow users to overwrite it without interference
 - better resize handle cursors
 - corner resizing for docking layer
 - more options in the docking layer, not only a 50-50 split, but also a 75-25 split

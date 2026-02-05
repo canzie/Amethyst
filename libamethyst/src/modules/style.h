@@ -1,8 +1,8 @@
 #ifndef AMETHYST__STYLE_H
 #define AMETHYST__STYLE_H
 
-#include "modules/color.h"
 #include "components/common.h"
+#include "modules/color.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -26,10 +26,6 @@ enum class StyleProperty {
     PADDING_RIGHT,
     PADDING_BOTTOM,
     PADDING_LEFT,
-    MARGIN_TOP,
-    MARGIN_RIGHT,
-    MARGIN_BOTTOM,
-    MARGIN_LEFT,
 
     FONT_FAMILY,
     FONT_SIZE,
@@ -106,16 +102,7 @@ enum class ComponentType {
     RADIO_BUTTON,
 };
 
-using StyleValue = std::variant<
-    Color3,
-    Color4,
-    float,
-    std::string,
-    BorderMode,
-    TextXAlignment,
-    TextYAlignment,
-    UDim
->;
+using StyleValue = std::variant<Color3, Color4, float, std::string, BorderMode, TextXAlignment, TextYAlignment, UDim>;
 
 using StyleKey = uint32_t;
 
@@ -127,11 +114,11 @@ using StyleKey = uint32_t;
  * value is found or falls back to a default.
  */
 class Style {
-public:
+  public:
     Style() = default;
 
-    static Style& instance();
-    static bool load(const std::filesystem::path& path);
+    static Style &instance();
+    static bool load(const std::filesystem::path &path);
 
     /**
      * @brief Get a style value, walking the type hierarchy.
@@ -139,8 +126,8 @@ public:
      * @param property The style property to look up.
      * @param type The component type (lookup walks its hierarchy).
      */
-    template<typename T>
-    T get(StyleProperty property, ComponentType type) const {
+    template <typename T> T get(StyleProperty property, ComponentType type) const
+    {
         for (ComponentType t : getTypeHierarchy(type)) {
             auto key = makeKey(property, t);
             auto it = m_values.find(key);
@@ -151,24 +138,23 @@ public:
         return std::get<T>(getDefault(property));
     }
 
-    template<typename T>
-    void set(StyleProperty property, ComponentType type, const T& value) {
+    template <typename T> void set(StyleProperty property, ComponentType type, const T &value)
+    {
         m_values[makeKey(property, type)] = value;
     }
 
-    bool hasValue(StyleProperty property, ComponentType type) const {
-        return m_values.contains(makeKey(property, type));
-    }
+    bool hasValue(StyleProperty property, ComponentType type) const { return m_values.contains(makeKey(property, type)); }
 
     void clear() { m_values.clear(); }
 
     static std::span<const ComponentType> getTypeHierarchy(ComponentType type);
     static StyleValue getDefault(StyleProperty property);
-    static const std::unordered_map<std::string, StyleProperty>& getPropertyNames();
-    static const std::unordered_map<std::string, ComponentType>& getComponentTypeNames();
+    static const std::unordered_map<std::string, StyleProperty> &getPropertyNames();
+    static const std::unordered_map<std::string, ComponentType> &getComponentTypeNames();
 
-private:
-    static StyleKey makeKey(StyleProperty property, ComponentType type) {
+  private:
+    static StyleKey makeKey(StyleProperty property, ComponentType type)
+    {
         return (static_cast<StyleKey>(type) << 16) | static_cast<StyleKey>(property);
     }
 

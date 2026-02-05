@@ -96,7 +96,6 @@ class UIObject : public UIBase2D {
     LayoutOrder layoutOrder = 0;
 
     UDim4 padding;
-    UDim4 margin;
 
     UDim2 position;
     UDim2 size;

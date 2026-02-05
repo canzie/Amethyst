@@ -1,6 +1,8 @@
 #include "components/ui_object.h"
 #include "components/common.h"
+#include "components/extensions/ui_aspect_ratio_constraint.h"
 #include "components/extensions/ui_drag_detector.h"
+#include "components/extensions/ui_size_constraint.h"
 #include "components/window.h"
 #include "rendering/instance_data.h"
 #include "utils/profiling.h"
@@ -18,6 +20,17 @@ void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degre
     absoluteSize = size.resolve(parentSize);
     absolutePosition = parentPos + position.resolve(parentSize) - anchorPoint * absoluteSize;
     absoluteRotation = rotation + parentRotation;
+
+    glm::vec4 p = padding.resolve(parentSize);
+    absolutePosition += glm::vec2(p.w, p.x);
+    absoluteSize -= glm::vec2(p.w + p.y, p.x + p.z);
+
+    if (auto *sizeConstraint = getExtension<UISizeConstraint>()) {
+        sizeConstraint->apply();
+    }
+    if (auto *arConstraint = getExtension<UIAspectRatioConstraint>()) {
+        arConstraint->apply();
+    }
 }
 
 InstanceData UIObject::createInstanceData() const
