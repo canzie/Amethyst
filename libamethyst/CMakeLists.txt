@@ -60,3 +60,41 @@ target_compile_options(amethyst PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>
 )
+
+if(AMETHYST_BUILD_TESTS)
+    if(AMETHYST_TEST_VALGRIND)
+        find_program(VALGRIND_EXECUTABLE valgrind)
+        if(NOT VALGRIND_EXECUTABLE)
+            message(FATAL_ERROR "AMETHYST_TEST_VALGRIND is ON but valgrind was not found")
+        endif()
+        message(STATUS "Valgrind found: ${VALGRIND_EXECUTABLE}")
+    endif()
+
+    file(GLOB AMETHYST_TEST_SOURCES CONFIGURE_DEPENDS "tests/*_test.cpp")
+
+    foreach(test_source ${AMETHYST_TEST_SOURCES})
+        get_filename_component(test_name ${test_source} NAME_WE)
+        add_executable(${test_name} ${test_source})
+        target_link_libraries(${test_name} PRIVATE amethyst)
+        target_compile_options(${test_name} PRIVATE
+            $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
+            $<$<CXX_COMPILER_ID:MSVC>:/W4>
+        )
+
+        if(AMETHYST_RUN_TESTS)
+            if(AMETHYST_TEST_VALGRIND)
+                add_custom_command(TARGET ${test_name} POST_BUILD
+                    COMMAND ${VALGRIND_EXECUTABLE} --leak-check=full --error-exitcode=1 $<TARGET_FILE:${test_name}>
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                    COMMENT "Running ${test_name} under valgrind..."
+                )
+            else()
+                add_custom_command(TARGET ${test_name} POST_BUILD
+                    COMMAND ${test_name}
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                    COMMENT "Running ${test_name}..."
+                )
+            endif()
+        endif()
+    endforeach()
+endif()

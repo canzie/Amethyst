@@ -1,4 +1,3 @@
-- make sure every component uses padding, could maybe even do it in ui_object
 - Fix the treeview empty line issue
 - implement the rest of the rapture engine
 - implement a way to serialise a layout, like docking layout and sizes
