@@ -36,6 +36,28 @@ class Instance {
 
     template <typename T> const T *as() const { return dynamic_cast<const T *>(this); }
 
+    Instance *findFirstChild(const std::string &childName) const;
+
+    template <typename T> T *findFirstChildOfClass(const std::string &childName) const
+    {
+        for (auto *child : children) {
+            if (auto *casted = dynamic_cast<T *>(child); casted && child->name == childName)
+                return casted;
+        }
+        return nullptr;
+    }
+
+    template <typename T> T *findFirstChildOfClass() const
+    {
+        for (auto *child : children) {
+            if (auto *casted = dynamic_cast<T *>(child))
+                return casted;
+        }
+        return nullptr;
+    }
+
+    Instance *findFirstDescendant(const std::string &descendantName) const;
+
   public:
     uint8_t flags = FLAG_NONE;
     std::string name;

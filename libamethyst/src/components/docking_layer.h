@@ -65,11 +65,12 @@ class DockingLayer : public UILayer {
 
     void dock(UIBase2D *obj, glm::vec2 pos);
     void undock(UIBase2D *obj);
+    int32_t dock(UIBase2D *content, int32_t targetLeaf, DockZone zone, float ratio);
 
     DockZone hitTestZone(int32_t nodeIndex, glm::vec2 position);
     int32_t findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
     int32_t findNodeByResizeHandlePosition(glm::vec2 pos, int32_t nodeIndex);
-    void splitNode(int32_t nodeIndex, DockZone targetZone, UIBase2D *newContent);
+    int32_t splitNode(int32_t nodeIndex, DockZone targetZone, UIBase2D *newContent);
     void recalculateChildren(int32_t parentIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
 
   private:

@@ -101,23 +101,20 @@ AmlNode AmlParser::parseElement()
         if (t == AmlTokenType::TAG_CLOSE || t == AmlTokenType::SLASH_TAG_CLOSE) break;
 
         if (t != AmlTokenType::IDENTIFIER) {
-            setError("Expected attribute name or '>' in <" + node.tag + ">, got '" +
-                std::string(current().text) + "'", current());
+            setError("Expected attribute name or '>' in <" + node.tag + ">, got '" + std::string(current().text) + "'", current());
             return node;
         }
 
         std::string attrName = std::string(advance().text);
 
         if (atEnd() || current().type != AmlTokenType::EQUALS) {
-            setError("Expected '=' after attribute '" + attrName + "' in <" +
-                node.tag + ">", current());
+            setError("Expected '=' after attribute '" + attrName + "' in <" + node.tag + ">", current());
             return node;
         }
         advance(); // consume =
 
         if (atEnd()) {
-            setError("Expected value for attribute '" + attrName + "' in <" +
-                node.tag + ">", current());
+            setError("Expected value for attribute '" + attrName + "' in <" + node.tag + ">", current());
             return node;
         }
 
@@ -144,8 +141,7 @@ AmlNode AmlParser::parseElement()
         if (current().type == AmlTokenType::TAG_OPEN_SLASH) break;
 
         if (current().type != AmlTokenType::TAG_OPEN) {
-            setError("Expected child element or '</" + node.tag + ">', got '" +
-                std::string(current().text) + "'", current());
+            setError("Expected child element or '</" + node.tag + ">', got '" + std::string(current().text) + "'", current());
             return node;
         }
         node.children.push_back(parseElement());
@@ -166,8 +162,8 @@ AmlNode AmlParser::parseElement()
 
     const AmlToken &closingName = advance();
     if (closingName.text != node.tag) {
-        setError("Mismatched closing tag: expected '</" + node.tag + ">', got '</" +
-            std::string(closingName.text) + ">'", closingName);
+        setError("Mismatched closing tag: expected '</" + node.tag + ">', got '</" + std::string(closingName.text) + ">'",
+                 closingName);
         return node;
     }
 

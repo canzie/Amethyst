@@ -54,6 +54,26 @@ void Instance::markChildrenDirty()
     }
 }
 
+Instance *Instance::findFirstChild(const std::string &childName) const
+{
+    for (auto *child : children) {
+        if (child->name == childName)
+            return child;
+    }
+    return nullptr;
+}
+
+Instance *Instance::findFirstDescendant(const std::string &descendantName) const
+{
+    for (auto *child : children) {
+        if (child->name == descendantName)
+            return child;
+        if (auto *found = child->findFirstDescendant(descendantName))
+            return found;
+    }
+    return nullptr;
+}
+
 void Instance::markDirty()
 {
     AM_PROFILE_FUNCTION();

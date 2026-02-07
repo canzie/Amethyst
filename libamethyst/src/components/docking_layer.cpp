@@ -122,6 +122,40 @@ void DockingLayer::dock(UIBase2D *obj, glm::vec2 pos)
     markDirty();
 }
 
+int32_t DockingLayer::dock(UIBase2D *content, int32_t targetLeaf, DockZone zone, float ratio)
+{
+    if (targetLeaf < 0) {
+        int32_t nodeIdx = createNode();
+        if (m_rootNode < 0) m_rootNode = nodeIdx;
+
+        auto tabBar = std::make_unique<TabBar>(this);
+        setupTabBarCallbacks(tabBar.get());
+        tabBar->addChild(content);
+        m_nodes[nodeIdx].content = tabBar.get();
+        tabBar->position = UDim2::fromScale(0.0f);
+        tabBar->size = UDim2::fromScale(1.0f);
+        m_tabBars.push_back(std::move(tabBar));
+        markDirty();
+        return nodeIdx;
+    }
+
+    if (targetLeaf >= static_cast<int32_t>(m_nodes.size()) || !m_nodes[targetLeaf].isLeaf()) {
+        AM_LOG_WARN("dock: target {} is not a valid leaf node", targetLeaf);
+        return -1;
+    }
+
+    if (zone == DockZone::CENTER) {
+        m_nodes[targetLeaf].content->addChild(content);
+        markDirty();
+        return targetLeaf;
+    }
+
+    int32_t newLeaf = splitNode(targetLeaf, zone, content);
+    m_nodes[targetLeaf].ratio = ratio;
+    markDirty();
+    return newLeaf;
+}
+
 void DockingLayer::undock(UIBase2D *obj)
 {
     glm::vec2 objPos = obj->absolutePosition;
@@ -382,15 +416,15 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm:
     node.resizeHandle->computeAbsolutes(nodeSize, nodePosition, 0.0f);
 }
 
-void DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, UIBase2D *newContent)
+int32_t DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, UIBase2D *newContent)
 {
     if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(m_nodes.size())) {
-        return;
+        return -1;
     }
 
     if (!m_nodes[nodeIndex].isLeaf()) {
         AM_LOG_WARN("node index not a leaf node, cannot split");
-        return;
+        return -1;
     }
 
     TabBar *existingContent = m_nodes[nodeIndex].content;
@@ -419,6 +453,7 @@ void DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, UIBase2D *newCont
     recalculateChildren(nodeIndex, nodeSize, nodePosition);
     setupResizeHandle(nodeIndex, nodeSize, nodePosition);
     m_tabBars.push_back(std::move(newTabBar));
+    return newChild;
 }
 
 void DockingLayer::recalculateChildren(int32_t parentIndex, glm::vec2 parentSize, glm::vec2 parentPosition)

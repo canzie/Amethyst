@@ -11,6 +11,7 @@
 #include "components/text_input.h"
 #include "components/tree_view.h"
 #include "modules/style.h"
+#include "parsers/aml/aml_loader.h"
 #include "utils/profiling.h"
 #include "vk_context.h"
 
@@ -578,6 +579,20 @@ int main()
 
     dockingLayer.dock(&imageLabel, glm::vec2(600.0f, 850.0f));
     dockingLayer.dock(&treePanel, glm::vec2(750.0f, 600.0f));
+
+    auto amlResult = Amethyst::AmlLoader::loadFile(AMETHYST_ASSETS_DIR "/demo.aml");
+
+    if (!amlResult.ok()) {
+        AM_LOG_ERROR("AML load failed: {}", amlResult.error);
+    } else {
+        AM_LOG_INFO("AML loaded {} instances", amlResult.instances.size());
+        auto *amlRoot = amlResult.root();
+        amlRoot->setParent(&window);
+        if (auto *dl = amlRoot->as<Amethyst::DockingLayer>()) {
+            dl->absoluteSize = {500.0f, 300.0f};
+            dl->absolutePosition = {10.0f, 600.0f};
+        }
+    }
 
     window.draw(drawCtx);
 
