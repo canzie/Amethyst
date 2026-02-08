@@ -68,6 +68,11 @@ struct InstanceData {
         shapeData[1] = glm::packHalf2x16(glm::vec2(uvRect.z, uvRect.w));
     }
 
+    void setShapePoint(uint32_t index, glm::vec2 point)
+    {
+        shapeData[index] = glm::packHalf2x16(point);
+    }
+
     void setVisible(bool visible)
     {
         if (visible) {

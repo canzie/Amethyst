@@ -349,10 +349,10 @@ void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec
 
     if (node.resizeHandle) {
         if (node.axis == SplitAxis::VERTICAL) {
-            node.resizeHandle->position = UDim2(node.ratio, 0.0f, -m_resizeHandleThickness / 2.0f, 0.0f);
-            node.resizeHandle->size = UDim2(0.0f, 1.0f, m_resizeHandleThickness, 0.0f);
+            node.resizeHandle->position = UDim2(node.ratio, -m_resizeHandleThickness / 2.0f, 0.0f, 0.0f);
+            node.resizeHandle->size = UDim2(0.0f, m_resizeHandleThickness, 1.0f, 0.0f);
         } else {
-            node.resizeHandle->position = UDim2(0.0f, node.ratio, 0.0f, -m_resizeHandleThickness / 2.0f);
+            node.resizeHandle->position = UDim2(0.0f, 0.0f, node.ratio, -m_resizeHandleThickness / 2.0f);
             node.resizeHandle->size = UDim2(1.0f, 0.0f, 0.0f, m_resizeHandleThickness);
         }
         node.resizeHandle->computeAbsolutes(nodeSize, nodePosition, 0.0f);
@@ -368,12 +368,13 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm:
 
     node.resizeHandle = std::make_unique<InvisibleButton>(nullptr);
     node.resizeHandle->parent = this;
+    node.resizeHandle->zIndex = 10;
 
     if (node.axis == SplitAxis::VERTICAL) {
-        node.resizeHandle->position = UDim2(node.ratio, 0.0f, -m_resizeHandleThickness / 2.0f, 0.0f);
-        node.resizeHandle->size = UDim2(0.0f, 1.0f, m_resizeHandleThickness, 0.0f);
+        node.resizeHandle->position = UDim2(node.ratio, -m_resizeHandleThickness / 2.0f, 0.0f, 0.0f);
+        node.resizeHandle->size = UDim2(0.0f, m_resizeHandleThickness, 1.0f, 0.0f);
     } else {
-        node.resizeHandle->position = UDim2(0.0f, node.ratio, 0.0f, -m_resizeHandleThickness / 2.0f);
+        node.resizeHandle->position = UDim2(0.0f, 0.0f, node.ratio, -m_resizeHandleThickness / 2.0f);
         node.resizeHandle->size = UDim2(1.0f, 0.0f, 0.0f, m_resizeHandleThickness);
     }
 

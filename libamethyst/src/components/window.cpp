@@ -63,7 +63,7 @@ Instance *Window::findClickedObjectRecursive(const std::vector<Instance *> &inst
         auto *aObj = a->as<UIObject>();
         auto *bObj = b->as<UIObject>();
         if (aObj && bObj) {
-            return aObj->zIndex < bObj->zIndex;
+            return aObj->getZIndex() < bObj->getZIndex();
         }
         return false;
     });

@@ -42,68 +42,101 @@ static GLFWcursor *CURSOR_SHAPE_MAP[CURSOR_COUNT];
 
 static Amethyst_glfw_Data g_glfwData;
 
-static GLFWcursor *createCustomHorizontalResizeCursor()
+static GLFWcursor *createCursorFromMask(int size, const bool *fill)
 {
-    const int width = 16;
-    const int height = 16;
-    unsigned char pixels[width * height * 4];
-    memset(pixels, 0, sizeof(pixels));
+    std::vector<unsigned char> pixels(size * size * 4, 0);
 
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int idx = (y * width + x) * 4;
-            if ((x == 0 || x == width - 1) && y >= 6 && y <= 9) {
-                pixels[idx + 0] = 255;
+    for (int y = 0; y < size; y++) {
+        for (int x = 0; x < size; x++) {
+            int idx = (y * size + x) * 4;
+            if (fill[y * size + x]) {
+                pixels[idx] = 255;
                 pixels[idx + 1] = 255;
                 pixels[idx + 2] = 255;
                 pixels[idx + 3] = 255;
-            } else if (y == 7 || y == 8) {
-                pixels[idx + 0] = 255;
-                pixels[idx + 1] = 255;
-                pixels[idx + 2] = 255;
-                pixels[idx + 3] = 255;
+            } else {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int ny = y + dy, nx = x + dx;
+                        if (ny >= 0 && ny < size && nx >= 0 && nx < size && fill[ny * size + nx]) {
+                            pixels[idx] = 0;
+                            pixels[idx + 1] = 0;
+                            pixels[idx + 2] = 0;
+                            pixels[idx + 3] = 255;
+                            goto next;
+                        }
+                    }
+                }
+                next:;
             }
         }
     }
 
     GLFWimage image;
-    image.width = width;
-    image.height = height;
-    image.pixels = pixels;
+    image.width = size;
+    image.height = size;
+    image.pixels = pixels.data();
+    return glfwCreateCursor(&image, size / 2, size / 2);
+}
 
-    return glfwCreateCursor(&image, width / 2, height / 2);
+static GLFWcursor *createCustomHorizontalResizeCursor()
+{
+    constexpr int size = 24;
+    bool fill[size * size] = {};
+    int cy = size / 2;
+
+    for (int x = 5; x < size - 5; x++) {
+        fill[(cy - 1) * size + x] = true;
+        fill[cy * size + x] = true;
+    }
+
+    for (int i = 0; i < 6; i++) {
+        int x = i;
+        for (int dy = -i; dy <= i; dy++) {
+            int y = cy + dy;
+            if (y >= 0 && y < size) fill[y * size + x] = true;
+        }
+    }
+
+    for (int i = 0; i < 6; i++) {
+        int x = size - 1 - i;
+        for (int dy = -i; dy <= i; dy++) {
+            int y = cy + dy;
+            if (y >= 0 && y < size) fill[y * size + x] = true;
+        }
+    }
+
+    return createCursorFromMask(size, fill);
 }
 
 static GLFWcursor *createCustomVerticalResizeCursor()
 {
-    const int width = 16;
-    const int height = 16;
-    unsigned char pixels[width * height * 4];
-    memset(pixels, 0, sizeof(pixels));
+    constexpr int size = 24;
+    bool fill[size * size] = {};
+    int cx = size / 2;
 
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int idx = (y * width + x) * 4;
-            if ((y == 0 || y == height - 1) && x >= 6 && x <= 9) {
-                pixels[idx + 0] = 255;
-                pixels[idx + 1] = 255;
-                pixels[idx + 2] = 255;
-                pixels[idx + 3] = 255;
-            } else if (x == 7 || x == 8) {
-                pixels[idx + 0] = 255;
-                pixels[idx + 1] = 255;
-                pixels[idx + 2] = 255;
-                pixels[idx + 3] = 255;
-            }
+    for (int y = 5; y < size - 5; y++) {
+        fill[y * size + (cx - 1)] = true;
+        fill[y * size + cx] = true;
+    }
+
+    for (int i = 0; i < 6; i++) {
+        int y = i;
+        for (int dx = -i; dx <= i; dx++) {
+            int x = cx + dx;
+            if (x >= 0 && x < size) fill[y * size + x] = true;
         }
     }
 
-    GLFWimage image;
-    image.width = width;
-    image.height = height;
-    image.pixels = pixels;
+    for (int i = 0; i < 6; i++) {
+        int y = size - 1 - i;
+        for (int dx = -i; dx <= i; dx++) {
+            int x = cx + dx;
+            if (x >= 0 && x < size) fill[y * size + x] = true;
+        }
+    }
 
-    return glfwCreateCursor(&image, width / 2, height / 2);
+    return createCursorFromMask(size, fill);
 }
 
 constexpr size_t INITIAL_INSTANCE_CAPACITY = 256 * 32; // 8192 instances, ~32 layers @ 256 each

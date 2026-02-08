@@ -362,6 +362,10 @@ void TabBar::draw(DrawContext &ctx)
         return;
     }
 
+    if (flags & FLAG_DIRTY) {
+        markAllTabsDirty();
+    }
+
     layoutTabs();
     updateTabVisuals();
     layoutContent();
