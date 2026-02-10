@@ -25,7 +25,7 @@ class UIBase2D : public Instance {
 
     virtual void draw(DrawContext &ctx) = 0;
 
-    bool containsPoint(const glm::vec2 &point) const
+    bool containsPoint(const glm::vec2 &point) const override
     {
         return point.x >= absolutePosition.x && point.x <= absolutePosition.x + absoluteSize.x && point.y >= absolutePosition.y &&
                point.y <= absolutePosition.y + absoluteSize.y;

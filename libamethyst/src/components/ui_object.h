@@ -63,7 +63,9 @@ class UIObject : public UIBase2D {
     bool isVisible() const;
     int32_t getRelativeZIndex() const { return zIndex; }
     int32_t getAbsoluteZIndex() const;
-    int32_t getZIndex() const;
+    int32_t getZIndex() const override;
+    bool isHitTestVisible() const override { return visible && interactable; }
+    bool getClipsDescendants() const override { return clipsDescendants; }
 
   protected:
     friend class Window;
@@ -89,7 +91,7 @@ class UIObject : public UIBase2D {
     float borderPixelSize = 0.0f;
     Color3 borderColor = {0.0f, 0.0f, 0.0f};
     float borderTransparency = 0.0f;
-    bool clipsDescendants = false;
+    bool clipsDescendants = true;
     float cornerRadius = 0.0f;
     GuiState guiState = GuiState::IDLE;
     bool interactable = true;

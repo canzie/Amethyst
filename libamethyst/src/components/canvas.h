@@ -17,6 +17,7 @@
 #include "components/common.h"
 #include "components/ui_object.h"
 
+#include <string>
 #include <vector>
 
 namespace Amethyst {
@@ -59,16 +60,51 @@ class Canvas : public UIObject {
     void drawCircleFilled(glm::vec2 center, float radius, Color4 color);
     void drawCircleStroke(glm::vec2 center, float radius, Color4 color, float thickness = 1.0f);
 
-    bool isEmpty() const { return m_commands.empty(); }
+    /**
+     * @brief Draw an ellipse outline (ring). The ellipse is axis-aligned in canvas space;
+     *        use rotation on the InstanceData level if you need a rotated ellipse.
+     * @param center Center in local canvas coordinates
+     * @param semiMajor Half-width along X
+     * @param semiMinor Half-height along Y
+     * @param rotationDeg Rotation of the ellipse in degrees
+     * @param color Stroke color
+     * @param thickness Stroke width in pixels
+     */
+    void drawEllipseStroke(glm::vec2 center, float semiMajor, float semiMinor, float rotationDeg, Color4 color, float thickness = 1.0f);
+
+    /**
+     * @brief Draw text at a position in local canvas coordinates
+     * @param text The string to render
+     * @param position Top-left position in local canvas coordinates
+     * @param fontSize Font size in pixels
+     * @param color Text color
+     * @param maxChars Maximum characters to reserve GPU slots for.
+     *        Text is truncated if it exceeds this. Slots are pre-allocated
+     *        so changing the text content doesn't cause reallocation.
+     */
+    void drawText(const std::string &text, glm::vec2 position, float fontSize, Color4 color, uint32_t maxChars);
+
+    bool isEmpty() const { return m_commands.empty() && m_textCommands.empty(); }
 
   private:
     struct DrawCmd {
         PrimitiveType primitive;
         glm::vec2 points[4];
         float radius;
+        float semiMajor;
+        float semiMinor;
+        float rotationDeg;
         Color4 fillColor;
         Color4 borderColor;
         float borderThickness;
+    };
+
+    struct TextCmd {
+        std::string text;
+        glm::vec2 position;
+        float fontSize;
+        Color4 color;
+        uint32_t maxChars;
     };
 
     InstanceData buildInstanceData(const DrawCmd &cmd) const;
@@ -76,6 +112,9 @@ class Canvas : public UIObject {
     GeometryRegistry *m_registry = nullptr;
     std::vector<DrawCmd> m_commands;
     std::vector<GeometryAllocation *> m_allocations;
+
+    std::vector<TextCmd> m_textCommands;
+    std::vector<GeometryAllocation *> m_textAllocations;
 };
 
 } // namespace Amethyst

@@ -33,6 +33,7 @@ layout(location = 7) out flat uint fragBorderMode;
 layout(location = 8) out flat uint fragTextureId;
 layout(location = 9) out flat vec4 fragClipRect;
 layout(location = 10) out vec2 fragWorldPos;
+layout(location = 11) out flat uvec4 fragShapeData;
 
 const vec2 positions[4] = vec2[](
     vec2(-0.5, -0.5),
@@ -124,4 +125,5 @@ void main()
     fragTextureId = inst.textureId;
     fragClipRect = inst.clipRect;
     fragWorldPos = worldPos;
+    fragShapeData = uvec4(inst.shapeData[0], inst.shapeData[1], inst.shapeData[2], inst.shapeData[3]);
 }

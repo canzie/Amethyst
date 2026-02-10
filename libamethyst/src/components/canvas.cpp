@@ -1,5 +1,7 @@
 #include "components/canvas.h"
 
+#include "modules/glyph_atlas.h"
+#include "modules/text_processor.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 #include "rendering/instance_data.h"
@@ -20,13 +22,17 @@ Canvas::~Canvas()
         for (auto *alloc : m_allocations) {
             m_registry->release(*alloc);
         }
+        for (auto *alloc : m_textAllocations) {
+            m_registry->release(*alloc);
+        }
     }
 }
 
 void Canvas::clear()
 {
-    if (!m_commands.empty()) {
+    if (!m_commands.empty() || !m_textCommands.empty()) {
         m_commands.clear();
+        m_textCommands.clear();
         markDirty();
     }
 }
@@ -121,6 +127,33 @@ void Canvas::drawCircleStroke(glm::vec2 center, float radius, Color4 color, floa
     markDirty();
 }
 
+void Canvas::drawEllipseStroke(glm::vec2 center, float semiMajor, float semiMinor, float rotationDeg, Color4 color, float thickness)
+{
+    DrawCmd cmd{};
+    cmd.primitive = PRIMITIVE_CANVAS_ELLIPSE;
+    cmd.points[0] = center;
+    cmd.semiMajor = semiMajor;
+    cmd.semiMinor = semiMinor;
+    cmd.rotationDeg = rotationDeg;
+    cmd.fillColor = Color4(0.0f, 0.0f, 0.0f, 0.0f);
+    cmd.borderColor = color;
+    cmd.borderThickness = thickness;
+    m_commands.push_back(cmd);
+    markDirty();
+}
+
+void Canvas::drawText(const std::string &text, glm::vec2 position, float fontSize, Color4 color, uint32_t maxChars)
+{
+    TextCmd cmd;
+    cmd.text = text;
+    cmd.position = position;
+    cmd.fontSize = fontSize;
+    cmd.color = color;
+    cmd.maxChars = maxChars;
+    m_textCommands.push_back(std::move(cmd));
+    markDirty();
+}
+
 InstanceData Canvas::buildInstanceData(const DrawCmd &cmd) const
 {
     InstanceData data{};
@@ -193,6 +226,16 @@ InstanceData Canvas::buildInstanceData(const DrawCmd &cmd) const
         data.scale = glm::vec2(totalRadius * 2.0f);
         data.setCornerRadius(cmd.radius);
         data.setBorderThickness(cmd.borderThickness);
+
+    } else if (cmd.primitive == PRIMITIVE_CANVAS_ELLIPSE) {
+        float totalW = cmd.semiMajor + padding + cmd.borderThickness;
+        float totalH = cmd.semiMinor + padding + cmd.borderThickness;
+
+        data.translation = absolutePosition + cmd.points[0];
+        data.scale = glm::vec2(totalW * 2.0f, totalH * 2.0f);
+        data.setRotation(cmd.rotationDeg * 3.14159265359f / 180.0f);
+        data.setBorderThickness(cmd.borderThickness);
+        data.setShapePoint(0, glm::vec2(cmd.semiMajor, cmd.semiMinor));
     }
 
     return data;
@@ -221,6 +264,61 @@ void Canvas::draw(DrawContext &ctx)
     for (size_t i = m_allocations.size(); i < newCount; i++) {
         InstanceData data = buildInstanceData(m_commands[i]);
         m_allocations.push_back(ctx.geometry->submit(data));
+    }
+
+    if (ctx.textProcessor && ctx.glyphAtlas) {
+        size_t totalReserved = 0;
+        for (const auto &tcmd : m_textCommands) {
+            totalReserved += tcmd.maxChars;
+        }
+
+        while (m_textAllocations.size() > totalReserved) {
+            ctx.geometry->release(*m_textAllocations.back());
+            m_textAllocations.pop_back();
+        }
+
+        size_t slot = 0;
+        for (const auto &tcmd : m_textCommands) {
+            std::string truncated = tcmd.text.substr(0, tcmd.maxChars);
+
+            TextLayoutParams params;
+            params.position = absolutePosition + tcmd.position;
+            params.bounds = absoluteSize - tcmd.position;
+            params.fontSize = tcmd.fontSize;
+            params.color = tcmd.color;
+
+            auto glyphs = ctx.textProcessor->layoutTextAtlas(truncated, params);
+
+            for (size_t i = 0; i < glyphs.size(); i++) {
+                glyphs[i].clipRect = clipRect;
+                glyphs[i].zIndex = getZIndex() + 1;
+                glyphs[i].setVisible(isVisible());
+
+                if (slot < m_textAllocations.size()) {
+                    ctx.geometry->update(*m_textAllocations[slot], glyphs[i]);
+                } else {
+                    m_textAllocations.push_back(ctx.geometry->submit(glyphs[i]));
+                }
+                slot++;
+            }
+
+            for (size_t i = glyphs.size(); i < tcmd.maxChars; i++) {
+                InstanceData hidden{};
+                hidden.setVisible(false);
+
+                if (slot < m_textAllocations.size()) {
+                    ctx.geometry->update(*m_textAllocations[slot], hidden);
+                } else {
+                    m_textAllocations.push_back(ctx.geometry->submit(hidden));
+                }
+                slot++;
+            }
+        }
+    } else {
+        while (!m_textAllocations.empty()) {
+            ctx.geometry->release(*m_textAllocations.back());
+            m_textAllocations.pop_back();
+        }
     }
 
     flags &= ~FLAG_DIRTY;

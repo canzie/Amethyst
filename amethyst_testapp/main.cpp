@@ -9,6 +9,7 @@
 #include "components/table.h"
 #include "components/text_button.h"
 #include "components/text_input.h"
+#include "components/canvas.h"
 #include "components/tree_view.h"
 #include "modules/style.h"
 #include "parsers/aml/aml_loader.h"
@@ -545,6 +546,24 @@ int main()
     tabContent3.backgroundColor = {0.3f, 0.3f, 0.8f};
     tabContent3.markDirty();
     */
+
+    Amethyst::Canvas canvas(&window);
+    canvas.name = "Canvas Demo";
+    canvas.size = Amethyst::UDim2::fromOffset(460, 120);
+    canvas.position = Amethyst::UDim2::fromOffset(530, 310);
+    canvas.backgroundColor = {0.1f, 0.1f, 0.12f};
+    canvas.backgroundTransparency = 0.0f;
+    canvas.cornerRadius = 5.0f;
+
+    canvas.drawLine({10, 20}, {50, 90}, {1.0f, 0.4f, 0.4f, 1.0f}, 3.0f);
+    canvas.drawTriangleFilled({90, 90}, {120, 20}, {150, 90}, {0.4f, 1.0f, 0.4f, 1.0f});
+    canvas.drawTriangleStroke({170, 90}, {200, 20}, {230, 90}, {0.4f, 0.4f, 1.0f, 1.0f}, 2.0f);
+    canvas.drawQuadFilled({250, 25}, {310, 25}, {310, 90}, {250, 90}, {1.0f, 1.0f, 0.4f, 1.0f});
+    canvas.drawQuadStroke({320, 25}, {380, 30}, {375, 90}, {325, 85}, {1.0f, 0.4f, 1.0f, 1.0f}, 2.0f);
+    canvas.drawCircleFilled({415, 55}, 30.0f, {0.4f, 1.0f, 1.0f, 1.0f});
+    canvas.drawCircleStroke({415, 55}, 30.0f, {1.0f, 1.0f, 1.0f, 1.0f}, 2.0f);
+    canvas.drawText("Canvas", {10, 95}, 16.0f, {1.0f, 1.0f, 1.0f, 1.0f}, 16);
+    canvas.markDirty();
 
     Amethyst::DockingLayer dockingLayer(&window);
     dockingLayer.name = "Docking Example";

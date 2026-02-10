@@ -1,28 +1,27 @@
-// optional gizmo component, a macro at the top to enable it for compilation, as it is quite a specific thing, probably base it 1-1
-// to the old imgui custom gizmo
-//
-// https://github.com/canzie/RaptureVK/blob/jobification/Editor/src/imguiPanels/modules/Gizmo.h
-// https://github.com/canzie/RaptureVK/blob/jobification/Editor/src/imguiPanels/modules/Gizmo.cpp
-
 #ifndef AMETHYST__GIZMO_H
 #define AMETHYST__GIZMO_H
 
 #include <glm/glm.hpp>
 #include <memory>
 
-enum class Operation {
+namespace Amethyst {
+
+class Canvas;
+class UIBase2D;
+
+enum class GizmoOperation {
     TRANSLATE,
     ROTATE,
     SCALE,
     COMBINED
 };
 
-enum class Space {
+enum class GizmoSpace {
     LOCAL,
     WORLD
 };
 
-enum class Axis {
+enum class GizmoAxis {
     NONE,
     X,
     Y,
@@ -33,7 +32,7 @@ enum class Axis {
     XYZ
 };
 
-struct SnapSettings {
+struct GizmoSnapSettings {
     bool enabled = false;
     float translate = 1.0f;
     float rotate = 15.0f;
@@ -41,7 +40,7 @@ struct SnapSettings {
     bool shiftToSnap = true;
 };
 
-struct Config {
+struct GizmoConfig {
     float sizeFactor = 0.15f;
     float axisLength = 1.0f;
     float thickness = 3.0f;
@@ -50,14 +49,25 @@ struct Config {
     float planeSize = 0.25f;
     float ringRadius = 0.9f;
     float handleSize = 8.0f;
-    SnapSettings snap;
+    GizmoSnapSettings snap;
 };
 
-struct Result {
+struct GizmoParams {
+    glm::mat4 view{1.0f};
+    glm::mat4 projection{1.0f};
+    glm::mat4 objectTransform{1.0f};
+    glm::vec3 pivot{0.0f};
+    GizmoOperation operation = GizmoOperation::TRANSLATE;
+    GizmoSpace space = GizmoSpace::WORLD;
+
+    bool operator==(const GizmoParams &) const = default;
+};
+
+struct GizmoResult {
     bool active = false;
     bool hovered = false;
-    Axis axis = Axis::NONE;
-    Operation operation = Operation::TRANSLATE;
+    GizmoAxis axis = GizmoAxis::NONE;
+    GizmoOperation operation = GizmoOperation::TRANSLATE;
     glm::vec3 deltaPosition{0.0f};
     glm::vec3 deltaRotation{0.0f};
     glm::vec3 deltaScale{1.0f};
@@ -66,7 +76,7 @@ struct Result {
 
 class Gizmo {
   public:
-    Gizmo();
+    Gizmo(UIBase2D *parent);
     ~Gizmo();
 
     Gizmo(const Gizmo &) = delete;
@@ -74,19 +84,20 @@ class Gizmo {
     Gizmo(Gizmo &&) noexcept;
     Gizmo &operator=(Gizmo &&) noexcept;
 
-    Result update(const glm::mat4 &view, const glm::mat4 &projection, const glm::mat4 &objectTransform, const glm::vec3 &pivot,
-                  Operation op, Space space, glm::vec2 viewportPos, glm::vec2 viewportSize);
+    GizmoResult update(const GizmoParams &params);
 
     void reset();
 
-    Config &config();
-    const Config &config() const;
+    Canvas &canvas();
 
-    void renderSettings();
+    GizmoConfig &config();
+    const GizmoConfig &config() const;
 
   private:
     struct Impl;
     std::unique_ptr<Impl> m_impl;
 };
+
+} // namespace Amethyst
 
 #endif // AMETHYST__GIZMO_H

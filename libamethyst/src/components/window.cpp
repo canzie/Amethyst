@@ -58,36 +58,27 @@ Instance *Window::findClickedObject(uint32_t x, uint32_t y)
 Instance *Window::findClickedObjectRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point)
 {
     AM_PROFILE_FUNCTION();
-    std::vector<Instance *> sortedInstances(instances.begin(), instances.end());
-    std::sort(sortedInstances.begin(), sortedInstances.end(), [](Instance *a, Instance *b) {
-        auto *aObj = a->as<UIObject>();
-        auto *bObj = b->as<UIObject>();
-        if (aObj && bObj) {
-            return aObj->getZIndex() < bObj->getZIndex();
-        }
-        return false;
-    });
+    std::vector<Instance *> sorted(instances.begin(), instances.end());
+    std::sort(sorted.begin(), sorted.end(),
+              [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
 
-    for (auto it = sortedInstances.rbegin(); it != sortedInstances.rend(); ++it) {
+    for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) {
         Instance *inst = *it;
-        auto *base2d = inst->as<UIBase2D>();
-        if (!base2d) {
+
+        if (!inst->isHitTestVisible()) {
             continue;
         }
 
-        auto *obj = inst->as<UIObject>();
-        if (obj && (!obj->visible || !obj->interactable)) {
-            continue;
-        }
+        bool pointInside = inst->containsPoint(point);
+        bool shouldCheckChildren = pointInside || !inst->getClipsDescendants();
 
-        bool pointInside = base2d->containsPoint(point);
-        bool shouldCheckChildren = pointInside || (obj && !obj->clipsDescendants);
-
-        auto hittable = inst->getHittableInstances();
-        if (shouldCheckChildren && !hittable.empty()) {
-            Instance *childResult = findClickedObjectRecursive(hittable, point);
-            if (childResult) {
-                return childResult;
+        if (shouldCheckChildren) {
+            auto hittable = inst->getHittableInstances();
+            if (!hittable.empty()) {
+                Instance *childResult = findClickedObjectRecursive(std::move(hittable), point);
+                if (childResult) {
+                    return childResult;
+                }
             }
         }
 
@@ -205,8 +196,6 @@ void Window::onMouseMove(uint32_t x, uint32_t y)
             uiObject->onMouseMoved(x, y);
         }
     }
-
-    m_lastHoveredInstance = hovered;
 }
 
 void Window::captureMouse(UIObject *object)

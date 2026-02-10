@@ -447,7 +447,7 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t slotIndex
     AM_PROFILE_FUNCTION();
 
     const TreeRow &r = m_rows[row];
-    float rowY = calculateRowY(row, m_computedRowHeight);
+    float rowY = calculateRowY(slotIndex, m_computedRowHeight);
     float indent = getRowIndent(row);
 
     Frame *bg = m_rowBackgrounds[slotIndex].get();

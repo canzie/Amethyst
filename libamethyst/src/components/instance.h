@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <glm/vec2.hpp>
 #include <string>
 #include <vector>
 
@@ -27,7 +28,13 @@ class Instance {
     void setParent(Instance *newParent);
     virtual void addChild(Instance *child);
     virtual void removeChild(Instance *child);
+
+    // These are here primaraly to reduce the amount of dynamic casts needed
     virtual std::vector<Instance *> getHittableInstances() { return children; }
+    virtual int32_t getZIndex() const { return 0; }
+    virtual bool containsPoint(const glm::vec2 &) const { return false; }
+    virtual bool isHitTestVisible() const { return false; }
+    virtual bool getClipsDescendants() const { return false; }
 
     void markDirty();
     void markChildrenDirty();
@@ -41,8 +48,7 @@ class Instance {
     template <typename T> T *findFirstChildOfClass(const std::string &childName) const
     {
         for (auto *child : children) {
-            if (auto *casted = dynamic_cast<T *>(child); casted && child->name == childName)
-                return casted;
+            if (auto *casted = dynamic_cast<T *>(child); casted && child->name == childName) return casted;
         }
         return nullptr;
     }
@@ -50,8 +56,7 @@ class Instance {
     template <typename T> T *findFirstChildOfClass() const
     {
         for (auto *child : children) {
-            if (auto *casted = dynamic_cast<T *>(child))
-                return casted;
+            if (auto *casted = dynamic_cast<T *>(child)) return casted;
         }
         return nullptr;
     }
