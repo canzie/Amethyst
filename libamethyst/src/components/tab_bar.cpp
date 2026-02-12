@@ -410,4 +410,25 @@ void TabBar::draw(DrawContext &ctx)
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }
 
+TabBarConfig TabBar::saveConfig() const
+{
+    TabBarConfig cfg;
+    if (auto *selected = getSelectedContent()) {
+        cfg.selectedTab = selected->name;
+    }
+    return cfg;
+}
+
+void TabBar::applyConfig(const TabBarConfig &config)
+{
+    if (config.selectedTab.empty()) return;
+
+    for (auto *child : children) {
+        if (child->name == config.selectedTab) {
+            select(child);
+            return;
+        }
+    }
+}
+
 } // namespace Amethyst

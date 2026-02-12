@@ -3,6 +3,7 @@
 
 #include "components/text_button.h"
 #include "components/ui_object.h"
+#include "parsers/config/config_types.h"
 #include "rendering/draw_context.h"
 
 #include <cstdint>
@@ -46,8 +47,12 @@ class TabBar : public UIObject {
     Instance *getSelectedContent() const;
     int32_t getTabCount() const { return static_cast<int32_t>(m_tabs.size()); }
 
+    TabBarConfig saveConfig() const;
+    void applyConfig(const TabBarConfig &config);
+
   public:
     bool closeable = false;
+    bool persistLayout = false;
     TabBarMode mode = TabBarMode::INSIDE;
     TabBarPosition tabPosition = TabBarPosition::TOP;
     TabBarVisibility visibility = TabBarVisibility::ALWAYS;

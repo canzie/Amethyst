@@ -56,6 +56,8 @@ target_include_directories(amethyst
 
 target_link_libraries(amethyst PUBLIC glm::glm spdlog::spdlog freetype TracyClient tomlplusplus::tomlplusplus)
 
+target_compile_definitions(amethyst PRIVATE TOML_EXCEPTIONS=0)
+
 target_compile_options(amethyst PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
     $<$<CXX_COMPILER_ID:MSVC>:/W4>

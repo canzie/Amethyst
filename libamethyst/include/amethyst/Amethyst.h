@@ -29,6 +29,7 @@
 #include "logging/log.h"
 #include "modules/text_processor.h"
 #include "modules/glyph_atlas.h"
+#include "parsers/config/layout_config.h"
 #include "parsers/freetype/font_loader.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"

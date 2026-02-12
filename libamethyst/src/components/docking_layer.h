@@ -10,6 +10,7 @@
 #include "components/tab_bar.h"
 #include "components/ui_layer.h"
 #include "components/ui_object.h"
+#include "parsers/config/config_types.h"
 
 #include <cstdint>
 #include <memory>
@@ -65,6 +66,9 @@ class DockingLayer : public UILayer {
 
     void dock(UIBase2D *obj, glm::vec2 pos);
     void undock(UIBase2D *obj);
+
+    DockLayoutConfig saveConfig() const;
+    void applyConfig(const DockLayoutConfig &config);
     int32_t dock(UIBase2D *content, int32_t targetLeaf, DockZone zone, float ratio);
 
     DockZone hitTestZone(int32_t nodeIndex, glm::vec2 position);
@@ -90,6 +94,7 @@ class DockingLayer : public UILayer {
   public:
     float outerSpacing = 0.0f;
     float innerSpacing = 0.0f;
+    bool persistLayout = false;
 
   private:
     std::vector<DockNode> m_nodes;

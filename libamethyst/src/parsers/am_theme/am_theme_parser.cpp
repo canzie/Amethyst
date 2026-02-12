@@ -247,44 +247,46 @@ std::optional<Style> parseToml(const toml::table &tbl)
 
 std::optional<Style> AmThemeParser::parseFile(const std::filesystem::path &path)
 {
-    try {
-        toml::table tbl = toml::parse_file(path.string());
-        auto result = parseToml(tbl);
-        if (result) {
-            std::string themeName = "unknown";
-            if (auto meta = tbl["metadata"].as_table()) {
-                if (auto name = (*meta)["name"].as_string()) {
-                    themeName = **name;
-                }
-            }
-            AM_LOG_INFO("Loaded theme '{}' from {}", themeName, path.string());
-        }
-        return result;
-    } catch (const toml::parse_error &err) {
-        AM_LOG_ERROR("Failed to parse theme file {}: {}", path.string(), err.what());
+    toml::parse_result parseResult = toml::parse_file(path.string());
+    if (!parseResult) {
+        AM_LOG_ERROR("Failed to parse theme file {}", path.string());
         return std::nullopt;
     }
+
+    toml::table &tbl = parseResult.table();
+    auto result = parseToml(tbl);
+    if (result) {
+        std::string themeName = "unknown";
+        if (auto meta = tbl["metadata"].as_table()) {
+            if (auto name = (*meta)["name"].as_string()) {
+                themeName = **name;
+            }
+        }
+        AM_LOG_INFO("Loaded theme '{}' from {}", themeName, path.string());
+    }
+    return result;
 }
 
 std::optional<Style> AmThemeParser::parseString(const std::string &tomlContent)
 {
-    try {
-        toml::table tbl = toml::parse(tomlContent);
-        auto result = parseToml(tbl);
-        if (result) {
-            std::string themeName = "unknown";
-            if (auto meta = tbl["metadata"].as_table()) {
-                if (auto name = (*meta)["name"].as_string()) {
-                    themeName = **name;
-                }
-            }
-            AM_LOG_INFO("Loaded theme '{}'", themeName);
-        }
-        return result;
-    } catch (const toml::parse_error &err) {
-        AM_LOG_ERROR("Failed to parse theme string: {}", err.what());
+    toml::parse_result parseResult = toml::parse(tomlContent);
+    if (!parseResult) {
+        AM_LOG_ERROR("Failed to parse theme string");
         return std::nullopt;
     }
+
+    toml::table &tbl = parseResult.table();
+    auto result = parseToml(tbl);
+    if (result) {
+        std::string themeName = "unknown";
+        if (auto meta = tbl["metadata"].as_table()) {
+            if (auto name = (*meta)["name"].as_string()) {
+                themeName = **name;
+            }
+        }
+        AM_LOG_INFO("Loaded theme '{}'", themeName);
+    }
+    return result;
 }
 
 } // namespace Amethyst

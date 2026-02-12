@@ -7,6 +7,7 @@
 #include "components/tab_bar.h"
 #include "components/ui_base_2d.h"
 #include "logging/log.h"
+#include "parsers/config/layout_config.h"
 #include "rendering/draw_context.h"
 
 #include <algorithm>
@@ -665,6 +666,93 @@ void DockingLayer::hideDockHints()
     for (auto &hint : m_dockHintComponents) {
         hint->visible = false;
         hint->markDirty();
+    }
+}
+
+static void s_collectConfig(const std::vector<DockNode> &nodes, int32_t nodeIndex, DockLayoutConfig &cfg)
+{
+    if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(nodes.size())) return;
+
+    const DockNode &node = nodes[nodeIndex];
+
+    if (node.isLeaf()) {
+        std::string tabName;
+        if (node.content) {
+            if (auto *selected = node.content->getSelectedContent()) {
+                tabName = selected->name;
+            }
+        }
+        cfg.selectedTabs.push_back(std::move(tabName));
+        return;
+    }
+
+    cfg.axes.push_back(node.axis == SplitAxis::VERTICAL ? "vertical" : "horizontal");
+    cfg.ratios.push_back(node.ratio);
+
+    s_collectConfig(nodes, node.firstChild, cfg);
+    s_collectConfig(nodes, node.secondChild, cfg);
+}
+
+DockLayoutConfig DockingLayer::saveConfig() const
+{
+    DockLayoutConfig cfg;
+    if (m_rootNode >= 0) {
+        s_collectConfig(m_nodes, m_rootNode, cfg);
+    }
+    return cfg;
+}
+
+static bool s_applyConfig(std::vector<DockNode> &nodes, int32_t nodeIndex, const DockLayoutConfig &cfg,
+                           size_t &splitIdx, size_t &leafIdx)
+{
+    if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(nodes.size())) return false;
+
+    DockNode &node = nodes[nodeIndex];
+
+    if (node.isLeaf()) {
+        if (leafIdx >= cfg.selectedTabs.size()) return false;
+
+        const std::string &tabName = cfg.selectedTabs[leafIdx++];
+        if (node.content && !tabName.empty()) {
+            for (auto *child : node.content->children) {
+                if (child->name == tabName) {
+                    node.content->select(child);
+                    break;
+                }
+            }
+        }
+        return true;
+    }
+
+    if (splitIdx >= cfg.axes.size() || splitIdx >= cfg.ratios.size()) return false;
+
+    const std::string &expectedAxis = cfg.axes[splitIdx];
+    SplitAxis currentAxis = node.axis;
+    bool axisMatches = (currentAxis == SplitAxis::VERTICAL && expectedAxis == "vertical") ||
+                       (currentAxis == SplitAxis::HORIZONTAL && expectedAxis == "horizontal");
+
+    if (!axisMatches) return false;
+
+    node.ratio = cfg.ratios[splitIdx];
+    splitIdx++;
+
+    if (!s_applyConfig(nodes, node.firstChild, cfg, splitIdx, leafIdx)) return false;
+    if (!s_applyConfig(nodes, node.secondChild, cfg, splitIdx, leafIdx)) return false;
+
+    return true;
+}
+
+void DockingLayer::applyConfig(const DockLayoutConfig &config)
+{
+    if (m_rootNode < 0) return;
+
+    size_t splitIdx = 0;
+    size_t leafIdx = 0;
+    bool ok = s_applyConfig(m_nodes, m_rootNode, config, splitIdx, leafIdx);
+    AM_LOG_INFO("applyConfig: ok={} splitIdx={}/{} leafIdx={}/{}",
+        ok, splitIdx, config.axes.size(), leafIdx, config.selectedTabs.size());
+    if (ok) {
+        markDirty();
     }
 }
 
