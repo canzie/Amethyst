@@ -236,19 +236,19 @@ static void testLoadNestedHierarchy()
         </ScrollingFrame>
     )");
     ASSERT_TRUE(r.ok());
-    ASSERT_EQ(r.instances.size(), 4u);
+    ASSERT_EQ(r.instances.size(), 1u);
 
     auto *scroll = r.instances[0]->as<ScrollingFrame>();
     ASSERT_TRUE(scroll != nullptr);
     ASSERT_EQ(scroll->name, "scroll");
-    ASSERT_EQ(scroll->children.size(), 3u);
+    ASSERT_EQ(scroll->getChildren().size(), 3u);
 
-    auto *label = r.instances[2]->as<TextLabel>();
+    auto *label = scroll->getChildren()[1]->as<TextLabel>();
     ASSERT_TRUE(label != nullptr);
     ASSERT_EQ(label->text, "Hello");
     ASSERT_TRUE(label->fontSize > 23.9f && label->fontSize < 24.1f);
 
-    auto *btn = r.instances[3]->as<TextButton>();
+    auto *btn = scroll->getChildren()[2]->as<TextButton>();
     ASSERT_TRUE(btn != nullptr);
     ASSERT_EQ(btn->text, "Click");
     ASSERT_TRUE(btn->autoButtonColor);
@@ -265,7 +265,7 @@ static void testLoadExtensions()
         </Frame>
     )");
     ASSERT_TRUE(r.ok());
-    ASSERT_EQ(r.instances.size(), 3u);
+    ASSERT_EQ(r.instances.size(), 1u);
 
     auto *container = r.instances[0]->as<Frame>();
     ASSERT_TRUE(container != nullptr);
@@ -274,7 +274,7 @@ static void testLoadExtensions()
     ASSERT_EQ(layout->fillDirection, FillDirection::FILL_VERTICAL);
     ASSERT_TRUE(layout->innerPadding.offset > 7.9f && layout->innerPadding.offset < 8.1f);
 
-    ASSERT_EQ(container->children.size(), 2u);
+    ASSERT_EQ(container->getChildren().size(), 2u);
 }
 
 static void testLoadUnknownTag()

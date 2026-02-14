@@ -19,7 +19,6 @@ class UIDragDetector;
 class Slider : public UIObject {
   public:
     Slider();
-    Slider(Instance *parent);
     virtual ~Slider() = default;
 
   public:
@@ -48,10 +47,10 @@ class Slider : public UIObject {
 class SliderFloat : public Slider {
   public:
     SliderFloat();
-    SliderFloat(Instance *parent);
     virtual ~SliderFloat() = default;
 
     void draw(DrawContext &ctx) override;
+    std::vector<Instance *> getHittableInstances() override;
 
   public:
     float *valueRef = nullptr;
@@ -73,10 +72,10 @@ class SliderFloat : public Slider {
 class SliderInt : public Slider {
   public:
     SliderInt();
-    SliderInt(Instance *parent);
     virtual ~SliderInt() = default;
 
     void draw(DrawContext &ctx) override;
+    std::vector<Instance *> getHittableInstances() override;
 
   public:
     int *valueRef = nullptr;
@@ -98,10 +97,10 @@ class SliderInt : public Slider {
 class SliderVec2 : public Slider {
   public:
     SliderVec2();
-    SliderVec2(Instance *parent);
     virtual ~SliderVec2() = default;
 
     void draw(DrawContext &ctx) override;
+    std::vector<Instance *> getHittableInstances() override;
 
   public:
     glm::vec2 *valueRef = nullptr;
@@ -123,10 +122,10 @@ class SliderVec2 : public Slider {
 class SliderVec3 : public Slider {
   public:
     SliderVec3();
-    SliderVec3(Instance *parent);
     virtual ~SliderVec3() = default;
 
     void draw(DrawContext &ctx) override;
+    std::vector<Instance *> getHittableInstances() override;
 
   public:
     glm::vec3 *valueRef = nullptr;

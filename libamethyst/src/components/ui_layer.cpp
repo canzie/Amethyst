@@ -13,7 +13,10 @@ UILayer::UILayer()
     m_geometryRegistry = GeometryRegistry::create(this);
 }
 
-UILayer::~UILayer() = default;
+UILayer::~UILayer()
+{
+    m_children.clear();
+}
 
 void UILayer::setDisplayOrder(int32_t order)
 {

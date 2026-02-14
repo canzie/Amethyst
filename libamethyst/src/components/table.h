@@ -28,7 +28,6 @@ namespace Amethyst {
 class Table : public UIObject {
   public:
     Table();
-    Table(Instance *parent);
     virtual ~Table() = default;
 
     void draw(DrawContext &ctx) override;

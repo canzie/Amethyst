@@ -806,7 +806,7 @@ void Gizmo::Impl::drawScale(GizmoAxis hovered, bool active, glm::vec2 mouse)
 
 Gizmo::Gizmo(UIBase2D *parent) : m_impl(std::make_unique<Impl>())
 {
-    m_impl->canvas.setParent(parent);
+    m_impl->canvas.parent = parent;
     m_impl->canvas.size = UDim2::fromScale(1.0f, 1.0f);
     m_impl->canvas.backgroundTransparency = 1.0f;
     m_impl->canvas.zIndex = 100;

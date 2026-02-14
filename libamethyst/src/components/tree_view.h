@@ -46,7 +46,6 @@ struct TreeRowHandle {
 class TreeView : public Table {
   public:
     TreeView();
-    TreeView(Instance *parent);
     virtual ~TreeView();
 
     void draw(DrawContext &ctx) override;

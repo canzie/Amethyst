@@ -28,12 +28,11 @@ enum class ScrollAxis {
 class ScrollingFrame : public UIObject {
   public:
     ScrollingFrame();
-    ScrollingFrame(Instance *parent);
     virtual ~ScrollingFrame() = default;
 
     void draw(DrawContext &ctx) override;
-    void addChild(Instance *child) override;
-    void removeChild(Instance *child) override;
+    Instance *addChild(std::unique_ptr<Instance> child) override;
+    std::unique_ptr<Instance> removeChild(Instance *child) override;
 
   protected:
     bool onMouseScrollUp() override;

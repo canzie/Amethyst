@@ -14,7 +14,6 @@ namespace Amethyst {
 class ImageButton : public UIButton {
   public:
     ImageButton() = default;
-    ImageButton(Instance *parent) { setParent(parent); }
     virtual ~ImageButton() = default;
 
     void draw(DrawContext &ctx) override;

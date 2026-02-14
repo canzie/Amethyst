@@ -9,10 +9,9 @@ struct Font;
 
 class InvisibleButton : public UIButton {
   public:
-    InvisibleButton(Instance *parent)
+    InvisibleButton()
     {
         backgroundTransparency = 1.0f;
-        setParent(parent);
     };
     virtual ~InvisibleButton();
 

@@ -7,110 +7,108 @@
 
 namespace Amethyst {
 
-namespace {
-
-float toFloat(const AmlValue &v)
+static float s_toFloat(const AmlValue &v)
 {
     if (v.isFloat()) return static_cast<float>(v.asFloat());
     if (v.isInt()) return static_cast<float>(v.asInt());
     return 0.0f;
 }
 
-int64_t toInt(const AmlValue &v)
+static int64_t s_toInt(const AmlValue &v)
 {
     if (v.isInt()) return v.asInt();
     if (v.isFloat()) return static_cast<int64_t>(v.asFloat());
     return 0;
 }
 
-Color3 toColor3(const AmlValue &v)
+static Color3 s_toColor3(const AmlValue &v)
 {
     if (!v.isArray()) return Color3();
     auto &arr = v.asArray();
     if (arr.size() >= 3) {
-        return Color3(toFloat(arr[0]), toFloat(arr[1]), toFloat(arr[2]));
+        return Color3(s_toFloat(arr[0]), s_toFloat(arr[1]), s_toFloat(arr[2]));
     }
     return Color3();
 }
 
-Color4 toColor4(const AmlValue &v)
+static Color4 s_toColor4(const AmlValue &v)
 {
     if (!v.isArray()) return Color4();
     auto &arr = v.asArray();
     if (arr.size() >= 4) {
-        return Color4(toFloat(arr[0]), toFloat(arr[1]), toFloat(arr[2]), toFloat(arr[3]));
+        return Color4(s_toFloat(arr[0]), s_toFloat(arr[1]), s_toFloat(arr[2]), s_toFloat(arr[3]));
     }
     if (arr.size() >= 3) {
-        return Color4(toFloat(arr[0]), toFloat(arr[1]), toFloat(arr[2]));
+        return Color4(s_toFloat(arr[0]), s_toFloat(arr[1]), s_toFloat(arr[2]));
     }
     return Color4();
 }
 
-glm::vec2 toVec2(const AmlValue &v)
+static glm::vec2 s_toVec2(const AmlValue &v)
 {
     if (!v.isArray()) return glm::vec2(0.0f);
     auto &arr = v.asArray();
     if (arr.size() >= 2) {
-        return {toFloat(arr[0]), toFloat(arr[1])};
+        return {s_toFloat(arr[0]), s_toFloat(arr[1])};
     }
     return glm::vec2(0.0f);
 }
 
-glm::vec3 toVec3(const AmlValue &v)
+static glm::vec3 s_toVec3(const AmlValue &v)
 {
-    if (!v.isArray()) return glm::vec3(toFloat(v));
+    if (!v.isArray()) return glm::vec3(s_toFloat(v));
     auto &arr = v.asArray();
     if (arr.size() >= 3) {
-        return {toFloat(arr[0]), toFloat(arr[1]), toFloat(arr[2])};
+        return {s_toFloat(arr[0]), s_toFloat(arr[1]), s_toFloat(arr[2])};
     }
     return glm::vec3(0.0f);
 }
 
-UDim toUDim(const AmlValue &v)
+static UDim s_toUDim(const AmlValue &v)
 {
-    if (v.isInt() || v.isFloat()) return UDim::fromOffset(toFloat(v));
+    if (v.isInt() || v.isFloat()) return UDim::fromOffset(s_toFloat(v));
     if (!v.isArray()) return UDim{};
     auto &arr = v.asArray();
     if (arr.size() >= 2) {
-        return UDim{toFloat(arr[0]), toFloat(arr[1])};
+        return UDim{s_toFloat(arr[0]), s_toFloat(arr[1])};
     }
     return UDim{};
 }
 
 // [scaleX, offsetX, scaleY, offsetY]
-UDim2 toUDim2(const AmlValue &v)
+static UDim2 s_toUDim2(const AmlValue &v)
 {
     if (!v.isArray()) return UDim2{};
     auto &arr = v.asArray();
     if (arr.size() >= 4) {
-        return UDim2(toFloat(arr[0]), toFloat(arr[1]), toFloat(arr[2]), toFloat(arr[3]));
+        return UDim2(s_toFloat(arr[0]), s_toFloat(arr[1]), s_toFloat(arr[2]), s_toFloat(arr[3]));
     }
     if (arr.size() >= 2) {
-        return UDim2::fromOffset(toFloat(arr[0]), toFloat(arr[1]));
+        return UDim2::fromOffset(s_toFloat(arr[0]), s_toFloat(arr[1]));
     }
     return UDim2{};
 }
 
-UDim4 toUDim4(const AmlValue &v)
+static UDim4 s_toUDim4(const AmlValue &v)
 {
     if (v.isInt() || v.isFloat()) {
-        UDim all = UDim::fromOffset(toFloat(v));
+        UDim all = UDim::fromOffset(s_toFloat(v));
         return UDim4{all, all, all, all};
     }
     if (!v.isArray()) return UDim4{};
     auto &arr = v.asArray();
     if (arr.size() >= 4) {
-        return UDim4{toUDim(arr[0]), toUDim(arr[1]), toUDim(arr[2]), toUDim(arr[3])};
+        return UDim4{s_toUDim(arr[0]), s_toUDim(arr[1]), s_toUDim(arr[2]), s_toUDim(arr[3])};
     }
     if (arr.size() >= 2) {
-        UDim vertical = toUDim(arr[0]);
-        UDim horizontal = toUDim(arr[1]);
+        UDim vertical = s_toUDim(arr[0]);
+        UDim horizontal = s_toUDim(arr[1]);
         return UDim4{vertical, horizontal, vertical, horizontal};
     }
     return UDim4{};
 }
 
-BorderMode parseBorderMode(const std::string &s)
+static BorderMode s_parseBorderMode(const std::string &s)
 {
     if (s == "outline") return BorderMode::OUTLINE;
     if (s == "middle") return BorderMode::MIDDLE;
@@ -118,7 +116,7 @@ BorderMode parseBorderMode(const std::string &s)
     return BorderMode::OUTLINE;
 }
 
-TextXAlignment parseTextXAlignment(const std::string &s)
+static TextXAlignment s_parseTextXAlignment(const std::string &s)
 {
     if (s == "left") return TextXAlignment::LEFT;
     if (s == "center") return TextXAlignment::CENTER;
@@ -126,7 +124,7 @@ TextXAlignment parseTextXAlignment(const std::string &s)
     return TextXAlignment::LEFT;
 }
 
-TextYAlignment parseTextYAlignment(const std::string &s)
+static TextYAlignment s_parseTextYAlignment(const std::string &s)
 {
     if (s == "top") return TextYAlignment::TOP;
     if (s == "center") return TextYAlignment::CENTER;
@@ -134,7 +132,7 @@ TextYAlignment parseTextYAlignment(const std::string &s)
     return TextYAlignment::TOP;
 }
 
-TextTruncate parseTextTruncate(const std::string &s)
+static TextTruncate s_parseTextTruncate(const std::string &s)
 {
     if (s == "none") return TextTruncate::NONE;
     if (s == "atEnd") return TextTruncate::AT_END;
@@ -142,7 +140,7 @@ TextTruncate parseTextTruncate(const std::string &s)
     return TextTruncate::NONE;
 }
 
-AutomaticSize parseAutomaticSize(const std::string &s)
+static AutomaticSize s_parseAutomaticSize(const std::string &s)
 {
     if (s == "x") return AutomaticSize::X;
     if (s == "y") return AutomaticSize::Y;
@@ -150,21 +148,21 @@ AutomaticSize parseAutomaticSize(const std::string &s)
     return AutomaticSize::NONE;
 }
 
-ZIndexBehavior parseZIndexBehavior(const std::string &s)
+static ZIndexBehavior s_parseZIndexBehavior(const std::string &s)
 {
     if (s == "global") return ZIndexBehavior::GLOBAL;
     if (s == "sibling") return ZIndexBehavior::SIBLING;
     return ZIndexBehavior::SIBLING;
 }
 
-FillDirection parseFillDirection(const std::string &s)
+static FillDirection s_parseFillDirection(const std::string &s)
 {
     if (s == "horizontal") return FillDirection::FILL_HORIZONTAL;
     if (s == "vertical") return FillDirection::FILL_VERTICAL;
     return FillDirection::FILL_VERTICAL;
 }
 
-HorizontalAlignment parseHorizontalAlignment(const std::string &s)
+static HorizontalAlignment s_parseHorizontalAlignment(const std::string &s)
 {
     if (s == "left") return HorizontalAlignment::ALIGN_LEFT;
     if (s == "center") return HorizontalAlignment::ALIGN_CENTER_H;
@@ -172,7 +170,7 @@ HorizontalAlignment parseHorizontalAlignment(const std::string &s)
     return HorizontalAlignment::ALIGN_LEFT;
 }
 
-VerticalAlignment parseVerticalAlignment(const std::string &s)
+static VerticalAlignment s_parseVerticalAlignment(const std::string &s)
 {
     if (s == "top") return VerticalAlignment::ALIGN_TOP;
     if (s == "center") return VerticalAlignment::ALIGN_CENTER_V;
@@ -180,14 +178,14 @@ VerticalAlignment parseVerticalAlignment(const std::string &s)
     return VerticalAlignment::ALIGN_TOP;
 }
 
-SortOrder parseSortOrder(const std::string &s)
+static SortOrder s_parseSortOrder(const std::string &s)
 {
     if (s == "name") return SortOrder::SORT_NAME;
     if (s == "layoutOrder") return SortOrder::SORT_LAYOUT_ORDER;
     return SortOrder::SORT_LAYOUT_ORDER;
 }
 
-UiFlexAlignment parseFlexAlignment(const std::string &s)
+static UiFlexAlignment s_parseFlexAlignment(const std::string &s)
 {
     if (s == "fill") return UiFlexAlignment::FILL;
     if (s == "spaceAround") return UiFlexAlignment::SPACE_AROUND;
@@ -196,7 +194,7 @@ UiFlexAlignment parseFlexAlignment(const std::string &s)
     return UiFlexAlignment::NONE;
 }
 
-ItemLineAlignment parseItemLineAlignment(const std::string &s)
+static ItemLineAlignment s_parseItemLineAlignment(const std::string &s)
 {
     if (s == "start") return ItemLineAlignment::START;
     if (s == "center") return ItemLineAlignment::CENTER;
@@ -205,7 +203,7 @@ ItemLineAlignment parseItemLineAlignment(const std::string &s)
     return ItemLineAlignment::AUTOMATIC;
 }
 
-StartCorner parseStartCorner(const std::string &s)
+static StartCorner s_parseStartCorner(const std::string &s)
 {
     if (s == "topLeft") return StartCorner::TOP_LEFT;
     if (s == "topRight") return StartCorner::TOP_RIGHT;
@@ -214,7 +212,7 @@ StartCorner parseStartCorner(const std::string &s)
     return StartCorner::TOP_LEFT;
 }
 
-ScrollAxis parseScrollAxis(const std::string &s)
+static ScrollAxis s_parseScrollAxis(const std::string &s)
 {
     if (s == "x") return ScrollAxis::X;
     if (s == "y") return ScrollAxis::Y;
@@ -222,7 +220,7 @@ ScrollAxis parseScrollAxis(const std::string &s)
     return ScrollAxis::Y;
 }
 
-ScrollBarVisibility parseScrollBarVisibility(const std::string &s)
+static ScrollBarVisibility s_parseScrollBarVisibility(const std::string &s)
 {
     if (s == "always") return ScrollBarVisibility::ALWAYS;
     if (s == "auto") return ScrollBarVisibility::AUTO;
@@ -230,7 +228,7 @@ ScrollBarVisibility parseScrollBarVisibility(const std::string &s)
     return ScrollBarVisibility::AUTO;
 }
 
-LabelSide parseLabelSide(const std::string &s)
+static LabelSide s_parseLabelSide(const std::string &s)
 {
     if (s == "left") return LabelSide::LEFT;
     if (s == "right") return LabelSide::RIGHT;
@@ -239,14 +237,14 @@ LabelSide parseLabelSide(const std::string &s)
     return LabelSide::LEFT;
 }
 
-ValueControlLayout parseValueControlLayout(const std::string &s)
+static ValueControlLayout s_parseValueControlLayout(const std::string &s)
 {
     if (s == "sideBySide") return ValueControlLayout::SIDE_BY_SIDE;
     if (s == "stacked") return ValueControlLayout::STACKED;
     return ValueControlLayout::SIDE_BY_SIDE;
 }
 
-DockZone parseDockZone(const std::string &s)
+static DockZone s_parseDockZone(const std::string &s)
 {
     if (s == "left") return DockZone::LEFT;
     if (s == "right") return DockZone::RIGHT;
@@ -256,34 +254,34 @@ DockZone parseDockZone(const std::string &s)
     return DockZone::CENTER;
 }
 
-void applyUIObjectAttrs(UIObject *obj, const std::unordered_map<std::string, AmlValue> &attrs)
+static void s_applyUIObjectAttrs(UIObject *obj, const std::unordered_map<std::string, AmlValue> &attrs)
 {
     for (auto &[key, val] : attrs) {
         if (key == "name") obj->name = val.asString();
-        else if (key == "size") obj->size = toUDim2(val);
-        else if (key == "position") obj->position = toUDim2(val);
-        else if (key == "anchorPoint") obj->anchorPoint = toVec2(val);
-        else if (key == "backgroundColor") obj->backgroundColor = toColor3(val);
-        else if (key == "backgroundTransparency") obj->backgroundTransparency = toFloat(val);
-        else if (key == "borderMode") obj->borderMode = parseBorderMode(val.asString());
-        else if (key == "borderPixelSize") obj->borderPixelSize = toFloat(val);
-        else if (key == "borderColor") obj->borderColor = toColor3(val);
-        else if (key == "borderTransparency") obj->borderTransparency = toFloat(val);
-        else if (key == "cornerRadius") obj->cornerRadius = toFloat(val);
+        else if (key == "size") obj->size = s_toUDim2(val);
+        else if (key == "position") obj->position = s_toUDim2(val);
+        else if (key == "anchorPoint") obj->anchorPoint = s_toVec2(val);
+        else if (key == "backgroundColor") obj->backgroundColor = s_toColor3(val);
+        else if (key == "backgroundTransparency") obj->backgroundTransparency = s_toFloat(val);
+        else if (key == "borderMode") obj->borderMode = s_parseBorderMode(val.asString());
+        else if (key == "borderPixelSize") obj->borderPixelSize = s_toFloat(val);
+        else if (key == "borderColor") obj->borderColor = s_toColor3(val);
+        else if (key == "borderTransparency") obj->borderTransparency = s_toFloat(val);
+        else if (key == "cornerRadius") obj->cornerRadius = s_toFloat(val);
         else if (key == "clipsDescendants") obj->clipsDescendants = val.asBool();
         else if (key == "visible") obj->visible = val.asBool();
         else if (key == "interactable") obj->interactable = val.asBool();
         else if (key == "active") obj->active = val.asBool();
-        else if (key == "rotation") obj->rotation = toFloat(val);
-        else if (key == "zIndex") obj->zIndex = static_cast<int32_t>(toInt(val));
-        else if (key == "zindexBehavior") obj->zindexBehavior = parseZIndexBehavior(val.asString());
-        else if (key == "layoutOrder") obj->layoutOrder = static_cast<uint32_t>(toInt(val));
-        else if (key == "automaticSize") obj->automaticSize = parseAutomaticSize(val.asString());
-        else if (key == "padding") obj->padding = toUDim4(val);
+        else if (key == "rotation") obj->rotation = s_toFloat(val);
+        else if (key == "zIndex") obj->zIndex = static_cast<int32_t>(s_toInt(val));
+        else if (key == "zindexBehavior") obj->zindexBehavior = s_parseZIndexBehavior(val.asString());
+        else if (key == "layoutOrder") obj->layoutOrder = static_cast<uint32_t>(s_toInt(val));
+        else if (key == "automaticSize") obj->automaticSize = s_parseAutomaticSize(val.asString());
+        else if (key == "padding") obj->padding = s_toUDim4(val);
     }
 }
 
-void applyTextAttrs(const std::unordered_map<std::string, AmlValue> &attrs, std::string &text, std::string &fontFamily,
+static void s_applyTextAttrs(const std::unordered_map<std::string, AmlValue> &attrs, std::string &text, std::string &fontFamily,
                     float &fontSize, Color4 &textColor, TextXAlignment &textXAlign, TextYAlignment &textYAlign,
                     TextTruncate &textTruncate, bool &richText, bool &textWrapped, bool &textScaled, float &lineHeight,
                     float &strokeThickness, Color4 &strokeColor)
@@ -291,159 +289,171 @@ void applyTextAttrs(const std::unordered_map<std::string, AmlValue> &attrs, std:
     for (auto &[key, val] : attrs) {
         if (key == "text") text = val.asString();
         else if (key == "fontFamily") fontFamily = val.asString();
-        else if (key == "fontSize") fontSize = toFloat(val);
-        else if (key == "textColor") textColor = toColor4(val);
-        else if (key == "textXAlignment") textXAlign = parseTextXAlignment(val.asString());
-        else if (key == "textYAlignment") textYAlign = parseTextYAlignment(val.asString());
-        else if (key == "textTruncate") textTruncate = parseTextTruncate(val.asString());
+        else if (key == "fontSize") fontSize = s_toFloat(val);
+        else if (key == "textColor") textColor = s_toColor4(val);
+        else if (key == "textXAlignment") textXAlign = s_parseTextXAlignment(val.asString());
+        else if (key == "textYAlignment") textYAlign = s_parseTextYAlignment(val.asString());
+        else if (key == "textTruncate") textTruncate = s_parseTextTruncate(val.asString());
         else if (key == "richText") richText = val.asBool();
         else if (key == "textWrapped") textWrapped = val.asBool();
         else if (key == "textScaled") textScaled = val.asBool();
-        else if (key == "lineHeight") lineHeight = toFloat(val);
-        else if (key == "strokeThickness") strokeThickness = toFloat(val);
-        else if (key == "strokeColor") strokeColor = toColor4(val);
+        else if (key == "lineHeight") lineHeight = s_toFloat(val);
+        else if (key == "strokeThickness") strokeThickness = s_toFloat(val);
+        else if (key == "strokeColor") strokeColor = s_toColor4(val);
     }
 }
 
-void applyScrollingFrameAttrs(ScrollingFrame *sf, const std::unordered_map<std::string, AmlValue> &attrs)
+static void s_applyScrollingFrameAttrs(ScrollingFrame *sf, const std::unordered_map<std::string, AmlValue> &attrs)
 {
     for (auto &[key, val] : attrs) {
-        if (key == "scrollAxis") sf->scrollAxis = parseScrollAxis(val.asString());
-        else if (key == "scrollBarVisibility") sf->scrollBarVisibility = parseScrollBarVisibility(val.asString());
-        else if (key == "canvasSize") sf->canvasSize = toUDim2(val);
-        else if (key == "canvasPosition") sf->canvasPosition = toUDim2(val);
-        else if (key == "scrollBarColor") sf->scrollBarColor = toColor3(val);
-        else if (key == "scrollBarTransparency") sf->scrollBarTransparency = toFloat(val);
-        else if (key == "scrollBarThickness") sf->scrollBarThickness = toFloat(val);
-        else if (key == "scrollBarThumbColor") sf->scrollBarThumbColor = toColor3(val);
-        else if (key == "scrollBarThumbTransparency") sf->scrollBarThumbTransparency = toFloat(val);
-        else if (key == "scrollSpeed") sf->scrollSpeed = toFloat(val);
+        if (key == "scrollAxis") sf->scrollAxis = s_parseScrollAxis(val.asString());
+        else if (key == "scrollBarVisibility") sf->scrollBarVisibility = s_parseScrollBarVisibility(val.asString());
+        else if (key == "canvasSize") sf->canvasSize = s_toUDim2(val);
+        else if (key == "canvasPosition") sf->canvasPosition = s_toUDim2(val);
+        else if (key == "scrollBarColor") sf->scrollBarColor = s_toColor3(val);
+        else if (key == "scrollBarTransparency") sf->scrollBarTransparency = s_toFloat(val);
+        else if (key == "scrollBarThickness") sf->scrollBarThickness = s_toFloat(val);
+        else if (key == "scrollBarThumbColor") sf->scrollBarThumbColor = s_toColor3(val);
+        else if (key == "scrollBarThumbTransparency") sf->scrollBarThumbTransparency = s_toFloat(val);
+        else if (key == "scrollSpeed") sf->scrollSpeed = s_toFloat(val);
         else if (key == "elasticScrolling") sf->elasticScrolling = val.asBool();
     }
 }
 
-void applyListLayoutAttrs(UIListLayout *ll, const std::unordered_map<std::string, AmlValue> &attrs)
+static void s_applyListLayoutAttrs(UIListLayout *ll, const std::unordered_map<std::string, AmlValue> &attrs)
 {
     for (auto &[key, val] : attrs) {
-        if (key == "fillDirection") ll->fillDirection = parseFillDirection(val.asString());
-        else if (key == "horizontalAlignment") ll->horizontalAlignment = parseHorizontalAlignment(val.asString());
-        else if (key == "verticalAlignment") ll->verticalAlignment = parseVerticalAlignment(val.asString());
-        else if (key == "sortOrder") ll->sortOrder = parseSortOrder(val.asString());
-        else if (key == "innerPadding") ll->innerPadding = toUDim(val);
-        else if (key == "horizontalFlex") ll->horizontalFlex = parseFlexAlignment(val.asString());
-        else if (key == "verticalFlex") ll->verticalFlex = parseFlexAlignment(val.asString());
+        if (key == "fillDirection") ll->fillDirection = s_parseFillDirection(val.asString());
+        else if (key == "horizontalAlignment") ll->horizontalAlignment = s_parseHorizontalAlignment(val.asString());
+        else if (key == "verticalAlignment") ll->verticalAlignment = s_parseVerticalAlignment(val.asString());
+        else if (key == "sortOrder") ll->sortOrder = s_parseSortOrder(val.asString());
+        else if (key == "innerPadding") ll->innerPadding = s_toUDim(val);
+        else if (key == "horizontalFlex") ll->horizontalFlex = s_parseFlexAlignment(val.asString());
+        else if (key == "verticalFlex") ll->verticalFlex = s_parseFlexAlignment(val.asString());
         else if (key == "wraps") ll->wraps = val.asBool();
-        else if (key == "itemLineAlignment") ll->itemLineAlignment = parseItemLineAlignment(val.asString());
+        else if (key == "itemLineAlignment") ll->itemLineAlignment = s_parseItemLineAlignment(val.asString());
     }
 }
 
-void applyGridLayoutAttrs(UIGridLayout *gl, const std::unordered_map<std::string, AmlValue> &attrs)
+static void s_applyGridLayoutAttrs(UIGridLayout *gl, const std::unordered_map<std::string, AmlValue> &attrs)
 {
     for (auto &[key, val] : attrs) {
-        if (key == "fillDirection") gl->fillDirection = parseFillDirection(val.asString());
-        else if (key == "horizontalAlignment") gl->horizontalAlignment = parseHorizontalAlignment(val.asString());
-        else if (key == "verticalAlignment") gl->verticalAlignment = parseVerticalAlignment(val.asString());
-        else if (key == "sortOrder") gl->sortOrder = parseSortOrder(val.asString());
-        else if (key == "cellPadding") gl->cellPadding = toUDim2(val);
-        else if (key == "cellSize") gl->cellSize = toUDim2(val);
-        else if (key == "startCorner") gl->startCorner = parseStartCorner(val.asString());
-        else if (key == "fillDirectionMaxCells") gl->fillDirectionMaxCells = static_cast<uint32_t>(toInt(val));
+        if (key == "fillDirection") gl->fillDirection = s_parseFillDirection(val.asString());
+        else if (key == "horizontalAlignment") gl->horizontalAlignment = s_parseHorizontalAlignment(val.asString());
+        else if (key == "verticalAlignment") gl->verticalAlignment = s_parseVerticalAlignment(val.asString());
+        else if (key == "sortOrder") gl->sortOrder = s_parseSortOrder(val.asString());
+        else if (key == "cellPadding") gl->cellPadding = s_toUDim2(val);
+        else if (key == "cellSize") gl->cellSize = s_toUDim2(val);
+        else if (key == "startCorner") gl->startCorner = s_parseStartCorner(val.asString());
+        else if (key == "fillDirectionMaxCells") gl->fillDirectionMaxCells = static_cast<uint32_t>(s_toInt(val));
     }
 }
 
-void applySizeConstraintAttrs(UISizeConstraint *sc, const std::unordered_map<std::string, AmlValue> &attrs)
+static void s_applySizeConstraintAttrs(UISizeConstraint *sc, const std::unordered_map<std::string, AmlValue> &attrs)
 {
     for (auto &[key, val] : attrs) {
-        if (key == "maxSize") sc->maxSize = toVec2(val);
-        else if (key == "minSize") sc->minSize = toVec2(val);
+        if (key == "maxSize") sc->maxSize = s_toVec2(val);
+        else if (key == "minSize") sc->minSize = s_toVec2(val);
     }
 }
 
-void applyAspectRatioAttrs(UIAspectRatioConstraint *ar, const std::unordered_map<std::string, AmlValue> &attrs)
+static void s_applyAspectRatioAttrs(UIAspectRatioConstraint *ar, const std::unordered_map<std::string, AmlValue> &attrs)
 {
     for (auto &[key, val] : attrs) {
-        if (key == "aspectRatio") ar->aspectRatio = toFloat(val);
+        if (key == "aspectRatio") ar->aspectRatio = s_toFloat(val);
     }
 }
 
-void applyTextSizeConstraintAttrs(UITextSizeConstraint *tc, const std::unordered_map<std::string, AmlValue> &attrs)
+static void s_applyTextSizeConstraintAttrs(UITextSizeConstraint *tc, const std::unordered_map<std::string, AmlValue> &attrs)
 {
     for (auto &[key, val] : attrs) {
-        if (key == "maxTextSize") tc->maxTextSize = toFloat(val);
-        else if (key == "minTextSize") tc->minTextSize = toFloat(val);
+        if (key == "maxTextSize") tc->maxTextSize = s_toFloat(val);
+        else if (key == "minTextSize") tc->minTextSize = s_toFloat(val);
     }
 }
 
-void applySliderAttrs(Slider *s, const std::unordered_map<std::string, AmlValue> &attrs)
+static void s_applySliderAttrs(Slider *s, const std::unordered_map<std::string, AmlValue> &attrs)
 {
     for (auto &[key, val] : attrs) {
-        if (key == "sliderColor") s->sliderColor = toColor3(val);
-        else if (key == "sliderTransparency") s->sliderTransparency = toFloat(val);
-        else if (key == "thumbColor") s->thumbColor = toColor3(val);
-        else if (key == "thumbTransparency") s->thumbTransparency = toFloat(val);
-        else if (key == "trackCornerRadius") s->trackCornerRadius = toFloat(val);
-        else if (key == "thumbCornerRadius") s->thumbCornerRadius = toFloat(val);
+        if (key == "sliderColor") s->sliderColor = s_toColor3(val);
+        else if (key == "sliderTransparency") s->sliderTransparency = s_toFloat(val);
+        else if (key == "thumbColor") s->thumbColor = s_toColor3(val);
+        else if (key == "thumbTransparency") s->thumbTransparency = s_toFloat(val);
+        else if (key == "trackCornerRadius") s->trackCornerRadius = s_toFloat(val);
+        else if (key == "thumbCornerRadius") s->thumbCornerRadius = s_toFloat(val);
         else if (key == "label") s->label = val.asString();
-        else if (key == "labelColor") s->labelColor = toColor4(val);
-        else if (key == "labelSide") s->labelSide = parseLabelSide(val.asString());
-        else if (key == "labelPadding") s->labelPadding = toUDim(val);
-        else if (key == "valueColor") s->valueColor = toColor4(val);
+        else if (key == "labelColor") s->labelColor = s_toColor4(val);
+        else if (key == "labelSide") s->labelSide = s_parseLabelSide(val.asString());
+        else if (key == "labelPadding") s->labelPadding = s_toUDim(val);
+        else if (key == "valueColor") s->valueColor = s_toColor4(val);
         else if (key == "valueSuffix") s->valueSuffix = val.asString();
-        else if (key == "fontSize") s->fontSize = toFloat(val);
-        else if (key == "layout") s->layout = parseValueControlLayout(val.asString());
+        else if (key == "fontSize") s->fontSize = s_toFloat(val);
+        else if (key == "layout") s->layout = s_parseValueControlLayout(val.asString());
     }
 }
 
-void applyTextInputAttrs(TextInput *ti, const std::unordered_map<std::string, AmlValue> &attrs)
+static void s_applyTextInputAttrs(TextInput *ti, const std::unordered_map<std::string, AmlValue> &attrs)
 {
     for (auto &[key, val] : attrs) {
         if (key == "placeholderText") ti->placeholderText = val.asString();
-        else if (key == "textColor") ti->textColor = toColor4(val);
-        else if (key == "placeholderColor") ti->placeholderColor = toColor4(val);
-        else if (key == "selectionColor") ti->selectionColor = toColor4(val);
-        else if (key == "cursorColor") ti->cursorColor = toColor4(val);
-        else if (key == "fontSize") ti->fontSize = toFloat(val);
+        else if (key == "textColor") ti->textColor = s_toColor4(val);
+        else if (key == "placeholderColor") ti->placeholderColor = s_toColor4(val);
+        else if (key == "selectionColor") ti->selectionColor = s_toColor4(val);
+        else if (key == "cursorColor") ti->cursorColor = s_toColor4(val);
+        else if (key == "fontSize") ti->fontSize = s_toFloat(val);
         else if (key == "fontFamily") ti->fontFamily = val.asString();
         else if (key == "multiline") ti->multiline = val.asBool();
-        else if (key == "maxLength") ti->maxLength = static_cast<int32_t>(toInt(val));
+        else if (key == "maxLength") ti->maxLength = static_cast<int32_t>(s_toInt(val));
         else if (key == "readOnly") ti->readOnly = val.asBool();
-        else if (key == "cursorBlinkRate") ti->cursorBlinkRate = toFloat(val);
-        else if (key == "textXAlignment") ti->textXAlignment = parseTextXAlignment(val.asString());
+        else if (key == "cursorBlinkRate") ti->cursorBlinkRate = s_toFloat(val);
+        else if (key == "textXAlignment") ti->textXAlignment = s_parseTextXAlignment(val.asString());
     }
 }
 
-bool isExtensionTag(const std::string &tag)
+static bool s_isExtensionTag(const std::string &tag)
 {
     return tag == "UIListLayout" || tag == "UIGridLayout" || tag == "UISizeConstraint" || tag == "UIAspectRatioConstraint" ||
            tag == "UIDragDetector" || tag == "UITextSizeConstraint";
 }
 
-void applyExtension(UIObject *parent, const AmlNode &node)
+static void s_applyExtension(UIObject *parent, const AmlNode &node)
 {
     if (node.tag == "UIListLayout") {
         auto *ext = parent->addExtension<UIListLayout>();
-        applyListLayoutAttrs(ext, node.attributes);
+        s_applyListLayoutAttrs(ext, node.attributes);
     } else if (node.tag == "UIGridLayout") {
         auto *ext = parent->addExtension<UIGridLayout>();
-        applyGridLayoutAttrs(ext, node.attributes);
+        s_applyGridLayoutAttrs(ext, node.attributes);
     } else if (node.tag == "UISizeConstraint") {
         auto *ext = parent->addExtension<UISizeConstraint>();
-        applySizeConstraintAttrs(ext, node.attributes);
+        s_applySizeConstraintAttrs(ext, node.attributes);
     } else if (node.tag == "UIAspectRatioConstraint") {
         auto *ext = parent->addExtension<UIAspectRatioConstraint>();
-        applyAspectRatioAttrs(ext, node.attributes);
+        s_applyAspectRatioAttrs(ext, node.attributes);
     } else if (node.tag == "UIDragDetector") {
         parent->addExtension<UIDragDetector>();
     } else if (node.tag == "UITextSizeConstraint") {
         auto *ext = parent->addExtension<UITextSizeConstraint>();
-        applyTextSizeConstraintAttrs(ext, node.attributes);
+        s_applyTextSizeConstraintAttrs(ext, node.attributes);
     }
 }
 
-Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::unique_ptr<Instance>> &allInstances,
-                    std::string &error);
+template <typename T, typename... Args>
+static T *s_createInst(Instance *parent, std::vector<std::unique_ptr<Instance>> &roots, Args &&...args)
+{
+    if (parent) {
+        return parent->add<T>(std::forward<Args>(args)...);
+    }
+    auto inst = std::make_unique<T>(std::forward<Args>(args)...);
+    T *ptr = inst.get();
+    roots.push_back(std::move(inst));
+    return ptr;
+}
 
-DockZone oppositeZone(DockZone zone)
+static Instance *s_buildNode(const AmlNode &node, Instance *parent, std::vector<std::unique_ptr<Instance>> &roots,
+                             std::string &error);
+
+static DockZone s_oppositeZone(DockZone zone)
 {
     switch (zone) {
     case DockZone::LEFT:
@@ -459,15 +469,15 @@ DockZone oppositeZone(DockZone zone)
     }
 }
 
-int32_t buildDockChild(DockingLayer *dl, const AmlNode &child, int32_t targetLeaf, DockZone zone, float ratio,
+static int32_t s_buildDockChild(DockingLayer *dl, const AmlNode &child, int32_t targetLeaf, DockZone zone, float ratio,
                        std::vector<std::unique_ptr<Instance>> &allInstances, std::string &error)
 {
     if (child.tag == "DockRegion") {
         DockZone innerZone = DockZone::CENTER;
         float innerRatio = 0.5f;
         for (auto &[key, val] : child.attributes) {
-            if (key == "zone") innerZone = parseDockZone(val.asString());
-            else if (key == "ratio") innerRatio = toFloat(val);
+            if (key == "zone") innerZone = s_parseDockZone(val.asString());
+            else if (key == "ratio") innerRatio = s_toFloat(val);
         }
 
         if (child.children.empty()) {
@@ -475,49 +485,49 @@ int32_t buildDockChild(DockingLayer *dl, const AmlNode &child, int32_t targetLea
             return targetLeaf;
         }
 
-        int32_t leaf = buildDockChild(dl, child.children[0], targetLeaf, zone, ratio, allInstances, error);
+        int32_t leaf = s_buildDockChild(dl, child.children[0], targetLeaf, zone, ratio, allInstances, error);
         if (!error.empty()) return -1;
 
         if (child.children.size() > 1) {
-            leaf = buildDockChild(dl, child.children[1], leaf, oppositeZone(innerZone), innerRatio, allInstances, error);
+            leaf = s_buildDockChild(dl, child.children[1], leaf, s_oppositeZone(innerZone), innerRatio, allInstances, error);
             if (!error.empty()) return -1;
         }
 
         for (size_t i = 2; i < child.children.size(); i++) {
-            leaf = buildDockChild(dl, child.children[i], leaf, DockZone::CENTER, 0.0f, allInstances, error);
+            leaf = s_buildDockChild(dl, child.children[i], leaf, DockZone::CENTER, 0.0f, allInstances, error);
             if (!error.empty()) return -1;
         }
         return leaf;
     }
 
-    auto *built = buildNode(child, nullptr, allInstances, error);
+    s_buildNode(child, nullptr, allInstances, error);
     if (!error.empty()) return -1;
 
-    auto *base2d = dynamic_cast<UIBase2D *>(built);
-    if (!base2d) {
+    auto inst = std::move(allInstances.back());
+    allInstances.pop_back();
+
+    if (!inst->as<UIBase2D>()) {
         error = "DockingLayer child must be a UIBase2D";
         return -1;
     }
 
-    return dl->dock(base2d, targetLeaf, zone, ratio);
+    return dl->dock(std::move(inst), targetLeaf, zone, ratio);
 }
 
-Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::unique_ptr<Instance>> &allInstances, std::string &error)
+static Instance *s_buildNode(const AmlNode &node, Instance *parent, std::vector<std::unique_ptr<Instance>> &allInstances, std::string &error)
 {
     auto &tag = node.tag;
 
     if (tag == "Frame") {
-        auto inst = std::make_unique<Frame>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
+        auto *ptr = s_createInst<Frame>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -525,20 +535,18 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "TextLabel") {
-        auto inst = std::make_unique<TextLabel>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
-        applyTextAttrs(node.attributes, ptr->text, ptr->fontFamily, ptr->fontSize, ptr->textColor, ptr->textXAlignment,
+        auto *ptr = s_createInst<TextLabel>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
+        s_applyTextAttrs(node.attributes, ptr->text, ptr->fontFamily, ptr->fontSize, ptr->textColor, ptr->textXAlignment,
                        ptr->textYAlignment, ptr->textTruncate, ptr->richText, ptr->textWrapped, ptr->textScaled, ptr->lineHeight,
                        ptr->strokeThickness, ptr->strokeColor);
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -546,10 +554,9 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "TextButton") {
-        auto inst = std::make_unique<TextButton>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
-        applyTextAttrs(node.attributes, ptr->text, ptr->fontFamily, ptr->fontSize, ptr->textColor, ptr->textXAlignment,
+        auto *ptr = s_createInst<TextButton>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
+        s_applyTextAttrs(node.attributes, ptr->text, ptr->fontFamily, ptr->fontSize, ptr->textColor, ptr->textXAlignment,
                        ptr->textYAlignment, ptr->textTruncate, ptr->richText, ptr->textWrapped, ptr->textScaled, ptr->lineHeight,
                        ptr->strokeThickness, ptr->strokeColor);
 
@@ -559,13 +566,12 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -573,23 +579,21 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "ImageLabel") {
-        auto inst = std::make_unique<ImageLabel>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
+        auto *ptr = s_createInst<ImageLabel>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
 
         for (auto &[key, val] : node.attributes) {
-            if (key == "imageColor") ptr->imageColor = toColor4(val);
-            else if (key == "imageTransparency") ptr->imageTransparency = toFloat(val);
+            if (key == "imageColor") ptr->imageColor = s_toColor4(val);
+            else if (key == "imageTransparency") ptr->imageTransparency = s_toFloat(val);
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -597,25 +601,23 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "ImageButton") {
-        auto inst = std::make_unique<ImageButton>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
+        auto *ptr = s_createInst<ImageButton>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
 
         for (auto &[key, val] : node.attributes) {
-            if (key == "imageColor") ptr->imageColor = toColor4(val);
-            else if (key == "imageTransparency") ptr->imageTransparency = toFloat(val);
+            if (key == "imageColor") ptr->imageColor = s_toColor4(val);
+            else if (key == "imageTransparency") ptr->imageTransparency = s_toFloat(val);
             else if (key == "autoButtonColor") ptr->autoButtonColor = val.asBool();
             else if (key == "modal") ptr->modal = val.asBool();
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -623,18 +625,16 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "ScrollingFrame") {
-        auto inst = std::make_unique<ScrollingFrame>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
-        applyScrollingFrameAttrs(ptr, node.attributes);
+        auto *ptr = s_createInst<ScrollingFrame>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
+        s_applyScrollingFrameAttrs(ptr, node.attributes);
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -648,9 +648,8 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "InvisibleButton") {
-        auto inst = std::make_unique<InvisibleButton>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
+        auto *ptr = s_createInst<InvisibleButton>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
 
         for (auto &[key, val] : node.attributes) {
             if (key == "autoButtonColor") ptr->autoButtonColor = val.asBool();
@@ -658,13 +657,12 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -672,18 +670,16 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "TextInput") {
-        auto inst = std::make_unique<TextInput>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
-        applyTextInputAttrs(ptr, node.attributes);
+        auto *ptr = s_createInst<TextInput>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
+        s_applyTextInputAttrs(ptr, node.attributes);
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -691,25 +687,23 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "SliderFloat") {
-        auto inst = std::make_unique<SliderFloat>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
-        applySliderAttrs(ptr, node.attributes);
+        auto *ptr = s_createInst<SliderFloat>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
+        s_applySliderAttrs(ptr, node.attributes);
 
         for (auto &[key, val] : node.attributes) {
-            if (key == "min") ptr->min = toFloat(val);
-            else if (key == "max") ptr->max = toFloat(val);
-            else if (key == "speed") ptr->speed = toFloat(val);
+            if (key == "min") ptr->min = s_toFloat(val);
+            else if (key == "max") ptr->max = s_toFloat(val);
+            else if (key == "speed") ptr->speed = s_toFloat(val);
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -717,25 +711,23 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "SliderInt") {
-        auto inst = std::make_unique<SliderInt>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
-        applySliderAttrs(ptr, node.attributes);
+        auto *ptr = s_createInst<SliderInt>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
+        s_applySliderAttrs(ptr, node.attributes);
 
         for (auto &[key, val] : node.attributes) {
-            if (key == "min") ptr->min = static_cast<int>(toInt(val));
-            else if (key == "max") ptr->max = static_cast<int>(toInt(val));
-            else if (key == "speed") ptr->speed = toFloat(val);
+            if (key == "min") ptr->min = static_cast<int>(s_toInt(val));
+            else if (key == "max") ptr->max = static_cast<int>(s_toInt(val));
+            else if (key == "speed") ptr->speed = s_toFloat(val);
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -743,25 +735,23 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "SliderVec2") {
-        auto inst = std::make_unique<SliderVec2>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
-        applySliderAttrs(ptr, node.attributes);
+        auto *ptr = s_createInst<SliderVec2>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
+        s_applySliderAttrs(ptr, node.attributes);
 
         for (auto &[key, val] : node.attributes) {
-            if (key == "min") ptr->min = toVec2(val);
-            else if (key == "max") ptr->max = toVec2(val);
-            else if (key == "speed") ptr->speed = toFloat(val);
+            if (key == "min") ptr->min = s_toVec2(val);
+            else if (key == "max") ptr->max = s_toVec2(val);
+            else if (key == "speed") ptr->speed = s_toFloat(val);
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -769,25 +759,23 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "SliderVec3") {
-        auto inst = std::make_unique<SliderVec3>(parent);
-        auto *ptr = inst.get();
-        applyUIObjectAttrs(ptr, node.attributes);
-        applySliderAttrs(ptr, node.attributes);
+        auto *ptr = s_createInst<SliderVec3>(parent, allInstances);
+        s_applyUIObjectAttrs(ptr, node.attributes);
+        s_applySliderAttrs(ptr, node.attributes);
 
         for (auto &[key, val] : node.attributes) {
-            if (key == "min") ptr->min = toVec3(val);
-            else if (key == "max") ptr->max = toVec3(val);
-            else if (key == "speed") ptr->speed = toFloat(val);
+            if (key == "min") ptr->min = s_toVec3(val);
+            else if (key == "max") ptr->max = s_toVec3(val);
+            else if (key == "speed") ptr->speed = s_toFloat(val);
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            if (isExtensionTag(child.tag)) {
-                applyExtension(ptr, child);
+            if (s_isExtensionTag(child.tag)) {
+                s_applyExtension(ptr, child);
             } else {
-                buildNode(child, ptr, allInstances, error);
+                s_buildNode(child, ptr, allInstances, error);
                 if (!error.empty()) return nullptr;
             }
         }
@@ -795,34 +783,30 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     }
 
     if (tag == "DockingLayer") {
-        auto inst = std::make_unique<DockingLayer>(parent);
-        auto *ptr = inst.get();
+        auto *ptr = s_createInst<DockingLayer>(parent, allInstances);
 
         for (auto &[key, val] : node.attributes) {
             if (key == "name") ptr->name = val.asString();
             else if (key == "visible") ptr->visible = val.asBool();
-            else if (key == "outerSpacing") ptr->outerSpacing = toFloat(val);
-            else if (key == "innerSpacing") ptr->innerSpacing = toFloat(val);
+            else if (key == "outerSpacing") ptr->outerSpacing = s_toFloat(val);
+            else if (key == "innerSpacing") ptr->innerSpacing = s_toFloat(val);
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
             if (child.tag != "DockRegion") {
                 AM_LOG_WARN("DockingLayer only accepts DockRegion children, got '{}'", child.tag);
                 continue;
             }
-            buildDockChild(ptr, child, -1, DockZone::CENTER, 0.0f, allInstances, error);
+            s_buildDockChild(ptr, child, -1, DockZone::CENTER, 0.0f, allInstances, error);
             if (!error.empty()) return nullptr;
         }
         return ptr;
     }
 
     if (tag == "OverlayLayer") {
-        auto inst = std::make_unique<OverlayLayer>();
-        auto *ptr = inst.get();
-        if (parent) ptr->setParent(parent);
+        auto *ptr = s_createInst<OverlayLayer>(parent, allInstances);
 
         for (auto &[key, val] : node.attributes) {
             if (key == "name") ptr->name = val.asString();
@@ -830,19 +814,16 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            buildNode(child, ptr, allInstances, error);
+            s_buildNode(child, ptr, allInstances, error);
             if (!error.empty()) return nullptr;
         }
         return ptr;
     }
 
     if (tag == "PanelLayer") {
-        auto inst = std::make_unique<PanelLayer>();
-        auto *ptr = inst.get();
-        if (parent) ptr->setParent(parent);
+        auto *ptr = s_createInst<PanelLayer>(parent, allInstances);
 
         for (auto &[key, val] : node.attributes) {
             if (key == "name") ptr->name = val.asString();
@@ -850,10 +831,9 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
         }
 
         ptr->markDirty();
-        allInstances.push_back(std::move(inst));
 
         for (auto &child : node.children) {
-            buildNode(child, ptr, allInstances, error);
+            s_buildNode(child, ptr, allInstances, error);
             if (!error.empty()) return nullptr;
         }
         return ptr;
@@ -863,14 +843,8 @@ Instance *buildNode(const AmlNode &node, Instance *parent, std::vector<std::uniq
     return nullptr;
 }
 
-} // anonymous namespace
 
-AmlLoadResult::~AmlLoadResult()
-{
-    for (auto it = instances.rbegin(); it != instances.rend(); ++it) {
-        it->reset();
-    }
-}
+AmlLoadResult::~AmlLoadResult() = default;
 
 AmlLoadResult AmlLoader::loadFile(const std::filesystem::path &path)
 {
@@ -911,7 +885,7 @@ AmlLoadResult AmlLoader::loadNodes(const std::vector<AmlNode> &roots)
     AmlLoadResult result;
 
     for (auto &rootNode : roots) {
-        buildNode(rootNode, nullptr, result.instances, result.error);
+        s_buildNode(rootNode, nullptr, result.instances, result.error);
         if (!result.ok()) {
             result.instances.clear();
             return result;

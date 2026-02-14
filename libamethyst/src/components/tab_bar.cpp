@@ -28,12 +28,6 @@ TabBar::TabBar()
     applyStyle(*this);
 }
 
-TabBar::TabBar(Instance *parent)
-{
-    setParent(parent);
-    applyStyle(*this);
-}
-
 bool TabBar::isVertical() const
 {
     return tabPosition == TabBarPosition::LEFT || tabPosition == TabBarPosition::RIGHT;
@@ -43,7 +37,7 @@ bool TabBar::shouldShowTabs() const
 {
     if (visibility == TabBarVisibility::NEVER) return false;
     if (visibility == TabBarVisibility::ALWAYS) return true;
-    return children.size() > 1;
+    return m_children.size() > 1;
 }
 
 float TabBar::getBarSize() const
@@ -122,7 +116,7 @@ void TabBar::select(Instance *content)
 
 void TabBar::setupTabButton(Tab &tab, int32_t index)
 {
-    tab.button = std::make_unique<TextButton>(nullptr);
+    tab.button = std::make_unique<TextButton>();
     tab.button->parent = this;
     tab.button->backgroundColor = Color3{0.5f, 0.5f, 0.5f};
     tab.button->textYAlignment = TextYAlignment::BOTTOM;
@@ -198,19 +192,20 @@ void TabBar::markAllTabsDirty()
     }
 }
 
-void TabBar::addChild(Instance *child)
+Instance *TabBar::addChild(std::unique_ptr<Instance> child)
 {
-    auto existing = std::find_if(m_tabs.begin(), m_tabs.end(), [child](const auto &t) { return t->content == child; });
-    if (existing != m_tabs.end()) return;
+    Instance *raw = child.get();
+    auto existing = std::find_if(m_tabs.begin(), m_tabs.end(), [raw](const auto &t) { return t->content == raw; });
+    if (existing != m_tabs.end()) return raw;
 
-    Instance::addChild(child);
+    Instance::addChild(std::move(child));
 
-    if (auto *layer = child->as<UILayer>()) {
+    if (auto *layer = raw->as<UILayer>()) {
         layer->setDisplayOrder(2);
     }
 
     auto tab = std::make_unique<Tab>();
-    tab->content = child;
+    tab->content = raw;
     setupTabButton(*tab, static_cast<int32_t>(m_tabs.size()));
     tab->button->markDirty();
     m_tabs.push_back(std::move(tab));
@@ -218,9 +213,10 @@ void TabBar::addChild(Instance *child)
     markAllTabsDirty();
     m_lastSelectedIndex = selectedIndex;
     markDirty();
+    return raw;
 }
 
-void TabBar::removeChild(Instance *child)
+std::unique_ptr<Instance> TabBar::removeChild(Instance *child)
 {
     auto it = std::find_if(m_tabs.begin(), m_tabs.end(), [child](const auto &t) { return t->content == child; });
 
@@ -247,8 +243,9 @@ void TabBar::removeChild(Instance *child)
         }
     }
 
-    Instance::removeChild(child);
+    auto result = Instance::removeChild(child);
     markDirty();
+    return result;
 }
 
 void TabBar::layoutTabs()
@@ -310,9 +307,9 @@ void TabBar::layoutContent()
     glm::vec2 contentOffset = getContentOffset();
     glm::vec2 sizeAdjust = getContentSizeAdjust();
 
-    for (Instance *child : children) {
-        bool isSelected = (child == selectedContent);
-        bool wasSelected = (child == lastContent);
+    for (auto &child : m_children) {
+        bool isSelected = (child.get() == selectedContent);
+        bool wasSelected = (child.get() == lastContent);
 
         if (auto *drawable = child->as<UIObject>()) {
             drawable->visible = isSelected;
@@ -344,13 +341,13 @@ void TabBar::layoutContent()
 std::vector<Instance *> TabBar::getHittableInstances()
 {
     std::vector<Instance *> result;
-    result.reserve(m_tabs.size() + children.size());
+    result.reserve(m_tabs.size() + m_children.size());
 
     for (auto &tab : m_tabs) {
         result.push_back(tab->button.get());
     }
-    for (Instance *child : children) {
-        result.push_back(child);
+    for (auto &child : m_children) {
+        result.push_back(child.get());
     }
 
     return result;
@@ -395,7 +392,7 @@ void TabBar::draw(DrawContext &ctx)
         }
     }
 
-    for (Instance *child : children) {
+    for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
@@ -423,9 +420,9 @@ void TabBar::applyConfig(const TabBarConfig &config)
 {
     if (config.selectedTab.empty()) return;
 
-    for (auto *child : children) {
+    for (auto &child : m_children) {
         if (child->name == config.selectedTab) {
-            select(child);
+            select(child.get());
             return;
         }
     }

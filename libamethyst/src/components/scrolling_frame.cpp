@@ -30,26 +30,22 @@ ScrollingFrame::ScrollingFrame()
     applyStyle(*this);
 }
 
-ScrollingFrame::ScrollingFrame(Instance *parent)
+Instance *ScrollingFrame::addChild(std::unique_ptr<Instance> child)
 {
-    setParent(parent);
-    applyStyle(*this);
-}
-
-void ScrollingFrame::addChild(Instance *child)
-{
-    UIObject::addChild(child);
-    if (auto *obj = child->as<UIObject>()) {
-        m_childViewportVisibility[child] = obj->visible;
+    Instance *raw = child.get();
+    Instance *result = Instance::addChild(std::move(child));
+    if (auto *obj = raw->as<UIObject>()) {
+        m_childViewportVisibility[raw] = obj->visible;
     }
+    return result;
 }
 
-void ScrollingFrame::removeChild(Instance *child)
+std::unique_ptr<Instance> ScrollingFrame::removeChild(Instance *child)
 {
     if (child->as<UIObject>()) {
         m_childViewportVisibility.erase(child);
     }
-    UIObject::removeChild(child);
+    return Instance::removeChild(child);
 }
 
 void ScrollingFrame::draw(DrawContext &ctx)
@@ -75,14 +71,14 @@ void ScrollingFrame::draw(DrawContext &ctx)
     m_scrollOffset = glm::clamp(m_scrollOffset, glm::vec2(0.0f), maxScroll);
 
     if (auto *gridLayout = getExtension<UIGridLayout>()) {
-        gridLayout->apply(children);
+        gridLayout->apply(m_children);
     } else if (auto *listLayout = getExtension<UIListLayout>()) {
-        listLayout->apply(children);
+        listLayout->apply(m_children);
     }
 
     glm::vec4 childClip = computeChildClipRect();
 
-    for (Instance *child : children) {
+    for (auto &child : m_children) {
         auto *obj = child->as<UIObject>();
         if (obj == nullptr) continue;
 
@@ -95,7 +91,7 @@ void ScrollingFrame::draw(DrawContext &ctx)
         bool original = obj->visible;
         bool effective = original && inViewport;
 
-        auto &lastViewport = m_childViewportVisibility[child];
+        auto &lastViewport = m_childViewportVisibility[child.get()];
         if (effective != lastViewport) {
             obj->markDirty();
             lastViewport = effective;

@@ -28,18 +28,12 @@ Table::Table()
     applyStyle(*this);
 }
 
-Table::Table(Instance *parent) : UIObject()
-{
-    setParent(parent);
-    applyStyle(*this);
-}
-
 uint32_t Table::getRowCount() const
 {
     if (numCols == 0) {
         return 0;
     }
-    uint32_t childCount = static_cast<uint32_t>(children.size());
+    uint32_t childCount = static_cast<uint32_t>(m_children.size());
     return (childCount + numCols - 1) / numCols;
 }
 
@@ -140,11 +134,11 @@ void Table::draw(DrawContext &ctx)
 
         for (uint32_t col = 0; col < numCols; ++col) {
             uint32_t childIndex = row * numCols + col;
-            if (childIndex >= children.size()) {
+            if (childIndex >= m_children.size()) {
                 break;
             }
 
-            Instance *child = children[childIndex];
+            Instance *child = m_children[childIndex].get();
             if (auto *drawable = child->as<UIObject>()) {
                 float cellX = columnPositions[col];
                 float cellWidth = columnPositions[col + 1] - cellX;

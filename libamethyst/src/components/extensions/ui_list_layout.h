@@ -7,6 +7,7 @@
 
 #include "components/common.h"
 #include "components/extensions/ui_extension.h"
+#include <memory>
 #include <vector>
 
 namespace Amethyst {
@@ -18,7 +19,7 @@ class UIListLayout : public UIExtension {
     explicit UIListLayout(UIObject *owner) : UIExtension(owner) {}
     virtual ~UIListLayout() = default;
 
-    void apply(std::vector<Instance *> &children);
+    void apply(const std::vector<std::unique_ptr<Instance>> &children);
 
   public:
     FillDirection fillDirection = FillDirection::FILL_VERTICAL;

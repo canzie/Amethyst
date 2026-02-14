@@ -20,7 +20,6 @@ enum class ScaleType : uint8_t {
 class ImageLabel : public UILabel {
   public:
     ImageLabel() = default;
-    ImageLabel(Instance *parent) { setParent(parent); }
     virtual ~ImageLabel() = default;
 
     void draw(DrawContext &ctx) override;

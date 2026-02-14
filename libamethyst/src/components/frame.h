@@ -13,7 +13,6 @@ namespace Amethyst {
 class Frame : public UIObject {
   public:
     Frame();
-    Frame(Instance *parent);
     virtual ~Frame() = default;
 
     void draw(DrawContext &ctx) override;

@@ -28,7 +28,6 @@ struct GeometryAllocation;
 class Canvas : public UIObject {
   public:
     Canvas() = default;
-    Canvas(Instance *parent);
     ~Canvas();
 
     void draw(DrawContext &ctx) override;

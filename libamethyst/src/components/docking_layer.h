@@ -53,7 +53,6 @@ struct DockNode {
 class DockingLayer : public UILayer {
   public:
     DockingLayer();
-    DockingLayer(Instance *parent);
     virtual ~DockingLayer();
 
     DockingLayer(const DockingLayer &) = delete;
@@ -64,17 +63,17 @@ class DockingLayer : public UILayer {
     void draw(DrawContext &ctx) override;
     std::vector<Instance *> getHittableInstances() override;
 
-    void dock(UIBase2D *obj, glm::vec2 pos);
-    void undock(UIBase2D *obj);
+    void dock(std::unique_ptr<Instance> obj, glm::vec2 pos);
+    std::unique_ptr<Instance> undock(UIBase2D *obj);
 
     DockLayoutConfig saveConfig() const;
     void applyConfig(const DockLayoutConfig &config);
-    int32_t dock(UIBase2D *content, int32_t targetLeaf, DockZone zone, float ratio);
+    int32_t dock(std::unique_ptr<Instance> content, int32_t targetLeaf, DockZone zone, float ratio);
 
     DockZone hitTestZone(int32_t nodeIndex, glm::vec2 position);
     int32_t findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
     int32_t findNodeByResizeHandlePosition(glm::vec2 pos, int32_t nodeIndex);
-    int32_t splitNode(int32_t nodeIndex, DockZone targetZone, UIBase2D *newContent);
+    int32_t splitNode(int32_t nodeIndex, DockZone targetZone, std::unique_ptr<Instance> newContent);
     void recalculateChildren(int32_t parentIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
 
   private:

@@ -34,12 +34,11 @@ enum class TabBarPosition {
 class TabBar : public UIObject {
   public:
     TabBar();
-    explicit TabBar(Instance *parent);
     ~TabBar() override = default;
 
     void draw(DrawContext &ctx) override;
-    void addChild(Instance *child) override;
-    void removeChild(Instance *child) override;
+    Instance *addChild(std::unique_ptr<Instance> child) override;
+    std::unique_ptr<Instance> removeChild(Instance *child) override;
     std::vector<Instance *> getHittableInstances() override;
 
     void select(int32_t index);

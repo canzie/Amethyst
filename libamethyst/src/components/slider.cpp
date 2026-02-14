@@ -18,8 +18,9 @@
 
 namespace Amethyst {
 
-static void applyStyle(Slider& slider) {
-    const auto& style = Style::instance();
+static void applyStyle(Slider &slider)
+{
+    const auto &style = Style::instance();
     slider.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SLIDER);
     slider.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SLIDER);
     slider.sliderColor = style.get<Color3>(StyleProperty::SLIDER_COLOR, ComponentType::SLIDER);
@@ -109,25 +110,15 @@ static void setupValueLabel(TextLabel &label, float x, float y, float width, flo
 
 Slider::Slider()
 {
-    m_sideLabel.setParent(this);
+    m_sideLabel.parent = this;
     applyStyle(*this);
-}
-
-Slider::Slider(Instance *parent) : Slider()
-{
-    setParent(parent);
 }
 
 SliderFloat::SliderFloat()
 {
-    m_track.setParent(this);
-    m_thumb.setParent(this);
-    m_valueLabel.setParent(this);
-}
-
-SliderFloat::SliderFloat(Instance *parent) : SliderFloat()
-{
-    setParent(parent);
+    m_track.parent = this;
+    m_thumb.parent = this;
+    m_valueLabel.parent = this;
 }
 
 void SliderFloat::draw(DrawContext &ctx)
@@ -142,7 +133,14 @@ void SliderFloat::draw(DrawContext &ctx)
 
     glm::vec4 childClip = computeChildClipRect();
 
-    for (Instance *child : children) {
+    UIObject *parts[] = {&m_sideLabel, &m_track, &m_thumb, &m_valueLabel};
+    for (auto *part : parts) {
+        part->clipRect = childClip;
+        part->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+        part->draw(ctx);
+    }
+
+    for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
@@ -205,16 +203,18 @@ std::string SliderFloat::formatValue() const
     return oss.str();
 }
 
-SliderInt::SliderInt()
+std::vector<Instance *> SliderFloat::getHittableInstances()
 {
-    m_track.setParent(this);
-    m_thumb.setParent(this);
-    m_valueLabel.setParent(this);
+    auto result = Instance::getHittableInstances();
+    result.push_back(&m_thumb);
+    return result;
 }
 
-SliderInt::SliderInt(Instance *parent) : SliderInt()
+SliderInt::SliderInt()
 {
-    setParent(parent);
+    m_track.parent = this;
+    m_thumb.parent = this;
+    m_valueLabel.parent = this;
 }
 
 void SliderInt::draw(DrawContext &ctx)
@@ -229,7 +229,14 @@ void SliderInt::draw(DrawContext &ctx)
 
     glm::vec4 childClip = computeChildClipRect();
 
-    for (Instance *child : children) {
+    UIObject *parts[] = {&m_sideLabel, &m_track, &m_thumb, &m_valueLabel};
+    for (auto *part : parts) {
+        part->clipRect = childClip;
+        part->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+        part->draw(ctx);
+    }
+
+    for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
@@ -292,18 +299,20 @@ std::string SliderInt::formatValue() const
     return std::to_string(*valueRef) + valueSuffix;
 }
 
+std::vector<Instance *> SliderInt::getHittableInstances()
+{
+    auto result = Instance::getHittableInstances();
+    result.push_back(&m_thumb);
+    return result;
+}
+
 SliderVec2::SliderVec2()
 {
     for (int i = 0; i < 2; i++) {
-        m_track[i].setParent(this);
-        m_thumb[i].setParent(this);
-        m_valueLabel[i].setParent(this);
+        m_track[i].parent = this;
+        m_thumb[i].parent = this;
+        m_valueLabel[i].parent = this;
     }
-}
-
-SliderVec2::SliderVec2(Instance *parent) : SliderVec2()
-{
-    setParent(parent);
 }
 
 void SliderVec2::draw(DrawContext &ctx)
@@ -318,7 +327,19 @@ void SliderVec2::draw(DrawContext &ctx)
 
     glm::vec4 childClip = computeChildClipRect();
 
-    for (Instance *child : children) {
+    for (int i = 0; i < 2; i++) {
+        UIObject *parts[] = {&m_track[i], &m_thumb[i], &m_valueLabel[i]};
+        for (auto *part : parts) {
+            part->clipRect = childClip;
+            part->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            part->draw(ctx);
+        }
+    }
+    m_sideLabel.clipRect = childClip;
+    m_sideLabel.computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+    m_sideLabel.draw(ctx);
+
+    for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
@@ -396,18 +417,22 @@ std::string SliderVec2::formatValue(int component) const
     return oss.str();
 }
 
+std::vector<Instance *> SliderVec2::getHittableInstances()
+{
+    auto result = Instance::getHittableInstances();
+    for (int i = 0; i < 2; i++) {
+        result.push_back(&m_thumb[i]);
+    }
+    return result;
+}
+
 SliderVec3::SliderVec3()
 {
     for (int i = 0; i < 3; i++) {
-        m_track[i].setParent(this);
-        m_thumb[i].setParent(this);
-        m_valueLabel[i].setParent(this);
+        m_track[i].parent = this;
+        m_thumb[i].parent = this;
+        m_valueLabel[i].parent = this;
     }
-}
-
-SliderVec3::SliderVec3(Instance *parent) : SliderVec3()
-{
-    setParent(parent);
 }
 
 void SliderVec3::draw(DrawContext &ctx)
@@ -422,7 +447,19 @@ void SliderVec3::draw(DrawContext &ctx)
 
     glm::vec4 childClip = computeChildClipRect();
 
-    for (Instance *child : children) {
+    for (int i = 0; i < 3; i++) {
+        UIObject *parts[] = {&m_track[i], &m_thumb[i], &m_valueLabel[i]};
+        for (auto *part : parts) {
+            part->clipRect = childClip;
+            part->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            part->draw(ctx);
+        }
+    }
+    m_sideLabel.clipRect = childClip;
+    m_sideLabel.computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+    m_sideLabel.draw(ctx);
+
+    for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
@@ -498,6 +535,15 @@ std::string SliderVec3::formatValue(int component) const
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(2) << (*valueRef)[component] << valueSuffix;
     return oss.str();
+}
+
+std::vector<Instance *> SliderVec3::getHittableInstances()
+{
+    auto result = Instance::getHittableInstances();
+    for (int i = 0; i < 3; i++) {
+        result.push_back(&m_thumb[i]);
+    }
+    return result;
 }
 
 } // namespace Amethyst

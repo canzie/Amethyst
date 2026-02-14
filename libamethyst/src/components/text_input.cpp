@@ -547,7 +547,7 @@ void TextInput::draw(DrawContext &ctx)
 
     glm::vec4 childClip = computeChildClipRect();
 
-    for (Instance *child : children) {
+    for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);

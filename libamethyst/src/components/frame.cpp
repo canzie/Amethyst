@@ -32,12 +32,6 @@ Frame::Frame()
     applyStyle(*this);
 }
 
-Frame::Frame(Instance *parent)
-{
-    setParent(parent);
-    applyStyle(*this);
-}
-
 void Frame::onMouseButton1Click()
 {
     AM_LOG_INFO("Frame '{}' clicked (button 1)", name.empty() ? "(unnamed)" : name);
@@ -67,14 +61,14 @@ void Frame::draw(DrawContext &ctx)
     }
 
     if (auto *gridLayout = getExtension<UIGridLayout>()) {
-        gridLayout->apply(children);
+        gridLayout->apply(m_children);
     } else if (auto *listLayout = getExtension<UIListLayout>()) {
-        listLayout->apply(children);
+        listLayout->apply(m_children);
     }
 
     glm::vec4 childClip = computeChildClipRect();
 
-    for (Instance *child : children) {
+    for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);

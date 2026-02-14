@@ -42,12 +42,6 @@ TreeView::TreeView()
     applyStyle(*this);
 }
 
-TreeView::TreeView(Instance *parent)
-{
-    setParent(parent);
-    applyStyle(*this);
-}
-
 TreeView::~TreeView()
 {
     for (auto &bg : m_rowBackgrounds) {
@@ -88,11 +82,15 @@ void TreeView::freeSlot(uint32_t index)
     TreeRow &r = m_rows[index];
 
     if (r.firstCellIndex != INVALID_ROW) {
-        uint32_t endIdx = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(children.size()));
+        uint32_t endIdx = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(m_children.size()));
+        std::vector<Instance *> toRemove;
         for (uint32_t i = r.firstCellIndex; i < endIdx; i++) {
-            if (children[i]) {
-                removeChild(children[i]);
+            if (m_children[i]) {
+                toRemove.push_back(m_children[i].get());
             }
+        }
+        for (auto *child : toRemove) {
+            removeChild(child);
         }
     }
 
@@ -110,7 +108,7 @@ uint32_t TreeView::beginRow(uint32_t parentRow)
     AM_ASSERT(parentRow == INVALID_ROW || isValidRow(parentRow), "Parent row does not exist");
 
     uint32_t newIndex = allocateSlot();
-    m_rows[newIndex].firstCellIndex = static_cast<uint32_t>(children.size());
+    m_rows[newIndex].firstCellIndex = static_cast<uint32_t>(m_children.size());
 
     linkRowToParent(newIndex, parentRow);
     m_buildStack.push_back(newIndex);
@@ -203,11 +201,7 @@ void TreeView::removeRow(uint32_t row)
 
 void TreeView::clear()
 {
-    for (Instance *child : children) {
-        if (child) {
-            removeChild(child);
-        }
-    }
+    m_children.clear();
 
     m_rows.clear();
     m_freelist.clear();
@@ -284,9 +278,9 @@ uint32_t TreeView::findRowContaining(Instance *child) const
         if (r.firstCellIndex == INVALID_ROW) {
             continue;
         }
-        uint32_t endIndex = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(children.size()));
+        uint32_t endIndex = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(m_children.size()));
         for (uint32_t j = r.firstCellIndex; j < endIndex; j++) {
-            if (children[j] == child) {
+            if (m_children[j].get() == child) {
                 return i;
             }
         }
@@ -301,9 +295,9 @@ void TreeView::clearRowCells(DrawContext &ctx, uint32_t row)
     const TreeRow &r = m_rows[row];
     if (r.firstCellIndex == INVALID_ROW) return;
 
-    uint32_t endIdx = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(children.size()));
+    uint32_t endIdx = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(m_children.size()));
     for (uint32_t i = r.firstCellIndex; i < endIdx; i++) {
-        if (auto *obj = children[i]->as<UIObject>()) {
+        if (auto *obj = m_children[i]->as<UIObject>()) {
             obj->visible = false;
             obj->markDirty();
             obj->draw(ctx);
@@ -476,11 +470,11 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t slotIndex
 
     for (uint32_t col = 0; col < numCols; col++) {
         uint32_t childIndex = r.firstCellIndex + col;
-        if (childIndex >= children.size()) {
+        if (childIndex >= m_children.size()) {
             break;
         }
 
-        Instance *child = children[childIndex];
+        Instance *child = m_children[childIndex].get();
         if (!child) {
             continue;
         }
@@ -524,7 +518,7 @@ void TreeView::ensureSlotCapacity(uint32_t slotCount)
         m_rowBackgrounds.push_back(std::move(frame));
     }
     while (m_rowDisclosures.size() < slotCount) {
-        auto btn = std::make_unique<TextButton>(nullptr);
+        auto btn = std::make_unique<TextButton>();
         btn->parent = this;
         btn->zIndex = getZIndex() + 2;
         btn->size = UDim2::fromScale(1.0f, 1.0f);
@@ -665,7 +659,7 @@ void TreeView::draw(DrawContext &ctx)
 std::vector<Instance *> TreeView::getHittableInstances()
 {
     std::vector<Instance *> result;
-    result.reserve(m_rowBackgrounds.size() + m_rowDisclosures.size() + children.size());
+    result.reserve(m_rowBackgrounds.size() + m_rowDisclosures.size() + m_children.size());
     for (auto &btn : m_rowDisclosures) {
         result.push_back(btn.get());
     }
@@ -673,7 +667,9 @@ std::vector<Instance *> TreeView::getHittableInstances()
     for (auto &bg : m_rowBackgrounds) {
         result.push_back(bg.get());
     }
-    result.insert(result.end(), children.begin(), children.end());
+    for (auto &child : m_children) {
+        result.push_back(child.get());
+    }
 
     return result;
 }

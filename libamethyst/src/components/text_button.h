@@ -19,7 +19,6 @@ struct GeometryAllocation;
 class TextButton : public UIButton {
   public:
     TextButton();
-    TextButton(Instance *parent);
     virtual ~TextButton();
 
     void draw(DrawContext &ctx) override;

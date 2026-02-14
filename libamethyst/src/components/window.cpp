@@ -27,6 +27,7 @@ Window::Window()
 Window::~Window()
 {
     InputInterface::unregisterWindow(this);
+    m_children.clear();
 }
 
 void Window::draw(DrawContext &ctx)
@@ -38,7 +39,7 @@ void Window::draw(DrawContext &ctx)
     layerCtx.textProcessor = ctx.textProcessor;
     layerCtx.glyphAtlas = ctx.glyphAtlas;
 
-    for (Instance *child : children) {
+    for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             drawable->draw(layerCtx);
@@ -52,7 +53,7 @@ Instance *Window::findClickedObject(uint32_t x, uint32_t y)
 {
     AM_PROFILE_FUNCTION();
     glm::vec2 point(x, y);
-    return findClickedObjectRecursive(children, point);
+    return findClickedObjectRecursive(getHittableInstances(), point);
 }
 
 Instance *Window::findClickedObjectRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point)

@@ -11,11 +11,6 @@
 
 namespace Amethyst {
 
-Canvas::Canvas(Instance *parent)
-{
-    setParent(parent);
-}
-
 Canvas::~Canvas()
 {
     if (m_registry) {

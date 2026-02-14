@@ -36,7 +36,6 @@ enum class DropdownDirection {
 class Dropdown : public UIObject {
   public:
     Dropdown();
-    Dropdown(Instance *parent);
     virtual ~Dropdown() = default;
 
     void draw(DrawContext &ctx) override;

@@ -20,7 +20,7 @@ void OverlayLayer::draw(DrawContext &ctx)
     layerCtx.textProcessor = ctx.textProcessor;
     layerCtx.glyphAtlas = ctx.glyphAtlas;
 
-    for (Instance *child : children) {
+    for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = clipRect;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);

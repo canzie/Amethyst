@@ -7,9 +7,11 @@
 
 namespace Amethyst {
 
-void UIGridLayout::apply(std::vector<Instance *> &children)
+void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
 {
-    std::vector<Instance *> sortedChildren(children.begin(), children.end());
+    std::vector<Instance *> sortedChildren;
+    sortedChildren.reserve(children.size());
+    for (auto &c : children) sortedChildren.push_back(c.get());
     std::sort(sortedChildren.begin(), sortedChildren.end(), [this](Instance *a, Instance *b) {
         auto *aObj = a->as<UIObject>();
         auto *bObj = b->as<UIObject>();

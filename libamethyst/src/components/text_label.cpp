@@ -31,12 +31,6 @@ TextLabel::TextLabel()
     applyStyle(*this);
 }
 
-TextLabel::TextLabel(Instance *parent)
-{
-    setParent(parent);
-    applyStyle(*this);
-}
-
 TextLabel::~TextLabel()
 {
     for (auto *alloc : m_textAllocations) {
@@ -118,7 +112,7 @@ void TextLabel::draw(DrawContext &ctx)
 
     glm::vec4 childClip = computeChildClipRect();
 
-    for (Instance *child : children) {
+    for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
