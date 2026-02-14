@@ -90,6 +90,7 @@ class LayoutConfig {
     void set(const std::string &name, ConfigEntry entry);
 
     LayoutConfig() = default;
+    ~LayoutConfig() { save(); }
 
   private:
     std::unordered_map<std::string, ConfigEntry> m_entries;

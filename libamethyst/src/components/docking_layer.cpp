@@ -13,6 +13,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace Amethyst {
 
@@ -29,6 +31,10 @@ DockingLayer::DockingLayer(Instance *parent)
 
 DockingLayer::~DockingLayer()
 {
+    if (persistLayout && !name.empty()) {
+        LayoutConfig::instance().set(name, ConfigEntry(saveConfig()));
+    }
+
     for (auto &tabBar : m_tabBars) {
         while (!tabBar->children.empty()) {
             tabBar->removeChild(tabBar->children.back());
@@ -669,91 +675,148 @@ void DockingLayer::hideDockHints()
     }
 }
 
-static void s_collectConfig(const std::vector<DockNode> &nodes, int32_t nodeIndex, DockLayoutConfig &cfg)
+static int32_t s_saveNode(const std::vector<DockNode> &nodes, int32_t nodeIndex, DockLayoutConfig &cfg)
 {
-    if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(nodes.size())) return;
+    if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(nodes.size())) return -1;
 
     const DockNode &node = nodes[nodeIndex];
+    int32_t cfgIndex = static_cast<int32_t>(cfg.nodes.size());
+    cfg.nodes.emplace_back();
 
     if (node.isLeaf()) {
-        std::string tabName;
+        DockNodeConfig &out = cfg.nodes[cfgIndex];
         if (node.content) {
-            if (auto *selected = node.content->getSelectedContent()) {
-                tabName = selected->name;
+            for (auto *child : node.content->children) {
+                out.panels.push_back(child->name);
+            }
+            if (auto *sel = node.content->getSelectedContent()) {
+                out.selected = sel->name;
             }
         }
-        cfg.selectedTabs.push_back(std::move(tabName));
-        return;
+        return cfgIndex;
     }
 
-    cfg.axes.push_back(node.axis == SplitAxis::VERTICAL ? "vertical" : "horizontal");
-    cfg.ratios.push_back(node.ratio);
+    int32_t firstCfg = s_saveNode(nodes, node.firstChild, cfg);
+    int32_t secondCfg = s_saveNode(nodes, node.secondChild, cfg);
 
-    s_collectConfig(nodes, node.firstChild, cfg);
-    s_collectConfig(nodes, node.secondChild, cfg);
+    DockNodeConfig &out = cfg.nodes[cfgIndex];
+    out.axis = (node.axis == SplitAxis::VERTICAL) ? "vertical" : "horizontal";
+    out.ratio = node.ratio;
+    out.first = firstCfg;
+    out.second = secondCfg;
+
+    return cfgIndex;
 }
 
 DockLayoutConfig DockingLayer::saveConfig() const
 {
     DockLayoutConfig cfg;
     if (m_rootNode >= 0) {
-        s_collectConfig(m_nodes, m_rootNode, cfg);
+        s_saveNode(m_nodes, m_rootNode, cfg);
     }
     return cfg;
 }
 
-static bool s_applyConfig(std::vector<DockNode> &nodes, int32_t nodeIndex, const DockLayoutConfig &cfg,
-                           size_t &splitIdx, size_t &leafIdx)
-{
-    if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(nodes.size())) return false;
-
-    DockNode &node = nodes[nodeIndex];
-
-    if (node.isLeaf()) {
-        if (leafIdx >= cfg.selectedTabs.size()) return false;
-
-        const std::string &tabName = cfg.selectedTabs[leafIdx++];
-        if (node.content && !tabName.empty()) {
-            for (auto *child : node.content->children) {
-                if (child->name == tabName) {
-                    node.content->select(child);
-                    break;
-                }
-            }
-        }
-        return true;
-    }
-
-    if (splitIdx >= cfg.axes.size() || splitIdx >= cfg.ratios.size()) return false;
-
-    const std::string &expectedAxis = cfg.axes[splitIdx];
-    SplitAxis currentAxis = node.axis;
-    bool axisMatches = (currentAxis == SplitAxis::VERTICAL && expectedAxis == "vertical") ||
-                       (currentAxis == SplitAxis::HORIZONTAL && expectedAxis == "horizontal");
-
-    if (!axisMatches) return false;
-
-    node.ratio = cfg.ratios[splitIdx];
-    splitIdx++;
-
-    if (!s_applyConfig(nodes, node.firstChild, cfg, splitIdx, leafIdx)) return false;
-    if (!s_applyConfig(nodes, node.secondChild, cfg, splitIdx, leafIdx)) return false;
-
-    return true;
-}
-
 void DockingLayer::applyConfig(const DockLayoutConfig &config)
 {
-    if (m_rootNode < 0) return;
+    if (config.nodes.empty()) return;
 
-    size_t splitIdx = 0;
-    size_t leafIdx = 0;
-    bool ok = s_applyConfig(m_nodes, m_rootNode, config, splitIdx, leafIdx);
-    AM_LOG_INFO("applyConfig: ok={} splitIdx={}/{} leafIdx={}/{}",
-        ok, splitIdx, config.axes.size(), leafIdx, config.selectedTabs.size());
-    if (ok) {
-        markDirty();
+    std::unordered_map<std::string, UIBase2D *> panelsByName;
+    for (auto &node : m_nodes) {
+        if (!node.isLeaf() || !node.content) continue;
+        for (auto *child : node.content->children) {
+            if (!child->name.empty()) {
+                panelsByName[child->name] = child->as<UIBase2D>();
+            }
+        }
     }
+
+    for (auto &tabBar : m_tabBars) {
+        while (!tabBar->children.empty()) {
+            tabBar->removeChild(tabBar->children.back());
+        }
+    }
+    m_nodes.clear();
+    m_tabBars.clear();
+    m_rootNode = -1;
+
+    std::vector<int32_t> cfgToNode(config.nodes.size(), -1);
+
+    for (size_t i = 0; i < config.nodes.size(); ++i) {
+        cfgToNode[i] = createNode();
+    }
+
+    for (size_t i = 0; i < config.nodes.size(); ++i) {
+        const DockNodeConfig &src = config.nodes[i];
+        DockNode &dst = m_nodes[cfgToNode[i]];
+
+        if (src.isLeaf()) {
+            auto tabBar = std::make_unique<TabBar>(this);
+            setupTabBarCallbacks(tabBar.get());
+
+            for (const auto &panelName : src.panels) {
+                auto it = panelsByName.find(panelName);
+                if (it != panelsByName.end()) {
+                    tabBar->addChild(it->second);
+                    panelsByName.erase(it);
+                }
+            }
+
+            if (!src.selected.empty()) {
+                for (auto *child : tabBar->children) {
+                    if (child->name == src.selected) {
+                        tabBar->select(child);
+                        break;
+                    }
+                }
+            }
+
+            tabBar->position = UDim2::fromScale(0.0f);
+            tabBar->size = UDim2::fromScale(1.0f);
+            dst.content = tabBar.get();
+            m_tabBars.push_back(std::move(tabBar));
+        } else {
+            dst.axis = (src.axis == "vertical") ? SplitAxis::VERTICAL : SplitAxis::HORIZONTAL;
+            dst.ratio = src.ratio;
+
+            if (src.first >= 0 && src.first < static_cast<int32_t>(cfgToNode.size())) {
+                dst.firstChild = cfgToNode[src.first];
+                m_nodes[dst.firstChild].parentNode = cfgToNode[i];
+            }
+            if (src.second >= 0 && src.second < static_cast<int32_t>(cfgToNode.size())) {
+                dst.secondChild = cfgToNode[src.second];
+                m_nodes[dst.secondChild].parentNode = cfgToNode[i];
+            }
+
+            setupResizeHandle(cfgToNode[i], absoluteSize, absolutePosition);
+        }
+    }
+
+    m_rootNode = cfgToNode[0];
+
+    bool collapsed = true;
+    while (collapsed) {
+        collapsed = false;
+        for (int32_t i = 0; i < static_cast<int32_t>(m_nodes.size()); ++i) {
+            if (m_nodes[i].isLeaf() && m_nodes[i].content && m_nodes[i].content->children.empty()) {
+                collapseNode(i);
+                processPendingDeletions();
+                collapsed = true;
+                break;
+            }
+        }
+    }
+
+    for (auto &[panelName, panel] : panelsByName) {
+        for (auto &node : m_nodes) {
+            if (node.isLeaf() && node.content) {
+                node.content->addChild(panel);
+                break;
+            }
+        }
+    }
+
+    markDirty();
 }
 
 } // namespace Amethyst

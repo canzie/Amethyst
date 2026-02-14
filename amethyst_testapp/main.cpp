@@ -602,19 +602,10 @@ int main()
     dockingLayer.persistLayout = true;
 
     if (Amethyst::LayoutConfig::instance().loadFromFile("layout.conf")) {
-        AM_LOG_INFO("Loaded layout config");
         if (auto *entry = Amethyst::LayoutConfig::instance().get("Docking Example")) {
-            AM_LOG_INFO("Found docking config, type={}", static_cast<int>(entry->type));
-            if (entry->type == Amethyst::ConfigType::DOCK_LAYOUT) {
-                AM_LOG_INFO("Applying: {} axes, {} ratios, {} tabs",
-                    entry->dockLayout.axes.size(),
-                    entry->dockLayout.ratios.size(),
-                    entry->dockLayout.selectedTabs.size());
+            if (entry->type == Amethyst::ConfigType::DOCK_LAYOUT)
                 dockingLayer.applyConfig(entry->dockLayout);
-            }
         }
-    } else {
-        AM_LOG_INFO("No layout config found (first run)");
     }
 
     auto amlResult = Amethyst::AmlLoader::loadFile(AMETHYST_ASSETS_DIR "/demo.aml");
@@ -673,10 +664,6 @@ int main()
             lastTime = currentTime;
         }
     }
-
-    Amethyst::LayoutConfig::instance().set("Docking Example",
-        Amethyst::ConfigEntry(dockingLayer.saveConfig()));
-    Amethyst::LayoutConfig::instance().saveToFile("layout.conf");
 
     backend.unregisterTexture(checkerboardId);
     destroyTexture(ctx, checkerboardTex);

@@ -6,21 +6,32 @@
 
 namespace Amethyst {
 
+static toml::table s_serializeNode(const DockNodeConfig &node)
+{
+    toml::table tbl;
+
+    if (!node.isLeaf()) {
+        tbl.insert("axis", node.axis);
+        tbl.insert("ratio", static_cast<double>(node.ratio));
+        tbl.insert("first", static_cast<int64_t>(node.first));
+        tbl.insert("second", static_cast<int64_t>(node.second));
+    } else {
+        toml::array panels;
+        for (const auto &p : node.panels) panels.push_back(p);
+        tbl.insert("panels", std::move(panels));
+        if (!node.selected.empty()) tbl.insert("selected", node.selected);
+    }
+
+    return tbl;
+}
+
 static toml::table s_serializeDockLayout(const DockLayoutConfig &cfg)
 {
     toml::table tbl;
 
-    toml::array axes;
-    for (const auto &a : cfg.axes) axes.push_back(a);
-    tbl.insert("axes", std::move(axes));
-
-    toml::array ratios;
-    for (float r : cfg.ratios) ratios.push_back(static_cast<double>(r));
-    tbl.insert("ratios", std::move(ratios));
-
-    toml::array tabs;
-    for (const auto &t : cfg.selectedTabs) tabs.push_back(t);
-    tbl.insert("selectedTabs", std::move(tabs));
+    toml::array nodes;
+    for (const auto &node : cfg.nodes) nodes.push_back(s_serializeNode(node));
+    tbl.insert("nodes", std::move(nodes));
 
     return tbl;
 }
@@ -32,26 +43,42 @@ static toml::table s_serializeTabBar(const TabBarConfig &cfg)
     return tbl;
 }
 
+static DockNodeConfig s_parseDockNodeConfig(const toml::table &tbl)
+{
+    DockNodeConfig node;
+
+    if (auto a = tbl["axis"].as_string()) {
+        node.axis = std::string(**a);
+    }
+    if (auto r = tbl["ratio"].as_floating_point()) {
+        node.ratio = static_cast<float>(**r);
+    } else if (auto ri = tbl["ratio"].as_integer()) {
+        node.ratio = static_cast<float>(**ri);
+    }
+    if (auto f = tbl["first"].as_integer()) node.first = static_cast<int32_t>(**f);
+    if (auto s = tbl["second"].as_integer()) node.second = static_cast<int32_t>(**s);
+
+    if (auto panels = tbl["panels"].as_array()) {
+        for (const auto &v : *panels) {
+            if (auto p = v.as_string()) node.panels.push_back(std::string(**p));
+        }
+    }
+    if (auto sel = tbl["selected"].as_string()) {
+        node.selected = std::string(**sel);
+    }
+
+    return node;
+}
+
 static DockLayoutConfig s_parseDockLayout(const toml::table &tbl)
 {
     DockLayoutConfig cfg;
 
-    if (auto axes = tbl["axes"].as_array()) {
-        for (const auto &v : *axes) {
-            if (auto s = v.as_string()) cfg.axes.push_back(std::string(**s));
-        }
-    }
-
-    if (auto ratios = tbl["ratios"].as_array()) {
-        for (const auto &v : *ratios) {
-            if (auto f = v.as_floating_point()) cfg.ratios.push_back(static_cast<float>(**f));
-            else if (auto i = v.as_integer()) cfg.ratios.push_back(static_cast<float>(**i));
-        }
-    }
-
-    if (auto tabs = tbl["selectedTabs"].as_array()) {
-        for (const auto &v : *tabs) {
-            if (auto s = v.as_string()) cfg.selectedTabs.push_back(std::string(**s));
+    if (auto nodes = tbl["nodes"].as_array()) {
+        for (const auto &v : *nodes) {
+            if (auto nodeTbl = v.as_table()) {
+                cfg.nodes.push_back(s_parseDockNodeConfig(*nodeTbl));
+            }
         }
     }
 

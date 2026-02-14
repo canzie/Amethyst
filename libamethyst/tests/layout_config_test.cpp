@@ -17,9 +17,21 @@ static void testRoundTripDockLayout()
     TEST_SUITE("LayoutConfig");
 
     DockLayoutConfig dock;
-    dock.axes = {"vertical", "horizontal"};
-    dock.ratios = {0.3f, 0.7f};
-    dock.selectedTabs = {"inspector", "scene", "console"};
+    DockNodeConfig root;
+    root.axis = "vertical";
+    root.ratio = 0.3f;
+    root.first = 1;
+    root.second = 2;
+
+    DockNodeConfig leaf1;
+    leaf1.panels = {"inspector", "scene"};
+    leaf1.selected = "inspector";
+
+    DockNodeConfig leaf2;
+    leaf2.panels = {"console"};
+    leaf2.selected = "console";
+
+    dock.nodes = {root, leaf1, leaf2};
 
     LayoutConfig cfg;
     cfg.set("editor", ConfigEntry(dock));
@@ -33,14 +45,25 @@ static void testRoundTripDockLayout()
     auto *entry = fresh.get("editor");
     ASSERT_TRUE(entry != nullptr);
     ASSERT_TRUE(entry->type == ConfigType::DOCK_LAYOUT);
-    ASSERT_EQ(entry->dockLayout.axes.size(), 2u);
-    ASSERT_EQ(entry->dockLayout.axes[0], "vertical");
-    ASSERT_EQ(entry->dockLayout.axes[1], "horizontal");
-    ASSERT_EQ(entry->dockLayout.ratios.size(), 2u);
-    ASSERT_TRUE(std::abs(entry->dockLayout.ratios[0] - 0.3f) < 0.001f);
-    ASSERT_TRUE(std::abs(entry->dockLayout.ratios[1] - 0.7f) < 0.001f);
-    ASSERT_EQ(entry->dockLayout.selectedTabs.size(), 3u);
-    ASSERT_EQ(entry->dockLayout.selectedTabs[0], "inspector");
+    ASSERT_EQ(entry->dockLayout.nodes.size(), 3u);
+
+    auto &n0 = entry->dockLayout.nodes[0];
+    ASSERT_EQ(n0.axis, "vertical");
+    ASSERT_TRUE(std::abs(n0.ratio - 0.3f) < 0.001f);
+    ASSERT_EQ(n0.first, 1);
+    ASSERT_EQ(n0.second, 2);
+
+    auto &n1 = entry->dockLayout.nodes[1];
+    ASSERT_TRUE(n1.isLeaf());
+    ASSERT_EQ(n1.panels.size(), 2u);
+    ASSERT_EQ(n1.panels[0], "inspector");
+    ASSERT_EQ(n1.panels[1], "scene");
+    ASSERT_EQ(n1.selected, "inspector");
+
+    auto &n2 = entry->dockLayout.nodes[2];
+    ASSERT_TRUE(n2.isLeaf());
+    ASSERT_EQ(n2.panels.size(), 1u);
+    ASSERT_EQ(n2.panels[0], "console");
 
     std::filesystem::remove(path);
 }
