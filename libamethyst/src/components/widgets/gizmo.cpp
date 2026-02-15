@@ -172,7 +172,7 @@ struct Gizmo::Impl {
         DRAGGING
     };
 
-    GizmoCanvas canvas;
+    GizmoCanvas *canvas = nullptr;
 
     State state = State::IDLE;
     GizmoAxis hoveredAxis = GizmoAxis::NONE;
@@ -212,8 +212,8 @@ struct Gizmo::Impl {
     glm::vec2 prevMousePos{-1.0f};
     GizmoResult prevResult;
 
-    glm::vec2 vpPos() const { return canvas.absolutePosition; }
-    glm::vec2 vpSize() const { return canvas.absoluteSize; }
+    glm::vec2 vpPos() const { return canvas->absolutePosition; }
+    glm::vec2 vpSize() const { return canvas->absoluteSize; }
 
     GizmoAxis hitTestTranslate(glm::vec2 mouse);
     GizmoAxis hitTestRotate(glm::vec2 mouse);
@@ -668,7 +668,7 @@ void Gizmo::Impl::drawTranslate(GizmoAxis hovered, bool active, glm::vec2 mouse)
         }
         bool isHovered = (hovered == a) || (active && activeAxis == a);
         Color4 color = s_getPlaneColor(a, isHovered, active && activeAxis == a);
-        s_drawPlaneHandle(canvas, quad, color);
+        s_drawPlaneHandle(*canvas, quad, color);
     };
 
     drawPlaneHandle(GizmoAxis::XY);
@@ -679,9 +679,9 @@ void Gizmo::Impl::drawTranslate(GizmoAxis hovered, bool active, glm::vec2 mouse)
     bool yActive = active && activeAxis == GizmoAxis::Y;
     bool zActive = active && activeAxis == GizmoAxis::Z;
 
-    s_drawArrow(canvas, center, xScreen, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive), config.thickness, config.arrowSize);
-    s_drawArrow(canvas, center, yScreen, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive), config.thickness, config.arrowSize);
-    s_drawArrow(canvas, center, zScreen, s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive), config.thickness, config.arrowSize);
+    s_drawArrow(*canvas, center, xScreen, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive), config.thickness, config.arrowSize);
+    s_drawArrow(*canvas, center, yScreen, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive), config.thickness, config.arrowSize);
+    s_drawArrow(*canvas, center, zScreen, s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive), config.thickness, config.arrowSize);
 
     if (active && activeOp == GizmoOperation::TRANSLATE) {
         char text[64];
@@ -695,7 +695,7 @@ void Gizmo::Impl::drawTranslate(GizmoAxis hovered, bool active, glm::vec2 mouse)
         } else {
             snprintf(text, sizeof(text), "%.2f, %.2f, %.2f", t.x, t.y, t.z);
         }
-        s_drawValueLabel(canvas, mouse, text, COL_WHITE);
+        s_drawValueLabel(*canvas, mouse, text, COL_WHITE);
     }
 }
 
@@ -709,28 +709,28 @@ void Gizmo::Impl::drawRotate(GizmoAxis hovered, bool active)
 
     if (active) {
         if (activeAxis == GizmoAxis::X) {
-            s_draw3DRing(canvas, gizmoCenter, axisX, ringRadius, viewProjMatrix, vpPos(), vpSize(),
+            s_draw3DRing(*canvas, gizmoCenter, axisX, ringRadius, viewProjMatrix, vpPos(), vpSize(),
                          s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive), config.thickness);
         } else if (activeAxis == GizmoAxis::Y) {
-            s_draw3DRing(canvas, gizmoCenter, axisY, ringRadius, viewProjMatrix, vpPos(), vpSize(),
+            s_draw3DRing(*canvas, gizmoCenter, axisY, ringRadius, viewProjMatrix, vpPos(), vpSize(),
                          s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive), config.thickness);
         } else if (activeAxis == GizmoAxis::Z) {
-            s_draw3DRing(canvas, gizmoCenter, axisZ, ringRadius, viewProjMatrix, vpPos(), vpSize(),
+            s_draw3DRing(*canvas, gizmoCenter, axisZ, ringRadius, viewProjMatrix, vpPos(), vpSize(),
                          s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive), config.thickness);
         }
     } else {
-        s_draw3DRing(canvas, gizmoCenter, axisX, ringRadius, viewProjMatrix, vpPos(), vpSize(),
+        s_draw3DRing(*canvas, gizmoCenter, axisX, ringRadius, viewProjMatrix, vpPos(), vpSize(),
                      s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive), config.thickness);
-        s_draw3DRing(canvas, gizmoCenter, axisY, ringRadius, viewProjMatrix, vpPos(), vpSize(),
+        s_draw3DRing(*canvas, gizmoCenter, axisY, ringRadius, viewProjMatrix, vpPos(), vpSize(),
                      s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive), config.thickness);
-        s_draw3DRing(canvas, gizmoCenter, axisZ, ringRadius, viewProjMatrix, vpPos(), vpSize(),
+        s_draw3DRing(*canvas, gizmoCenter, axisZ, ringRadius, viewProjMatrix, vpPos(), vpSize(),
                      s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive), config.thickness);
     }
 
     if (active && std::abs(accumulatedRotation) > 0.001f) {
         glm::vec3 axis = getOrientedAxis(activeAxis);
         Color4 arcColor = {1.0f, 0.863f, 0.251f, 0.471f};
-        s_draw3DRotationArc(canvas, gizmoCenter, axis, ringRadius * 0.9f, dragStartAngle, accumulatedRotation,
+        s_draw3DRotationArc(*canvas, gizmoCenter, axis, ringRadius * 0.9f, dragStartAngle, accumulatedRotation,
                             viewProjMatrix, vpPos(), vpSize(), arcColor);
 
         glm::vec2 centerScreen = s_worldToScreen(gizmoCenter, viewProjMatrix, vpPos(), vpSize());
@@ -740,7 +740,7 @@ void Gizmo::Impl::drawRotate(GizmoAxis hovered, bool active)
 
         float labelAngle = dragStartAngle + accumulatedRotation * 0.5f;
         glm::vec2 labelPos = centerScreen + glm::vec2(std::cos(labelAngle) * 80.0f, std::sin(labelAngle) * 80.0f);
-        s_drawValueLabel(canvas, labelPos, text, COL_WHITE);
+        s_drawValueLabel(*canvas, labelPos, text, COL_WHITE);
     }
 }
 
@@ -761,7 +761,7 @@ void Gizmo::Impl::drawScale(GizmoAxis hovered, bool active, glm::vec2 mouse)
         }
         bool isHovered = (hovered == a) || (active && activeAxis == a);
         Color4 color = s_getPlaneColor(a, isHovered, active && activeAxis == a);
-        s_drawPlaneHandle(canvas, quad, color);
+        s_drawPlaneHandle(*canvas, quad, color);
     };
 
     drawPlaneHandle(GizmoAxis::XY);
@@ -773,18 +773,18 @@ void Gizmo::Impl::drawScale(GizmoAxis hovered, bool active, glm::vec2 mouse)
     bool zActive = active && activeAxis == GizmoAxis::Z;
     bool allActive = active && activeAxis == GizmoAxis::XYZ;
 
-    glm::vec2 offset = canvas.absolutePosition;
+    glm::vec2 offset = canvas->absolutePosition;
 
-    canvas.drawLine(center - offset, xScreen - offset, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive), config.thickness);
-    canvas.drawLine(center - offset, yScreen - offset, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive), config.thickness);
-    canvas.drawLine(center - offset, zScreen - offset, s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive), config.thickness);
+    canvas->drawLine(center - offset, xScreen - offset, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive), config.thickness);
+    canvas->drawLine(center - offset, yScreen - offset, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive), config.thickness);
+    canvas->drawLine(center - offset, zScreen - offset, s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive), config.thickness);
 
-    s_drawScaleHandle(canvas, xScreen, config.handleSize, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive));
-    s_drawScaleHandle(canvas, yScreen, config.handleSize, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive));
-    s_drawScaleHandle(canvas, zScreen, config.handleSize, s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive));
+    s_drawScaleHandle(*canvas, xScreen, config.handleSize, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive));
+    s_drawScaleHandle(*canvas, yScreen, config.handleSize, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive));
+    s_drawScaleHandle(*canvas, zScreen, config.handleSize, s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive));
 
     Color4 centerCol = (hovered == GizmoAxis::XYZ || allActive) ? COL_ACTIVE : COL_WHITE;
-    s_drawScaleHandle(canvas, center, config.handleSize * 1.2f, centerCol);
+    s_drawScaleHandle(*canvas, center, config.handleSize * 1.2f, centerCol);
 
     if (active && activeOp == GizmoOperation::SCALE) {
         char text[64];
@@ -800,19 +800,25 @@ void Gizmo::Impl::drawScale(GizmoAxis hovered, bool active, glm::vec2 mouse)
         } else {
             snprintf(text, sizeof(text), "%.2f, %.2f, %.2f", s.x, s.y, s.z);
         }
-        s_drawValueLabel(canvas, mouse, text, COL_WHITE);
+        s_drawValueLabel(*canvas, mouse, text, COL_WHITE);
     }
 }
 
 Gizmo::Gizmo(UIBase2D *parent) : m_impl(std::make_unique<Impl>())
 {
-    m_impl->canvas.parent = parent;
-    m_impl->canvas.size = UDim2::fromScale(1.0f, 1.0f);
-    m_impl->canvas.backgroundTransparency = 1.0f;
-    m_impl->canvas.zIndex = 100;
+    auto canvasOwned = std::make_unique<GizmoCanvas>();
+    canvasOwned->size = UDim2::fromScale(1.0f, 1.0f);
+    canvasOwned->backgroundTransparency = 1.0f;
+    canvasOwned->zIndex = 100;
+    m_impl->canvas = static_cast<GizmoCanvas *>(parent->addChild(std::move(canvasOwned)));
 }
 
-Gizmo::~Gizmo() = default;
+Gizmo::~Gizmo()
+{
+    if (m_impl && m_impl->canvas && m_impl->canvas->parent) {
+        m_impl->canvas->parent->removeChild(m_impl->canvas);
+    }
+}
 Gizmo::Gizmo(Gizmo &&) noexcept = default;
 Gizmo &Gizmo::operator=(Gizmo &&) noexcept = default;
 
@@ -827,7 +833,7 @@ void Gizmo::reset()
     m_impl->accumulatedScale = glm::vec3(1.0f);
 }
 
-Canvas &Gizmo::canvas() { return m_impl->canvas; }
+Canvas &Gizmo::canvas() { return *m_impl->canvas; }
 GizmoConfig &Gizmo::config() { return m_impl->config; }
 const GizmoConfig &Gizmo::config() const { return m_impl->config; }
 
@@ -840,8 +846,8 @@ GizmoResult Gizmo::update(const GizmoParams &params)
         return result;
     }
 
-    bool hasInput = m_impl->canvas.mouseDown || m_impl->canvas.mouseUp ||
-                    m_impl->canvas.mousePos != m_impl->prevMousePos;
+    bool hasInput = m_impl->canvas->mouseDown || m_impl->canvas->mouseUp ||
+                    m_impl->canvas->mousePos != m_impl->prevMousePos;
     bool paramsChanged = params != m_impl->prevParams;
 
     if (!hasInput && !paramsChanged && !m_impl->firstFrame && m_impl->state != Impl::State::DRAGGING) {
@@ -849,7 +855,7 @@ GizmoResult Gizmo::update(const GizmoParams &params)
     }
 
     m_impl->prevParams = params;
-    m_impl->prevMousePos = m_impl->canvas.mousePos;
+    m_impl->prevMousePos = m_impl->canvas->mousePos;
 
     m_impl->viewMatrix = params.view;
     m_impl->projMatrix = params.projection;
@@ -876,11 +882,11 @@ GizmoResult Gizmo::update(const GizmoParams &params)
 
     m_impl->computeWorldScale();
 
-    glm::vec2 mouse = m_impl->canvas.mousePos;
-    bool mouseClicked = m_impl->canvas.mouseDown;
-    bool mouseReleased = m_impl->canvas.mouseUp;
-    m_impl->canvas.mouseDown = false;
-    m_impl->canvas.mouseUp = false;
+    glm::vec2 mouse = m_impl->canvas->mousePos;
+    bool mouseClicked = m_impl->canvas->mouseDown;
+    bool mouseReleased = m_impl->canvas->mouseUp;
+    m_impl->canvas->mouseDown = false;
+    m_impl->canvas->mouseUp = false;
 
     glm::vec2 vp = m_impl->vpPos();
     glm::vec2 vs = m_impl->vpSize();
@@ -1006,7 +1012,7 @@ GizmoResult Gizmo::update(const GizmoParams &params)
         result.axis = m_impl->hoveredAxis;
     }
 
-    m_impl->canvas.clear();
+    m_impl->canvas->clear();
 
     bool isActive = (m_impl->state == Impl::State::DRAGGING);
 

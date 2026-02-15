@@ -22,7 +22,8 @@ static void applyStyle(ScrollingFrame &frame)
     frame.scrollBarTransparency = style.get<float>(StyleProperty::SCROLLBAR_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
     frame.scrollBarThickness = style.get<float>(StyleProperty::SCROLLBAR_THICKNESS, ComponentType::SCROLLING_FRAME);
     frame.scrollBarThumbColor = style.get<Color3>(StyleProperty::SCROLLBAR_THUMB_COLOR, ComponentType::SCROLLING_FRAME);
-    frame.scrollBarThumbTransparency = style.get<float>(StyleProperty::SCROLLBAR_THUMB_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
+    frame.scrollBarThumbTransparency =
+        style.get<float>(StyleProperty::SCROLLBAR_THUMB_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
 }
 
 ScrollingFrame::ScrollingFrame()
@@ -123,12 +124,14 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
     if (needsVertical) {
         if (m_verticalBar == nullptr) {
             m_verticalBar = std::make_unique<Frame>();
+            m_verticalBar->name = "vertical bar";
             m_verticalBar->zIndex = getZIndex() + 1;
             m_verticalBar->size = UDim2::fromScale(1.0f, 1.0f);
         }
         if (m_verticalThumb == nullptr) {
             m_verticalThumb = std::make_unique<Frame>();
             m_verticalThumb->zIndex = getZIndex() + 2;
+            m_verticalBar->name = "vertical thumb";
             m_verticalThumb->size = UDim2::fromScale(1.0f, 1.0f);
         }
 
@@ -160,12 +163,14 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
     if (needsHorizontal) {
         if (m_horizontalBar == nullptr) {
             m_horizontalBar = std::make_unique<Frame>();
+            m_horizontalBar->name = "Horizontal Bar";
             m_horizontalBar->zIndex = getZIndex() + 1;
             m_horizontalBar->size = UDim2::fromScale(1.0f, 1.0f);
         }
         if (m_horizontalThumb == nullptr) {
             m_horizontalThumb = std::make_unique<Frame>();
             m_horizontalThumb->zIndex = getZIndex() + 2;
+            m_horizontalThumb->name = "Horizontal Thumb";
             m_horizontalThumb->size = UDim2::fromScale(1.0f, 1.0f);
         }
 
