@@ -73,38 +73,32 @@ GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
     auto *allocPtr = newAlloc.get();
     m_handleMap.push_back(std::move(newAlloc));
 
-    uint32_t currTargetPos;
+    uint32_t insertPos;
     if (currBucket.count == 0) {
         auto it = m_zIndexBuckets.upper_bound(bucketIndex);
         if (it != m_zIndexBuckets.end() && it->second.count > 0) {
-            currTargetPos = it->second.start;
+            insertPos = it->second.start;
         } else {
-            currTargetPos = endPos;
+            insertPos = endPos;
         }
-        currBucket.start = currTargetPos;
+        currBucket.start = insertPos;
     } else {
-        currTargetPos = currBucket.start + currBucket.count;
+        insertPos = currBucket.start + currBucket.count;
     }
 
     currBucket.count++;
-    m_dirtyIndices.insert(currTargetPos);
+    m_dirtyIndices.insert(insertPos);
 
-    while (endPos > currTargetPos) {
-        std::swap(m_allocations[endPos], m_allocations[currTargetPos]);
-        std::swap(m_handleMap[endPos], m_handleMap[currTargetPos]);
-
-        // curr is not at the desired pos
-        // the thing we just swapped with is now at endPos, so repeat and go;
-        m_handleMap[endPos]->index = endPos;
-        m_handleMap[currTargetPos]->index = currTargetPos;
-        m_dirtyIndices.insert(endPos);
-        m_dirtyIndices.insert(currTargetPos);
-
-        auto &swappedBucket = m_zIndexBuckets[m_allocations[endPos].zIndex];
-        currTargetPos = swappedBucket.start + swappedBucket.count;
-        swappedBucket.start++;
+    for (uint32_t pos = endPos; pos > insertPos; --pos) {
+        std::swap(m_allocations[pos], m_allocations[pos - 1]);
+        std::swap(m_handleMap[pos], m_handleMap[pos - 1]);
+        m_handleMap[pos]->index = pos;
+        m_handleMap[pos - 1]->index = pos - 1;
+        m_dirtyIndices.insert(pos);
+        m_dirtyIndices.insert(pos - 1);
     }
 
+    rebuildZIndexBuckets();
     // validateOrdering();
     return allocPtr;
 }
@@ -126,50 +120,40 @@ void GeometryRegistry::release(GeometryAllocation &alloc)
     AM_PROFILE_FUNCTION();
     if (!alloc.isValid()) return;
 
+    AM_ASSERT(alloc.registry == this, "Allocation belongs to a different registry");
+    AM_ASSERT(alloc.index < static_cast<uint32_t>(m_allocations.size()), "Allocation index out of bounds");
+
     uint32_t indexToRemove = alloc.index;
-    const uint32_t endPos = static_cast<uint32_t>(m_allocations.size() - 1);
+    uint32_t oldSize = static_cast<uint32_t>(m_allocations.size());
 
-    int32_t bucketIndex = m_allocations[indexToRemove].zIndex;
-    auto &bucket = m_zIndexBuckets[bucketIndex];
+    m_allocations.erase(m_allocations.begin() + indexToRemove);
+    m_handleMap.erase(m_handleMap.begin() + indexToRemove);
 
-    uint32_t bucketEnd = bucket.start + bucket.count - 1;
-
-    if (indexToRemove != bucketEnd) {
-        std::swap(m_allocations[indexToRemove], m_allocations[bucketEnd]);
-        std::swap(m_handleMap[indexToRemove], m_handleMap[bucketEnd]);
-        m_handleMap[indexToRemove]->index = indexToRemove;
-        m_handleMap[bucketEnd]->index = bucketEnd;
-        m_dirtyIndices.insert(indexToRemove);
+    for (uint32_t i = indexToRemove; i < m_handleMap.size(); ++i) {
+        m_handleMap[i]->index = i;
+        m_dirtyIndices.insert(i);
     }
 
-    uint32_t currTargetPos = bucketEnd;
-    uint32_t nextBucketStart = bucket.start + bucket.count;
-
-    while (endPos > currTargetPos) {
-        int32_t nextBucketIndex = m_allocations[nextBucketStart].zIndex;
-        auto &nextBucket = m_zIndexBuckets[nextBucketIndex];
-        uint32_t nextBucketEnd = nextBucket.start + nextBucket.count - 1;
-
-        // we swap the element we want to get to the back and delete (currTargetPos) with the last element
-        // of the next bucket, and make that one the first of its bucket now, after this the currTargetPos is at the end of the
-        // nextBucket
-        std::swap(m_allocations[nextBucketEnd], m_allocations[currTargetPos]);
-        std::swap(m_handleMap[nextBucketEnd], m_handleMap[currTargetPos]);
-        nextBucket.start--;
-
-        m_handleMap[currTargetPos]->index = currTargetPos;
-        m_dirtyIndices.insert(currTargetPos);
-
-        currTargetPos = nextBucketEnd; // because of the swap
-        nextBucketStart = currTargetPos + 1;
+    auto it = m_dirtyIndices.lower_bound(m_allocations.size());
+    while (it != m_dirtyIndices.end()) {
+        it = m_dirtyIndices.erase(it);
     }
 
-    m_dirtyIndices.erase(endPos);
-    m_allocations.pop_back();
-    m_handleMap.pop_back();
-    bucket.count--;
-
+    rebuildZIndexBuckets();
     // validateOrdering();
+}
+
+void GeometryRegistry::rebuildZIndexBuckets()
+{
+    m_zIndexBuckets.clear();
+    for (uint32_t i = 0; i < static_cast<uint32_t>(m_allocations.size()); ++i) {
+        int32_t zIndex = m_allocations[i].zIndex;
+        auto &bucket = m_zIndexBuckets[zIndex];
+        if (bucket.count == 0) {
+            bucket.start = i;
+        }
+        ++bucket.count;
+    }
 }
 
 void GeometryRegistry::validateOrdering() const

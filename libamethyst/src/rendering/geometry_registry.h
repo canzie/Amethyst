@@ -91,6 +91,7 @@ class GeometryRegistry {
   private:
     GeometryRegistry(UILayer *owner);
     void validateOrdering() const;
+    void rebuildZIndexBuckets();
 
   private:
     static std::vector<GeometryRegistry *> s_registries;
