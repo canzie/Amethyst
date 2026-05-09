@@ -81,6 +81,8 @@ void TextButton::draw(DrawContext &ctx)
 
             for (auto &glyphData : glyphs) {
                 glyphData.zIndex = data.zIndex + 1;
+                glyphData.clipRect = clipRect;
+                glyphData.setVisible(isVisible());
             }
 
             if (glyphs.size() != m_textAllocations.size()) {
