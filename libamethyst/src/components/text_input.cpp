@@ -53,7 +53,7 @@ void TextInput::clearText()
     }
 }
 
-void TextInput::onMouseButton1Down(uint32_t x, uint32_t y)
+EventResult TextInput::onMouseButton1Down(uint32_t x, uint32_t y)
 {
     (void)y;
     if (!m_focused) {
@@ -72,9 +72,10 @@ void TextInput::onMouseButton1Down(uint32_t x, uint32_t y)
     if (window) {
         window->captureMouse(this);
     }
+    return EventResult::CONSUMED;
 }
 
-void TextInput::onMouseButton1Up(uint32_t x, uint32_t y)
+EventResult TextInput::onMouseButton1Up(uint32_t x, uint32_t y)
 {
     (void)x;
     (void)y;
@@ -83,27 +84,31 @@ void TextInput::onMouseButton1Up(uint32_t x, uint32_t y)
     if (window) {
         window->releaseMouse(this);
     }
+    return EventResult::CONSUMED;
 }
 
-void TextInput::onMouseButton1Click() {}
+EventResult TextInput::onMouseButton1Click() { return EventResult::CONSUMED; }
 
-void TextInput::onMouseMoved(uint32_t x, uint32_t y)
+EventResult TextInput::onMouseMoved(uint32_t x, uint32_t y)
 {
     (void)y;
     if (m_draggingSelection) {
         size_t newPos = getCursorFromMouseX(x);
         setCursorPosition(newPos, true);
     }
+    return EventResult::CONSUMED;
 }
 
-void TextInput::onMouseEnter()
+EventResult TextInput::onMouseEnter()
 {
     InputInterface::setCursorShape(CURSOR_IBEAM);
+    return EventResult::CONSUMED;
 }
 
-void TextInput::onMouseLeave()
+EventResult TextInput::onMouseLeave()
 {
     InputInterface::setCursorShape(CURSOR_ARROW);
+    return EventResult::CONSUMED;
 }
 
 void TextInput::update(float deltaTime)

@@ -426,7 +426,7 @@ void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t s
     btn->rotation = expanded ? 90.0f : 0.0f;
     btn->anchorPoint = {0.5f, 0.5f};
     btn->clipRect = childClip;
-    btn->onMouseButton1ClickCb = [this, row]() { toggle(row); };
+    btn->onMouseButton1ClickCb = [this, row]() { toggle(row); return EventResult::CONSUMED; };
     btn->markDirty();
 
     glm::vec2 triSize = {disclosureTriangleSize, disclosureTriangleSize};

@@ -78,6 +78,11 @@ struct UnifiedDimension4 {
 };
 using UDim4 = UnifiedDimension4;
 
+enum class EventResult {
+    CONSUMED,
+    PROPAGATE,
+};
+
 enum class AutomaticSize {
     NONE, // default
     X,    // Fit childs contents along x-axis

@@ -32,14 +32,16 @@ Frame::Frame()
     applyStyle(*this);
 }
 
-void Frame::onMouseButton1Click()
+EventResult Frame::onMouseButton1Click()
 {
     AM_LOG_INFO("Frame '{}' clicked (button 1)", name.empty() ? "(unnamed)" : name);
+    return EventResult::CONSUMED;
 }
 
-void Frame::onMouseButton2Click()
+EventResult Frame::onMouseButton2Click()
 {
     AM_LOG_INFO("Frame '{}' clicked (button 2)", name.empty() ? "(unnamed)" : name);
+    return EventResult::CONSUMED;
 }
 
 void Frame::draw(DrawContext &ctx)

@@ -35,8 +35,8 @@ class ScrollingFrame : public UIObject {
     std::unique_ptr<Instance> removeChild(Instance *child) override;
 
   protected:
-    bool onMouseScrollUp() override;
-    bool onMouseScrollDown() override;
+    EventResult onMouseScrollUp() override;
+    EventResult onMouseScrollDown() override;
 
   public:
     ScrollAxis scrollAxis = ScrollAxis::Y;

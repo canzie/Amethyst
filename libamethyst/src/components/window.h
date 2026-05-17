@@ -8,9 +8,10 @@
 #include "components/input_events.h"
 #include "components/overlay_layer.h"
 #include "components/ui_layer.h"
+#include <array>
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <memory>
-#include <vector>
 
 namespace Amethyst {
 
@@ -34,10 +35,18 @@ class Window : public UILayer {
 
   private:
     Instance *findClickedObject(uint32_t x, uint32_t y);
-    Instance *findClickedObjectRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point);
+    void purgeFromHoverStacks(Instance *dead);
 
   private:
-    Instance *m_lastHoveredInstance = nullptr;
+    static constexpr uint8_t MAX_HOVER_DEPTH = 16;
+
+    struct HoverStack {
+        std::array<UIObject *, MAX_HOVER_DEPTH> items;
+        uint8_t count = 0;
+    };
+
+    HoverStack m_hoverCurrent;
+    HoverStack m_hoverPrevious;
     UIObject *m_mouseCapturedBy = nullptr;
     std::unique_ptr<OverlayLayer> m_overlayLayer;
 };

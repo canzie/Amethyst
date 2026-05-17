@@ -29,12 +29,12 @@ class TextInput : public UIObject {
     void clearText();
 
   protected:
-    void onMouseButton1Down(uint32_t x, uint32_t y) override;
-    void onMouseButton1Up(uint32_t x, uint32_t y) override;
-    void onMouseButton1Click() override;
-    void onMouseMoved(uint32_t x, uint32_t y) override;
-    void onMouseEnter() override;
-    void onMouseLeave() override;
+    EventResult onMouseButton1Down(uint32_t x, uint32_t y) override;
+    EventResult onMouseButton1Up(uint32_t x, uint32_t y) override;
+    EventResult onMouseButton1Click() override;
+    EventResult onMouseMoved(uint32_t x, uint32_t y) override;
+    EventResult onMouseEnter() override;
+    EventResult onMouseLeave() override;
 
   private:
     void processKeyboardInput();

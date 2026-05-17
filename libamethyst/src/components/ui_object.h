@@ -69,17 +69,17 @@ class UIObject : public UIBase2D {
 
   protected:
     friend class Window;
-    virtual void onMouseEnter(void);
-    virtual void onMouseLeave(void);
-    virtual void onMouseMoved(uint32_t x, uint32_t y);
-    virtual void onMouseButton1Down(uint32_t x, uint32_t y);
-    virtual void onMouseButton1Up(uint32_t x, uint32_t y);
-    virtual void onMouseButton1Click(void) {}
-    virtual void onMouseButton2Down(uint32_t, uint32_t) {}
-    virtual void onMouseButton2Up(uint32_t, uint32_t) {}
-    virtual void onMouseButton2Click(void) {}
-    virtual bool onMouseScrollUp(void) { return false; }
-    virtual bool onMouseScrollDown(void) { return false; }
+    virtual EventResult onMouseEnter(void);
+    virtual EventResult onMouseLeave(void);
+    virtual EventResult onMouseMoved(uint32_t x, uint32_t y);
+    virtual EventResult onMouseButton1Down(uint32_t x, uint32_t y);
+    virtual EventResult onMouseButton1Up(uint32_t x, uint32_t y);
+    virtual EventResult onMouseButton1Click(void) { return EventResult::CONSUMED; }
+    virtual EventResult onMouseButton2Down(uint32_t, uint32_t) { return EventResult::CONSUMED; }
+    virtual EventResult onMouseButton2Up(uint32_t, uint32_t) { return EventResult::CONSUMED; }
+    virtual EventResult onMouseButton2Click(void) { return EventResult::CONSUMED; }
+    virtual EventResult onMouseScrollUp(void) { return EventResult::PROPAGATE; }
+    virtual EventResult onMouseScrollDown(void) { return EventResult::PROPAGATE; }
 
   public:
     bool active = false;

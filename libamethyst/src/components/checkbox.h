@@ -22,7 +22,7 @@ class Checkbox : public UIObject {
     void draw(DrawContext &ctx) override;
 
   protected:
-    void onMouseButton1Click() override;
+    EventResult onMouseButton1Click() override;
 
   public:
     bool *valueRef = nullptr;

@@ -201,7 +201,7 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
     }
 }
 
-bool ScrollingFrame::onMouseScrollUp()
+EventResult ScrollingFrame::onMouseScrollUp()
 {
     if (scrollAxis == ScrollAxis::Y || scrollAxis == ScrollAxis::XY) {
         m_scrollOffset.y -= scrollSpeed;
@@ -209,10 +209,10 @@ bool ScrollingFrame::onMouseScrollUp()
         m_scrollOffset.x -= scrollSpeed;
     }
     markDirty();
-    return true;
+    return EventResult::CONSUMED;
 }
 
-bool ScrollingFrame::onMouseScrollDown()
+EventResult ScrollingFrame::onMouseScrollDown()
 {
     if (scrollAxis == ScrollAxis::Y || scrollAxis == ScrollAxis::XY) {
         m_scrollOffset.y += scrollSpeed;
@@ -220,7 +220,7 @@ bool ScrollingFrame::onMouseScrollDown()
         m_scrollOffset.x += scrollSpeed;
     }
     markDirty();
-    return true;
+    return EventResult::CONSUMED;
 }
 
 } // namespace Amethyst

@@ -378,9 +378,9 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm:
 
     CursorShape cursorShape = (node.axis == SplitAxis::VERTICAL) ? CURSOR_HORI_RESIZE : CURSOR_VERT_RESIZE;
 
-    node.resizeHandle->onMouseEnterCb = [cursorShape]() { InputInterface::setCursorShape(cursorShape); };
+    node.resizeHandle->onMouseEnterCb = [cursorShape]() { InputInterface::setCursorShape(cursorShape); return EventResult::CONSUMED; };
 
-    node.resizeHandle->onMouseLeaveCb = []() { InputInterface::setCursorShape(CURSOR_ARROW); };
+    node.resizeHandle->onMouseLeaveCb = []() { InputInterface::setCursorShape(CURSOR_ARROW); return EventResult::CONSUMED; };
 
     auto *drag = node.resizeHandle->addExtension<UIDragDetector>();
     drag->mode = (node.axis == SplitAxis::VERTICAL) ? DragMode::HORIZONTAL : DragMode::VERTICAL;

@@ -17,57 +17,65 @@ class UIButton : public UIObject {
     virtual ~UIButton() = default;
 
   protected:
-    void onMouseButton1Down(uint32_t x, uint32_t y) override
+    EventResult onMouseButton1Down(uint32_t x, uint32_t y) override
     {
         UIObject::onMouseButton1Down(x, y);
-        if (onMouseButton1DownCb) onMouseButton1DownCb(x, y);
+        if (onMouseButton1DownCb) return onMouseButton1DownCb(x, y);
+        return EventResult::CONSUMED;
     }
 
-    void onMouseButton1Up(uint32_t x, uint32_t y) override
+    EventResult onMouseButton1Up(uint32_t x, uint32_t y) override
     {
         UIObject::onMouseButton1Up(x, y);
-        if (onMouseButton1UpCb) onMouseButton1UpCb(x, y);
+        if (onMouseButton1UpCb) return onMouseButton1UpCb(x, y);
+        return EventResult::CONSUMED;
     }
 
-    void onMouseButton1Click(void) override
+    EventResult onMouseButton1Click(void) override
     {
-        if (onMouseButton1ClickCb) onMouseButton1ClickCb();
+        if (onMouseButton1ClickCb) return onMouseButton1ClickCb();
+        return EventResult::CONSUMED;
     }
 
-    void onMouseButton2Down(uint32_t x, uint32_t y) override
+    EventResult onMouseButton2Down(uint32_t x, uint32_t y) override
     {
-        if (onMouseButton2DownCb) onMouseButton2DownCb(x, y);
+        if (onMouseButton2DownCb) return onMouseButton2DownCb(x, y);
+        return EventResult::CONSUMED;
     }
 
-    void onMouseButton2Up(uint32_t x, uint32_t y) override
+    EventResult onMouseButton2Up(uint32_t x, uint32_t y) override
     {
-        if (onMouseButton2UpCb) onMouseButton2UpCb(x, y);
+        if (onMouseButton2UpCb) return onMouseButton2UpCb(x, y);
+        return EventResult::CONSUMED;
     }
 
-    void onMouseButton2Click(void) override
+    EventResult onMouseButton2Click(void) override
     {
-        if (onMouseButton2ClickCb) onMouseButton2ClickCb();
+        if (onMouseButton2ClickCb) return onMouseButton2ClickCb();
+        return EventResult::CONSUMED;
     }
 
-    void onMouseEnter(void) override
+    EventResult onMouseEnter(void) override
     {
-        if (onMouseEnterCb) onMouseEnterCb();
+        if (onMouseEnterCb) return onMouseEnterCb();
+        return EventResult::CONSUMED;
     }
 
-    void onMouseLeave(void) override
+    EventResult onMouseLeave(void) override
     {
-        if (onMouseLeaveCb) onMouseLeaveCb();
+        if (onMouseLeaveCb) return onMouseLeaveCb();
+        return EventResult::CONSUMED;
     }
 
   public:
-    std::function<void(void)> onMouseButton1ClickCb;
-    std::function<void(uint32_t, uint32_t)> onMouseButton1DownCb;
-    std::function<void(uint32_t, uint32_t)> onMouseButton1UpCb;
-    std::function<void(void)> onMouseButton2ClickCb;
-    std::function<void(uint32_t, uint32_t)> onMouseButton2DownCb;
-    std::function<void(uint32_t, uint32_t)> onMouseButton2UpCb;
-    std::function<void(void)> onMouseEnterCb;
-    std::function<void(void)> onMouseLeaveCb;
+    std::function<EventResult()> onMouseButton1ClickCb;
+    std::function<EventResult(uint32_t, uint32_t)> onMouseButton1DownCb;
+    std::function<EventResult(uint32_t, uint32_t)> onMouseButton1UpCb;
+    std::function<EventResult()> onMouseButton2ClickCb;
+    std::function<EventResult(uint32_t, uint32_t)> onMouseButton2DownCb;
+    std::function<EventResult(uint32_t, uint32_t)> onMouseButton2UpCb;
+    std::function<EventResult()> onMouseEnterCb;
+    std::function<EventResult()> onMouseLeaveCb;
 
     bool autoButtonColor = true;
     bool modal = false;

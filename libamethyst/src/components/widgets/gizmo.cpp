@@ -147,21 +147,24 @@ class GizmoCanvas : public Canvas {
     bool mouseUp = false;
 
   protected:
-    void onMouseMoved(uint32_t x, uint32_t y) override
+    EventResult onMouseMoved(uint32_t x, uint32_t y) override
     {
         mousePos = glm::vec2(static_cast<float>(x), static_cast<float>(y));
+        return EventResult::CONSUMED;
     }
 
-    void onMouseButton1Down(uint32_t x, uint32_t y) override
+    EventResult onMouseButton1Down(uint32_t x, uint32_t y) override
     {
         mousePos = glm::vec2(static_cast<float>(x), static_cast<float>(y));
         mouseDown = true;
+        return EventResult::CONSUMED;
     }
 
-    void onMouseButton1Up(uint32_t x, uint32_t y) override
+    EventResult onMouseButton1Up(uint32_t x, uint32_t y) override
     {
         mousePos = glm::vec2(static_cast<float>(x), static_cast<float>(y));
         mouseUp = true;
+        return EventResult::CONSUMED;
     }
 };
 

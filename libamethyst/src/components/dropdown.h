@@ -42,7 +42,7 @@ class Dropdown : public UIObject {
     void updateOptions();
 
   protected:
-    void onMouseButton1Click() override;
+    EventResult onMouseButton1Click() override;
 
   public:
     std::vector<std::string> *optionsRef = nullptr;

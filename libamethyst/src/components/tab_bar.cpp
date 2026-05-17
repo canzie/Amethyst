@@ -182,6 +182,7 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     tab.button->onMouseButton1DownCb = [this, tabPtr](uint32_t, uint32_t) {
         int32_t idx = findTabIndex(tabPtr);
         if (idx >= 0) select(idx);
+        return EventResult::CONSUMED;
     };
 }
 

@@ -64,7 +64,7 @@ Window *UIObject::getWindow()
     return nullptr;
 }
 
-void UIObject::onMouseEnter() {}
+EventResult UIObject::onMouseEnter() { return EventResult::CONSUMED; }
 
 bool UIObject::isVisible() const
 {
@@ -99,27 +99,30 @@ int32_t UIObject::getZIndex() const
     return zIndex;
 }
 
-void UIObject::onMouseLeave() {}
+EventResult UIObject::onMouseLeave() { return EventResult::CONSUMED; }
 
-void UIObject::onMouseMoved(uint32_t x, uint32_t y)
+EventResult UIObject::onMouseMoved(uint32_t x, uint32_t y)
 {
     if (auto *drag = getExtension<UIDragDetector>()) {
         drag->handleMouseMove(x, y);
     }
+    return EventResult::CONSUMED;
 }
 
-void UIObject::onMouseButton1Down(uint32_t x, uint32_t y)
+EventResult UIObject::onMouseButton1Down(uint32_t x, uint32_t y)
 {
     if (auto *drag = getExtension<UIDragDetector>()) {
         drag->handleMouseDown(x, y);
     }
+    return EventResult::CONSUMED;
 }
 
-void UIObject::onMouseButton1Up(uint32_t x, uint32_t y)
+EventResult UIObject::onMouseButton1Up(uint32_t x, uint32_t y)
 {
     if (auto *drag = getExtension<UIDragDetector>()) {
         drag->handleMouseUp(x, y);
     }
+    return EventResult::CONSUMED;
 }
 
 } // namespace Amethyst

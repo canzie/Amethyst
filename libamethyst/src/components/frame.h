@@ -17,8 +17,8 @@ class Frame : public UIObject {
 
     void draw(DrawContext &ctx) override;
 
-    void onMouseButton1Click() override;
-    void onMouseButton2Click() override;
+    EventResult onMouseButton1Click() override;
+    EventResult onMouseButton2Click() override;
 };
 
 } // namespace Amethyst
