@@ -64,15 +64,15 @@ void TextLabel::draw(DrawContext &ctx)
 
             if (textScaled) {
                 if (m_textSize.x > 0.0f && m_textSize.y > 0.0f) {
-                    float scaleX = absoluteSize.x / m_textSize.x;
-                    float scaleY = absoluteSize.y / m_textSize.y;
+                    float scaleX = absoluteContentSize.x / m_textSize.x;
+                    float scaleY = absoluteContentSize.y / m_textSize.y;
                     effectiveFontSize = fontSize * std::min(scaleX, scaleY);
                 }
             }
 
             TextLayoutParams params;
-            params.position = absolutePosition;
-            params.bounds = absoluteSize;
+            params.position = absoluteContentPosition;
+            params.bounds = absoluteContentSize;
             params.fontSize = effectiveFontSize;
             params.color = textColor;
             params.lineHeight = lineHeight;
@@ -115,7 +115,7 @@ void TextLabel::draw(DrawContext &ctx)
     for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
-            drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
             drawable->draw(ctx);
         }
     }

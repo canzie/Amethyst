@@ -1,30 +1,29 @@
 /*
- * Dropdown selection UI element
+ * Dropdown menu button
  *
- * Structure:
- * Dropdown (UIObject) - main button showing current selection
- *   └─ m_popup (ScrollingFrame*) - child container for options
- *        ├─ UIListLayout extension - arranges children vertically
- *        └─ TextButton children (m_optionButtons) - one per option
- *
- * On click: toggles m_popup visibility and positioning
- * updateOptions(): rebuilds TextButton children from optionsRef
+ * Renders as a TextButton trigger; clicking opens a floating popup panel in the
+ * OverlayLayer. Popup is a Frame or ScrollingFrame (when itemCount > maxVisibleItems)
+ * containing one TextButton row per item. Submenus open as a sibling panel in the
+ * same OverlayLayer.
  */
 
 #ifndef AMETHYST__DROPDOWN_H
 #define AMETHYST__DROPDOWN_H
 
-#include "components/common.h"
-#include "components/ui_object.h"
+#include "components/dropdown_item.h"
+#include "components/text_button.h"
+#include "modules/color.h"
+
 #include <functional>
 #include <string>
 #include <vector>
 
 namespace Amethyst {
 
-struct Font;
-class ScrollingFrame;
-class TextButton;
+class Instance;
+class InvisibleButton;
+class OverlayLayer;
+class UIObject;
 
 enum class DropdownDirection {
     DOWN,
@@ -33,37 +32,59 @@ enum class DropdownDirection {
     RIGHT
 };
 
-class Dropdown : public UIObject {
+class Dropdown : public TextButton {
   public:
     Dropdown();
-    virtual ~Dropdown() = default;
+    ~Dropdown() override;
 
     void draw(DrawContext &ctx) override;
-    void updateOptions();
 
-  protected:
-    EventResult onMouseButton1Click() override;
+    void setItems(std::vector<DropdownItem> items);
+    std::vector<DropdownItem> &items() { return m_items; }
 
-  public:
-    std::vector<std::string> *optionsRef = nullptr;
-    int *selectedIndexRef = nullptr;
-    std::function<void(int, const std::string &)> onSelectionChanged;
-
-    std::string label;
-    Font *font = nullptr;
-    Color4 labelColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    LabelSide labelSide = LabelSide::LEFT;
-    UDim labelPadding = UDim::fromOffset(5.0f);
+    void open();
+    void requestClose();
+    bool isOpen() const { return m_state == State::OPEN; }
 
     DropdownDirection popupDirection = DropdownDirection::DOWN;
-    Color4 optionTextColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    Color3 highlightColor = {0.7f, 0.7f, 0.9f};
-    float highlightTransparency = 0.0f;
+    int maxVisibleItems = 8;
+    float itemHeight = 24.0f;
+    float popupWidth = 180.0f;
+    float itemFontSize = 14.0f;
+
+    Color3 popupBackground = {0.18f, 0.18f, 0.18f};
+    Color4 itemTextColor = {0.92f, 0.92f, 0.92f, 1.0f};
+    Color4 itemDisabledColor = {0.45f, 0.45f, 0.45f, 1.0f};
+    Color3 itemHoverBackground = {0.25f, 0.42f, 0.65f};
+    Color3 separatorColor = {0.32f, 0.32f, 0.32f};
+
+    std::function<void()> onOpenedCb;
+    std::function<void()> onClosedCb;
+
+  protected:
+    EventResult onMouseButton1Down(uint32_t x, uint32_t y) override;
 
   private:
-    ScrollingFrame *m_popup = nullptr;
-    std::vector<TextButton *> m_optionButtons;
-    bool m_popupOpen = false;
+    void actuallyClose();
+    void buildMainPopup(OverlayLayer *overlay);
+    void buildSubmenuPopup(OverlayLayer *overlay, std::vector<DropdownItem> *items, glm::vec2 pos);
+    void closeSubmenu();
+    UIObject *buildPopupPanel(OverlayLayer *overlay, std::vector<DropdownItem> *items,
+                              glm::vec2 pos, float totalHeight, float visibleHeight, int zIdx, bool inSubmenu);
+    void addItemRows(Instance *container, std::vector<DropdownItem> *items, bool inSubmenu, int zIdx);
+    std::string buildItemText(const DropdownItem &item) const;
+    float computeTotalHeight(const std::vector<DropdownItem> &items) const;
+
+    enum class State { CLOSED, OPEN, PENDING_CLOSE };
+
+    std::vector<DropdownItem> m_items;
+    State m_state = State::CLOSED;
+
+    UIObject *m_popup = nullptr;
+    UIObject *m_submenu = nullptr;
+    InvisibleButton *m_eater = nullptr;
+    OverlayLayer *m_overlayPtr = nullptr;
+    TextButton *m_submenuSourceRow = nullptr;
 };
 
 } // namespace Amethyst

@@ -1,7 +1,46 @@
-// standard menu bar like most apps have at the top, usually they contain file, view, edit, etc. this one will automatically be
-// placed at the top of its parent, it will also take in the entire width, the height need to be provided. the sizes and positioning
-// of its children will be automatic, meaning it will overwrite them so that they all share the same width and height. it will also
-// only take in a menu item, which will be another component type, it will pretty much be a text button, or another menu item, so we
-// can chain them if we wanted too. for this chaining we might have to add a flag bit. id also like a little triangle next to
-// indicate if a menu item is final or if it leads to another menu
-//
+/*
+ * Horizontal strip of top-level Dropdown menus.
+ *
+ * Each entry is a Dropdown with maxVisibleItems=INT_MAX (no scroll). Hovering
+ * an entry while another is open immediately switches focus.
+ */
+
+#ifndef AMETHYST__MENU_BAR_H
+#define AMETHYST__MENU_BAR_H
+
+#include "components/dropdown.h"
+#include "components/dropdown_item.h"
+#include "components/frame.h"
+
+#include <string>
+#include <vector>
+
+namespace Amethyst {
+
+class MenuBar : public Frame {
+  public:
+    MenuBar();
+    ~MenuBar() override = default;
+
+    void draw(DrawContext &ctx) override;
+
+    Dropdown *addMenu(std::string label, std::vector<DropdownItem> items);
+    void clear();
+
+    float entryPaddingX = 12.0f;
+    float entryPaddingY = 4.0f;
+    float entryFontSize = 14.0f;
+    Color3 entryHoverBackground = {0.25f, 0.25f, 0.30f};
+    Color3 entryActiveBackground = {0.28f, 0.42f, 0.62f};
+
+  private:
+    void onEntryHovered(Dropdown *entry);
+    void onEntryClosed(Dropdown *entry);
+
+    std::vector<Dropdown *> m_entries;
+    Dropdown *m_openEntry = nullptr;
+};
+
+} // namespace Amethyst
+
+#endif // AMETHYST__MENU_BAR_H

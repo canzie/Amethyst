@@ -22,6 +22,7 @@ Window::Window()
     InputInterface::registerWindow(this);
     m_overlayLayer = std::make_unique<OverlayLayer>();
     m_overlayLayer->setDisplayOrder(1000);
+    m_overlayLayer->parent = this;
 }
 
 Window::~Window()
@@ -45,6 +46,17 @@ void Window::purgeFromHoverStacks(Instance *dead)
     purge(m_hoverPrevious);
 }
 
+std::vector<Instance *> Window::getHittableInstances()
+{
+    std::vector<Instance *> result;
+    result.reserve(m_children.size() + 1);
+    for (auto &child : m_children) {
+        result.push_back(child.get());
+    }
+    result.push_back(m_overlayLayer.get());
+    return result;
+}
+
 void Window::draw(DrawContext &ctx)
 {
     AM_PROFILE_FUNCTION();
@@ -62,6 +74,11 @@ void Window::draw(DrawContext &ctx)
             layer->draw(layerCtx);
         }
     }
+
+    m_overlayLayer->absoluteSize = absoluteSize;
+    m_overlayLayer->absolutePosition = absolutePosition;
+    m_overlayLayer->clipRect = clipRect;
+    m_overlayLayer->draw(layerCtx);
 }
 
 static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point,

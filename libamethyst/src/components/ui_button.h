@@ -67,6 +67,13 @@ class UIButton : public UIObject {
         return EventResult::CONSUMED;
     }
 
+    EventResult onMouseMoved(uint32_t x, uint32_t y) override
+    {
+        UIObject::onMouseMoved(x, y);
+        if (onMouseMovedCb) return onMouseMovedCb(x, y);
+        return EventResult::CONSUMED;
+    }
+
   public:
     std::function<EventResult()> onMouseButton1ClickCb;
     std::function<EventResult(uint32_t, uint32_t)> onMouseButton1DownCb;
@@ -76,6 +83,7 @@ class UIButton : public UIObject {
     std::function<EventResult(uint32_t, uint32_t)> onMouseButton2UpCb;
     std::function<EventResult()> onMouseEnterCb;
     std::function<EventResult()> onMouseLeaveCb;
+    std::function<EventResult(uint32_t, uint32_t)> onMouseMovedCb;
 
     bool autoButtonColor = true;
     bool modal = false;

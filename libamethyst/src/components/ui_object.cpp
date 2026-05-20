@@ -21,9 +21,13 @@ void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degre
     absolutePosition = parentPos + position.resolve(parentSize) - anchorPoint * absoluteSize;
     absoluteRotation = rotation + parentRotation;
 
-    glm::vec4 p = padding.resolve(parentSize);
-    absolutePosition += glm::vec2(p.w, p.x);
-    absoluteSize -= glm::vec2(p.w + p.y, p.x + p.z);
+    glm::vec4 m = margin.resolve(parentSize);
+    absolutePosition += glm::vec2(m.w, m.x);
+    absoluteSize -= glm::vec2(m.w + m.y, m.x + m.z);
+
+    glm::vec4 p = padding.resolve(absoluteSize);
+    absoluteContentPosition = absolutePosition + glm::vec2(p.w, p.x);
+    absoluteContentSize = absoluteSize - glm::vec2(p.w + p.y, p.x + p.z);
 
     if (auto *sizeConstraint = getExtension<UISizeConstraint>()) {
         sizeConstraint->apply();

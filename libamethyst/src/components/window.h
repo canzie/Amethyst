@@ -33,6 +33,9 @@ class Window : public UILayer {
     void releaseMouse(UIObject *object);
     UIObject *getMouseCapture() const { return m_mouseCapturedBy; }
 
+    OverlayLayer *getOverlayLayer() { return m_overlayLayer.get(); }
+    std::vector<Instance *> getHittableInstances() override;
+
   private:
     Instance *findClickedObject(uint32_t x, uint32_t y);
     void purgeFromHoverStacks(Instance *dead);

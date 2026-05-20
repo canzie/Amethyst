@@ -1,5 +1,6 @@
 #include "amethyst/Amethyst.h"
 #include "amethyst__vk13_glfw.h"
+#include "components/canvas.h"
 #include "components/common.h"
 #include "components/docking_layer.h"
 #include "components/extensions/ui_grid_layout.h"
@@ -9,7 +10,6 @@
 #include "components/table.h"
 #include "components/text_button.h"
 #include "components/text_input.h"
-#include "components/canvas.h"
 #include "components/tree_view.h"
 #include "modules/style.h"
 #include "parsers/aml/aml_loader.h"
@@ -113,16 +113,20 @@ int main()
     button1->onMouseEnterCb = [button1]() {
         button1->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
         button1->markDirty();
+        return Amethyst::EventResult::CONSUMED;
     };
 
     button1->onMouseLeaveCb = [button1]() {
         button1->size = Amethyst::UDim2::fromScale(0.9f, 0.9f);
         button1->markDirty();
+        return Amethyst::EventResult::CONSUMED;
     };
 
     bool running = true;
-    button1->onMouseButton1ClickCb = [running = &running]() { *running = false; };
-
+    button1->onMouseButton1ClickCb = [running = &running]() {
+        *running = false;
+        return Amethyst::EventResult::CONSUMED;
+    };
     button1->markDirty();
 
     TextureInfo checkerboardTex = createCheckerboardTexture(ctx, 64, 8);
@@ -240,10 +244,8 @@ int main()
     scrollFrame->markDirty();
 
     Amethyst::Color3 scrollColors[] = {
-        {0.8f, 0.3f, 0.3f}, {0.3f, 0.8f, 0.3f}, {0.3f, 0.3f, 0.8f},
-        {0.8f, 0.8f, 0.3f}, {0.8f, 0.3f, 0.8f}, {0.3f, 0.8f, 0.8f},
-        {0.6f, 0.4f, 0.2f}, {0.4f, 0.2f, 0.6f}, {0.2f, 0.6f, 0.4f},
-        {0.5f, 0.5f, 0.5f}, {0.9f, 0.6f, 0.3f}, {0.3f, 0.6f, 0.9f},
+        {0.8f, 0.3f, 0.3f}, {0.3f, 0.8f, 0.3f}, {0.3f, 0.3f, 0.8f}, {0.8f, 0.8f, 0.3f}, {0.8f, 0.3f, 0.8f}, {0.3f, 0.8f, 0.8f},
+        {0.6f, 0.4f, 0.2f}, {0.4f, 0.2f, 0.6f}, {0.2f, 0.6f, 0.4f}, {0.5f, 0.5f, 0.5f}, {0.9f, 0.6f, 0.3f}, {0.3f, 0.6f, 0.9f},
     };
     for (auto &color : scrollColors) {
         auto *item = scrollFrame->add<Amethyst::Frame>();
@@ -453,8 +455,7 @@ int main()
 
     if (Amethyst::LayoutConfig::instance().loadFromFile("layout.conf")) {
         if (auto *entry = Amethyst::LayoutConfig::instance().get("Docking Example")) {
-            if (entry->type == Amethyst::ConfigType::DOCK_LAYOUT)
-                dockingLayer->applyConfig(entry->dockLayout);
+            if (entry->type == Amethyst::ConfigType::DOCK_LAYOUT) dockingLayer->applyConfig(entry->dockLayout);
         }
     }
 
