@@ -18,5 +18,6 @@ function(add_amethyst_demo target_name source_file)
     )
 endfunction()
 
-add_amethyst_demo(amethyst_testapp    main.cpp)
+add_amethyst_demo(amethyst_testapp main.cpp)
 add_amethyst_demo(amethyst_demo_menus demo_menus.cpp)
+add_amethyst_demo(amethyst_demo_treeview demo_treeview.cpp)
