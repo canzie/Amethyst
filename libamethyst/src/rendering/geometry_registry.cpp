@@ -1,7 +1,6 @@
 #include "geometry_registry.h"
 
 #include "components/ui_layer.h"
-#include "logging/log.h"
 #include "utils/am_assert.h"
 #include "utils/profiling.h"
 #include <algorithm>
@@ -64,55 +63,43 @@ void GeometryRegistry::setDestroyCb(GeometryRegistryDestroyCb cb)
 GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
 {
     AM_PROFILE_FUNCTION();
-    int32_t bucketIndex = data.zIndex;
-    auto &currBucket = m_zIndexBuckets[bucketIndex];
-    const uint32_t endPos = static_cast<uint32_t>(m_allocations.size());
 
-    m_allocations.push_back(data);
-    auto newAlloc = std::make_unique<GeometryAllocation>(endPos, this);
-    auto *allocPtr = newAlloc.get();
-    m_handleMap.push_back(std::move(newAlloc));
-
-    uint32_t insertPos;
-    if (currBucket.count == 0) {
-        auto it = m_zIndexBuckets.upper_bound(bucketIndex);
-        if (it != m_zIndexBuckets.end() && it->second.count > 0) {
-            insertPos = it->second.start;
-        } else {
-            insertPos = endPos;
-        }
-        currBucket.start = insertPos;
+    uint32_t slotId;
+    if (!m_slotFreeList.empty()) {
+        slotId = m_slotFreeList.back();
+        m_slotFreeList.pop_back();
     } else {
-        insertPos = currBucket.start + currBucket.count;
+        slotId = static_cast<uint32_t>(m_slotData.size());
+        m_slotData.emplace_back();
+        m_slotAlive.push_back(0);
+        m_slotDirty.push_back(0);
+        m_slotToSorted.push_back(UINT32_MAX);
     }
 
-    currBucket.count++;
-    m_dirtyIndices.insert(insertPos);
+    m_slotData[slotId] = data;
+    m_slotAlive[slotId] = 1;
+    m_needsRebuild = true;
 
-    for (uint32_t pos = endPos; pos > insertPos; --pos) {
-        std::swap(m_allocations[pos], m_allocations[pos - 1]);
-        std::swap(m_handleMap[pos], m_handleMap[pos - 1]);
-        m_handleMap[pos]->index = pos;
-        m_handleMap[pos - 1]->index = pos - 1;
-        m_dirtyIndices.insert(pos);
-        m_dirtyIndices.insert(pos - 1);
-    }
-
-    rebuildZIndexBuckets();
-    // validateOrdering();
-    return allocPtr;
+    m_handlePool.push_back({slotId, this, true});
+    return &m_handlePool.back();
 }
 
 void GeometryRegistry::update(GeometryAllocation &alloc, const InstanceData &data)
 {
     AM_PROFILE_FUNCTION();
-    AM_ASSERT(alloc.isValid(), "Trying to update an Invalid allocation");
-    AM_ASSERT(alloc.index < static_cast<uint32_t>(m_allocations.size()), "Allocation index out of bounds");
+    AM_ASSERT(alloc.isValid(), "Trying to update an invalid allocation");
+    AM_ASSERT(alloc.slotId < static_cast<uint32_t>(m_slotData.size()), "Slot ID out of bounds");
 
-    m_allocations[alloc.index] = data;
-    m_dirtyIndices.insert(alloc.index);
+    if (m_slotData[alloc.slotId].zIndex != data.zIndex) {
+        m_needsRebuild = true;
+    }
 
-    // validateOrdering();
+    m_slotData[alloc.slotId] = data;
+
+    if (!m_slotDirty[alloc.slotId]) {
+        m_slotDirty[alloc.slotId] = 1;
+        m_dirtySlotList.push_back(alloc.slotId);
+    }
 }
 
 void GeometryRegistry::release(GeometryAllocation &alloc)
@@ -121,51 +108,75 @@ void GeometryRegistry::release(GeometryAllocation &alloc)
     if (!alloc.isValid()) return;
 
     AM_ASSERT(alloc.registry == this, "Allocation belongs to a different registry");
-    AM_ASSERT(alloc.index < static_cast<uint32_t>(m_allocations.size()), "Allocation index out of bounds");
+    AM_ASSERT(alloc.slotId < static_cast<uint32_t>(m_slotData.size()), "Slot ID out of bounds");
 
-    uint32_t indexToRemove = alloc.index;
+    m_slotAlive[alloc.slotId] = 0;
+    m_slotDirty[alloc.slotId] = 0;
+    m_slotFreeList.push_back(alloc.slotId);
+    m_needsRebuild = true;
 
-    m_allocations.erase(m_allocations.begin() + indexToRemove);
-    m_handleMap.erase(m_handleMap.begin() + indexToRemove);
-
-    for (uint32_t i = indexToRemove; i < m_handleMap.size(); ++i) {
-        m_handleMap[i]->index = i;
-        m_dirtyIndices.insert(i);
-    }
-
-    auto it = m_dirtyIndices.lower_bound(m_allocations.size());
-    while (it != m_dirtyIndices.end()) {
-        it = m_dirtyIndices.erase(it);
-    }
-
-    rebuildZIndexBuckets();
-    // validateOrdering();
+    alloc.slotId = UINT32_MAX;
+    alloc.registry = nullptr;
 }
 
-void GeometryRegistry::rebuildZIndexBuckets()
+void GeometryRegistry::flush()
 {
-    m_zIndexBuckets.clear();
-    for (uint32_t i = 0; i < static_cast<uint32_t>(m_allocations.size()); ++i) {
-        int32_t zIndex = m_allocations[i].zIndex;
-        auto &bucket = m_zIndexBuckets[zIndex];
-        if (bucket.count == 0) {
-            bucket.start = i;
+    AM_PROFILE_FUNCTION();
+
+    if (m_needsRebuild) {
+        m_sortedOrder.clear();
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_slotData.size()); ++i) {
+            if (m_slotAlive[i]) {
+                m_sortedOrder.push_back(i);
+            }
         }
-        ++bucket.count;
+
+        std::stable_sort(m_sortedOrder.begin(), m_sortedOrder.end(),
+                         [this](uint32_t a, uint32_t b) { return m_slotData[a].zIndex < m_slotData[b].zIndex; });
+
+        m_sortedBuffer.resize(m_sortedOrder.size());
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_sortedOrder.size()); ++i) {
+            uint32_t slot = m_sortedOrder[i];
+            m_sortedBuffer[i] = m_slotData[slot];
+            m_slotToSorted[slot] = i;
+        }
+
+        m_fullDirty = true;
+        m_needsRebuild = false;
+        m_dirtyGpuIndices.clear();
+
+        for (uint32_t slot : m_dirtySlotList) {
+            m_slotDirty[slot] = 0;
+        }
+        m_dirtySlotList.clear();
+        return;
     }
+
+    if (!m_dirtySlotList.empty()) {
+        for (uint32_t slot : m_dirtySlotList) {
+            if (m_slotAlive[slot]) {
+                uint32_t sortedIdx = m_slotToSorted[slot];
+                AM_ASSERT(sortedIdx < static_cast<uint32_t>(m_sortedBuffer.size()), "Sorted index out of bounds");
+                m_sortedBuffer[sortedIdx] = m_slotData[slot];
+                m_dirtyGpuIndices.push_back(sortedIdx);
+            }
+            m_slotDirty[slot] = 0;
+        }
+        m_dirtySlotList.clear();
+    }
+}
+
+void GeometryRegistry::clearDirtyState()
+{
+    m_fullDirty = false;
+    m_dirtyGpuIndices.clear();
 }
 
 void GeometryRegistry::validateOrdering() const
 {
-    for (size_t i = 1; i < m_allocations.size(); ++i) {
-        AM_ASSERT(m_allocations[i].zIndex >= m_allocations[i - 1].zIndex, "Z-index ordering violation");
-        AM_ASSERT(m_handleMap[i]->index == i, "handle index out of sync");
+    for (size_t i = 1; i < m_sortedBuffer.size(); ++i) {
+        AM_ASSERT(m_sortedBuffer[i].zIndex >= m_sortedBuffer[i - 1].zIndex, "Z-index ordering violation");
     }
-}
-
-std::set<uint32_t> GeometryRegistry::consumeDirtyIndices()
-{
-    return std::exchange(m_dirtyIndices, {});
 }
 
 } // namespace Amethyst

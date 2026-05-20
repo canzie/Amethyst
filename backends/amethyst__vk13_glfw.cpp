@@ -394,50 +394,55 @@ void VkBackend::allocateInstanceBuffers() {}
 void VkBackend::updateInstances(BufferAllocation &alloc, GeometryRegistry &registry)
 {
     AM_PROFILE_FUNCTION();
+    registry.flush();
     const auto &allocations = registry.getAllocations();
     size_t requiredSize = allocations.size() * sizeof(InstanceData);
+    bool fullDirty = registry.isFullDirty();
+    const auto &dirtyIndices = registry.getDirtyIndices();
+    bool hasChanges = fullDirty || !dirtyIndices.empty();
 
     if (requiredSize > alloc.capacity) {
-        freeToArena(m_dynamicArenaFreeList, alloc);
+        if (alloc.capacity > 0) {
+            freeToArena(m_dynamicArenaFreeList, alloc);
+        }
         AM_LOG_TRACE("Buffer needs to be resized");
 
         size_t newCapacity = requiredSize * 2;
         BufferAllocation newAlloc = allocateFromArena(m_dynamicArena, m_dynamicArenaFreeList, newCapacity);
         if (newAlloc.arena == nullptr) {
             AM_LOG_ERROR("Failed to reallocate geometry buffer");
+            registry.clearDirtyState();
             return;
         }
         alloc = newAlloc;
+        fullDirty = true;
+        hasChanges = true;
+    }
 
+    if (hasChanges && !allocations.empty()) {
         auto *basePtr = static_cast<uint8_t *>(alloc.arena->mappedMemory);
         auto *instances = reinterpret_cast<InstanceData *>(basePtr + alloc.offset);
-        for (size_t i = 0; i < allocations.size(); ++i) {
-            instances[i] = allocations[i];
-        }
 
-        registry.consumeDirtyIndices();
-    } else {
-        auto dirtyIndices = registry.consumeDirtyIndices();
-        if (!dirtyIndices.empty()) {
-            auto *basePtr = static_cast<uint8_t *>(alloc.arena->mappedMemory);
-            auto *instances = reinterpret_cast<InstanceData *>(basePtr + alloc.offset);
-
+        if (fullDirty) {
+            std::memcpy(instances, allocations.data(), allocations.size() * sizeof(InstanceData));
+        } else {
             for (uint32_t idx : dirtyIndices) {
                 instances[idx] = allocations[idx];
             }
         }
+
+        VkMappedMemoryRange memoryRange{};
+        memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+        memoryRange.memory = alloc.arena->memory;
+        size_t flushSize = allocations.size() * sizeof(InstanceData);
+        size_t alignedOffset = (alloc.offset / 64) * 64;
+        size_t alignedEnd = alignUp(alloc.offset + flushSize, 64);
+        memoryRange.offset = alignedOffset;
+        memoryRange.size = alignedEnd - alignedOffset;
+        vkFlushMappedMemoryRanges(m_info.device, 1, &memoryRange);
     }
 
-    VkMappedMemoryRange memoryRange{};
-    memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-    memoryRange.memory = alloc.arena->memory;
-    size_t flushSize = allocations.size() * sizeof(InstanceData);
-    size_t alignedOffset = (alloc.offset / 64) * 64;
-    size_t alignedEnd = alignUp(alloc.offset + flushSize, 64);
-    memoryRange.offset = alignedOffset;
-    memoryRange.size = alignedEnd - alignedOffset;
-    vkFlushMappedMemoryRanges(m_info.device, 1, &memoryRange);
-
+    registry.clearDirtyState();
     alloc.size = allocations.size();
 }
 

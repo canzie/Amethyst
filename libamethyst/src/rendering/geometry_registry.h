@@ -1,14 +1,12 @@
 #ifndef AMETHYST__GEOMETRY_REGISTRY_H
 #define AMETHYST__GEOMETRY_REGISTRY_H
 
-#include "components/common.h"
 #include "rendering/instance_data.h"
 
 #include <cstdint>
+#include <deque>
 #include <functional>
-#include <map>
 #include <memory>
-#include <set>
 #include <vector>
 
 namespace Amethyst {
@@ -19,18 +17,13 @@ class UILayer;
 using GeometryRegistryDestroyCb = std::function<void(GeometryRegistry *)>;
 
 struct GeometryAllocation {
-    uint32_t index = UINT32_MAX;
+    uint32_t slotId = UINT32_MAX;
     GeometryRegistry *registry = nullptr;
     bool owning = true; // used for children, if a component could possibly not own the allocation they use, this will be false,
                         // true in case they litterly called submit themselves or if the component explicitly knows it owns it, and
                         // can just ignore the flag
 
-    inline bool isValid() const { return index != UINT32_MAX && registry != nullptr; }
-};
-
-struct ZIndexBucket {
-    uint32_t start = 0; // Start offset in m_allocations
-    uint32_t count = 0; // Number of elements with this z-index
+    bool isValid() const { return slotId != UINT32_MAX && registry != nullptr; }
 };
 
 class GeometryRegistry {
@@ -44,6 +37,7 @@ class GeometryRegistry {
 
     /**
      * @brief Get all registries sorted by owner displayOrder
+     * @return Reference to the sorted registries vector
      */
     static const std::vector<GeometryRegistry *> &getRegistries();
 
@@ -54,54 +48,92 @@ class GeometryRegistry {
 
     /**
      * @brief Set callback invoked when a registry is destroyed
+     * @param cb Callback receiving the destroyed registry pointer
      */
     static void setDestroyCb(GeometryRegistryDestroyCb cb);
 
     /**
-     * @brief Submit new instance data.
-     * @return Allocation whose index may change on release of other allocations.
+     * @brief Submit new instance data
+     * @param data The instance data to store
+     * @return Stable handle pointer, valid until release() is called on it
      */
     GeometryAllocation *submit(const InstanceData &data);
 
     /**
-     * @brief Update existing instance data.
+     * @brief Update existing instance data in-place
+     * @param alloc The allocation handle to update
+     * @param data The new instance data
      */
     void update(GeometryAllocation &alloc, const InstanceData &data);
 
     /**
-     * @brief Release an allocation. Swaps with last element to keep buffer compact.
+     * @brief Release an allocation, freeing its slot for reuse
+     * @param alloc The allocation handle to release
      */
     void release(GeometryAllocation &alloc);
 
     /**
-     * @brief Get dirty indices and clear the list.
+     * @brief Rebuild the sorted buffer from slot data. Must be called before getAllocations().
      */
-    std::set<uint32_t> consumeDirtyIndices();
+    void flush();
 
-    inline const std::vector<InstanceData> &getAllocations() const { return m_allocations; }
-    inline size_t size() const { return m_allocations.size(); }
+    /**
+     * @brief Get the z-sorted instance data buffer
+     * @return Reference to the sorted buffer
+     */
+    const std::vector<InstanceData> &getAllocations() const { return m_sortedBuffer; }
+    size_t size() const { return m_sortedBuffer.size(); }
+
+    /**
+     * @brief True if the sorted buffer was fully rebuilt since last clearDirtyState()
+     * @return Whether a full GPU re-upload is needed
+     */
+    bool isFullDirty() const { return m_fullDirty; }
+
+    /**
+     * @brief Get GPU buffer positions that changed incrementally since last clearDirtyState()
+     * @return Reference to the dirty indices vector
+     */
+    const std::vector<uint32_t> &getDirtyIndices() const { return m_dirtyGpuIndices; }
+
+    /**
+     * @brief Reset dirty tracking after GPU upload is complete
+     */
+    void clearDirtyState();
 
     /**
      * @brief Get the owning UILayer
+     * @return Pointer to the owning layer
      */
-    inline UILayer *getOwningLayer() const { return m_owningLayer; }
+    UILayer *getOwningLayer() const { return m_owningLayer; }
 
     ~GeometryRegistry();
 
   private:
     GeometryRegistry(UILayer *owner);
     void validateOrdering() const;
-    void rebuildZIndexBuckets();
 
   private:
     static std::vector<GeometryRegistry *> s_registries;
     static GeometryRegistryDestroyCb s_onDestroyCb;
 
     UILayer *m_owningLayer = nullptr;
-    std::vector<InstanceData> m_allocations;
-    std::vector<std::unique_ptr<GeometryAllocation>> m_handleMap;
-    std::set<uint32_t> m_dirtyIndices;
-    std::map<int32_t, ZIndexBucket> m_zIndexBuckets;
+
+    std::vector<InstanceData> m_slotData;
+    std::vector<uint8_t> m_slotAlive;
+    std::vector<uint8_t> m_slotDirty;
+    std::vector<uint32_t> m_slotFreeList;
+    std::vector<uint32_t> m_dirtySlotList;
+
+    std::vector<InstanceData> m_sortedBuffer;
+    std::vector<uint32_t> m_sortedOrder;
+    std::vector<uint32_t> m_slotToSorted;
+
+    std::deque<GeometryAllocation> m_handlePool;
+
+    bool m_needsRebuild = false;
+    bool m_fullDirty = false;
+    std::vector<uint32_t> m_dirtyGpuIndices;
 };
 
 } // namespace Amethyst
