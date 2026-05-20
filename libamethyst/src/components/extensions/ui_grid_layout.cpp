@@ -30,7 +30,7 @@ void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
 
     if (sortedChildren.empty()) return;
 
-    glm::vec2 containerSize = m_owner->absoluteSize;
+    glm::vec2 containerSize = m_owner->absoluteContentSize;
     m_absoluteCellSize = cellSize.resolve(containerSize);
     glm::vec2 absCellPadding = cellPadding.resolve(containerSize);
 
@@ -95,10 +95,10 @@ void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
         case HorizontalAlignment::ALIGN_LEFT:
             break;
         case HorizontalAlignment::ALIGN_CENTER_H:
-            alignOffsetX = (m_owner->absoluteSize.x - m_absoluteCellSize.x) / 2.0f;
+            alignOffsetX = (m_owner->absoluteContentSize.x - m_absoluteCellSize.x) / 2.0f;
             break;
         case HorizontalAlignment::ALIGN_RIGHT:
-            alignOffsetX = m_owner->absoluteSize.x - m_absoluteCellSize.x;
+            alignOffsetX = m_owner->absoluteContentSize.x - m_absoluteCellSize.x;
             break;
         }
 

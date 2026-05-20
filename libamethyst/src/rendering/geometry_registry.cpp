@@ -124,7 +124,6 @@ void GeometryRegistry::release(GeometryAllocation &alloc)
     AM_ASSERT(alloc.index < static_cast<uint32_t>(m_allocations.size()), "Allocation index out of bounds");
 
     uint32_t indexToRemove = alloc.index;
-    uint32_t oldSize = static_cast<uint32_t>(m_allocations.size());
 
     m_allocations.erase(m_allocations.begin() + indexToRemove);
     m_handleMap.erase(m_handleMap.begin() + indexToRemove);

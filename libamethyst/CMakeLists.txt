@@ -59,8 +59,8 @@ target_link_libraries(amethyst PUBLIC glm::glm spdlog::spdlog freetype TracyClie
 target_compile_definitions(amethyst PRIVATE TOML_EXCEPTIONS=0)
 
 target_compile_options(amethyst PRIVATE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
-    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic -Werror>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
 )
 
 if(AMETHYST_BUILD_TESTS)
@@ -79,8 +79,8 @@ if(AMETHYST_BUILD_TESTS)
         add_executable(${test_name} ${test_source})
         target_link_libraries(${test_name} PRIVATE amethyst)
         target_compile_options(${test_name} PRIVATE
-            $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
-            $<$<CXX_COMPILER_ID:MSVC>:/W4>
+            $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic -Werror>
+            $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
         )
 
         if(AMETHYST_RUN_TESTS)

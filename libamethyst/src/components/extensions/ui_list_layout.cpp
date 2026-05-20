@@ -31,7 +31,7 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
     if (sortedChildren.empty()) return;
 
     bool isVertical = (fillDirection == FillDirection::FILL_VERTICAL);
-    glm::vec2 ownerSize = m_owner->absoluteSize;
+    glm::vec2 ownerSize = m_owner->absoluteContentSize;
     float containerSize = isVertical ? ownerSize.y : ownerSize.x;
     float crossContainerSize = isVertical ? ownerSize.x : ownerSize.y;
     float absPadding = innerPadding.resolve(containerSize);

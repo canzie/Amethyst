@@ -37,7 +37,7 @@ void ImageButton::draw(DrawContext &ctx)
     for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
-            drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
             drawable->draw(ctx);
         }
     }

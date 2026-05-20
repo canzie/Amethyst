@@ -338,7 +338,7 @@ size_t TextInput::getCursorFromMouseX(uint32_t mouseX)
         return 0;
     }
 
-    float relativeX = static_cast<float>(mouseX) - absolutePosition.x;
+    float relativeX = static_cast<float>(mouseX) - absoluteContentPosition.x;
 
     if (relativeX <= m_charPositions[0]) {
         return 0;
@@ -422,8 +422,8 @@ void TextInput::drawText(DrawContext &ctx)
     }
 
     TextLayoutParams params;
-    params.position = absolutePosition;
-    params.bounds = absoluteSize;
+    params.position = absoluteContentPosition;
+    params.bounds = absoluteContentSize;
     params.fontSize = fontSize;
     params.color = colorToUse;
     params.xAlign = textXAlignment;
@@ -471,7 +471,7 @@ void TextInput::drawSelection(DrawContext &ctx)
         size_t selEnd = std::max(m_cursorPosition, *m_selectionStart);
 
         if (selEnd > selStart && selStart < m_charPositions.size() && selEnd < m_charPositions.size()) {
-            glm::vec2 selPos = {absolutePosition.x + m_charPositions[selStart], absolutePosition.y};
+            glm::vec2 selPos = {absoluteContentPosition.x + m_charPositions[selStart], absoluteContentPosition.y};
             glm::vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], fontSize * 1.2f};
             glm::vec2 centerPos = selPos + selSize * 0.5f;
 
@@ -505,7 +505,7 @@ void TextInput::drawCursor(DrawContext &ctx)
             cursorX = (m_cursorPosition < m_charPositions.size()) ? m_charPositions[m_cursorPosition] : m_charPositions.back();
         }
 
-        glm::vec2 cursorPos = {absolutePosition.x + cursorX, absolutePosition.y};
+        glm::vec2 cursorPos = {absoluteContentPosition.x + cursorX, absoluteContentPosition.y};
         glm::vec2 cursorSize = {1.0f, fontSize * 1.2f};
         glm::vec2 centerPos = cursorPos + cursorSize * 0.5f;
 
@@ -555,7 +555,7 @@ void TextInput::draw(DrawContext &ctx)
     for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
             drawable->clipRect = childClip;
-            drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
             drawable->draw(ctx);
         }
     }
