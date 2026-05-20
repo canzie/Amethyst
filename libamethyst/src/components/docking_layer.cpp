@@ -106,6 +106,7 @@ void DockingLayer::dock(std::unique_ptr<Instance> obj, glm::vec2 pos)
         m_tabBars.push_back(std::move(tabBar));
     } else {
         int32_t targetNode = findNodeByPosition(pos, m_rootNode, absoluteSize, absolutePosition);
+        if (targetNode < 0) return;
         DockZone targetZone = hitTestZone(targetNode, pos);
         if (targetZone == DockZone::CENTER) {
             DockNode &node = m_nodes[targetNode];
