@@ -19,18 +19,19 @@ struct DropdownAction {
 };
 
 struct DropdownToggle {
+    /// stateRef must outlive the DropdownItem if provided.
     bool *stateRef = nullptr;
-    bool stateOwned = false;
+    bool value = false;
     std::function<void(bool)> onToggled;
 
-    bool currentState() const { return stateRef ? *stateRef : stateOwned; }
+    bool currentState() const { return stateRef ? *stateRef : value; }
     void toggle()
     {
         bool next = !currentState();
         if (stateRef)
             *stateRef = next;
         else
-            stateOwned = next;
+            value = next;
         if (onToggled) onToggled(next);
     }
 };

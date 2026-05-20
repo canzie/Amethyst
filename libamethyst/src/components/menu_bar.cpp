@@ -85,7 +85,7 @@ void MenuBar::clear()
 void MenuBar::onEntryHovered(Dropdown *entry)
 {
     if (m_openEntry && m_openEntry != entry) {
-        m_openEntry->requestClose();
+        m_openEntry->closeImmediate();
         entry->open();
     }
 }

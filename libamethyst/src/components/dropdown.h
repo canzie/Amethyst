@@ -14,6 +14,7 @@
 #include "components/text_button.h"
 #include "modules/color.h"
 
+#include <cstddef>
 #include <functional>
 #include <string>
 #include <vector>
@@ -44,6 +45,7 @@ class Dropdown : public TextButton {
 
     void open();
     void requestClose();
+    void closeImmediate();
     bool isOpen() const { return m_state == State::OPEN; }
 
     DropdownDirection popupDirection = DropdownDirection::DOWN;
@@ -66,12 +68,13 @@ class Dropdown : public TextButton {
 
   private:
     void actuallyClose();
+    void closeSubmenuFrom(size_t depth = 0);
     void buildMainPopup(OverlayLayer *overlay);
-    void buildSubmenuPopup(OverlayLayer *overlay, std::vector<DropdownItem> *items, glm::vec2 pos);
-    void closeSubmenu();
-    UIObject *buildPopupPanel(OverlayLayer *overlay, std::vector<DropdownItem> *items,
-                              glm::vec2 pos, float totalHeight, float visibleHeight, int zIdx, bool inSubmenu);
-    void addItemRows(Instance *container, std::vector<DropdownItem> *items, bool inSubmenu, int zIdx);
+    void buildSubmenuAtPath(OverlayLayer *overlay, std::vector<size_t> path, glm::vec2 pos);
+    UIObject *buildPopupPanel(OverlayLayer *overlay, glm::vec2 pos, float totalHeight,
+                              float visibleHeight, int zIdx, std::vector<size_t> path = {});
+    void addItemRows(Instance *container, int zIdx, std::vector<size_t> path = {});
+    std::vector<DropdownItem> &itemsAtPath(const std::vector<size_t> &path);
     std::string buildItemText(const DropdownItem &item) const;
     float computeTotalHeight(const std::vector<DropdownItem> &items) const;
 
@@ -81,10 +84,10 @@ class Dropdown : public TextButton {
     State m_state = State::CLOSED;
 
     UIObject *m_popup = nullptr;
-    UIObject *m_submenu = nullptr;
+    std::vector<UIObject *> m_submenuStack;
+    std::vector<TextButton *> m_submenuSourceRows;
     InvisibleButton *m_eater = nullptr;
     OverlayLayer *m_overlayPtr = nullptr;
-    TextButton *m_submenuSourceRow = nullptr;
 };
 
 } // namespace Amethyst
