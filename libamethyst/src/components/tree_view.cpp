@@ -401,10 +401,10 @@ float TreeView::getRowIndent(uint32_t row) const
     return indent;
 }
 
-void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t slotIndex, float y, bool expanded,
+void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, float y, bool expanded,
                                       const glm::vec4 &childClip)
 {
-    TextButton *btn = m_rowDisclosures[slotIndex].get();
+    TextButton *btn = m_rowDisclosures[bufferSlot].get();
 
     if (!showDisclosureTriangles || !hasChildren(row)) {
         btn->visible = false;
@@ -435,23 +435,23 @@ void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t s
     btn->draw(ctx);
 }
 
-void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t slotIndex, const std::vector<float> &colPositions,
-                              const glm::vec4 &childClip)
+void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, uint32_t visualIndex,
+                              const std::vector<float> &colPositions, const glm::vec4 &childClip)
 {
     AM_PROFILE_FUNCTION();
 
     const TreeRow &r = m_rows[row];
-    float rowY = calculateRowY(slotIndex, m_computedRowHeight);
+    float rowY = calculateRowY(visualIndex, m_computedRowHeight);
     float indent = getRowIndent(row);
 
-    Frame *bg = m_rowBackgrounds[slotIndex].get();
+    Frame *bg = m_rowBackgrounds[bufferSlot].get();
 
     Color4 bgColor = rowBackgroundColor;
     if (static_cast<int32_t>(row) == selectedRow) {
         bgColor = rowSelectedColor;
     } else if (static_cast<int32_t>(row) == hoveredRow) {
         bgColor = rowHoverColor;
-    } else if (slotIndex % 2 == 1 && rowAlternateColor.a > 0.0f) {
+    } else if (visualIndex % 2 == 1 && rowAlternateColor.a > 0.0f) {
         bgColor = rowAlternateColor;
     }
 
@@ -462,7 +462,7 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t slotIndex
     bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + glm::vec2(0.0f, rowY), absoluteRotation);
     bg->draw(ctx);
 
-    drawDisclosureTriangle(ctx, row, slotIndex, absolutePosition.y + rowY, r.expanded, childClip);
+    drawDisclosureTriangle(ctx, row, bufferSlot, absolutePosition.y + rowY, r.expanded, childClip);
 
     if (r.firstCellIndex == INVALID_ROW) {
         return;
@@ -528,11 +528,12 @@ void TreeView::ensureSlotCapacity(uint32_t slotCount)
 }
 
 uint32_t TreeView::drawVisibleRows(DrawContext &ctx, const std::vector<float> &colPositions, const glm::vec4 &childClip,
-                                   uint32_t slotCount)
+                                   uint32_t firstVisibleSlot, uint32_t slotCount)
 {
     AM_PROFILE_FUNCTION();
 
-    uint32_t slotIndex = 0;
+    uint32_t visibleCount = 0;
+    uint32_t bufferSlot = 0;
     std::vector<std::pair<uint32_t, bool>> stack;
 
     for (uint32_t r = m_lastRoot; r != INVALID_ROW; r = m_rows[r].prevSibling) {
@@ -548,11 +549,14 @@ uint32_t TreeView::drawVisibleRows(DrawContext &ctx, const std::vector<float> &c
         TreeRow &r = m_rows[row];
 
         if (ancestorVisible) {
-            if (slotIndex < slotCount) {
-                drawRowContent(ctx, row, slotIndex, colPositions, childClip);
-                slotIndex++;
+            if (visibleCount >= firstVisibleSlot && bufferSlot < slotCount) {
+                drawRowContent(ctx, row, bufferSlot, visibleCount, colPositions, childClip);
+                bufferSlot++;
+            } else if (r.isDirty) {
+                clearRowCells(ctx, row);
             }
             r.isDirty = false;
+            visibleCount++;
 
             if (r.expanded) {
                 for (uint32_t c = r.lastChild; c != INVALID_ROW; c = m_rows[c].prevSibling) {
@@ -579,17 +583,19 @@ uint32_t TreeView::drawVisibleRows(DrawContext &ctx, const std::vector<float> &c
         }
     }
 
-    return slotIndex;
+    return bufferSlot;
 }
 
-void TreeView::drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint32_t fromSlot, uint32_t slotCount)
+void TreeView::drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint32_t fromSlot, uint32_t slotCount,
+                             uint32_t firstVisibleSlot)
 {
     AM_PROFILE_FUNCTION();
 
     for (uint32_t i = fromSlot; i < slotCount; i++) {
-        float rowY = calculateRowY(i, m_computedRowHeight);
+        uint32_t visualIndex = firstVisibleSlot + i;
+        float rowY = calculateRowY(visualIndex, m_computedRowHeight);
         Frame *bg = m_rowBackgrounds[i].get();
-        Color4 bgColor = (i % 2 == 1 && rowAlternateColor.a > 0.0f) ? rowAlternateColor : rowBackgroundColor;
+        Color4 bgColor = (visualIndex % 2 == 1 && rowAlternateColor.a > 0.0f) ? rowAlternateColor : rowBackgroundColor;
         bg->backgroundColor = Color3(bgColor);
         bg->backgroundTransparency = 1.0f - bgColor.a;
         bg->clipRect = childClip;
@@ -633,7 +639,12 @@ void TreeView::draw(DrawContext &ctx)
     glm::vec4 childClip = computeChildClipRect();
 
     m_computedRowHeight = rowHeight > 0.0f ? rowHeight : 24.0f;
-    uint32_t slotCount = static_cast<uint32_t>(std::ceil(absoluteSize.y / m_computedRowHeight)) + 1;
+
+    float viewportHeight = childClip.w - childClip.y;
+    uint32_t slotCount = static_cast<uint32_t>(std::ceil(viewportHeight / m_computedRowHeight)) + 2;
+
+    float scrolledY = std::max(0.0f, childClip.y - absolutePosition.y);
+    uint32_t firstVisibleSlot = static_cast<uint32_t>(std::floor(scrolledY / m_computedRowHeight));
 
     ensureSlotCapacity(slotCount);
 
@@ -645,10 +656,10 @@ void TreeView::draw(DrawContext &ctx)
         sep->draw(ctx);
     }
 
-    uint32_t usedSlots = drawVisibleRows(ctx, colPositions, childClip, slotCount);
+    uint32_t usedSlots = drawVisibleRows(ctx, colPositions, childClip, firstVisibleSlot, slotCount);
 
     if (fillRows) {
-        drawEmptyRows(ctx, childClip, usedSlots, slotCount);
+        drawEmptyRows(ctx, childClip, usedSlots, slotCount, firstVisibleSlot);
     }
 
     clearUnusedSlots(ctx, usedSlots);

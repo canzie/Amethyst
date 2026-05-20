@@ -95,16 +95,16 @@ class TreeView : public Table {
     float getRowIndent(uint32_t row) const override;
 
   private:
-    void drawRowContent(DrawContext &ctx, uint32_t row, uint32_t visibleIndex, const std::vector<float> &colPositions, const glm::vec4 &childClip);
-    void drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t visibleIndex, float y, bool expanded, const glm::vec4 &childClip);
+    void drawRowContent(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, uint32_t visualIndex, const std::vector<float> &colPositions, const glm::vec4 &childClip);
+    void drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, float y, bool expanded, const glm::vec4 &childClip);
     void linkRowToParent(uint32_t row, uint32_t parentRow);
     void unlinkRow(uint32_t row);
     void markRowDirty(uint32_t row);
     void clearRowCells(DrawContext &ctx, uint32_t row);
 
     void ensureSlotCapacity(uint32_t slotCount);
-    uint32_t drawVisibleRows(DrawContext &ctx, const std::vector<float> &colPositions, const glm::vec4 &childClip, uint32_t slotCount);
-    void drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint32_t fromSlot, uint32_t slotCount);
+    uint32_t drawVisibleRows(DrawContext &ctx, const std::vector<float> &colPositions, const glm::vec4 &childClip, uint32_t firstVisibleSlot, uint32_t slotCount);
+    void drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint32_t fromSlot, uint32_t slotCount, uint32_t firstVisibleSlot);
     void clearUnusedSlots(DrawContext &ctx, uint32_t fromSlot);
 
   public:
