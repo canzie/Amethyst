@@ -22,8 +22,6 @@ class MenuBar : public Frame {
     MenuBar();
     ~MenuBar() override = default;
 
-    void draw(DrawContext &ctx) override;
-
     Dropdown *addMenu(std::string label, std::vector<DropdownItem> items);
     void clear();
 

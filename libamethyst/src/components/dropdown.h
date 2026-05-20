@@ -70,10 +70,10 @@ class Dropdown : public TextButton {
     void actuallyClose();
     void closeSubmenuFrom(size_t depth = 0);
     void buildMainPopup(OverlayLayer *overlay);
-    void buildSubmenuAtPath(OverlayLayer *overlay, std::vector<size_t> path, glm::vec2 pos);
+    void buildSubmenuAtPath(OverlayLayer *overlay, const std::vector<size_t> &path, glm::vec2 pos);
     UIObject *buildPopupPanel(OverlayLayer *overlay, glm::vec2 pos, float totalHeight,
-                              float visibleHeight, int zIdx, std::vector<size_t> path = {});
-    void addItemRows(Instance *container, int zIdx, std::vector<size_t> path = {});
+                              float visibleHeight, int zIdx, const std::vector<size_t> &path = {});
+    void addItemRows(Instance *container, int zIdx, const std::vector<size_t> &path = {});
     std::vector<DropdownItem> &itemsAtPath(const std::vector<size_t> &path);
     std::string buildItemText(const DropdownItem &item) const;
     float computeTotalHeight(const std::vector<DropdownItem> &items) const;

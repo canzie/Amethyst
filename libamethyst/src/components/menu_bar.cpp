@@ -1,7 +1,6 @@
 #include "components/menu_bar.h"
 
 #include "components/extensions/ui_list_layout.h"
-#include "rendering/draw_context.h"
 
 #include <climits>
 
@@ -39,30 +38,36 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<DropdownItem> items)
     entry->size = UDim2::fromOffset(estWidth, 0.0f);
     entry->layoutOrder = static_cast<LayoutOrder>(m_entries.size());
 
-    Color3 hoverBg = entryHoverBackground;
-    Color3 activeBg = entryActiveBackground;
-    Color3 normalBg = backgroundColor;
-
-    entry->onMouseEnterCb = [this, entry, hoverBg, activeBg]() {
-        entry->backgroundColor = entry->isOpen() ? activeBg : hoverBg;
-        entry->markDirty();
+    entry->onMouseEnterCb = [this, entry]() {
+        Color3 newBg = entry->isOpen() ? entryActiveBackground : entryHoverBackground;
+        if (entry->backgroundColor != newBg) {
+            entry->backgroundColor = newBg;
+            entry->markDirty();
+        }
         onEntryHovered(entry);
         return EventResult::CONSUMED;
     };
-    entry->onMouseLeaveCb = [entry, normalBg, activeBg]() {
-        entry->backgroundColor = entry->isOpen() ? activeBg : normalBg;
-        entry->markDirty();
+    entry->onMouseLeaveCb = [this, entry]() {
+        Color3 newBg = entry->isOpen() ? entryActiveBackground : backgroundColor;
+        if (entry->backgroundColor != newBg) {
+            entry->backgroundColor = newBg;
+            entry->markDirty();
+        }
         return EventResult::CONSUMED;
     };
-    entry->onOpenedCb = [this, entry, activeBg]() {
+    entry->onOpenedCb = [this, entry]() {
         m_openEntry = entry;
-        entry->backgroundColor = activeBg;
-        entry->markDirty();
+        if (entry->backgroundColor != entryActiveBackground) {
+            entry->backgroundColor = entryActiveBackground;
+            entry->markDirty();
+        }
     };
-    entry->onClosedCb = [this, entry, normalBg]() {
+    entry->onClosedCb = [this, entry]() {
         onEntryClosed(entry);
-        entry->backgroundColor = normalBg;
-        entry->markDirty();
+        if (entry->backgroundColor != backgroundColor) {
+            entry->backgroundColor = backgroundColor;
+            entry->markDirty();
+        }
     };
 
     entry->markDirty();
@@ -97,9 +102,5 @@ void MenuBar::onEntryClosed(Dropdown *entry)
     }
 }
 
-void MenuBar::draw(DrawContext &ctx)
-{
-    Frame::draw(ctx);
-}
 
 } // namespace Amethyst

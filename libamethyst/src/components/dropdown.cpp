@@ -85,7 +85,6 @@ void Dropdown::requestClose()
         m_eater->visible = false;
         m_eater->interactable = false;
     }
-    markDirty();
 }
 
 void Dropdown::closeImmediate()
@@ -178,7 +177,7 @@ void Dropdown::buildMainPopup(OverlayLayer *overlay)
     m_popup = buildPopupPanel(overlay, pos, totalHeight, visibleHeight, 1, {});
 }
 
-void Dropdown::buildSubmenuAtPath(OverlayLayer *overlay, std::vector<size_t> path, glm::vec2 pos)
+void Dropdown::buildSubmenuAtPath(OverlayLayer *overlay, const std::vector<size_t> &path, glm::vec2 pos)
 {
     size_t depth = path.size() - 1;
     closeSubmenuFrom(depth);
@@ -207,7 +206,7 @@ std::vector<DropdownItem> &Dropdown::itemsAtPath(const std::vector<size_t> &path
 }
 
 UIObject *Dropdown::buildPopupPanel(OverlayLayer *overlay, glm::vec2 pos, float totalHeight,
-                                     float visibleHeight, int zIdx, std::vector<size_t> path)
+                                     float visibleHeight, int zIdx, const std::vector<size_t> &path)
 {
     UIObject *panel;
 
@@ -242,12 +241,12 @@ UIObject *Dropdown::buildPopupPanel(OverlayLayer *overlay, glm::vec2 pos, float 
     layout->innerPadding = UDim::fromOffset(0.0f);
     layout->sortOrder = SortOrder::SORT_LAYOUT_ORDER;
 
-    addItemRows(panel, zIdx + 1, std::move(path));
+    addItemRows(panel, zIdx + 1, path);
     panel->markDirty();
     return panel;
 }
 
-void Dropdown::addItemRows(Instance *container, int zIdx, std::vector<size_t> path)
+void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size_t> &path)
 {
     std::vector<DropdownItem> &items = itemsAtPath(path);
     size_t depth = path.size();
@@ -299,16 +298,24 @@ void Dropdown::addItemRows(Instance *container, int zIdx, std::vector<size_t> pa
         row->onMouseLeaveCb = [this, row, normalBg, hoverBg, depth]() {
             bool isSubmenuSource = depth < m_submenuSourceRows.size() &&
                                    m_submenuSourceRows[depth] == row;
-            row->backgroundColor = isSubmenuSource ? hoverBg : normalBg;
-            row->markDirty();
+            Color3 newBg = isSubmenuSource ? hoverBg : normalBg;
+            if (row->backgroundColor != newBg) {
+                row->backgroundColor = newBg;
+                row->markDirty();
+            }
             return EventResult::CONSUMED;
         };
 
         if (item.kind() == DropdownItem::Kind::SUBMENU) {
-            row->onMouseEnterCb = [this, row, hoverBg, path, idx]() {
-                row->backgroundColor = hoverBg;
-                row->markDirty();
-                UIObject *parentPanel = path.empty() ? m_popup : m_submenuStack[path.size() - 1];
+            std::vector<size_t> fullPath = path;
+            fullPath.push_back(idx);
+            size_t parentDepth = path.size();
+            row->onMouseEnterCb = [this, row, hoverBg, fullPath = std::move(fullPath), parentDepth]() {
+                if (row->backgroundColor != hoverBg) {
+                    row->backgroundColor = hoverBg;
+                    row->markDirty();
+                }
+                UIObject *parentPanel = parentDepth == 0 ? m_popup : m_submenuStack[parentDepth - 1];
                 float preferredX = parentPanel->absolutePosition.x + parentPanel->absoluteSize.x;
                 float altX = parentPanel->absolutePosition.x - popupWidth;
                 float viewportW = m_overlayPtr->absoluteSize.x;
@@ -316,17 +323,17 @@ void Dropdown::addItemRows(Instance *container, int zIdx, std::vector<size_t> pa
                            : (altX >= 0.0f)                         ? altX
                            : std::max(0.0f, viewportW - popupWidth);
                 float subY = row->absolutePosition.y;
-                std::vector<size_t> subPath = path;
-                subPath.push_back(idx);
-                buildSubmenuAtPath(m_overlayPtr, std::move(subPath), {subX, subY});
+                buildSubmenuAtPath(m_overlayPtr, fullPath, {subX, subY});
                 m_submenuSourceRows.push_back(row);
                 return EventResult::CONSUMED;
             };
             row->onMouseButton1ClickCb = []() { return EventResult::CONSUMED; };
         } else {
             row->onMouseEnterCb = [this, row, hoverBg, depth]() {
-                row->backgroundColor = hoverBg;
-                row->markDirty();
+                if (row->backgroundColor != hoverBg) {
+                    row->backgroundColor = hoverBg;
+                    row->markDirty();
+                }
                 closeSubmenuFrom(depth);
                 return EventResult::CONSUMED;
             };
@@ -342,10 +349,10 @@ void Dropdown::addItemRows(Instance *container, int zIdx, std::vector<size_t> pa
                 return EventResult::CONSUMED;
             };
         } else if (item.kind() == DropdownItem::Kind::TOGGLE) {
-            row->onMouseButton1ClickCb = [this, row, path, idx]() {
-                auto &t = std::get<DropdownToggle>(itemsAtPath(path)[idx].payload);
-                t.toggle();
-                row->text = buildItemText(itemsAtPath(path)[idx]);
+            DropdownItem *itemPtr = &items[idx];
+            row->onMouseButton1ClickCb = [this, row, itemPtr]() {
+                std::get<DropdownToggle>(itemPtr->payload).toggle();
+                row->text = buildItemText(*itemPtr);
                 row->markDirty();
                 return EventResult::CONSUMED;
             };
@@ -358,16 +365,18 @@ void Dropdown::addItemRows(Instance *container, int zIdx, std::vector<size_t> pa
 std::string Dropdown::buildItemText(const DropdownItem &item) const
 {
     std::string text;
+    text.reserve(item.label.size() + item.shortcutHint.size() + 8);
     if (item.kind() == DropdownItem::Kind::TOGGLE) {
         const auto &t = std::get<DropdownToggle>(item.payload);
-        text = std::string(t.currentState() ? "\xe2\x9c\x93 " : "  ") + item.label;
-    } else if (item.kind() == DropdownItem::Kind::SUBMENU) {
-        text = item.label + " \xe2\x96\xb6";
-    } else {
-        text = item.label;
+        text.append(t.currentState() ? "\xe2\x9c\x93 " : "  ");
+    }
+    text.append(item.label);
+    if (item.kind() == DropdownItem::Kind::SUBMENU) {
+        text.append(" \xe2\x96\xb6");
     }
     if (!item.shortcutHint.empty()) {
-        text += "    " + item.shortcutHint;
+        text.append("    ");
+        text.append(item.shortcutHint);
     }
     return text;
 }
