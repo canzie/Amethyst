@@ -89,8 +89,7 @@ GlyphBitmap FontLoader::rasterizeGlyph(uint32_t codepoint)
 
     FT_UInt glyphIndex = FT_Get_Char_Index(m_impl->face, codepoint);
     if (glyphIndex == 0) {
-        AM_LOG_WARN("Glyph not found for codepoint: {}", codepoint);
-        return result;
+        AM_LOG_WARN("Glyph not found for codepoint: {}, falling back to .notdef", codepoint);
     }
 
     FT_Error error = FT_Load_Glyph(m_impl->face, glyphIndex, FT_LOAD_DEFAULT);

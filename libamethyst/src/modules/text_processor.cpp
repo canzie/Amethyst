@@ -5,7 +5,41 @@
 
 #include "modules/text_processor.h"
 
+#define UTF8_ASCII_MASK  0x80u
+#define UTF8_2BYTE_MASK  0xE0u
+#define UTF8_2BYTE_MARK  0xC0u
+#define UTF8_2BYTE_BITS  0x1Fu
+#define UTF8_3BYTE_MASK  0xF0u
+#define UTF8_3BYTE_MARK  0xE0u
+#define UTF8_3BYTE_BITS  0x0Fu
+#define UTF8_4BYTE_MASK  0xF8u
+#define UTF8_4BYTE_MARK  0xF0u
+#define UTF8_4BYTE_BITS  0x07u
+#define UTF8_CONT_BITS   0x3Fu
+#define UTF8_REPLACEMENT 0xFFFDu
+
 namespace Amethyst {
+
+// Returns {codepoint, bytes_consumed}. On invalid sequence, returns {U+FFFD, 1}.
+static std::pair<uint32_t, size_t> s_decodeUtf8(const std::string &text, size_t pos)
+{
+    auto b = [&](size_t offset) { return static_cast<unsigned char>(text[pos + offset]); };
+
+    unsigned char c = b(0);
+    if (c < UTF8_ASCII_MASK) {
+        return {c, 1};
+    }
+    if ((c & UTF8_2BYTE_MASK) == UTF8_2BYTE_MARK && pos + 1 < text.size()) {
+        return {(uint32_t(c & UTF8_2BYTE_BITS) << 6) | (b(1) & UTF8_CONT_BITS), 2};
+    }
+    if ((c & UTF8_3BYTE_MASK) == UTF8_3BYTE_MARK && pos + 2 < text.size()) {
+        return {(uint32_t(c & UTF8_3BYTE_BITS) << 12) | (uint32_t(b(1) & UTF8_CONT_BITS) << 6) | (b(2) & UTF8_CONT_BITS), 3};
+    }
+    if ((c & UTF8_4BYTE_MASK) == UTF8_4BYTE_MARK && pos + 3 < text.size()) {
+        return {(uint32_t(c & UTF8_4BYTE_BITS) << 18) | (uint32_t(b(1) & UTF8_CONT_BITS) << 12) | (uint32_t(b(2) & UTF8_CONT_BITS) << 6) | (b(3) & UTF8_CONT_BITS), 4};
+    }
+    return {UTF8_REPLACEMENT, 1};
+}
 
 glm::vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing) const
 {
@@ -16,8 +50,9 @@ glm::vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixe
     FontMetrics metrics = m_glyphAtlas->getMetrics(pixelSize);
     float width = 0.0f;
 
-    for (size_t i = 0; i < text.size(); i++) {
-        uint32_t codepoint = static_cast<uint32_t>(text[i]);
+    for (size_t i = 0; i < text.size(); ) {
+        auto [codepoint, charBytes] = s_decodeUtf8(text, i);
+        i += charBytes;
         const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(codepoint, pixelSize);
 
         if (!glyphInfo) {
@@ -25,7 +60,7 @@ glm::vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixe
         }
 
         width += glyphInfo->advance;
-        if (i < text.size() - 1) {
+        if (i < text.size()) {
             width += letterSpacing;
         }
     }
@@ -64,8 +99,10 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
     float atlasHeight = static_cast<float>(m_glyphAtlas->getHeight());
     float lineHeightPx = metrics.lineHeight * params.lineHeight;
 
-    for (size_t i = 0; i < text.size(); i++) {
-        m_glyphAtlas->getGlyph(static_cast<uint32_t>(text[i]), pixelSize);
+    for (size_t i = 0; i < text.size(); ) {
+        auto [codepoint, charBytes] = s_decodeUtf8(text, i);
+        i += charBytes;
+        m_glyphAtlas->getGlyph(codepoint, pixelSize);
     }
 
     struct GlyphInstance {
@@ -93,33 +130,34 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
         wordStartWidth = 0.0f;
     };
 
-    for (size_t i = 0; i < text.size(); i++) {
-        char c = text[i];
-        uint32_t codepoint = static_cast<uint32_t>(c);
+    size_t i = 0;
+    while (i < text.size()) {
+        auto [codepoint, charBytes] = s_decodeUtf8(text, i);
         const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(codepoint, pixelSize);
 
         if (!glyphInfo) {
+            i += charBytes;
             continue;
         }
 
         float advance = glyphInfo->advance + params.letterSpacing;
 
-        if (c == ' ') {
-            wordStartIdx = i + 1;
+        if (codepoint == ' ') {
+            wordStartIdx = i + charBytes;
             wordStartGlyphIdx = currentLine.size();
             wordStartWidth = currentLineWidth + advance;
         }
 
         if (params.wrap && params.bounds.x > 0.0f) {
             if (currentLineWidth + advance > params.bounds.x && !currentLine.empty()) {
-                if (params.truncate == TextTruncate::SPLIT_WORD || c == ' ') {
+                if (params.truncate == TextTruncate::SPLIT_WORD || codepoint == ' ') {
                     flushLine();
                 } else if (wordStartGlyphIdx > 0 && wordStartGlyphIdx < currentLine.size()) {
                     float removeWidth = currentLineWidth - wordStartWidth;
                     currentLine.erase(currentLine.begin() + wordStartGlyphIdx, currentLine.end());
                     currentLineWidth -= removeWidth;
                     flushLine();
-                    i = wordStartIdx - 1;
+                    i = wordStartIdx;
                     continue;
                 } else {
                     flushLine();
@@ -141,6 +179,7 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
         }
 
         currentLineWidth += advance;
+        i += charBytes;
     }
     flushLine();
 
