@@ -35,6 +35,7 @@ static void applyStyle(TabBar &tabBar)
     tabBar.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TAB_BAR);
     tabBar.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TAB_BAR);
     tabBar.tabWidth = style.get<float>(StyleProperty::TAB_WIDTH, ComponentType::TAB_BAR);
+    tabBar.tabSpacing = style.get<float>(StyleProperty::TAB_SPACING, ComponentType::TAB_BAR);
     tabBar.barThickness = style.get<float>(StyleProperty::BAR_THICKNESS, ComponentType::TAB_BAR);
     tabBar.tabColor = style.get<Color3>(StyleProperty::TAB_COLOR, ComponentType::TAB_BAR);
     tabBar.focussedTabColor = style.get<Color3>(StyleProperty::TAB_ACTIVE_COLOR, ComponentType::TAB_BAR);
@@ -97,7 +98,8 @@ int32_t TabBar::findTabIndex(const Tab *tab) const
 
 int32_t TabBar::indexFromPosition(float pos) const
 {
-    int32_t idx = static_cast<int32_t>(pos / tabWidth);
+    float stride = tabWidth + tabSpacing;
+    int32_t idx = static_cast<int32_t>(pos / stride);
     return std::clamp(idx, 0, static_cast<int32_t>(m_tabs.size()) - 1);
 }
 
@@ -209,8 +211,11 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     };
 
     tab.button->onMouseEnterCb = [this, tabPtr]() {
-        tabPtr->button->backgroundColor = hoveredTabColor;
-        tabPtr->closeButton->visible = s_closeButtonVisible(closeButtonVisibility, findTabIndex(tabPtr) == selectedIndex, true);
+        int32_t idx = findTabIndex(tabPtr);
+        if (idx != selectedIndex) {
+            tabPtr->button->backgroundColor = hoveredTabColor;
+        }
+        tabPtr->closeButton->visible = s_closeButtonVisible(closeButtonVisibility, idx == selectedIndex, true);
         markDirty();
         return EventResult::CONSUMED;
     };
@@ -232,7 +237,8 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     };
 
     tab.button->onMouseButton1UpCb = [this, tabPtr](uint32_t, uint32_t) {
-        tabPtr->button->backgroundColor = hoveredTabColor;
+        int32_t idx = findTabIndex(tabPtr);
+        tabPtr->button->backgroundColor = (idx == selectedIndex) ? focussedTabColor : hoveredTabColor;
         markDirty();
         return EventResult::CONSUMED;
     };
@@ -344,7 +350,7 @@ void TabBar::layoutTabs()
             }
         }
 
-        offset += tabWidth;
+        offset += tabWidth + tabSpacing;
     }
 }
 

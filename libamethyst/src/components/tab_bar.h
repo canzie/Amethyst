@@ -65,6 +65,7 @@ class TabBar : public UIObject {
     TabBarVisibility visibility = TabBarVisibility::ALWAYS;
     float barThickness = 30.0f;
     float tabWidth = 100.0f;
+    float tabSpacing = 0.0f;
     int32_t selectedIndex = 0;
     Color3 tabColor{};
     Color3 focussedTabColor{};

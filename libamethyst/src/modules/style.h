@@ -78,6 +78,7 @@ enum class StyleProperty {
     HIGHLIGHT_TRANSPARENCY,
 
     TAB_WIDTH,
+    TAB_SPACING,
     BAR_THICKNESS,
     TAB_COLOR,
     TAB_ACTIVE_COLOR,

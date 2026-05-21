@@ -213,6 +213,8 @@ StyleValue Style::getDefault(StyleProperty property)
 
     case StyleProperty::TAB_WIDTH:
         return 100.0f;
+    case StyleProperty::TAB_SPACING:
+        return 0.0f;
     case StyleProperty::BAR_THICKNESS:
         return 30.0f;
     case StyleProperty::TAB_COLOR:
@@ -294,6 +296,7 @@ const std::unordered_map<std::string, StyleProperty> &Style::getPropertyNames()
         {"highlightTransparency", StyleProperty::HIGHLIGHT_TRANSPARENCY},
 
         {"tabWidth", StyleProperty::TAB_WIDTH},
+        {"tabSpacing", StyleProperty::TAB_SPACING},
         {"barThickness", StyleProperty::BAR_THICKNESS},
         {"tabColor", StyleProperty::TAB_COLOR},
         {"tabActiveColor", StyleProperty::TAB_ACTIVE_COLOR},
