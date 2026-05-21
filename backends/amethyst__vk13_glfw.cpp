@@ -67,7 +67,7 @@ static GLFWcursor *createCursorFromMask(int size, const bool *fill)
                         }
                     }
                 }
-                next:;
+next:;
             }
         }
     }
@@ -258,7 +258,7 @@ void VkBackend::record(VkCommandBuffer cmd)
 
     for (auto *registry : geometryRegistries) {
         UILayer *layer = registry->getOwningLayer();
-        if (!layer || !layer->visible) continue;
+        if (!layer || !layer->isVisible()) continue;
 
         BufferAllocation *alloc = obtainGeometryAllocation(registry);
         if (alloc) {
@@ -289,7 +289,7 @@ void VkBackend::record(VkCommandBuffer cmd)
     bool pipelineBound = false;
     for (auto *registry : geometryRegistries) {
         UILayer *layer = registry->getOwningLayer();
-        if (!layer || !layer->visible) continue;
+        if (!layer || !layer->isVisible()) continue;
 
         auto it = m_geometryAllocations.find(registry);
         if (it != m_geometryAllocations.end() && it->second.size > 0) {
@@ -712,14 +712,14 @@ BufferAllocation VkBackend::allocateFromArena(BufferArena &arena, std::vector<Fr
         VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
         if (!reallocBufferArena(arena, usage, properties)) {
-            AM_LOG_ERROR("Arena out of memory and resize failed: size={}, capacity={}, requested={}",
-                         arena.size, arena.capacity, size);
+            AM_LOG_ERROR("Arena out of memory and resize failed: size={}, capacity={}, requested={}", arena.size, arena.capacity,
+                         size);
             return {};
         }
 
         if (arena.size + size > arena.capacity) {
-            AM_LOG_ERROR("Arena still insufficient after resize: size={}, capacity={}, requested={}",
-                         arena.size, arena.capacity, size);
+            AM_LOG_ERROR("Arena still insufficient after resize: size={}, capacity={}, requested={}", arena.size, arena.capacity,
+                         size);
             return {};
         }
     }

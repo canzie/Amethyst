@@ -6,6 +6,7 @@
 
 #include "components/extensions/ui_grid_layout.h"
 #include "components/extensions/ui_list_layout.h"
+#include "components/ui_layer.h"
 #include "components/ui_object.h"
 #include "logging/log.h"
 #include "modules/style.h"
@@ -75,6 +76,8 @@ void Frame::draw(DrawContext &ctx)
             drawable->clipRect = childClip;
             drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
             drawable->draw(ctx);
+        } else if (auto *layer = child->as<UILayer>()) {
+            layer->draw(ctx);
         }
     }
 

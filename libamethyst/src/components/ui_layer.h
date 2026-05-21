@@ -36,6 +36,7 @@ class UILayer : public UIBase2D {
     int32_t getDisplayOrder() const { return m_displayOrder; }
     int32_t getZIndex() const override { return m_displayOrder; }
     bool isHitTestVisible() const override { return visible; }
+    bool isVisible() const;
 
   public:
     bool visible = true;

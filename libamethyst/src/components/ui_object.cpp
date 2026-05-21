@@ -1,5 +1,6 @@
 #include "components/ui_object.h"
 #include "components/common.h"
+#include "components/ui_layer.h"
 #include "components/extensions/ui_aspect_ratio_constraint.h"
 #include "components/extensions/ui_drag_detector.h"
 #include "components/extensions/ui_size_constraint.h"
@@ -76,6 +77,8 @@ bool UIObject::isVisible() const
     if (!parent) return true;
     if (auto *obj = parent->as<UIObject>()) {
         return obj->isVisible();
+    } else if (auto *layer = parent->as<UILayer>()) {
+        return layer->isVisible();
     }
     return true;
 }
