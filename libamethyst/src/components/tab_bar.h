@@ -89,7 +89,6 @@ class TabBar : public UIObject {
     void setupTabButton(Tab &tab, int32_t index);
     void layoutTabs();
     void layoutContent();
-    void updateTabVisuals();
     void markAllTabsDirty();
 
     bool isVertical() const;
@@ -104,9 +103,6 @@ class TabBar : public UIObject {
   private:
     std::vector<std::unique_ptr<Tab>> m_tabs;
     Tab *m_draggedTab = nullptr;
-    Tab *m_hoveredTab = nullptr;
-    Tab *m_pressedTab = nullptr;
-    Tab *m_pendingClose = nullptr;
     bool m_tornOff = false;
     int32_t m_lastSelectedIndex = 0;
 };

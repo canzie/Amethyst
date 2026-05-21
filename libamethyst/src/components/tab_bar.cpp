@@ -10,6 +10,21 @@
 
 namespace Amethyst {
 
+static bool s_closeButtonVisible(TabCloseButtonVisibility vis, bool isSelected, bool isHovered)
+{
+    switch (vis) {
+    case TabCloseButtonVisibility::ALWAYS:
+        return true;
+    case TabCloseButtonVisibility::HIDDEN:
+        return false;
+    case TabCloseButtonVisibility::ACTIVE_ONLY:
+        return isSelected;
+    case TabCloseButtonVisibility::HOVERED_OR_ACTIVE:
+        return isSelected || isHovered;
+    }
+    return false;
+}
+
 static void applyStyle(TabBar &tabBar)
 {
     const auto &style = Style::instance();
@@ -99,8 +114,15 @@ void TabBar::select(int32_t index)
     if (index < 0 || index >= static_cast<int32_t>(m_tabs.size())) return;
     if (index == selectedIndex) return;
 
+    m_tabs[selectedIndex]->button->backgroundColor = tabColor;
+    m_tabs[selectedIndex]->closeButton->visible = s_closeButtonVisible(closeButtonVisibility, false, false);
+
     m_lastSelectedIndex = selectedIndex;
     selectedIndex = index;
+
+    m_tabs[selectedIndex]->button->backgroundColor = focussedTabColor;
+    m_tabs[selectedIndex]->closeButton->visible = s_closeButtonVisible(closeButtonVisibility, true, false);
+
     markDirty();
 
     if (onSelectionChanged) {
@@ -122,7 +144,7 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
 {
     tab.button = std::make_unique<TextButton>();
     tab.button->parent = this;
-    tab.button->backgroundColor = Color3{0.5f, 0.5f, 0.5f};
+    tab.button->backgroundColor = (index == selectedIndex) ? focussedTabColor : tabColor;
     tab.button->textYAlignment = TextYAlignment::BOTTOM;
 
     if (tab.content) {
@@ -137,6 +159,8 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     drag->onDragStart = [this, tabPtr](glm::vec2) {
         m_draggedTab = tabPtr;
         m_tornOff = false;
+        tabPtr->button->zIndex = 100;
+        tabPtr->button->markDirty();
     };
 
     drag->onDragUpdate = [this, tabPtr, drag](glm::vec2, glm::vec2 absPos) {
@@ -176,6 +200,7 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
 
         m_draggedTab = nullptr;
         m_tornOff = false;
+        tabPtr->button->zIndex = 1;
         tabPtr->button->markDirty();
 
         if (wasTornOff && onTornOffTabReleased) {
@@ -184,20 +209,22 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     };
 
     tab.button->onMouseEnterCb = [this, tabPtr]() {
-        m_hoveredTab = tabPtr;
+        tabPtr->button->backgroundColor = hoveredTabColor;
+        tabPtr->closeButton->visible = s_closeButtonVisible(closeButtonVisibility, findTabIndex(tabPtr) == selectedIndex, true);
         markDirty();
         return EventResult::CONSUMED;
     };
 
     tab.button->onMouseLeaveCb = [this, tabPtr]() {
-        if (m_hoveredTab == tabPtr) m_hoveredTab = nullptr;
-        if (m_pressedTab == tabPtr) m_pressedTab = nullptr;
+        int32_t idx = findTabIndex(tabPtr);
+        tabPtr->button->backgroundColor = (idx == selectedIndex) ? focussedTabColor : tabColor;
+        tabPtr->closeButton->visible = s_closeButtonVisible(closeButtonVisibility, idx == selectedIndex, false);
         markDirty();
         return EventResult::CONSUMED;
     };
 
     tab.button->onMouseButton1DownCb = [this, tabPtr](uint32_t, uint32_t) {
-        m_pressedTab = tabPtr;
+        tabPtr->button->backgroundColor = pressedTabColor;
         int32_t idx = findTabIndex(tabPtr);
         if (idx >= 0) select(idx);
         markDirty();
@@ -205,7 +232,7 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     };
 
     tab.button->onMouseButton1UpCb = [this, tabPtr](uint32_t, uint32_t) {
-        if (m_pressedTab == tabPtr) m_pressedTab = nullptr;
+        tabPtr->button->backgroundColor = hoveredTabColor;
         markDirty();
         return EventResult::CONSUMED;
     };
@@ -219,7 +246,9 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     closeBtn->textYAlignment = TextYAlignment::CENTER;
     closeBtn->visible = false;
     closeBtn->onMouseButton1ClickCb = [this, tabPtr]() {
-        m_pendingClose = tabPtr;
+        if (onTabClosed) onTabClosed(tabPtr->content);
+        Instance::removeChild(tabPtr->content);
+        tabPtr->content = nullptr;
         markDirty();
         return EventResult::CONSUMED;
     };
@@ -264,9 +293,6 @@ std::unique_ptr<Instance> TabBar::removeChild(Instance *child)
 
     if (it != m_tabs.end()) {
         int32_t removedIdx = static_cast<int32_t>(std::distance(m_tabs.begin(), it));
-        if (m_hoveredTab == it->get()) m_hoveredTab = nullptr;
-        if (m_pressedTab == it->get()) m_pressedTab = nullptr;
-        if (m_pendingClose == it->get()) m_pendingClose = nullptr;
         (*it)->button->parent = nullptr;
         m_tabs.erase(it);
 
@@ -282,6 +308,8 @@ std::unique_ptr<Instance> TabBar::removeChild(Instance *child)
 
         m_lastSelectedIndex = oldSelected;
         markAllTabsDirty();
+
+        if (!m_tabs.empty()) m_tabs[selectedIndex]->button->backgroundColor = focussedTabColor;
 
         if (selectedIndex != oldSelected && onSelectionChanged) {
             onSelectionChanged(selectedIndex);
@@ -317,56 +345,6 @@ void TabBar::layoutTabs()
         }
 
         offset += tabWidth;
-    }
-}
-
-void TabBar::updateTabVisuals()
-{
-    bool selectionChanged = (selectedIndex != m_lastSelectedIndex);
-
-    for (size_t i = 0; i < m_tabs.size(); ++i) {
-        Tab *tab = m_tabs[i].get();
-        auto *btn = tab->button.get();
-        bool isSelected = (static_cast<int32_t>(i) == selectedIndex);
-        bool isHovered = (tab == m_hoveredTab);
-        bool isPressed = (tab == m_pressedTab);
-
-        Color3 color;
-        if (isPressed) {
-            color = pressedTabColor;
-        } else if (isHovered) {
-            color = hoveredTabColor;
-        } else if (isSelected) {
-            color = focussedTabColor;
-        } else {
-            color = tabColor;
-        }
-        btn->backgroundColor = color;
-
-        if (tab->closeButton) {
-            bool showClose = false;
-            switch (closeButtonVisibility) {
-            case TabCloseButtonVisibility::ALWAYS:
-                showClose = true;
-                break;
-            case TabCloseButtonVisibility::ACTIVE_ONLY:
-                showClose = isSelected;
-                break;
-            case TabCloseButtonVisibility::HOVERED_OR_ACTIVE:
-                showClose = isSelected || isHovered;
-                break;
-            case TabCloseButtonVisibility::HIDDEN:
-                break;
-            }
-            tab->closeButton->visible = showClose;
-        }
-
-        if (selectionChanged) {
-            bool wasSelected = (static_cast<int32_t>(i) == m_lastSelectedIndex);
-            if (isSelected || wasSelected) {
-                btn->markDirty();
-            }
-        }
     }
 }
 
@@ -431,13 +409,18 @@ std::vector<Instance *> TabBar::getHittableInstances()
 
 void TabBar::draw(DrawContext &ctx)
 {
-    // TODO: mutating in draw() is not great, find a better way
-    if (m_pendingClose) {
-        Tab *tab = m_pendingClose;
-        m_pendingClose = nullptr;
-        Instance *content = tab->content;
-        if (onTabClosed) onTabClosed(content);
-        removeChild(content);
+    for (int32_t i = static_cast<int32_t>(m_tabs.size()) - 1; i >= 0; --i) {
+        if (m_tabs[i]->content != nullptr) continue;
+        m_tabs[i]->button->parent = nullptr;
+        m_tabs.erase(m_tabs.begin() + i);
+        if (m_tabs.empty()) {
+            selectedIndex = 0;
+        } else if (selectedIndex >= i) {
+            selectedIndex = std::max(0, std::min(selectedIndex, static_cast<int32_t>(m_tabs.size()) - 1));
+        }
+        m_lastSelectedIndex = selectedIndex;
+        if (selectedIndex != i && onSelectionChanged) onSelectionChanged(selectedIndex);
+        if (!m_tabs.empty()) m_tabs[selectedIndex]->button->backgroundColor = focussedTabColor;
     }
 
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
@@ -449,7 +432,6 @@ void TabBar::draw(DrawContext &ctx)
     }
 
     layoutTabs();
-    updateTabVisuals();
     layoutContent();
 
     if (flags & FLAG_DIRTY) {
