@@ -83,3 +83,7 @@ cornerRadius = 4.0
 backgroundColor = "#2d2d2d"
 tabWidth = 120.0
 barThickness = 35.0
+tabColor = "#393939"
+tabActiveColor = "#4a4a4a"
+tabHoveredColor = "#424242"
+tabPressedColor = "#353535"

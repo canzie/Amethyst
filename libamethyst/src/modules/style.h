@@ -79,6 +79,11 @@ enum class StyleProperty {
 
     TAB_WIDTH,
     BAR_THICKNESS,
+    TAB_COLOR,
+    TAB_ACTIVE_COLOR,
+    TAB_HOVERED_COLOR,
+    TAB_PRESSED_COLOR,
+
 };
 
 enum class ComponentType {

@@ -215,6 +215,14 @@ StyleValue Style::getDefault(StyleProperty property)
         return 100.0f;
     case StyleProperty::BAR_THICKNESS:
         return 30.0f;
+    case StyleProperty::TAB_COLOR:
+        return Color3(0.22f, 0.22f, 0.22f);
+    case StyleProperty::TAB_ACTIVE_COLOR:
+        return Color3(0.32f, 0.32f, 0.32f);
+    case StyleProperty::TAB_HOVERED_COLOR:
+        return Color3(0.28f, 0.28f, 0.28f);
+    case StyleProperty::TAB_PRESSED_COLOR:
+        return Color3(0.18f, 0.18f, 0.18f);
     }
     return 0.0f;
 }
@@ -287,6 +295,10 @@ const std::unordered_map<std::string, StyleProperty> &Style::getPropertyNames()
 
         {"tabWidth", StyleProperty::TAB_WIDTH},
         {"barThickness", StyleProperty::BAR_THICKNESS},
+        {"tabColor", StyleProperty::TAB_COLOR},
+        {"tabActiveColor", StyleProperty::TAB_ACTIVE_COLOR},
+        {"tabHoveredColor", StyleProperty::TAB_HOVERED_COLOR},
+        {"tabPressedColor", StyleProperty::TAB_PRESSED_COLOR},
     };
     return names;
 }

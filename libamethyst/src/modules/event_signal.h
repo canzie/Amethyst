@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <memory>
 
 #include "utils/am_assert.h"
 
@@ -13,7 +14,9 @@ template <typename> class EventSignal;
 
 class EventSignalBase {
   public:
-    virtual ~EventSignalBase() = default;
+    EventSignalBase() : m_alive(std::make_shared<bool>(true)) {}
+
+    virtual ~EventSignalBase() { *m_alive = false; }
 
     /**
      * @brief Removes a connection by its ID.
@@ -23,6 +26,7 @@ class EventSignalBase {
 
   protected:
     bool m_firing = false;
+    std::shared_ptr<bool> m_alive;
 };
 
 class EventConnection {
@@ -38,15 +42,18 @@ class EventConnection {
     ~EventConnection() { disconnect(); }
 
     EventConnection(EventConnection &&other) noexcept
-        : m_signal(other.m_signal), m_id(other.m_id) {
+        : m_signal(other.m_signal), m_id(other.m_id), m_alive(std::move(other.m_alive))
+    {
         other.m_signal = nullptr;
     }
 
-    EventConnection &operator=(EventConnection &&other) noexcept {
+    EventConnection &operator=(EventConnection &&other) noexcept
+    {
         if (this != &other) {
             disconnect();
             m_signal = other.m_signal;
             m_id = other.m_id;
+            m_alive = std::move(other.m_alive);
             other.m_signal = nullptr;
         }
         return *this;
@@ -65,19 +72,29 @@ class EventConnection {
      * @brief Returns whether this connection is still active.
      * @return True if connected, false otherwise.
      */
-    bool connected() const { return m_signal != nullptr; }
+    bool connected() const
+    {
+        if (!m_signal) return false;
+        auto alive = m_alive.lock();
+        return alive && *alive;
+    }
 
   private:
-    EventConnection(EventSignalBase *signal, uint32_t id)
-        : m_signal(signal), m_id(id) {}
+    EventConnection(EventSignalBase *signal, uint32_t id, std::weak_ptr<bool> alive)
+        : m_signal(signal), m_id(id), m_alive(std::move(alive))
+    {
+    }
 
     EventSignalBase *m_signal = nullptr;
     uint32_t m_id = 0;
+    std::weak_ptr<bool> m_alive;
 };
 
-inline void EventConnection::disconnect() {
+inline void EventConnection::disconnect()
+{
     if (m_signal) {
-        m_signal->removeConnection(m_id);
+        auto alive = m_alive.lock();
+        if (alive && *alive) m_signal->removeConnection(m_id);
         m_signal = nullptr;
     }
 }
@@ -93,10 +110,11 @@ template <typename... Args> class EventSignal<void(Args...)> : public EventSigna
      * @param func The callback to subscribe.
      * @return An EventConnection that manages the subscription lifetime.
      */
-    EventConnection connect(std::function<void(Args...)> func) {
+    EventConnection connect(std::function<void(Args...)> func)
+    {
         uint32_t id = m_nextId++;
         m_slots.emplace(id, Slot{std::move(func), false});
-        return EventConnection(this, id);
+        return EventConnection(this, id, m_alive);
     }
 
     /**
@@ -105,10 +123,11 @@ template <typename... Args> class EventSignal<void(Args...)> : public EventSigna
      * @param func The callback to subscribe.
      * @return An EventConnection that manages the subscription lifetime.
      */
-    EventConnection once(std::function<void(Args...)> func) {
+    EventConnection once(std::function<void(Args...)> func)
+    {
         uint32_t id = m_nextId++;
         m_slots.emplace(id, Slot{std::move(func), true});
-        return EventConnection(this, id);
+        return EventConnection(this, id, m_alive);
     }
 
     /**
@@ -116,10 +135,10 @@ template <typename... Args> class EventSignal<void(Args...)> : public EventSigna
      * Once-connections are removed after all callbacks have been called.
      * @param args The arguments to forward to each callback.
      */
-    void fire(Args... args) {
+    void fire(Args... args)
+    {
         m_firing = true;
-        for (auto &[id, slot] : m_slots)
-            slot.func(args...);
+        for (auto &[id, slot] : m_slots) slot.func(args...);
         std::erase_if(m_slots, [](const auto &pair) { return pair.second.once; });
         m_firing = false;
     }
@@ -128,7 +147,8 @@ template <typename... Args> class EventSignal<void(Args...)> : public EventSigna
      * @brief Removes a connection by its ID.
      * @param id The connection ID to remove.
      */
-    void removeConnection(uint32_t id) override {
+    void removeConnection(uint32_t id) override
+    {
         AM_ASSERT(!m_firing, "Cannot disconnect from a signal while it is firing");
         m_slots.erase(id);
     }

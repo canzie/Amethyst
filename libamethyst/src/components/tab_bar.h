@@ -3,6 +3,7 @@
 
 #include "components/text_button.h"
 #include "components/ui_object.h"
+#include "modules/color.h"
 #include "parsers/config/config_types.h"
 #include "rendering/draw_context.h"
 
@@ -22,6 +23,13 @@ enum class TabBarVisibility {
     AUTO,
     NEVER,
     ALWAYS
+};
+
+enum class TabCloseButtonVisibility {
+    HIDDEN,
+    ALWAYS,
+    ACTIVE_ONLY,
+    HOVERED_OR_ACTIVE,
 };
 
 enum class TabBarPosition {
@@ -58,6 +66,13 @@ class TabBar : public UIObject {
     float barThickness = 30.0f;
     float tabWidth = 100.0f;
     int32_t selectedIndex = 0;
+    Color3 tabColor{};
+    Color3 focussedTabColor{};
+    Color3 hoveredTabColor{};
+    Color3 pressedTabColor{};
+
+    TabCloseButtonVisibility closeButtonVisibility = TabCloseButtonVisibility::HIDDEN;
+    std::function<void(Instance *content)> onTabClosed;
 
     std::function<void(Instance *content)> onTabTornOff;
     std::function<void(Instance *content, glm::vec2 pos)> onTornOffTabMoved;
@@ -68,6 +83,7 @@ class TabBar : public UIObject {
     struct Tab {
         std::unique_ptr<TextButton> button;
         Instance *content = nullptr;
+        UIObject *closeButton = nullptr;
     };
 
     void setupTabButton(Tab &tab, int32_t index);
@@ -88,6 +104,9 @@ class TabBar : public UIObject {
   private:
     std::vector<std::unique_ptr<Tab>> m_tabs;
     Tab *m_draggedTab = nullptr;
+    Tab *m_hoveredTab = nullptr;
+    Tab *m_pressedTab = nullptr;
+    Tab *m_pendingClose = nullptr;
     bool m_tornOff = false;
     int32_t m_lastSelectedIndex = 0;
 };

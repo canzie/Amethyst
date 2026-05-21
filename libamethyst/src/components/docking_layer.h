@@ -84,8 +84,6 @@ class DockingLayer : public UILayer {
     void setupTabBarCallbacks(TabBar *tabBar);
     void setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition);
     void processPendingDeletions();
-
-  private:
     void initDockHints();
     void updateDockHints(glm::vec2 mousePos);
     void hideDockHints();

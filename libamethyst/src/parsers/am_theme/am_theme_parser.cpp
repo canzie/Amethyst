@@ -156,6 +156,10 @@ void parseSection(const toml::table &section, Style &style, ComponentType type)
         case StyleProperty::THUMB_COLOR:
         case StyleProperty::CHECK_COLOR:
         case StyleProperty::HIGHLIGHT_COLOR:
+        case StyleProperty::TAB_COLOR:
+        case StyleProperty::TAB_ACTIVE_COLOR:
+        case StyleProperty::TAB_HOVERED_COLOR:
+        case StyleProperty::TAB_PRESSED_COLOR:
             style.set(prop, type, parseColor3(value));
             break;
 
