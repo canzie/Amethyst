@@ -72,7 +72,7 @@ class TabBar : public UIObject {
     Color3 hoveredTabColor{};
     Color3 pressedTabColor{};
 
-    TabCloseButtonVisibility closeButtonVisibility = TabCloseButtonVisibility::HIDDEN;
+    TabCloseButtonVisibility closeButtonVisibility = TabCloseButtonVisibility::HOVERED_OR_ACTIVE;
     std::function<void(Instance *content)> onTabClosed;
 
     std::function<void(Instance *content)> onTabTornOff;

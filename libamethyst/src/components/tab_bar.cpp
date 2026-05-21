@@ -250,6 +250,7 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     closeBtn->anchorPoint = {1.0f, 0.5f};
     closeBtn->textXAlignment = TextXAlignment::CENTER;
     closeBtn->textYAlignment = TextYAlignment::CENTER;
+    closeBtn->zIndex = 101;
     closeBtn->visible = false;
     closeBtn->onMouseButton1ClickCb = [this, tabPtr]() {
         if (onTabClosed) onTabClosed(tabPtr->content);
