@@ -1,6 +1,7 @@
 #include "gizmo.h"
 
 #include "components/canvas.h"
+#include "components/window.h"
 
 #include <algorithm>
 #include <cmath>
@@ -157,6 +158,9 @@ class GizmoCanvas : public Canvas {
     {
         mousePos = glm::vec2(static_cast<float>(x), static_cast<float>(y));
         mouseDown = true;
+        if (auto *window = getWindow()) {
+            window->captureMouse(this);
+        }
         return EventResult::CONSUMED;
     }
 
@@ -164,6 +168,9 @@ class GizmoCanvas : public Canvas {
     {
         mousePos = glm::vec2(static_cast<float>(x), static_cast<float>(y));
         mouseUp = true;
+        if (auto *window = getWindow()) {
+            window->releaseMouse(this);
+        }
         return EventResult::CONSUMED;
     }
 };

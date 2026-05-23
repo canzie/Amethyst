@@ -23,6 +23,7 @@ class ImageLabel : public UILabel {
     virtual ~ImageLabel() = default;
 
     void draw(DrawContext &ctx) override;
+    EventResult onMouseMoved(uint32_t, uint32_t) override { return EventResult::PROPAGATE; }
 
   public:
     AmTextureId image;
