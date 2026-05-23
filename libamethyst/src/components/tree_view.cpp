@@ -10,6 +10,8 @@
 #include <cmath>
 #include <cstdint>
 
+#define TREE_VIEW_MAX_SLOT_COUNT 100000u
+
 namespace Amethyst {
 
 static void s_applyStyle(TreeView &tree)
@@ -686,7 +688,12 @@ void TreeView::draw(DrawContext &ctx)
     m_computedRowHeight = rowHeight > 0.0f ? rowHeight : 24.0f;
 
     float viewportHeight = childClip.w - childClip.y;
+    if (viewportHeight <= 0.0f) {
+        flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+        return;
+    }
     uint32_t slotCount = static_cast<uint32_t>(std::ceil(viewportHeight / m_computedRowHeight)) + 2;
+    AM_ASSERT(slotCount <= TREE_VIEW_MAX_SLOT_COUNT, "TreeView slotCount is unreasonably large, likely a layout or clip bug");
 
     float scrolledY = std::max(0.0f, childClip.y - absolutePosition.y);
     uint32_t firstVisibleSlot = static_cast<uint32_t>(std::floor(scrolledY / m_computedRowHeight));

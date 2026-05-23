@@ -175,21 +175,21 @@ void SliderFloat::updateComponents()
     if (!dragDetector) {
         dragDetector = m_thumb.addExtension<UIDragDetector>();
         dragDetector->mode = DragMode::HORIZONTAL;
-
-        dragDetector->onDragUpdate = [this, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
-            if (!valueRef) return;
-
-            float mouseXRelative = position.x - absolutePosition.x - trackX;
-            float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
-            *valueRef = min + normalizedPos * (max - min);
-
-            if (onValueChanged) {
-                onValueChanged(*valueRef);
-            }
-
-            markDirty();
-        };
     }
+
+    dragDetector->onDragUpdate = [this, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
+        if (!valueRef) return;
+
+        float mouseXRelative = position.x - absolutePosition.x - trackX;
+        float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
+        *valueRef = min + normalizedPos * (max - min);
+
+        if (onValueChanged) {
+            onValueChanged(*valueRef);
+        }
+
+        markDirty();
+    };
 
     setupValueLabel(m_valueLabel, trackX, trackY, trackWidth, trackHeight, this, formatValue());
 }
@@ -271,23 +271,23 @@ void SliderInt::updateComponents()
     if (!dragDetector) {
         dragDetector = m_thumb.addExtension<UIDragDetector>();
         dragDetector->mode = DragMode::HORIZONTAL;
-
-        dragDetector->onDragUpdate = [this, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
-            if (!valueRef) return;
-
-            float mouseXRelative = position.x - absolutePosition.x - trackX;
-            float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
-            float range = static_cast<float>(max - min);
-            int newValue = static_cast<int>(std::round(min + normalizedPos * range));
-            *valueRef = std::clamp(newValue, min, max);
-
-            if (onValueChanged) {
-                onValueChanged(*valueRef);
-            }
-
-            markDirty();
-        };
     }
+
+    dragDetector->onDragUpdate = [this, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
+        if (!valueRef) return;
+
+        float mouseXRelative = position.x - absolutePosition.x - trackX;
+        float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
+        float range = static_cast<float>(max - min);
+        int newValue = static_cast<int>(std::round(min + normalizedPos * range));
+        *valueRef = std::clamp(newValue, min, max);
+
+        if (onValueChanged) {
+            onValueChanged(*valueRef);
+        }
+
+        markDirty();
+    };
 
     setupValueLabel(m_valueLabel, trackX, trackY, trackWidth, trackHeight, this, formatValue());
 }
@@ -388,21 +388,21 @@ void SliderVec2::updateComponents()
         if (!dragDetector) {
             dragDetector = m_thumb[i].addExtension<UIDragDetector>();
             dragDetector->mode = DragMode::HORIZONTAL;
-
-            dragDetector->onDragUpdate = [this, i, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
-                if (!valueRef) return;
-
-                float mouseXRelative = position.x - absolutePosition.x - trackX;
-                float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
-                (*valueRef)[i] = min[i] + normalizedPos * (max[i] - min[i]);
-
-                if (onValueChanged) {
-                    onValueChanged(*valueRef);
-                }
-
-                markDirty();
-            };
         }
+
+        dragDetector->onDragUpdate = [this, i, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
+            if (!valueRef) return;
+
+            float mouseXRelative = position.x - absolutePosition.x - trackX;
+            float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
+            (*valueRef)[i] = min[i] + normalizedPos * (max[i] - min[i]);
+
+            if (onValueChanged) {
+                onValueChanged(*valueRef);
+            }
+
+            markDirty();
+        };
 
         setupValueLabel(m_valueLabel[i], trackX, trackY, trackWidth, trackHeight, this, formatValue(i));
     }
@@ -508,21 +508,21 @@ void SliderVec3::updateComponents()
         if (!dragDetector) {
             dragDetector = m_thumb[i].addExtension<UIDragDetector>();
             dragDetector->mode = DragMode::HORIZONTAL;
-
-            dragDetector->onDragUpdate = [this, i, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
-                if (!valueRef) return;
-
-                float mouseXRelative = position.x - absolutePosition.x - trackX;
-                float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
-                (*valueRef)[i] = min[i] + normalizedPos * (max[i] - min[i]);
-
-                if (onValueChanged) {
-                    onValueChanged(*valueRef);
-                }
-
-                markDirty();
-            };
         }
+
+        dragDetector->onDragUpdate = [this, i, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
+            if (!valueRef) return;
+
+            float mouseXRelative = position.x - absolutePosition.x - trackX;
+            float normalizedPos = std::clamp((mouseXRelative - thumbWidth * 0.5f) / (trackWidth - thumbWidth), 0.0f, 1.0f);
+            (*valueRef)[i] = min[i] + normalizedPos * (max[i] - min[i]);
+
+            if (onValueChanged) {
+                onValueChanged(*valueRef);
+            }
+
+            markDirty();
+        };
 
         setupValueLabel(m_valueLabel[i], trackX, trackY, trackWidth, trackHeight, this, formatValue(i));
     }
