@@ -259,8 +259,9 @@ int main()
     table->size = Amethyst::UDim2::fromOffset(500, 160);
     table->position = Amethyst::UDim2::fromOffset(10, 400);
     table->backgroundColor = {0.15f, 0.15f, 0.15f};
-    table->numCols = 3;
-    table->columnWeights = {0.3f, 0.2f, 0.5f};
+    table->addColumn({"Label", Amethyst::TableColumnSizing::STRETCH, 0.3f});
+    table->addColumn({"Color", Amethyst::TableColumnSizing::STRETCH, 0.2f});
+    table->addColumn({"Slider", Amethyst::TableColumnSizing::STRETCH, 0.5f});
     table->rowHeight = 40.0f;
     table->showColumnSeparators = true;
     table->columnSeparatorColor = {0.4f, 0.4f, 0.4f, 1.0f};
@@ -280,29 +281,33 @@ int main()
     float tableSliderVals[4];
     for (int i = 0; i < 4; i++) {
         tableSliderVals[i] = rows[i].sliderVal;
+        table->addRow();
 
-        auto *lbl = table->add<Amethyst::TextLabel>();
+        auto lbl = std::make_unique<Amethyst::TextLabel>();
         lbl->text = rows[i].label;
         lbl->textColor = {1.0f, 1.0f, 1.0f, 1.0f};
         lbl->backgroundColor = {0.2f, 0.2f, 0.2f};
         lbl->fontSize = 16.0f;
         lbl->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
         lbl->markDirty();
+        table->nextCell(std::move(lbl));
 
-        auto *frm = table->add<Amethyst::Frame>();
+        auto frm = std::make_unique<Amethyst::Frame>();
         frm->backgroundColor = rows[i].frameColor;
         frm->cornerRadius = 4.0f;
         frm->size = Amethyst::UDim2::fromOffset(30.0f, 30.0f);
         frm->position = Amethyst::UDim2::fromOffset(5.0f, 5.0f);
         frm->markDirty();
+        table->nextCell(std::move(frm));
 
-        auto *sld = table->add<Amethyst::SliderFloat>();
+        auto sld = std::make_unique<Amethyst::SliderFloat>();
         sld->min = 0.0f;
         sld->max = 100.0f;
         sld->valueRef = &tableSliderVals[i];
         sld->size = Amethyst::UDim2::fromScale(0.95f, 0.8f);
         sld->position = Amethyst::UDim2::fromScale(0.025f, 0.1f);
         sld->markDirty();
+        table->nextCell(std::move(sld));
     }
 
     auto treePanel = std::make_unique<Amethyst::PanelLayer>();

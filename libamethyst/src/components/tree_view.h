@@ -10,9 +10,10 @@
 #ifndef AMETHYST__TREE_VIEW_H
 #define AMETHYST__TREE_VIEW_H
 
+#include "components/common.h"
 #include "components/frame.h"
-#include "components/table.h"
 #include "components/text_button.h"
+#include "components/ui_object.h"
 
 #include <cstdint>
 #include <functional>
@@ -43,7 +44,7 @@ struct TreeRowHandle {
     bool operator==(const TreeRowHandle &) const = default;
 };
 
-class TreeView : public Table {
+class TreeView : public UIObject {
   public:
     TreeView();
     virtual ~TreeView();
@@ -90,24 +91,16 @@ class TreeView : public Table {
 
     std::vector<Instance *> getHittableInstances() override;
 
-  protected:
-    bool isRowVisible(uint32_t row) const override;
-    float getRowIndent(uint32_t row) const override;
-
-  private:
-    void drawRowContent(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, uint32_t visualIndex, const std::vector<float> &colPositions, const glm::vec4 &childClip);
-    void drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, float y, bool expanded, const glm::vec4 &childClip);
-    void linkRowToParent(uint32_t row, uint32_t parentRow);
-    void unlinkRow(uint32_t row);
-    void markRowDirty(uint32_t row);
-    void clearRowCells(DrawContext &ctx, uint32_t row);
-
-    void ensureSlotCapacity(uint32_t slotCount);
-    uint32_t drawVisibleRows(DrawContext &ctx, const std::vector<float> &colPositions, const glm::vec4 &childClip, uint32_t firstVisibleSlot, uint32_t slotCount);
-    void drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint32_t fromSlot, uint32_t slotCount, uint32_t firstVisibleSlot);
-    void clearUnusedSlots(DrawContext &ctx, uint32_t fromSlot);
-
   public:
+    uint32_t numCols = 1;
+    std::vector<float> columnWeights;
+    float rowHeight = 0.0f;
+    UDim4 cellPadding;
+
+    bool showColumnSeparators = false;
+    float columnSeparatorWidth = 1.0f;
+    Color4 columnSeparatorColor = {0.3f, 0.3f, 0.3f, 1.0f};
+
     float indentPerLevel = 16.0f;
 
     bool showDisclosureTriangles = true;
@@ -127,9 +120,31 @@ class TreeView : public Table {
     std::function<void(uint32_t, bool)> onRowToggled;
 
   private:
+    std::vector<float> computeColumnPositions(float tableWidth) const;
+    void updateSeparators();
+
+    bool isRowVisible(uint32_t row) const;
+    float getRowIndent(uint32_t row) const;
+
+    void drawRowContent(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, uint32_t visualIndex, const std::vector<float> &colPositions, const glm::vec4 &childClip);
+    void drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, float y, bool expanded, const glm::vec4 &childClip);
+    void linkRowToParent(uint32_t row, uint32_t parentRow);
+    void unlinkRow(uint32_t row);
+    void markRowDirty(uint32_t row);
+    void clearRowCells(DrawContext &ctx, uint32_t row);
+
+    void ensureSlotCapacity(uint32_t slotCount);
+    uint32_t drawVisibleRows(DrawContext &ctx, const std::vector<float> &colPositions, const glm::vec4 &childClip, uint32_t firstVisibleSlot, uint32_t slotCount);
+    void drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint32_t fromSlot, uint32_t slotCount, uint32_t firstVisibleSlot);
+    void clearUnusedSlots(DrawContext &ctx, uint32_t fromSlot);
+
     uint32_t allocateSlot();
     void freeSlot(uint32_t index);
     bool isValidRow(uint32_t index) const;
+
+    float m_computedRowHeight = 0.0f;
+    glm::vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f};
+    std::vector<std::unique_ptr<Frame>> m_separators;
 
     std::vector<TreeRow> m_rows;
     std::vector<uint32_t> m_freelist;

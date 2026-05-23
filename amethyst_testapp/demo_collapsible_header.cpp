@@ -212,10 +212,11 @@ int main()
     auto *table = section3->add<Amethyst::Table>();
     table->size = Amethyst::UDim2(1.0f, -10.0f, 0.0f, 168.0f);
     table->position = Amethyst::UDim2::fromOffset(5.0f, 5.0f);
-    table->numCols = 2;
-    table->columnWeights = {0.55f, 0.45f};
+    table->addColumn({"Setting", Amethyst::TableColumnSizing::STRETCH, 0.55f});
+    table->addColumn({"Value", Amethyst::TableColumnSizing::STRETCH, 0.45f});
     table->rowHeight = 28.0f;
     table->showColumnSeparators = true;
+    table->showHeader = true;
     table->columnSeparatorColor = {0.3f, 0.3f, 0.35f, 0.5f};
     table->backgroundColor = {0.14f, 0.14f, 0.16f};
     table->backgroundTransparency = 0.0f;
@@ -232,16 +233,14 @@ int main()
         const char *value;
     };
     SettingRow graphicsRows[] = {
-        {"Shadow Quality",    "Ultra"},
-        {"Anti-Aliasing",     "TAA"},
-        {"Texture Quality",   "High"},
-        {"Draw Distance",     "Far"},
-        {"Ambient Occlusion", "HBAO+"},
-        {"Anisotropic",       "16x"},
+        {"Shadow Quality", "Ultra"}, {"Anti-Aliasing", "TAA"},       {"Texture Quality", "High"},
+        {"Draw Distance", "Far"},    {"Ambient Occlusion", "HBAO+"}, {"Anisotropic", "16x"},
     };
 
     for (auto &row : graphicsRows) {
-        auto *settingLbl = table->add<Amethyst::TextLabel>();
+        table->addRow();
+
+        auto settingLbl = std::make_unique<Amethyst::TextLabel>();
         settingLbl->text = row.setting;
         settingLbl->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
         settingLbl->textColor = {0.7f, 0.7f, 0.7f, 1.0f};
@@ -249,8 +248,9 @@ int main()
         settingLbl->backgroundTransparency = 1.0f;
         settingLbl->textYAlignment = Amethyst::TextYAlignment::CENTER;
         settingLbl->markDirty();
+        table->nextCell(std::move(settingLbl));
 
-        auto *valueLbl = table->add<Amethyst::TextLabel>();
+        auto valueLbl = std::make_unique<Amethyst::TextLabel>();
         valueLbl->text = row.value;
         valueLbl->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
         valueLbl->textColor = {0.5f, 0.9f, 0.6f, 1.0f};
@@ -258,6 +258,7 @@ int main()
         valueLbl->backgroundTransparency = 1.0f;
         valueLbl->textYAlignment = Amethyst::TextYAlignment::CENTER;
         valueLbl->markDirty();
+        table->nextCell(std::move(valueLbl));
     }
 
     // --- Section 4: No indicator ---

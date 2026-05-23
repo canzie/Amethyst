@@ -1,9 +1,10 @@
 /**
  * @file table.h
- * @brief Table component for grid-based layouts
+ * @brief Table component with explicit columns, rows, headers, and sorting.
  *
- * Table arranges children in a grid where every numCols children form one row.
- * Supports column weights and separators.
+ * Cells are stored in a flat array indexed by (row * columnCount + col).
+ * A separate display order array maps visual position to logical row index,
+ * allowing sorting without moving cell data.
  */
 
 #ifndef AMETHYST__TABLE_H
@@ -11,76 +12,179 @@
 
 #include "components/common.h"
 #include "components/frame.h"
-#include "components/instance.h"
+#include "components/text_label.h"
 #include "components/ui_object.h"
 
 #include <cstdint>
+#include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace Amethyst {
 
-/**
- * @brief Table component for grid-based layouts
- *
- * Children are laid out in rows: child i goes to row (i / numCols), column (i % numCols).
- */
+enum class TableColumnSizing {
+    FIXED,
+    STRETCH
+};
+
+struct TableColumn {
+    std::string header;
+    TableColumnSizing sizing = TableColumnSizing::STRETCH;
+    float width = 1.0f;
+    float minWidth = 0.0f;
+    float maxWidth = 0.0f;
+};
+
 class Table : public UIObject {
   public:
     Table();
-    virtual ~Table() = default;
+    virtual ~Table();
 
     void draw(DrawContext &ctx) override;
 
+    /**
+     * @brief Append a column definition. Must be called before adding rows
+     * @param col The column definition to add
+     */
+    void addColumn(TableColumn col);
+
+    /**
+     * @brief Replace all column definitions. Must be called before adding rows
+     * @param cols The new set of column definitions
+     */
+    void setColumns(std::vector<TableColumn> cols);
+
+    /**
+     * @brief Get the number of columns currently defined
+     * @return The column count
+     */
+    uint32_t columnCount() const;
+
+    /**
+     * @brief Create a new row and move the build cursor to (row, 0)
+     * @return Stable row index, never reused across remove/add cycles
+     */
+    uint32_t addRow();
+
+    /**
+     * @brief Add a cell at the cursor position and advance the cursor column. Ownership is transferred to the table's internal
+     * child list
+     * @param child The instance to place in the cell
+     * @return Non-owning pointer to the added child
+     */
+    Instance *nextCell(std::unique_ptr<Instance> child);
+
+    /**
+     * @brief Move the build cursor to an arbitrary position. Subsequent nextCell() calls write starting from this position
+     * @param row Logical row index, must be alive
+     * @param col Column index, must be < columnCount()
+     */
+    void setCursor(uint32_t row, uint32_t col);
+
+    /**
+     * @brief Place a cell at a specific position, replacing any existing cell. Ownership is transferred to the table's internal
+     * child list
+     * @param row Logical row index, must be alive
+     * @param col Column index, must be < columnCount()
+     * @param child The instance to place
+     */
+    void setCell(uint32_t row, uint32_t col, std::unique_ptr<Instance> child);
+
+    /**
+     * @brief Get the instance at a specific position
+     * @param row Logical row index
+     * @param col Column index
+     * @return Pointer to the cell instance, or nullptr if empty
+     */
+    Instance *getCell(uint32_t row, uint32_t col) const;
+
+    /**
+     * @brief Remove a row and destroy all its cells. The slot is added to a freelist for reuse by future addRow() calls
+     * @param row Logical row index to remove
+     */
+    void removeRow(uint32_t row);
+
+    /**
+     * @brief Remove all rows and cells. Column definitions are preserved
+     */
+    void clear();
+
+    /**
+     * @brief Get the number of alive (non-removed) rows
+     * @return The row count
+     */
+    uint32_t rowCount() const;
+
+    /**
+     * @brief Reorder rows by sorting the display order. Only permutes the visual ordering, cell data and row indices stay
+     * unchanged. Use getCell() inside the comparator to inspect content
+     * @param comparator Receives two logical row indices, returns true if the first should appear before the second
+     */
+    void sort(std::function<bool(uint32_t rowA, uint32_t rowB)> comparator);
+
+    /**
+     * @brief Collect all hittable instances (row backgrounds, header, cells)
+     * @return Vector of non-owning pointers to hittable instances
+     */
+    std::vector<Instance *> getHittableInstances() override;
+
   public:
-    /**
-     * @brief Number of columns in the table
-     *
-     * Children are arranged so that every numCols children form one row.
-     */
-    uint32_t numCols = 1;
-
-    /**
-     * @brief Column widths as fractions that sum to 1.0
-     *
-     * If empty, columns are equal width. Otherwise, each value represents
-     * that column's fraction of total width (e.g., {0.25, 0.5, 0.25}).
-     */
-    std::vector<float> columnWeights;
-
-    /**
-     * @brief Fixed row height in pixels
-     *
-     * If 0, row height is determined by the tallest child in the row.
-     */
     float rowHeight = 0.0f;
-
-    /**
-     * @brief Cell padding (scale is relative to table size, not cell size)
-     */
     UDim4 cellPadding;
 
-    bool showColumnSeparators = false;
+    bool showColumnSeparators = true;
     float columnSeparatorWidth = 1.0f;
     Color4 columnSeparatorColor = {0.3f, 0.3f, 0.3f, 1.0f};
 
-  public:
-    uint32_t getRowCount() const;
-    std::vector<float> computeColumnPositions(float tableWidth) const;
+    bool showHeader = true;
+    float headerHeight = 28.0f;
+    Color3 headerColor = {0.25f, 0.25f, 0.28f};
+    Color4 headerTextColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    float headerFontSize = 14.0f;
 
-  protected:
-    virtual bool isRowVisible(uint32_t row) const;
+    Color4 rowBackgroundColor = {0.18f, 0.18f, 0.2f, 1.0f};
+    Color4 rowAlternateColor = {0.22f, 0.22f, 0.24f, 1.0f};
+    Color4 rowHoverColor = {0.3f, 0.3f, 0.35f, 1.0f};
+    Color4 rowSelectedColor = {0.25f, 0.4f, 0.65f, 1.0f};
+
+    int32_t hoveredRow = -1;
+    int32_t selectedRow = -1;
+
+    std::function<void(uint32_t row)> onRowClicked;
+
+  private:
+    void rebuildColumnPositions();
     void updateSeparators();
+    void ensureHeaderCapacity();
+    void ensureRowBackgroundCapacity(uint32_t count);
+    void drawHeader(DrawContext &ctx, const glm::vec4 &childClip);
+    void drawSeparators(DrawContext &ctx, const glm::vec4 &childClip);
+    void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const glm::vec4 &childClip);
 
-    /**
-     * @brief Get horizontal offset for first column (overridden by TreeView for indentation)
-     */
-    virtual float getRowIndent(uint32_t row) const;
+    std::vector<TableColumn> m_columns;
 
-  protected:
+    // Flat cell storage, cell (row, col) is at m_cells[row * columnCount() + col]. Non-owning pointers, the actual instances are
+    // owned in m_children
+    std::vector<Instance *> m_cells;
+
+    // Row slots freed by removeRow(), reused by addRow()
+    std::vector<uint32_t> m_rowFreelist;
+
+    // Maps visual row position to logical row index. Sorting permutes this without moving cell data
+    std::vector<uint32_t> m_displayOrder;
+
+    uint32_t m_cursorRow = 0;
+    uint32_t m_cursorCol = 0;
+
     float m_computedRowHeight = 0.0f;
-    glm::vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f}; // top, right, bottom, left
+    glm::vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f};
+    std::vector<float> m_columnPositions;
+
     std::vector<std::unique_ptr<Frame>> m_separators;
+    std::vector<std::unique_ptr<Frame>> m_rowBackgrounds;
+    std::unique_ptr<Frame> m_headerBackground;
+    std::vector<std::unique_ptr<TextLabel>> m_headerLabels;
 };
 
 } // namespace Amethyst

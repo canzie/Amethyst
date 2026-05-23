@@ -12,7 +12,7 @@
 
 namespace Amethyst {
 
-static void applyStyle(TreeView &tree)
+static void s_applyStyle(TreeView &tree)
 {
     const auto &style = Style::instance();
     tree.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TREE_VIEW);
@@ -39,7 +39,52 @@ inline static float calculateRowY(uint32_t row, float rowHeight)
 
 TreeView::TreeView()
 {
-    applyStyle(*this);
+    s_applyStyle(*this);
+}
+
+std::vector<float> TreeView::computeColumnPositions(float tableWidth) const
+{
+    std::vector<float> positions;
+    positions.reserve(numCols + 1);
+    positions.push_back(0.0f);
+
+    if (columnWeights.empty()) {
+        float columnWidth = tableWidth / static_cast<float>(numCols);
+        for (uint32_t i = 1; i <= numCols; ++i) {
+            positions.push_back(columnWidth * static_cast<float>(i));
+        }
+    } else {
+        float accumulatedWidth = 0.0f;
+        for (uint32_t i = 0; i < numCols; ++i) {
+            accumulatedWidth += columnWeights[i] * tableWidth;
+            positions.push_back(accumulatedWidth);
+        }
+    }
+
+    return positions;
+}
+
+void TreeView::updateSeparators()
+{
+    m_separators.clear();
+    if (!showColumnSeparators || numCols <= 1) {
+        return;
+    }
+
+    float accumulatedScale = 0.0f;
+    for (uint32_t i = 0; i < numCols - 1; ++i) {
+        float colWeight = columnWeights.empty() ? (1.0f / numCols) : columnWeights[i];
+        accumulatedScale += colWeight;
+
+        auto sep = std::make_unique<Frame>();
+        sep->position = UDim2(accumulatedScale, -columnSeparatorWidth / 2.0f, 0.0f, 0.0f);
+        sep->size = UDim2(0.0f, columnSeparatorWidth, 1.0f, 0.0f);
+        sep->backgroundColor = Color3(columnSeparatorColor);
+        sep->backgroundTransparency = 1.0f - columnSeparatorColor.a;
+        sep->zIndex = getZIndex() + 1;
+        sep->markDirty();
+        m_separators.push_back(std::move(sep));
+    }
 }
 
 TreeView::~TreeView()
