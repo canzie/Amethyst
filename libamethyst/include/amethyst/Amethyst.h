@@ -12,6 +12,7 @@
 #include "components/extensions/ui_list_layout.h"
 #include "components/extensions/ui_size_constraint.h"
 #include "components/extensions/ui_text_size_constraint.h"
+#include "components/collapsible_header.h"
 #include "components/docking_layer.h"
 #include "components/dropdown.h"
 #include "components/dropdown_item.h"

@@ -85,6 +85,10 @@ enum class StyleProperty {
     TAB_HOVERED_COLOR,
     TAB_PRESSED_COLOR,
 
+    HEADER_COLOR,
+    HEADER_TRANSPARENCY,
+    HEADER_HEIGHT,
+
 };
 
 enum class ComponentType {
@@ -106,6 +110,7 @@ enum class ComponentType {
     TAB_BAR,
     SLIDER,
     RADIO_BUTTON,
+    COLLAPSIBLE_HEADER,
 };
 
 using StyleValue = std::variant<Color3, Color4, float, std::string, BorderMode, TextXAlignment, TextYAlignment, UDim>;

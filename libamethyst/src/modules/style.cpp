@@ -52,6 +52,8 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
     static const std::array<ComponentType, 2> slider = {ComponentType::SLIDER, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 3> radioButton = {ComponentType::RADIO_BUTTON, ComponentType::UI_BUTTON,
                                                              ComponentType::UI_OBJECT};
+    static const std::array<ComponentType, 2> collapsibleHeader = {ComponentType::COLLAPSIBLE_HEADER,
+                                                                    ComponentType::UI_OBJECT};
 
     switch (type) {
     case ComponentType::UI_OBJECT:
@@ -88,6 +90,8 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
         return slider;
     case ComponentType::RADIO_BUTTON:
         return radioButton;
+    case ComponentType::COLLAPSIBLE_HEADER:
+        return collapsibleHeader;
     }
     return uiObject;
 }
@@ -225,6 +229,13 @@ StyleValue Style::getDefault(StyleProperty property)
         return Color3(0.28f, 0.28f, 0.28f);
     case StyleProperty::TAB_PRESSED_COLOR:
         return Color3(0.18f, 0.18f, 0.18f);
+
+    case StyleProperty::HEADER_COLOR:
+        return Color3(0.25f, 0.25f, 0.28f);
+    case StyleProperty::HEADER_TRANSPARENCY:
+        return 0.0f;
+    case StyleProperty::HEADER_HEIGHT:
+        return 30.0f;
     }
     return 0.0f;
 }
@@ -302,6 +313,10 @@ const std::unordered_map<std::string, StyleProperty> &Style::getPropertyNames()
         {"tabActiveColor", StyleProperty::TAB_ACTIVE_COLOR},
         {"tabHoveredColor", StyleProperty::TAB_HOVERED_COLOR},
         {"tabPressedColor", StyleProperty::TAB_PRESSED_COLOR},
+
+        {"headerColor", StyleProperty::HEADER_COLOR},
+        {"headerTransparency", StyleProperty::HEADER_TRANSPARENCY},
+        {"headerHeight", StyleProperty::HEADER_HEIGHT},
     };
     return names;
 }
@@ -326,6 +341,7 @@ const std::unordered_map<std::string, ComponentType> &Style::getComponentTypeNam
         {"tabBars", ComponentType::TAB_BAR},
         {"sliders", ComponentType::SLIDER},
         {"radioButtons", ComponentType::RADIO_BUTTON},
+        {"collapsibleHeaders", ComponentType::COLLAPSIBLE_HEADER},
     };
     return names;
 }
