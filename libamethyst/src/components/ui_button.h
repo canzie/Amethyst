@@ -57,12 +57,14 @@ class UIButton : public UIObject {
 
     EventResult onMouseEnter(void) override
     {
+        UIObject::onMouseEnter();
         if (onMouseEnterCb) return onMouseEnterCb();
         return EventResult::CONSUMED;
     }
 
     EventResult onMouseLeave(void) override
     {
+        UIObject::onMouseLeave();
         if (onMouseLeaveCb) return onMouseLeaveCb();
         return EventResult::CONSUMED;
     }

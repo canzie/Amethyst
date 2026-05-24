@@ -104,12 +104,14 @@ EventResult TextInput::onMouseMoved(uint32_t x, uint32_t y)
 
 EventResult TextInput::onMouseEnter()
 {
+    UIObject::onMouseEnter();
     InputInterface::setCursorShape(CURSOR_IBEAM);
     return EventResult::CONSUMED;
 }
 
 EventResult TextInput::onMouseLeave()
 {
+    UIObject::onMouseLeave();
     InputInterface::setCursorShape(CURSOR_ARROW);
     return EventResult::CONSUMED;
 }
