@@ -87,7 +87,10 @@ EventResult TextInput::onMouseButton1Up(uint32_t x, uint32_t y)
     return EventResult::CONSUMED;
 }
 
-EventResult TextInput::onMouseButton1Click() { return EventResult::CONSUMED; }
+EventResult TextInput::onMouseButton1Click()
+{
+    return EventResult::CONSUMED;
+}
 
 EventResult TextInput::onMouseMoved(uint32_t x, uint32_t y)
 {
