@@ -107,6 +107,8 @@ class UIObject : public UIBase2D {
     int32_t zIndex = 1;
     ZIndexBehavior zindexBehavior = ZIndexBehavior::SIBLING;
 
+    std::function<void(bool hovered)> onHoverChanged;
+
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;
 };

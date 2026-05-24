@@ -69,7 +69,14 @@ Window *UIObject::getWindow()
     return nullptr;
 }
 
-EventResult UIObject::onMouseEnter() { return EventResult::CONSUMED; }
+EventResult UIObject::onMouseEnter()
+{
+    if (onHoverChanged) {
+        onHoverChanged(true);
+        markDirty();
+    }
+    return EventResult::CONSUMED;
+}
 
 bool UIObject::isVisible() const
 {
@@ -106,7 +113,14 @@ int32_t UIObject::getZIndex() const
     return zIndex;
 }
 
-EventResult UIObject::onMouseLeave() { return EventResult::CONSUMED; }
+EventResult UIObject::onMouseLeave()
+{
+    if (onHoverChanged) {
+        onHoverChanged(false);
+        markDirty();
+    }
+    return EventResult::CONSUMED;
+}
 
 EventResult UIObject::onMouseMoved(uint32_t x, uint32_t y)
 {
