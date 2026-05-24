@@ -47,6 +47,7 @@ void DockingLayer::draw(DrawContext &ctx)
     layerCtx.overlay = ctx.overlay;
     layerCtx.textProcessor = ctx.textProcessor;
     layerCtx.glyphAtlas = ctx.glyphAtlas;
+    layerCtx.svgAtlas = ctx.svgAtlas;
 
     for (auto &tabBar : m_tabBars) {
         tabBar->draw(layerCtx);

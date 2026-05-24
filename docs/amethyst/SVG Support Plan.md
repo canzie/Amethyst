@@ -2,11 +2,11 @@
 
 ## Goal
 
-Add SVG icon/image support to Amethyst by rasterizing SVGs to an atlas texture at load time, fitting cleanly into the existing instanced-quad + bindless-texture pipeline.
+Add SVG icon/image support to Amethyst by rasterizing SVGs to an atlas texture, fitting cleanly into the existing instanced-quad + bindless-texture pipeline.
 
 ## Approach: Rasterize-to-Atlas
 
-SVGs are parsed and rasterized to RGBA bitmaps at a requested pixel size, packed into an atlas texture, and referenced via `AmTextureId` like any other image. No architectural changes to the render loop, draw ordering, or pipeline.
+SVGs are parsed and rasterized to RGBA bitmaps at a requested pixel size, packed into an atlas texture, and referenced via `AmTextureId`. No architectural changes to the render loop, draw ordering, or pipeline.
 
 This mirrors how GlyphAtlas works: CPU-side atlas with skyline packing, dirty flag, backend uploads when dirty.
 
@@ -14,41 +14,56 @@ This mirrors how GlyphAtlas works: CPU-side atlas with skyline packing, dirty fl
 
 We explored three GPU-native approaches and ruled them out for now:
 
-- **SDF composition** (evaluate SVG primitives as SDF chains in fragment shader) fits the architecture but cubic beziers have no closed-form SDF, making `<path>` elements impractical. Works for basic shapes but not real icon SVGs.
+- **SDF composition** (evaluate SVG primitives as SDF chains in fragment shader) fits the architecture but cubic beziers have no closed-form SDF, making `<path>` elements impractical.
 - **Compute-based rasterization** (Vello-style) produces a texture anyway, so the integration point is identical to CPU rasterization but with enormous implementation cost.
 - **Stencil-and-cover** requires per-path draw calls and a stencil attachment, breaks the single-pipeline instanced draw model.
 
-The atlas approach handles 100% of SVG icon use cases. Complex animated/dynamic SVGs are out of scope (and rare in UI).
+The atlas approach handles 100% of SVG icon use cases. Complex animated/dynamic SVGs are out of scope.
 
 ## Library Choice
 
-**lunasvg** (recommended)
+**lunasvg**
 - Full SVG 1.1 support (paths, gradients, transforms, clip-paths, groups)
 - C++ library, CMake-friendly, actively maintained
 - Rasterizes to RGBA bitmap at arbitrary size
 - ~5k LOC, no dependencies (bundles its own plutovg rasterizer)
 - MIT license
 
-Alternatives considered: nanosvg (header-only but limited, no CSS, poor gradient support), plutosvg (smaller but less SVG coverage).
-
 ## Architecture
 
-### New files
+### Shared AtlasPacker
+
+Extract the skyline bottom-left packing algorithm from GlyphAtlas into a reusable class. Both GlyphAtlas and SvgAtlas use the same packing logic, maintaining it in one place avoids divergence.
+
+```
+libamethyst/src/modules/atlas_packer.h
+libamethyst/src/modules/atlas_packer.cpp
+```
+
+```
+AtlasPacker
+  - AtlasPacker(width, height)
+  - packRect(width, height) -> optional<PackedRect>
+  - reset()                  // clear all allocations (for re-rasterization)
+
+PackedRect
+  - x, y, width, height
+```
+
+GlyphAtlas refactored to use AtlasPacker internally. No API changes to GlyphAtlas.
+
+### SvgAtlas
 
 ```
 libamethyst/src/modules/svg_atlas.h
 libamethyst/src/modules/svg_atlas.cpp
 ```
 
-### SvgAtlas class
-
-Follows the same pattern as GlyphAtlas: CPU-side RGBA atlas with skyline packing, dirty tracking, backend syncs to GPU.
-
 ```
 SvgAtlas
   - loadSvg(path, width, height) -> SvgIcon*
-  - loadSvgFromMemory(data, size, width, height) -> SvgIcon*
-  - getIcon(id) -> SvgIcon*
+  - loadSvgFromMemory(data, len, width, height) -> SvgIcon*
+  - getIcon(name) -> SvgIcon*
   - isDirty() / clearDirty()
   - getPixels() / getWidth() / getHeight()
   - setTextureId() / getTextureId()
@@ -58,88 +73,101 @@ SvgAtlas
 SvgIcon
   - atlasX, atlasY       (position in atlas)
   - width, height         (pixel dimensions)
-  - id                    (lookup handle)
+  - uvRect                (normalized [0,1] coordinates for shader)
+  - name                  (lookup key)
 ```
 
-Key differences from GlyphAtlas:
-- RGBA (4 channels) not grayscale (1 channel), since SVGs have color
-- Larger default atlas (2048x2048), icons are bigger than glyphs
-- Keyed by path/name + size, not codepoint + size
-- One-shot load at init, not on-demand during draw
+Key properties:
+- RGBA (4 channels), 2048x2048 default
+- Keyed by `(name/hash, width, height)` for cache dedup
+- On-demand rasterization: first request rasterizes + packs, subsequent requests return cached
+- Dirty flag set on new entries, backend syncs next frame
+
+### Registration / API
+
+SVGs are loaded on-demand, similar to how glyphs work. Components request icons from the atlas:
+
+```cpp
+// ImageLabel gains an svg-aware setter
+imageLabel.setSvgData(svgStringData);
+// Internally: hash the SVG data, check atlas cache,
+// rasterize at component's absoluteSize if miss,
+// store atlas region, set textureId + uvRect
+
+// Or explicit pre-loading for bulk icon sets
+svgAtlas->loadSvg("assets/icons/settings.svg", 24, 24);
+svgAtlas->loadSvg("assets/icons/close.svg", 24, 24);
+// Then reference by name
+imageLabel.setSvgIcon(svgAtlas->getIcon("settings"));
+```
+
+Resolution selection: rasterize at the component's resolved pixel size. Since UI icons are typically fixed-size (e.g. `size=[0, 24, 0, 24]`), this is usually a one-shot rasterization. For responsive-sized SVGs, snap to discrete size buckets (nearest multiple of 8px) to avoid thrashing the atlas on sub-pixel layout changes.
 
 ### Integration points
 
-**DrawContext** - add `SvgAtlas *svgAtlas` pointer so components can look up icons.
+**DrawContext** - add `SvgAtlas *svgAtlas` pointer.
 
-**Backend (VkBackend)** - add parallel to glyph atlas:
-- `createSvgAtlasTexture(width, height)` - RGBA format (VK_FORMAT_R8G8B8A8_UNORM) instead of R8
-- `uploadSvgAtlasData(cmd, pixels, width, height)` - same staging buffer pattern
+**Backend (VkBackend)**:
+- `createSvgAtlasTexture(width, height)` using VK_FORMAT_R8G8B8A8_UNORM
+- `uploadSvgAtlasData(cmd, pixels, width, height)` using same staging buffer pattern as glyph atlas
 - Sync in `beginFrame()` when `svgAtlas->isDirty()`
 
-**ImageLabel / ImageButton** - no changes needed. User sets `image = svgAtlas->getIcon("settings")->textureId` and the existing textured-quad rendering handles it. The icon's atlas region maps via UV coordinates.
+**ImageLabel / ImageButton** - add `setSvgData()` and `setSvgIcon()` methods. Internally sets `textureId` to the SVG atlas texture and stores the UV sub-region for the shader.
 
-**AML loader** - add `icon="name"` attribute support on ImageLabel/ImageButton that resolves via SvgAtlas lookup.
+**Canvas** - future work. Could add `drawSvg(svgData, position, size)` to the canvas command list, which would rasterize to the atlas and emit a textured quad.
 
-### UV mapping
+### UV sub-region support
 
-Current ImageLabel uses the full texture (`textureId` references a standalone image). For atlas-packed icons, we need UV sub-region support. Two options:
+Current ImageLabel uses the full texture. For atlas-packed icons, we need UV sub-region support.
 
-**Option A: Store UV rect in InstanceData**
-Add a `uvRect` field (or repurpose existing `shapeData` bits) so the vertex/fragment shader can sample a sub-region of the atlas. This is the clean solution and also benefits the glyph atlas.
-
-**Option B: Separate VkImageView per icon region**
-Create a VkImageView with component swizzle for each icon's sub-region. Wasteful (one descriptor slot per icon) but requires zero shader changes.
-
-**Recommendation:** Option A. Add UV rect to InstanceData, similar to how text glyphs already encode their atlas position.
+Add UV rect to InstanceData (or repurpose existing `shapeData` bits when `textureId` is set) so the vertex/fragment shader can sample a sub-region of the atlas. This also benefits the glyph atlas which already encodes atlas positions.
 
 ### Color tinting
 
-For monochrome icons (most UI icons), rasterize as white-on-transparent and multiply by `fillColor` in the fragment shader. The existing `fillColor` field in InstanceData already supports this. For full-color SVGs, render at natural colors and use white fillColor (no tint).
+For monochrome icons (most UI icons): rasterize as white-on-transparent, multiply by `fillColor` in the fragment shader. The existing `fillColor` field in InstanceData handles this.
 
-A `tintable` flag (or convention: monochrome icons always loaded as white) controls this behavior.
+For full-color SVGs: render at natural colors, use white fillColor (no tint).
+
+Convention: monochrome icons loaded as white. A flag or naming convention (`icon_mono_*.svg`) could distinguish.
+
+### Dirty system
+
+- `SvgAtlas::isDirty()` returns true when new icons are packed since last `clearDirty()`
+- Backend checks dirty flag each frame in `beginFrame()`, uploads full atlas if dirty
+- Future optimization: dirty-rect tracking to upload only changed regions (same TODO as glyph atlas)
+- On DPI/scale change: `SvgAtlas::reset()` clears all packing, re-rasterizes all registered SVGs at new scale, marks dirty for full re-upload
 
 ## Implementation Steps
 
-### Phase 1: Core SvgAtlas
-1. Add lunasvg as CMake dependency (FetchContent)
-2. Implement `SvgAtlas` class with skyline packing (can extract/share packing logic from GlyphAtlas)
-3. `loadSvg()` / `loadSvgFromMemory()` parse + rasterize + pack into atlas
-4. Dirty flag tracking
+### Phase 1: AtlasPacker extraction
+1. Extract skyline packing from GlyphAtlas into AtlasPacker
+2. Refactor GlyphAtlas to use AtlasPacker
+3. Verify existing text rendering still works
 
-### Phase 2: Backend integration
-5. Add `createSvgAtlasTexture()` to VkBackend (RGBA variant of glyph atlas)
-6. Add `uploadSvgAtlasData()` with staging buffer
-7. Register atlas texture via `registerTexture()`, store `AmTextureId`
-8. Sync dirty atlas in `beginFrame()`
+### Phase 2: Core SvgAtlas
+4. Add lunasvg as CMake dependency (FetchContent)
+5. Implement SvgAtlas class using AtlasPacker
+6. `loadSvg()` / `loadSvgFromMemory()` parse + rasterize + pack
+7. Cache and dirty flag tracking
 
-### Phase 3: UV sub-region support
-9. Add UV rect to InstanceData (or a secondary mechanism)
-10. Update vertex/fragment shaders to use UV rect when sampling textured quads
-11. Update text rendering to use the same UV mechanism (unify with glyph atlas UVs)
+### Phase 3: Backend integration
+8. Add `createSvgAtlasTexture()` to VkBackend (RGBA format)
+9. Add `uploadSvgAtlasData()` with staging buffer
+10. Register atlas texture, sync dirty state in `beginFrame()`
 
-### Phase 4: Component integration
-12. Add `SvgAtlas*` to DrawContext
-13. Wire up in Window/testapp initialization
-14. Add `icon` property to ImageLabel for convenient SVG icon display
-15. AML loader support for `icon="name"` attribute
+### Phase 4: UV sub-region support
+11. Add UV rect to InstanceData
+12. Update vertex/fragment shaders to use UV rect when sampling textured quads
+13. Consider unifying glyph atlas UV handling with the same mechanism
 
-### Phase 5: Testing
-16. Add SVG loading tests (valid files, corrupt files, atlas overflow)
+### Phase 5: Component integration
+14. Add `SvgAtlas*` to DrawContext
+15. Wire up in Window/testapp initialization
+16. Add `setSvgData()` / `setSvgIcon()` to ImageLabel
 17. Add testapp demo with icon grid
-18. Test DPI-aware re-rasterization
-
-## Re-rasterization strategy
-
-Icons are rasterized at a specific pixel size. On DPI/scale change:
-- Clear and re-pack the atlas at the new scale
-- All `SvgIcon*` pointers remain valid (atlas positions update)
-- Backend re-uploads the full atlas
-
-This is a rare event (display change, window moved to different monitor) so the cost is acceptable.
 
 ## Open questions
 
-- **Shared packing logic**: Extract skyline packer from GlyphAtlas into a reusable `AtlasPacker` class? Or keep them separate (simpler, slight duplication)?
-- **Atlas overflow**: Grow atlas (reallocate larger texture) or error? GlyphAtlas currently errors on overflow.
-- **Icon size variants**: Cache multiple sizes per icon, or re-rasterize on demand? For a retained UI where icons have fixed sizes, one size per load call is probably fine.
-- **Multi-atlas**: If we need both a grayscale glyph atlas and an RGBA SVG atlas, that's two texture slots. Fine for now. Could unify into a single RGBA atlas later (wastes 3x memory for glyphs though).
+- **Atlas overflow**: Grow atlas (reallocate larger texture) or error? GlyphAtlas currently errors.
+- **Icon size variants**: Cache multiple sizes per icon, or re-rasterize on demand? One size per load call is probably fine for fixed-size icons.
+- **Multi-atlas**: Grayscale glyph atlas + RGBA SVG atlas = two texture slots. Fine. Could unify later (wastes 3x memory for glyphs though).

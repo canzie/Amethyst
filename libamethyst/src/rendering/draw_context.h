@@ -11,6 +11,7 @@ namespace Amethyst {
 class GeometryRegistry;
 class TextProcessor;
 class GlyphAtlas;
+class SvgAtlas;
 
 /**
  * @brief Container for all registries used during drawing
@@ -20,6 +21,7 @@ struct DrawContext {
     GeometryRegistry *overlay = nullptr;
     TextProcessor *textProcessor = nullptr;
     GlyphAtlas *glyphAtlas = nullptr;
+    SvgAtlas *svgAtlas = nullptr;
 };
 
 } // namespace Amethyst

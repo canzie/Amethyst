@@ -31,19 +31,11 @@ int main()
         return 1;
     }
 
-    Amethyst::FontLoader fontLoader;
-    if (!fontLoader.loadFont(AMETHYST_ASSETS_DIR "/fonts/OpenSans-Regular.ttf")) {
+    Amethyst::AmethystContext amCtx;
+    if (!amCtx.loadFont(AMETHYST_ASSETS_DIR "/fonts/OpenSans-Regular.ttf")) {
         AM_LOG_ERROR("Failed to load font");
         return 1;
     }
-
-    Amethyst::GlyphAtlas glyphAtlas(&fontLoader);
-    Amethyst::TextProcessor textProcessor;
-    textProcessor.setGlyphAtlas(&glyphAtlas);
-
-    Amethyst::DrawContext drawCtx;
-    drawCtx.textProcessor = &textProcessor;
-    drawCtx.glyphAtlas = &glyphAtlas;
 
     Amethyst::VulkanInitInfo initInfo{};
     initInfo.device = ctx.device;
@@ -64,8 +56,8 @@ int main()
 
     Amethyst::VkBackend backend;
     backend.init(initInfo, glfwInfo);
-    backend.createAtlasTexture(glyphAtlas.getWidth(), glyphAtlas.getHeight());
-    glyphAtlas.setTextureId(backend.getAtlasTextureId());
+
+    amCtx.init(backend);
 
     glm::vec2 screenSize = {
         static_cast<float>(ctx.swapchainExtent.width),
@@ -203,7 +195,7 @@ int main()
 
     treeView->endRow();
 
-    window.draw(drawCtx);
+    amCtx.draw(window);
 
     int frameCount = 0;
     double lastTime = glfwGetTime();
@@ -218,12 +210,8 @@ int main()
 
         VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];
 
-        if (glyphAtlas.isDirty()) {
-            backend.uploadAtlasData(cmd, glyphAtlas.getPixels(), glyphAtlas.getWidth(), glyphAtlas.getHeight());
-            glyphAtlas.clearDirty();
-        }
-
-        window.draw(drawCtx);
+        amCtx.sync(static_cast<void *>(cmd));
+        amCtx.draw(window);
         backend.record(cmd);
         contextEndFrame(ctx, imageIndex);
 

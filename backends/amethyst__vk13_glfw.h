@@ -1,6 +1,7 @@
 #ifndef AMETHYST__VK13_GLFW_H
 #define AMETHYST__VK13_GLFW_H
 
+#include "amethyst/amethyst_backend.h"
 #include "components/common.h"
 #include "components/input_interface.h"
 #include "rendering/instance_data.h"
@@ -59,7 +60,7 @@ struct FreeBlock {
     size_t size;
 };
 
-class VkBackend {
+class VkBackend : public AmethystBackend {
   public:
     void init(const VulkanInitInfo &config, const GLFWInitInfo &info);
     void shutdown();
@@ -70,9 +71,13 @@ class VkBackend {
     void record(VkCommandBuffer cmd);
     void onResize(glm::vec2 extent);
 
-    void createAtlasTexture(uint32_t width, uint32_t height);
-    void uploadAtlasData(VkCommandBuffer cmd, const uint8_t *pixels, uint32_t width, uint32_t height);
-    AmTextureId getAtlasTextureId() const { return m_atlasTextureId; }
+    void createAtlasTexture(uint32_t width, uint32_t height) override;
+    void uploadAtlasData(void *cmdBuffer, const uint8_t *pixels, uint32_t width, uint32_t height) override;
+    AmTextureId getAtlasTextureId() const override { return m_atlasTextureId; }
+
+    void createSvgAtlasTexture(uint32_t width, uint32_t height) override;
+    void uploadSvgAtlasData(void *cmdBuffer, const uint8_t *pixels, uint32_t width, uint32_t height) override;
+    AmTextureId getSvgAtlasTextureId() const override { return m_svgAtlasTextureId; }
 
     AmTextureId registerTexture(VkImageView imageView, VkSampler sampler);
     void unregisterTexture(AmTextureId id);
@@ -122,6 +127,18 @@ class VkBackend {
     void *m_atlasStagingMapped = nullptr;
     uint32_t m_atlasWidth = 0;
     uint32_t m_atlasHeight = 0;
+
+    // SVG atlas texture
+    VkImage m_svgAtlasImage = VK_NULL_HANDLE;
+    VkDeviceMemory m_svgAtlasMemory = VK_NULL_HANDLE;
+    VkImageView m_svgAtlasView = VK_NULL_HANDLE;
+    VkSampler m_svgAtlasSampler = VK_NULL_HANDLE;
+    AmTextureId m_svgAtlasTextureId = AM_INVALID_TEXTURE;
+    VkBuffer m_svgAtlasStagingBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory m_svgAtlasStagingMemory = VK_NULL_HANDLE;
+    void *m_svgAtlasStagingMapped = nullptr;
+    uint32_t m_svgAtlasWidth = 0;
+    uint32_t m_svgAtlasHeight = 0;
 
     // used for indices
     BufferArena m_staticArena;

@@ -6,6 +6,7 @@
 #ifndef AMETHYST__GLYPH_ATLAS_H
 #define AMETHYST__GLYPH_ATLAS_H
 
+#include "atlas_packer.h"
 #include "components/common.h"
 #include "parsers/freetype/font_loader.h"
 #include <cstdint>
@@ -112,23 +113,13 @@ class GlyphAtlas {
     AmTextureId getTextureId() const { return m_textureId; }
 
   private:
-    struct SkylineNode {
-        int x;
-        int y;
-        int width;
-    };
-
-    bool packRect(uint32_t width, uint32_t height, uint16_t &outX, uint16_t &outY);
-    void insertSkylineNode(int index, const SkylineNode &node);
-    void mergeSkylineNodes();
-
     FontLoader *m_fontLoader;
     std::vector<uint8_t> m_pixels;
-    std::vector<SkylineNode> m_skyline;
     std::unordered_map<uint64_t, GlyphInfo> m_cache;
     AmTextureId m_textureId = AM_INVALID_TEXTURE;
     uint32_t m_width;
     uint32_t m_height;
+    AtlasPacker m_packer;
     bool m_dirty = false;
 };
 

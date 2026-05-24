@@ -30,6 +30,7 @@ const uint PRIMITIVE_CANVAS_TRI = 6;
 const uint PRIMITIVE_CANVAS_QUAD = 7;
 const uint PRIMITIVE_CANVAS_CIRCLE = 8;
 const uint PRIMITIVE_CANVAS_ELLIPSE = 9;
+const uint PRIMITIVE_SVG = 10;
 
 const uint BORDER_OUTLINE = 0;
 const uint BORDER_MIDDLE = 1;
@@ -171,6 +172,14 @@ void main()
         float alpha = texAlpha * fragFillColor.a;
         if (alpha < 0.001) discard;
         outColor = vec4(fragFillColor.rgb, alpha);
+        return;
+    }
+
+    if (fragPrimitiveType == PRIMITIVE_SVG) {
+        vec4 texColor = texture(gTextures[fragTextureId], fragUV);
+        vec4 tinted = vec4(texColor.rgb * fragFillColor.rgb, texColor.a * fragFillColor.a);
+        if (tinted.a < 0.001) discard;
+        outColor = tinted;
         return;
     }
 

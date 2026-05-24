@@ -1,6 +1,8 @@
 #ifndef AMETHYST__AMETHYST_H
 #define AMETHYST__AMETHYST_H
 
+#include "amethyst/amethyst_backend.h"
+#include "amethyst/amethyst_context.h"
 #include "components/common.h"
 #include "components/instance.h"
 #include "components/ui_base_2d.h"
@@ -33,6 +35,7 @@
 #include "logging/log.h"
 #include "modules/text_processor.h"
 #include "modules/glyph_atlas.h"
+#include "modules/svg_atlas.h"
 #include "parsers/config/layout_config.h"
 #include "parsers/freetype/font_loader.h"
 #include "rendering/draw_context.h"

@@ -150,6 +150,7 @@ enum PrimitiveType : uint8_t {
     PRIMITIVE_CANVAS_QUAD,
     PRIMITIVE_CANVAS_CIRCLE,
     PRIMITIVE_CANVAS_ELLIPSE,
+    PRIMITIVE_SVG,
     PRIMITIVE_COUNT,
 };
 
@@ -189,6 +190,13 @@ enum class ItemLineAlignment {
     CENTER,
     END,
     STRETCH
+};
+
+enum class ImageScaleType {
+    STRETCH,
+    TILE,
+    FIT,
+    CROP,
 };
 
 enum class LabelSide {

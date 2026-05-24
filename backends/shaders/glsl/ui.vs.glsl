@@ -50,6 +50,7 @@ const vec2 uvs[4] = vec2[](
 );
 
 const uint PRIMITIVE_TEXT = 4;
+const uint PRIMITIVE_SVG = 10;
 const float PI = 3.14159265359;
 const uint INSTANCE_FLAG_VISIBLE = 0x00000001u;
 
@@ -100,8 +101,7 @@ void main()
     // Unpack primitive type from bits 16-23
     uint primitiveType = (inst.cornerPrimitiveMode >> 16u) & 0xFFu;
 
-    if (primitiveType == PRIMITIVE_TEXT) {
-        // For text, shapeData[0] and shapeData[1] contain UV rect as packed halves
+    if (primitiveType == PRIMITIVE_TEXT || primitiveType == PRIMITIVE_SVG) {
         vec2 uvMin = unpackHalf2x16(inst.shapeData[0]);
         vec2 uvMax = unpackHalf2x16(inst.shapeData[1]);
         fragUV = mix(uvMin, uvMax, uvs[gl_VertexIndex]);

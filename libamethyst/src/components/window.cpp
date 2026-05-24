@@ -65,6 +65,7 @@ void Window::draw(DrawContext &ctx)
     layerCtx.overlay = m_overlayLayer->geometryRegistry();
     layerCtx.textProcessor = ctx.textProcessor;
     layerCtx.glyphAtlas = ctx.glyphAtlas;
+    layerCtx.svgAtlas = ctx.svgAtlas;
 
     for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
