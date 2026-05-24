@@ -408,6 +408,18 @@ void TextInput::releaseTextAllocations(GeometryRegistry *)
 
 void TextInput::drawText(DrawContext &ctx)
 {
+    switch (textYAlignment) {
+    case TextYAlignment::CENTER:
+        m_textBaselineY = absoluteContentPosition.y + (absoluteContentSize.y - fontSize) / 2.0f;
+        break;
+    case TextYAlignment::BOTTOM:
+        m_textBaselineY = absoluteContentPosition.y + absoluteContentSize.y - fontSize;
+        break;
+    default:
+        m_textBaselineY = absoluteContentPosition.y;
+        break;
+    }
+
     bool shouldShowPlaceholder = m_text.empty() && !placeholderText.empty();
     bool modeChanged = (shouldShowPlaceholder != m_showingPlaceholder);
     m_showingPlaceholder = shouldShowPlaceholder;
@@ -427,7 +439,7 @@ void TextInput::drawText(DrawContext &ctx)
     params.fontSize = fontSize;
     params.color = colorToUse;
     params.xAlign = textXAlignment;
-    params.yAlign = TextYAlignment::TOP;
+    params.yAlign = textYAlignment;
     params.wrap = multiline;
 
     auto glyphs = ctx.textProcessor->layoutTextAtlas(textToRender, params);
@@ -471,7 +483,7 @@ void TextInput::drawSelection(DrawContext &ctx)
         size_t selEnd = std::max(m_cursorPosition, *m_selectionStart);
 
         if (selEnd > selStart && selStart < m_charPositions.size() && selEnd < m_charPositions.size()) {
-            glm::vec2 selPos = {absoluteContentPosition.x + m_charPositions[selStart], absoluteContentPosition.y};
+            glm::vec2 selPos = {absoluteContentPosition.x + m_charPositions[selStart], m_textBaselineY};
             glm::vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], fontSize * 1.2f};
             glm::vec2 centerPos = selPos + selSize * 0.5f;
 
@@ -505,7 +517,7 @@ void TextInput::drawCursor(DrawContext &ctx)
             cursorX = (m_cursorPosition < m_charPositions.size()) ? m_charPositions[m_cursorPosition] : m_charPositions.back();
         }
 
-        glm::vec2 cursorPos = {absoluteContentPosition.x + cursorX, absoluteContentPosition.y};
+        glm::vec2 cursorPos = {absoluteContentPosition.x + cursorX, m_textBaselineY};
         glm::vec2 cursorSize = {1.0f, fontSize * 1.2f};
         glm::vec2 centerPos = cursorPos + cursorSize * 0.5f;
 

@@ -67,6 +67,7 @@ class TextInput : public UIObject {
     bool readOnly = false;
     float cursorBlinkRate = 0.5f;
     TextXAlignment textXAlignment = TextXAlignment::LEFT;
+    TextYAlignment textYAlignment = TextYAlignment::CENTER;
 
     std::function<void(const std::string &)> onTextChanged;
     std::function<void()> onEnterPressed;
@@ -89,6 +90,7 @@ class TextInput : public UIObject {
     glm::vec2 m_textSize = {0.0f, 0.0f};
     std::vector<float> m_charPositions;
     bool m_showingPlaceholder = false;
+    float m_textBaselineY = 0.0f;
 };
 
 } // namespace Amethyst
