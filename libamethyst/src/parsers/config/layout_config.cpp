@@ -102,6 +102,7 @@ LayoutConfig &LayoutConfig::instance()
 
 bool LayoutConfig::loadFromFile(const std::filesystem::path &path)
 {
+    m_loadedPath = path;
     if (!std::filesystem::exists(path)) return false;
 
     toml::parse_result parseResult = toml::parse_file(path.string());

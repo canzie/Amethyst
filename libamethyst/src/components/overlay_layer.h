@@ -13,6 +13,8 @@ class OverlayLayer : public UILayer {
     virtual ~OverlayLayer();
 
     void draw(DrawContext &ctx) override;
+
+    bool containsPoint(const glm::vec2 &) const override { return false; }
 };
 
 } // namespace Amethyst

@@ -5,6 +5,7 @@
 #include "components/extensions/ui_size_constraint.h"
 #include "components/ui_layer.h"
 #include "components/window.h"
+#include "logging/log.h"
 #include "rendering/instance_data.h"
 #include "utils/profiling.h"
 
