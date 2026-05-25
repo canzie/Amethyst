@@ -7,7 +7,7 @@
 
 #include <string>
 
-static void addLabel(Amethyst::TreeView *tv, const char *text, Amethyst::Color4 color)
+static Amethyst::TextLabel *addLabel(Amethyst::TreeView *tv, const char *text, Amethyst::Color4 color)
 {
     auto *lbl = tv->add<Amethyst::TextLabel>();
     lbl->text = text;
@@ -17,6 +17,7 @@ static void addLabel(Amethyst::TreeView *tv, const char *text, Amethyst::Color4 
     lbl->textYAlignment = Amethyst::TextYAlignment::CENTER;
     lbl->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
     lbl->markDirty();
+    return lbl;
 }
 
 int main()
@@ -103,7 +104,9 @@ int main()
     treeView->rowAlternateColor = Amethyst::Color4::fromHex(0x252527);
     treeView->rowHoverColor = {0.2f, 0.3f, 0.45f, 1.0f};
     treeView->rowSelectedColor = {0.18f, 0.38f, 0.62f, 1.0f};
-    treeView->numCols = 1;
+    treeView->numCols = 3;
+    treeView->columnWeights = {0.5f, 0.3f, 0.2f};
+    treeView->showColumnSeparators = true;
     treeView->rowHeight = 22.0f;
     treeView->indentPerLevel = 18.0f;
     treeView->clipsDescendants = true;
@@ -115,9 +118,13 @@ int main()
         statusLabel->markDirty();
     };
 
-    auto addRow = [&](uint32_t parent, const std::string &label, Amethyst::Color4 color) -> uint32_t {
+    const Amethyst::Color4 COL_DIM = {0.55f, 0.55f, 0.58f, 1.0f};
+
+    auto addRow = [&](uint32_t parent, const std::string &label, Amethyst::Color4 color, const char *type) -> uint32_t {
         uint32_t row = treeView->beginRow(parent);
         addLabel(treeView, label.c_str(), color);
+        addLabel(treeView, type, COL_DIM);
+        addLabel(treeView, "", COL_DIM);
         treeView->endRow();
         return row;
     };
@@ -130,37 +137,49 @@ int main()
 
     uint32_t scene = treeView->beginRow();
     addLabel(treeView, "Scene", COL_ROOT);
+    addLabel(treeView, "Root", COL_DIM);
+    addLabel(treeView, "", COL_DIM);
 
     // ---- Entities: 50 flat children ----
     uint32_t entities = treeView->beginRow(scene);
     addLabel(treeView, "Entities", COL_GROUP);
+    addLabel(treeView, "Group", COL_DIM);
+    addLabel(treeView, "", COL_DIM);
     for (int i = 0; i < 50; i++) {
-        addRow(entities, "entity_" + std::to_string(i), COL_LEAF);
+        addRow(entities, "entity_" + std::to_string(i), COL_LEAF, "Entity");
     }
     treeView->endRow();
 
     // ---- Assets: two levels of nesting ----
     uint32_t assets = treeView->beginRow(scene);
     addLabel(treeView, "Assets", COL_GROUP);
+    addLabel(treeView, "Group", COL_DIM);
+    addLabel(treeView, "", COL_DIM);
 
     uint32_t meshes = treeView->beginRow(assets);
     addLabel(treeView, "Meshes", COL_SUBGRP);
+    addLabel(treeView, "Folder", COL_DIM);
+    addLabel(treeView, "", COL_DIM);
     for (int i = 0; i < 20; i++) {
-        addRow(meshes, "mesh_" + std::to_string(i) + ".obj", COL_LEAF);
+        addRow(meshes, "mesh_" + std::to_string(i) + ".obj", COL_LEAF, "Mesh");
     }
     treeView->endRow();
 
     uint32_t textures = treeView->beginRow(assets);
     addLabel(treeView, "Textures", COL_SUBGRP);
+    addLabel(treeView, "Folder", COL_DIM);
+    addLabel(treeView, "", COL_DIM);
     for (int i = 0; i < 20; i++) {
-        addRow(textures, "texture_" + std::to_string(i) + ".png", COL_LEAF);
+        addRow(textures, "texture_" + std::to_string(i) + ".png", COL_LEAF, "Texture");
     }
     treeView->endRow();
 
     uint32_t shaders = treeView->beginRow(assets);
     addLabel(treeView, "Shaders", COL_SUBGRP);
+    addLabel(treeView, "Folder", COL_DIM);
+    addLabel(treeView, "", COL_DIM);
     for (int i = 0; i < 8; i++) {
-        addRow(shaders, "shader_" + std::to_string(i) + ".glsl", COL_SPEC);
+        addRow(shaders, "shader_" + std::to_string(i) + ".glsl", COL_SPEC, "Shader");
     }
     treeView->endRow();
 
@@ -169,26 +188,34 @@ int main()
     // ---- Systems: three levels ----
     uint32_t systems = treeView->beginRow(scene);
     addLabel(treeView, "Systems", COL_GROUP);
+    addLabel(treeView, "Group", COL_DIM);
+    addLabel(treeView, "", COL_DIM);
 
     uint32_t render = treeView->beginRow(systems);
     addLabel(treeView, "RenderSystem", COL_SUBGRP);
-    addRow(render, "OpaquePass", COL_LEAF);
-    addRow(render, "ShadowPass", COL_LEAF);
-    addRow(render, "TransparentPass", COL_LEAF);
-    addRow(render, "PostProcess", COL_LEAF);
+    addLabel(treeView, "System", COL_DIM);
+    addLabel(treeView, "", COL_DIM);
+    addRow(render, "OpaquePass", COL_LEAF, "Pass");
+    addRow(render, "ShadowPass", COL_LEAF, "Pass");
+    addRow(render, "TransparentPass", COL_LEAF, "Pass");
+    addRow(render, "PostProcess", COL_LEAF, "Pass");
     treeView->endRow();
 
     uint32_t physics = treeView->beginRow(systems);
     addLabel(treeView, "PhysicsSystem", COL_SUBGRP);
-    addRow(physics, "BroadPhase", COL_LEAF);
-    addRow(physics, "NarrowPhase", COL_LEAF);
-    addRow(physics, "Solver", COL_LEAF);
+    addLabel(treeView, "System", COL_DIM);
+    addLabel(treeView, "", COL_DIM);
+    addRow(physics, "BroadPhase", COL_LEAF, "Phase");
+    addRow(physics, "NarrowPhase", COL_LEAF, "Phase");
+    addRow(physics, "Solver", COL_LEAF, "Solver");
     treeView->endRow();
 
     uint32_t audio = treeView->beginRow(systems);
     addLabel(treeView, "AudioSystem", COL_SUBGRP);
-    addRow(audio, "SFX", COL_LEAF);
-    addRow(audio, "Music", COL_LEAF);
+    addLabel(treeView, "System", COL_DIM);
+    addLabel(treeView, "", COL_DIM);
+    addRow(audio, "SFX", COL_LEAF, "Channel");
+    addRow(audio, "Music", COL_LEAF, "Channel");
     treeView->endRow();
 
     treeView->endRow();

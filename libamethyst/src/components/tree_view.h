@@ -144,6 +144,8 @@ class TreeView : public UIObject {
 
     float m_computedRowHeight = 0.0f;
     glm::vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f};
+    glm::vec2 m_lastAbsolutePosition = {0.0f, 0.0f};
+    glm::vec2 m_lastAbsoluteSize = {0.0f, 0.0f};
     std::vector<std::unique_ptr<Frame>> m_separators;
 
     std::vector<TreeRow> m_rows;

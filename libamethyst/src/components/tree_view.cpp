@@ -344,7 +344,8 @@ void TreeView::clearRowCells(DrawContext &ctx, uint32_t row)
 
     uint32_t endIdx = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(m_children.size()));
     for (uint32_t i = r.firstCellIndex; i < endIdx; i++) {
-        if (auto *obj = m_children[i]->as<UIObject>()) {
+        auto *obj = m_children[i]->as<UIObject>();
+        if (obj != nullptr && obj->visible) {
             obj->visible = false;
             obj->markDirty();
             obj->draw(ctx);
@@ -599,10 +600,11 @@ uint32_t TreeView::drawVisibleRows(DrawContext &ctx, const std::vector<float> &c
             if (visibleCount >= firstVisibleSlot && bufferSlot < slotCount) {
                 drawRowContent(ctx, row, bufferSlot, visibleCount, colPositions, childClip);
                 bufferSlot++;
+                r.isDirty = true;
             } else if (r.isDirty) {
                 clearRowCells(ctx, row);
+                r.isDirty = false;
             }
-            r.isDirty = false;
             visibleCount++;
 
             if (r.expanded) {
@@ -668,6 +670,12 @@ void TreeView::clearUnusedSlots(DrawContext &ctx, uint32_t fromSlot)
 void TreeView::draw(DrawContext &ctx)
 {
     AM_PROFILE_FUNCTION();
+
+    if (absolutePosition != m_lastAbsolutePosition || absoluteSize != m_lastAbsoluteSize) {
+        flags |= FLAG_DIRTY;
+        m_lastAbsolutePosition = absolutePosition;
+        m_lastAbsoluteSize = absoluteSize;
+    }
 
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
