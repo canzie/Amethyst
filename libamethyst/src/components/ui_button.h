@@ -5,6 +5,7 @@
 #ifndef AMETHYST__UI_BUTTON_H
 #define AMETHYST__UI_BUTTON_H
 
+#include "components/properties.h"
 #include "components/ui_object.h"
 #include <cstdint>
 #include <functional>
@@ -15,6 +16,9 @@ class UIButton : public UIObject {
   public:
     UIButton() = default;
     virtual ~UIButton() = default;
+
+    bool setButtonProperties(const ButtonProperties &props);
+    const ButtonProperties &getButtonProperties();
 
   protected:
     EventResult onMouseButton1Down(uint32_t x, uint32_t y) override
@@ -76,6 +80,9 @@ class UIButton : public UIObject {
         return EventResult::CONSUMED;
     }
 
+  protected:
+    ButtonProperties m_btnProps;
+
   public:
     std::function<EventResult()> onMouseButton1ClickCb;
     std::function<EventResult(uint32_t, uint32_t)> onMouseButton1DownCb;
@@ -86,9 +93,6 @@ class UIButton : public UIObject {
     std::function<EventResult()> onMouseEnterCb;
     std::function<EventResult()> onMouseLeaveCb;
     std::function<EventResult(uint32_t, uint32_t)> onMouseMovedCb;
-
-    bool autoButtonColor = true;
-    bool modal = false;
 };
 
 } // namespace Amethyst

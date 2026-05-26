@@ -6,6 +6,7 @@
 #define AMETHYST__CHECKBOX_H
 
 #include "components/common.h"
+#include "components/properties.h"
 #include "components/ui_object.h"
 #include <functional>
 #include <string>
@@ -21,6 +22,9 @@ class Checkbox : public UIObject {
 
     void draw(DrawContext &ctx) override;
 
+    bool setCheckboxProperties(const CheckboxProperties &props);
+    const CheckboxProperties &getCheckboxProperties() const { return m_cbProps; }
+
   protected:
     EventResult onMouseButton1Click() override;
 
@@ -28,17 +32,8 @@ class Checkbox : public UIObject {
     bool *valueRef = nullptr;
     std::function<void(bool)> onValueChanged;
 
-    std::string label;
-    LabelSide labelSide = LabelSide::RIGHT;
-    Font *font = nullptr;
-    Color4 labelColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    TextXAlignment labelXAlignment = TextXAlignment::LEFT;
-    TextYAlignment labelYAlignment = TextYAlignment::CENTER;
-
-    Color3 checkColor = {0.0f, 0.0f, 0.0f};
-    float checkTransparency = 0.0f;
-    float checkboxSize = 20.0f;
-    UDim labelPadding = UDim::fromOffset(5.0f);
+  protected:
+    CheckboxProperties m_cbProps;
 };
 
 } // namespace Amethyst

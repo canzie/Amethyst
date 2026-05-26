@@ -1,11 +1,26 @@
 #include "amethyst/Amethyst.h"
 #include "amethyst__vk13_glfw.h"
 #include "components/collapsible_header.h"
+#include "components/image_button.h"
+#include "components/image_label.h"
 #include "components/table.h"
 #include "modules/style.h"
 #include "vk_context.h"
 
 #include <string>
+
+static const char *SVG_ARROW = R"(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+  <path d="M10 6l6 6-6 6V6z"/>
+</svg>
+)";
+
+static const char *SVG_GEAR = R"(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+  <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.61 3.61 0 0 1 8.4 12 3.61 3.61 0 0 1 12 8.4a3.61 3.61 0 0 1 3.6 3.6 3.61 3.61 0 0 1-3.6 3.6z"/>
+</svg>
+)";
+
 
 int main()
 {
@@ -292,6 +307,92 @@ int main()
     ctrlLbl2->backgroundTransparency = 1.0f;
     ctrlLbl2->textYAlignment = Amethyst::TextYAlignment::CENTER;
     ctrlLbl2->markDirty();
+
+    // --- Section 5: custom SVG indicator + custom header with options button ---
+
+    auto svgIndicator = std::make_unique<Amethyst::ImageLabel>(SVG_ARROW);
+    svgIndicator->imageColor = {0.75f, 0.85f, 1.0f, 1.0f};
+    svgIndicator->backgroundTransparency = 1.0f;
+    svgIndicator->borderPixelSize = 0.0f;
+
+    auto headerFrame = std::make_unique<Amethyst::Frame>();
+    headerFrame->backgroundTransparency = 1.0f;
+    headerFrame->borderPixelSize = 0.0f;
+
+    auto *sectionTitle = headerFrame->add<Amethyst::TextLabel>();
+    sectionTitle->text = "Shader Pipeline";
+    sectionTitle->size = Amethyst::UDim2(1.0f, -36.0f, 1.0f, 0.0f);
+    sectionTitle->position = Amethyst::UDim2::fromOffset(0.0f, 0.0f);
+    sectionTitle->textColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    sectionTitle->fontSize = 15.0f;
+    sectionTitle->textXAlignment = Amethyst::TextXAlignment::LEFT;
+    sectionTitle->textYAlignment = Amethyst::TextYAlignment::CENTER;
+    sectionTitle->backgroundTransparency = 1.0f;
+    sectionTitle->markDirty();
+
+    auto *optionsBtn = headerFrame->add<Amethyst::ImageButton>(SVG_GEAR);
+    optionsBtn->size = Amethyst::UDim2::fromOffset(22.0f, 22.0f);
+    optionsBtn->position = Amethyst::UDim2{1.0f, -4.0f, 0.5f, 0.0f};
+    optionsBtn->anchorPoint = {1.0f, 0.5f};
+    optionsBtn->imageColor = {0.7f, 0.7f, 0.85f, 1.0f};
+    optionsBtn->backgroundColor = {0.28f, 0.28f, 0.38f};
+    optionsBtn->cornerRadius = 4.0f;
+    optionsBtn->zIndex = 101;
+    optionsBtn->onMouseButton1ClickCb = [statusLabel]() {
+        statusLabel->text = "Shader Pipeline: options clicked";
+        statusLabel->markDirty();
+        return Amethyst::EventResult::CONSUMED;
+    };
+    optionsBtn->markDirty();
+
+    auto *section5 = container->add<Amethyst::CollapsibleHeader>(
+        std::unique_ptr<Amethyst::UIObject>(std::move(svgIndicator)),
+        std::unique_ptr<Amethyst::UIObject>(std::move(headerFrame))
+    );
+    section5->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 160.0f);
+    section5->position = Amethyst::UDim2::fromOffset(0.0f, 690.0f);
+    section5->headerColor = {0.18f, 0.22f, 0.35f};
+    section5->headerHeight = 36.0f;
+    section5->indicatorSize = 18.0f;
+    section5->backgroundColor = {0.16f, 0.16f, 0.18f};
+    section5->backgroundTransparency = 0.0f;
+    section5->cornerRadius = 4.0f;
+    section5->headerCornerRadius = 4.0f;
+    section5->onToggled = [statusLabel](bool exp) {
+        statusLabel->text = std::string("Shader Pipeline: ") + (exp ? "expanded" : "collapsed");
+        statusLabel->markDirty();
+    };
+    section5->markDirty();
+
+    auto *shaderLbl1 = section5->add<Amethyst::TextLabel>();
+    shaderLbl1->text = "Vertex:   mesh.vert.spv";
+    shaderLbl1->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
+    shaderLbl1->position = Amethyst::UDim2::fromOffset(10.0f, 10.0f);
+    shaderLbl1->textColor = {0.75f, 0.85f, 1.0f, 1.0f};
+    shaderLbl1->fontSize = 13.0f;
+    shaderLbl1->backgroundTransparency = 1.0f;
+    shaderLbl1->textYAlignment = Amethyst::TextYAlignment::CENTER;
+    shaderLbl1->markDirty();
+
+    auto *shaderLbl2 = section5->add<Amethyst::TextLabel>();
+    shaderLbl2->text = "Fragment: mesh.frag.spv";
+    shaderLbl2->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
+    shaderLbl2->position = Amethyst::UDim2::fromOffset(10.0f, 38.0f);
+    shaderLbl2->textColor = {0.75f, 0.85f, 1.0f, 1.0f};
+    shaderLbl2->fontSize = 13.0f;
+    shaderLbl2->backgroundTransparency = 1.0f;
+    shaderLbl2->textYAlignment = Amethyst::TextYAlignment::CENTER;
+    shaderLbl2->markDirty();
+
+    auto *shaderLbl3 = section5->add<Amethyst::TextLabel>();
+    shaderLbl3->text = "Specialisation: SKINNING=1, SHADOWS=1";
+    shaderLbl3->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
+    shaderLbl3->position = Amethyst::UDim2::fromOffset(10.0f, 66.0f);
+    shaderLbl3->textColor = {0.6f, 0.6f, 0.65f, 1.0f};
+    shaderLbl3->fontSize = 13.0f;
+    shaderLbl3->backgroundTransparency = 1.0f;
+    shaderLbl3->textYAlignment = Amethyst::TextYAlignment::CENTER;
+    shaderLbl3->markDirty();
 
     amCtx.draw(window);
 

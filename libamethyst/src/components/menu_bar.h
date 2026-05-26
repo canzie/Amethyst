@@ -11,6 +11,7 @@
 #include "components/dropdown.h"
 #include "components/dropdown_item.h"
 #include "components/frame.h"
+#include "components/properties.h"
 
 #include <string>
 #include <vector>
@@ -25,11 +26,11 @@ class MenuBar : public Frame {
     Dropdown *addMenu(std::string label, std::vector<DropdownItem> items);
     void clear();
 
-    float entryPaddingX = 12.0f;
-    float entryPaddingY = 4.0f;
-    float entryFontSize = 14.0f;
-    Color3 entryHoverBackground = {0.25f, 0.25f, 0.30f};
-    Color3 entryActiveBackground = {0.28f, 0.42f, 0.62f};
+    bool setMenuBarProperties(const MenuBarProperties &props);
+    const MenuBarProperties &getMenuBarProperties() const { return m_mbProps; }
+
+  protected:
+    MenuBarProperties m_mbProps;
 
   private:
     void onEntryHovered(Dropdown *entry);

@@ -13,6 +13,8 @@ namespace Amethyst {
 
 struct DrawContext;
 
+struct UIBase2DProperties {};
+
 class UIBase2D : public Instance {
   public:
     UIBase2D() = default;
@@ -30,6 +32,8 @@ class UIBase2D : public Instance {
         return point.x >= absolutePosition.x && point.x <= absolutePosition.x + absoluteSize.x && point.y >= absolutePosition.y &&
                point.y <= absolutePosition.y + absoluteSize.y;
     }
+
+    void setProperties(UIBase2DProperties props);
 
   public:
     glm::vec2 absolutePosition = glm::vec2(0.0f);

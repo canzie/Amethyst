@@ -10,12 +10,48 @@
 
 namespace Amethyst {
 
-ImageLabel::ImageLabel(const std::string &svgData) : m_svgData(svgData) {}
+ImageLabel::ImageLabel(const std::string &svgData) : m_svgData(svgData)
+{
+    m_imgProps.imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    m_imgProps.imageTransparency = 0.0f;
+    m_imgProps.scaleType = ImageScaleType::STRETCH;
+    m_imgProps.tileSize = {1.0f, 1.0f};
+}
+
+bool ImageLabel::setImageProperties(const ImageProperties &props)
+{
+    bool changed = false;
+#define AM_APPLY(field) \
+    if (propIsSet(props.field) && m_imgProps.field != props.field) { \
+        m_imgProps.field = props.field; \
+        changed = true; \
+    }
+    AM_APPLY(imageColor)
+    AM_APPLY(imageTransparency)
+    AM_APPLY(scaleType)
+    AM_APPLY(tileSize)
+#undef AM_APPLY
+    if (!props.svg.empty() && m_imgProps.svg != props.svg) {
+        m_imgProps.svg = props.svg;
+        m_svgData = props.svg;
+        m_svgResolved = false;
+        changed = true;
+    }
+    if (props.image.isValid() && m_imgProps.image.id != props.image.id) {
+        m_imgProps.image = props.image;
+        changed = true;
+    }
+    if (changed) {
+        markDirty();
+    }
+    return changed;
+}
 
 void ImageLabel::setSvg(const std::string &svgData)
 {
     m_svgData = svgData;
     m_svgResolved = false;
+    m_imgProps.svg = svgData;
     markDirty();
 }
 
@@ -37,7 +73,7 @@ void ImageLabel::resolveSvg(DrawContext &ctx)
         float ah = static_cast<float>(ctx.svgAtlas->getHeight());
         m_svgUvRect = {entry->atlasX / aw, entry->atlasY / ah, (entry->atlasX + entry->width) / aw,
                        (entry->atlasY + entry->height) / ah};
-        image = ctx.svgAtlas->getTextureId();
+        m_imgProps.image = ctx.svgAtlas->getTextureId();
     }
 
     m_svgResolved = true;
@@ -53,12 +89,12 @@ void ImageLabel::draw(DrawContext &ctx)
         resolveSvg(ctx);
 
         InstanceData data = createInstanceData();
-        data.textureId = image.id;
+        data.textureId = m_imgProps.image.id;
 
         if (m_svgResolved && !m_svgData.empty()) {
             data.setPrimitiveType(PRIMITIVE_SVG);
             data.setUvRect(m_svgUvRect);
-            data.setFillColor(imageColor);
+            data.setFillColor(m_imgProps.imageColor);
         } else {
             data.setPrimitiveType(PRIMITIVE_RECT);
         }

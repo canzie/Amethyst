@@ -75,6 +75,8 @@ struct UnifiedDimension4 {
         return glm::vec4(top.resolve(parentSize.y), right.resolve(parentSize.x), bottom.resolve(parentSize.y),
                          left.resolve(parentSize.x));
     }
+
+    bool operator==(const UnifiedDimension4 &) const = default;
 };
 using UDim4 = UnifiedDimension4;
 
@@ -84,23 +86,26 @@ enum class EventResult {
 };
 
 enum class AutomaticSize {
-    NONE, // default
-    X,    // Fit childs contents along x-axis
-    Y,    // Fit childs contents along x-axis
-    XY    // Fit childs contents along x and y-axis
+    NONE,
+    OFF, // default
+    X,   // Fit childs contents along x-axis
+    Y,   // Fit childs contents along x-axis
+    XY,  // Fit childs contents along x and y-axis
 };
 
 enum class BorderMode {
+    NONE,
     OUTLINE,
     MIDDLE,
-    INSET
+    INSET,
 };
 
 enum class GuiState {
+    NONE,
     IDLE,
     HOVER,
     PRESS,
-    NON_INTERCTABLE
+    NON_INTERCTABLE,
 };
 
 enum class StartCorner {
@@ -111,8 +116,9 @@ enum class StartCorner {
 };
 
 enum class ZIndexBehavior {
+    NONE,
     GLOBAL,
-    SIBLING
+    SIBLING,
 };
 
 enum class TextDirection {
@@ -122,12 +128,14 @@ enum class TextDirection {
 };
 
 enum class TextXAlignment {
+    NONE,
     LEFT,
     CENTER,
     RIGHT,
 };
 
 enum class TextYAlignment {
+    NONE,
     TOP,
     CENTER,
     BOTTOM,
@@ -135,6 +143,7 @@ enum class TextYAlignment {
 
 enum class TextTruncate {
     NONE,
+    OFF,
     AT_END,
     SPLIT_WORD,
 };
@@ -193,6 +202,7 @@ enum class ItemLineAlignment {
 };
 
 enum class ImageScaleType {
+    NONE,
     STRETCH,
     TILE,
     FIT,
@@ -200,15 +210,68 @@ enum class ImageScaleType {
 };
 
 enum class LabelSide {
+    NONE,
     LEFT,
     RIGHT,
     TOP,
-    BOTTOM
+    BOTTOM,
 };
 
 enum class ValueControlLayout {
+    NONE,
     SIDE_BY_SIDE, // components arranged horizontally
-    STACKED       // components arranged vertically
+    STACKED,      // components arranged vertically
+};
+
+enum class ScrollBarVisibility {
+    NONE,
+    ALWAYS,
+    AUTO,
+    NEVER,
+};
+
+enum class ScrollAxis {
+    NONE,
+    X,
+    Y,
+    XY,
+};
+
+enum class DropdownDirection {
+    NONE,
+    DOWN,
+    UP,
+    LEFT,
+    RIGHT,
+};
+
+enum class TabBarMode {
+    NONE,
+    INSIDE,
+    OUTSIDE,
+};
+
+enum class TabBarVisibility {
+    NONE,
+    AUTO,
+    NEVER,
+    ALWAYS,
+};
+
+enum class TabCloseButtonVisibility {
+    NONE,
+    HIDDEN,
+    ALWAYS,
+    ACTIVE_ONLY,
+    HOVERED_OR_ACTIVE,
+};
+
+enum class TabBarPosition {
+    NONE,
+    TOP,
+    BOTTOM,
+    LEFT,
+    RIGHT,
 };
 
 /**

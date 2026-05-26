@@ -2,6 +2,7 @@
 #include "amethyst__vk13_glfw.h"
 #include "components/dropdown.h"
 #include "components/menu_bar.h"
+#include "components/tab_bar.h"
 #include "modules/style.h"
 #include "vk_context.h"
 
@@ -139,6 +140,62 @@ int main()
     statusLabel->textXAlignment = Amethyst::TextXAlignment::LEFT;
     statusLabel->textYAlignment = Amethyst::TextYAlignment::CENTER;
     statusLabel->markDirty();
+
+    // ---- tab bar (tabOffset = 10px) ----
+
+    auto *tabBar = window.add<Amethyst::TabBar>();
+    tabBar->size = Amethyst::UDim2::fromOffset(700.0f, 220.0f);
+    tabBar->position = Amethyst::UDim2::fromOffset(40.0f, 160.0f);
+    tabBar->tabOffset = 10.0f;
+    tabBar->tabWidth = 110.0f;
+    tabBar->backgroundColor = {0.14f, 0.14f, 0.17f};
+    tabBar->backgroundTransparency = 0.0f;
+    tabBar->markDirty();
+
+    auto *tabScene = tabBar->add<Amethyst::Frame>();
+    tabScene->name = "Scene";
+    tabScene->backgroundColor = {0.16f, 0.16f, 0.20f};
+    tabScene->backgroundTransparency = 0.0f;
+    tabScene->markDirty();
+    auto *sceneInfo = tabScene->add<Amethyst::TextLabel>();
+    sceneInfo->text = "Scene graph — 312 nodes, 18 lights";
+    sceneInfo->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
+    sceneInfo->position = Amethyst::UDim2::fromOffset(10.0f, 10.0f);
+    sceneInfo->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
+    sceneInfo->fontSize = 13.0f;
+    sceneInfo->backgroundTransparency = 1.0f;
+    sceneInfo->textYAlignment = Amethyst::TextYAlignment::CENTER;
+    sceneInfo->markDirty();
+
+    auto *tabAssets = tabBar->add<Amethyst::Frame>();
+    tabAssets->name = "Assets";
+    tabAssets->backgroundColor = {0.16f, 0.16f, 0.20f};
+    tabAssets->backgroundTransparency = 0.0f;
+    tabAssets->markDirty();
+    auto *assetsInfo = tabAssets->add<Amethyst::TextLabel>();
+    assetsInfo->text = "Assets — 84 meshes, 210 textures, 12 materials";
+    assetsInfo->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
+    assetsInfo->position = Amethyst::UDim2::fromOffset(10.0f, 10.0f);
+    assetsInfo->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
+    assetsInfo->fontSize = 13.0f;
+    assetsInfo->backgroundTransparency = 1.0f;
+    assetsInfo->textYAlignment = Amethyst::TextYAlignment::CENTER;
+    assetsInfo->markDirty();
+
+    auto *tabConsole = tabBar->add<Amethyst::Frame>();
+    tabConsole->name = "Console";
+    tabConsole->backgroundColor = {0.16f, 0.16f, 0.20f};
+    tabConsole->backgroundTransparency = 0.0f;
+    tabConsole->markDirty();
+    auto *consoleInfo = tabConsole->add<Amethyst::TextLabel>();
+    consoleInfo->text = "> Engine initialised in 142ms";
+    consoleInfo->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
+    consoleInfo->position = Amethyst::UDim2::fromOffset(10.0f, 10.0f);
+    consoleInfo->textColor = {0.5f, 0.9f, 0.5f, 1.0f};
+    consoleInfo->fontSize = 13.0f;
+    consoleInfo->backgroundTransparency = 1.0f;
+    consoleInfo->textYAlignment = Amethyst::TextYAlignment::CENTER;
+    consoleInfo->markDirty();
 
     // ---- main loop ----
 

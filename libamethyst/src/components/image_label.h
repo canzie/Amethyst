@@ -6,6 +6,7 @@
 #define AMETHYST__IMAGE_LABEL_H
 
 #include "components/instance.h"
+#include "components/properties.h"
 #include "components/ui_label.h"
 
 #include <string>
@@ -23,12 +24,11 @@ class ImageLabel : public UILabel {
 
     void setSvg(const std::string &svgData);
 
-  public:
-    AmTextureId image;
-    Color4 imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    float imageTransparency = 0.0f;
-    ImageScaleType scaleType = ImageScaleType::STRETCH;
-    glm::vec2 tileSize = {1.0f, 1.0f};
+    bool setImageProperties(const ImageProperties &props);
+    const ImageProperties &getImageProperties() const { return m_imgProps; }
+
+  protected:
+    ImageProperties m_imgProps;
 
   private:
     void resolveSvg(DrawContext &ctx);

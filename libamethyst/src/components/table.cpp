@@ -11,26 +11,73 @@ namespace Amethyst {
 static void s_applyStyle(Table &table)
 {
     const auto &style = Style::instance();
-    table.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TABLE);
-    table.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TABLE);
-    table.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TABLE);
-    table.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TABLE);
-    table.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TABLE);
-    table.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TABLE);
-    table.rowHeight = style.get<float>(StyleProperty::ROW_HEIGHT, ComponentType::TABLE);
-    table.columnSeparatorWidth = style.get<float>(StyleProperty::COLUMN_SEPARATOR_WIDTH, ComponentType::TABLE);
-    table.columnSeparatorColor = style.get<Color4>(StyleProperty::COLUMN_SEPARATOR_COLOR, ComponentType::TABLE);
-    table.headerColor = style.get<Color3>(StyleProperty::HEADER_COLOR, ComponentType::TABLE);
-    table.headerHeight = style.get<float>(StyleProperty::HEADER_HEIGHT, ComponentType::TABLE);
-    table.rowBackgroundColor = style.get<Color4>(StyleProperty::ROW_BACKGROUND_COLOR, ComponentType::TABLE);
-    table.rowAlternateColor = style.get<Color4>(StyleProperty::ROW_ALTERNATE_COLOR, ComponentType::TABLE);
-    table.rowHoverColor = style.get<Color4>(StyleProperty::ROW_HOVER_COLOR, ComponentType::TABLE);
-    table.rowSelectedColor = style.get<Color4>(StyleProperty::ROW_SELECTED_COLOR, ComponentType::TABLE);
+    table.setBaseProperties({
+        .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TABLE),
+        .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TABLE),
+        .borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TABLE),
+        .borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TABLE),
+        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TABLE),
+        .cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TABLE),
+    });
+    table.setTableProperties({
+        .rowHeight = style.get<float>(StyleProperty::ROW_HEIGHT, ComponentType::TABLE),
+        .columnSeparatorWidth = style.get<float>(StyleProperty::COLUMN_SEPARATOR_WIDTH, ComponentType::TABLE),
+        .columnSeparatorColor = style.get<Color4>(StyleProperty::COLUMN_SEPARATOR_COLOR, ComponentType::TABLE),
+        .headerColor = style.get<Color3>(StyleProperty::HEADER_COLOR, ComponentType::TABLE),
+        .headerHeight = style.get<float>(StyleProperty::HEADER_HEIGHT, ComponentType::TABLE),
+        .rowBackgroundColor = style.get<Color4>(StyleProperty::ROW_BACKGROUND_COLOR, ComponentType::TABLE),
+        .rowAlternateColor = style.get<Color4>(StyleProperty::ROW_ALTERNATE_COLOR, ComponentType::TABLE),
+        .rowHoverColor = style.get<Color4>(StyleProperty::ROW_HOVER_COLOR, ComponentType::TABLE),
+        .rowSelectedColor = style.get<Color4>(StyleProperty::ROW_SELECTED_COLOR, ComponentType::TABLE),
+    });
 }
 
 Table::Table()
 {
+    m_tProps.showColumnSeparators = 1;
+    m_tProps.columnSeparatorWidth = 1.0f;
+    m_tProps.columnSeparatorColor = Color4{0.3f, 0.3f, 0.3f, 1.0f};
+    m_tProps.showHeader = 1;
+    m_tProps.headerHeight = 28.0f;
+    m_tProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
+    m_tProps.headerText.fontSize = 14.0f;
+    m_tProps.headerText.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
+    m_tProps.rowBackgroundColor = Color4{0.18f, 0.18f, 0.2f, 1.0f};
+    m_tProps.rowAlternateColor = Color4{0.22f, 0.22f, 0.24f, 1.0f};
+    m_tProps.rowHoverColor = Color4{0.3f, 0.3f, 0.35f, 1.0f};
+    m_tProps.rowSelectedColor = Color4{0.25f, 0.4f, 0.65f, 1.0f};
+
     s_applyStyle(*this);
+}
+
+bool Table::setTableProperties(const TableProperties &props)
+{
+    bool changed = false;
+#define AM_APPLY(field) \
+    if (propIsSet(props.field) && m_tProps.field != props.field) { \
+        m_tProps.field = props.field; \
+        changed = true; \
+    }
+    AM_APPLY(rowHeight)
+    AM_APPLY(cellPadding)
+    AM_APPLY(showColumnSeparators)
+    AM_APPLY(columnSeparatorWidth)
+    AM_APPLY(columnSeparatorColor)
+    AM_APPLY(showHeader)
+    AM_APPLY(headerHeight)
+    AM_APPLY(headerColor)
+    AM_APPLY(rowBackgroundColor)
+    AM_APPLY(rowAlternateColor)
+    AM_APPLY(rowHoverColor)
+    AM_APPLY(rowSelectedColor)
+#undef AM_APPLY
+    if (applyTextProperties(m_tProps.headerText, props.headerText)) {
+        changed = true;
+    }
+    if (changed) {
+        markDirty();
+    }
+    return changed;
 }
 
 Table::~Table()

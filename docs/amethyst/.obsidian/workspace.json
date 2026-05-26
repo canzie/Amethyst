@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Backend.md",
+                "file": "Architecture.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Backend"
+              "title": "Architecture"
             }
           }
         ]
@@ -185,6 +185,11 @@
   },
   "active": "158d6e3fd352897f",
   "lastOpenFiles": [
+    "Architecture.md.tmp.31113.3ab1ded49614",
+    "Architecture.md.tmp.31113.0f32ce8aef42",
+    "Backend.md",
+    "Architecture.md",
+    "Architecture.md.tmp.31113.a40786e1986e",
     "SVG Support Plan.md",
     "Welcome.md",
     "SVG Support Plan.md.tmp.1879.580a853aed36",

@@ -6,6 +6,7 @@
 #define AMETHYST__IMAGE_BUTTON_H
 
 #include "components/instance.h"
+#include "components/properties.h"
 #include "components/ui_button.h"
 
 #include <string>
@@ -22,14 +23,14 @@ class ImageButton : public UIButton {
 
     void setSvg(const std::string &svgData);
 
-  public:
-    AmTextureId image;
-    Color4 imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    float imageTransparency = 0.0f;
-    ImageScaleType scaleType = ImageScaleType::STRETCH;
-    glm::vec2 tileSize = {1.0f, 1.0f};
+    bool setImageProperties(const ImageProperties &props);
+    const ImageProperties &getImageProperties() const { return m_imgProps; }
 
+  public:
     AmTextureId hoverImage;
+
+  protected:
+    ImageProperties m_imgProps;
 
   private:
     void resolveSvg(DrawContext &ctx);

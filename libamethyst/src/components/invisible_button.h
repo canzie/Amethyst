@@ -11,7 +11,7 @@ class InvisibleButton : public UIButton {
   public:
     InvisibleButton()
     {
-        backgroundTransparency = 1.0f;
+        m_uiObjProps.backgroundTransparency = 1.0f;
     };
     virtual ~InvisibleButton();
 

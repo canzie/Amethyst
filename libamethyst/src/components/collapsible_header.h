@@ -3,18 +3,18 @@
 
 #include "components/frame.h"
 #include "components/invisible_button.h"
-#include "components/text_label.h"
+#include "components/properties.h"
 #include "components/ui_object.h"
 
 #include <functional>
 #include <memory>
-#include <string>
 
 namespace Amethyst {
 
 class CollapsibleHeader : public UIObject {
   public:
     CollapsibleHeader();
+    CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, std::unique_ptr<UIObject> customHeader);
     ~CollapsibleHeader() override;
 
     void draw(DrawContext &ctx) override;
@@ -24,33 +24,24 @@ class CollapsibleHeader : public UIObject {
     void expand();
     void collapse();
 
+    bool setCollapsibleHeaderProperties(const CollapsibleHeaderProperties &props);
+    const CollapsibleHeaderProperties &getCollapsibleHeaderProperties() const { return m_chProps; }
+
+    CollapsibleHeader &header(std::function<void(Frame &)> fn);
+    CollapsibleHeader &indicator(std::function<void(UIObject &)> fn);
+
   public:
-    bool expanded = true;
-
-    std::string title;
-    std::string fontFamily;
-    float fontSize = 14.0f;
-    Color4 titleColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    TextXAlignment titleXAlignment = TextXAlignment::LEFT;
-    TextYAlignment titleYAlignment = TextYAlignment::CENTER;
-
-    float headerHeight = 30.0f;
-    Color3 headerColor = {0.25f, 0.25f, 0.28f};
-    float headerTransparency = 0.0f;
-    float headerCornerRadius = 0.0f;
-
-    bool showIndicator = true;
-    float indicatorSize = 10.0f;
-    float indicatorPadding = 6.0f;
-    Color4 indicatorColor = {0.7f, 0.7f, 0.7f, 1.0f};
-
     std::function<void(bool)> onToggled;
+
+  protected:
+    CollapsibleHeaderProperties m_chProps;
 
   private:
     std::unique_ptr<Frame> m_headerBackground;
     std::unique_ptr<InvisibleButton> m_headerButton;
-    std::unique_ptr<Frame> m_indicator;
-    std::unique_ptr<TextLabel> m_titleLabel;
+    UIObject *m_indicator = nullptr;
+    // in case of not using a custom header the title will be used and this will be a text_label
+    UIObject *m_headerContent = nullptr;
 };
 
 } // namespace Amethyst

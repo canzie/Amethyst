@@ -5,6 +5,7 @@
 #ifndef AMETHYST__TEXT_INPUT_H
 #define AMETHYST__TEXT_INPUT_H
 
+#include "components/properties.h"
 #include "components/ui_object.h"
 #include "rendering/geometry_registry.h"
 
@@ -55,24 +56,16 @@ class TextInput : public UIObject {
     void drawCursor(DrawContext &ctx);
 
   public:
-    std::string placeholderText;
-    Color4 textColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    Color4 placeholderColor = {0.5f, 0.5f, 0.5f, 1.0f};
-    Color4 selectionColor = {0.3f, 0.5f, 0.9f, 0.5f};
-    Color4 cursorColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    float fontSize = 14.0f;
-    std::string fontFamily;
-    bool multiline = false;
-    int32_t maxLength = -1;
-    bool readOnly = false;
-    float cursorBlinkRate = 0.5f;
-    TextXAlignment textXAlignment = TextXAlignment::LEFT;
-    TextYAlignment textYAlignment = TextYAlignment::CENTER;
+    bool setTextInputProperties(const TextInputProperties &props);
+    const TextInputProperties &getTextInputProperties() const { return m_tiProps; }
 
     std::function<void(const std::string &)> onTextChanged;
     std::function<void()> onEnterPressed;
     std::function<void()> onFocusGained;
     std::function<void()> onFocusLost;
+
+  protected:
+    TextInputProperties m_tiProps;
 
   private:
     std::string m_text;

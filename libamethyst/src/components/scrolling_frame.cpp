@@ -12,23 +12,65 @@ namespace Amethyst {
 static void applyStyle(ScrollingFrame &frame)
 {
     const auto &style = Style::instance();
-    frame.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SCROLLING_FRAME);
-    frame.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
-    frame.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::SCROLLING_FRAME);
-    frame.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
-    frame.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::SCROLLING_FRAME);
-    frame.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::SCROLLING_FRAME);
-    frame.scrollBarColor = style.get<Color3>(StyleProperty::SCROLLBAR_COLOR, ComponentType::SCROLLING_FRAME);
-    frame.scrollBarTransparency = style.get<float>(StyleProperty::SCROLLBAR_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
-    frame.scrollBarThickness = style.get<float>(StyleProperty::SCROLLBAR_THICKNESS, ComponentType::SCROLLING_FRAME);
-    frame.scrollBarThumbColor = style.get<Color3>(StyleProperty::SCROLLBAR_THUMB_COLOR, ComponentType::SCROLLING_FRAME);
-    frame.scrollBarThumbTransparency =
+    frame.setBaseProperties({
+        .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SCROLLING_FRAME),
+        .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SCROLLING_FRAME),
+        .borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::SCROLLING_FRAME),
+        .borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::SCROLLING_FRAME),
+        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::SCROLLING_FRAME),
+        .cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::SCROLLING_FRAME),
+    });
+    ScrollingFrameProperties sfp;
+    sfp.scrollBarColor = style.get<Color3>(StyleProperty::SCROLLBAR_COLOR, ComponentType::SCROLLING_FRAME);
+    sfp.scrollBarTransparency = style.get<float>(StyleProperty::SCROLLBAR_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
+    sfp.scrollBarThickness = style.get<float>(StyleProperty::SCROLLBAR_THICKNESS, ComponentType::SCROLLING_FRAME);
+    sfp.scrollBarThumbColor = style.get<Color3>(StyleProperty::SCROLLBAR_THUMB_COLOR, ComponentType::SCROLLING_FRAME);
+    sfp.scrollBarThumbTransparency =
         style.get<float>(StyleProperty::SCROLLBAR_THUMB_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
+    frame.setScrollingFrameProperties(sfp);
 }
 
 ScrollingFrame::ScrollingFrame()
 {
+    m_sfProps.scrollAxis = ScrollAxis::Y;
+    m_sfProps.scrollBarVisibility = ScrollBarVisibility::AUTO;
+    m_sfProps.canvasSize = UDim2::fromScale(1.0f, 1.0f);
+    m_sfProps.canvasPosition = UDim2::fromOffset(0.0f, 0.0f);
+    m_sfProps.scrollBarColor = Color3{0.5f, 0.5f, 0.5f};
+    m_sfProps.scrollBarTransparency = 0.0f;
+    m_sfProps.scrollBarThickness = 14.0f;
+    m_sfProps.scrollBarThumbColor = Color3{0.7f, 0.7f, 0.7f};
+    m_sfProps.scrollBarThumbTransparency = 0.0f;
+    m_sfProps.scrollSpeed = 30.0f;
+    m_sfProps.elasticScrolling = 0;
+
     applyStyle(*this);
+}
+
+bool ScrollingFrame::setScrollingFrameProperties(const ScrollingFrameProperties &props)
+{
+    bool changed = false;
+#define AM_APPLY(field) \
+    if (propIsSet(props.field) && m_sfProps.field != props.field) { \
+        m_sfProps.field = props.field; \
+        changed = true; \
+    }
+    AM_APPLY(scrollAxis)
+    AM_APPLY(scrollBarVisibility)
+    AM_APPLY(canvasSize)
+    AM_APPLY(canvasPosition)
+    AM_APPLY(scrollBarColor)
+    AM_APPLY(scrollBarTransparency)
+    AM_APPLY(scrollBarThickness)
+    AM_APPLY(scrollBarThumbColor)
+    AM_APPLY(scrollBarThumbTransparency)
+    AM_APPLY(scrollSpeed)
+    AM_APPLY(elasticScrolling)
+#undef AM_APPLY
+    if (changed) {
+        markDirty();
+    }
+    return changed;
 }
 
 Instance *ScrollingFrame::addChild(std::unique_ptr<Instance> child)
@@ -36,7 +78,7 @@ Instance *ScrollingFrame::addChild(std::unique_ptr<Instance> child)
     Instance *raw = child.get();
     Instance *result = Instance::addChild(std::move(child));
     if (auto *obj = raw->as<UIObject>()) {
-        m_childViewportVisibility[raw] = obj->visible;
+        m_childViewportVisibility[raw] = obj->isVisible();
     }
     return result;
 }
@@ -66,7 +108,7 @@ void ScrollingFrame::draw(DrawContext &ctx)
         }
     }
 
-    glm::vec2 absCanvasSize = canvasSize.resolve(absoluteSize);
+    glm::vec2 absCanvasSize = m_sfProps.canvasSize.resolve(absoluteSize);
     glm::vec2 maxScroll = glm::max(absCanvasSize - absoluteSize, glm::vec2(0.0f));
 
     m_scrollOffset = glm::clamp(m_scrollOffset, glm::vec2(0.0f), maxScroll);
@@ -83,13 +125,13 @@ void ScrollingFrame::draw(DrawContext &ctx)
         auto *obj = child->as<UIObject>();
         if (obj == nullptr) continue;
 
-        glm::vec2 childPos = obj->position.resolve(absCanvasSize) - m_scrollOffset;
-        glm::vec2 childSize = obj->size.resolve(absCanvasSize);
+        glm::vec2 childPos = m_sfProps.canvasPosition.resolve(absCanvasSize) - m_scrollOffset;
+        glm::vec2 childSize = obj->getBaseProperties().size.resolve(absCanvasSize);
 
         bool inViewport = (childPos.x + childSize.x > 0.0f) && (childPos.x < absoluteSize.x) && (childPos.y + childSize.y > 0.0f) &&
                           (childPos.y < absoluteSize.y);
 
-        bool original = obj->visible;
+        bool original = obj->isVisible();
         bool effective = original && inViewport;
 
         auto &lastViewport = m_childViewportVisibility[child.get()];
@@ -98,11 +140,11 @@ void ScrollingFrame::draw(DrawContext &ctx)
             lastViewport = effective;
         }
 
-        obj->visible = effective;
+        obj->setBaseProperties({.visible = static_cast<uint8_t>(effective)});
         obj->clipRect = childClip;
         obj->computeAbsolutes(absCanvasSize, absolutePosition - m_scrollOffset, absoluteRotation);
         obj->draw(ctx);
-        obj->visible = original;
+        obj->setBaseProperties({.visible = static_cast<uint8_t>(original)});
     }
 
     drawScrollbars(ctx);
@@ -112,11 +154,11 @@ void ScrollingFrame::draw(DrawContext &ctx)
 
 void ScrollingFrame::drawScrollbars(DrawContext &ctx)
 {
-    glm::vec2 absCanvasSize = canvasSize.resolve(absoluteSize);
-    bool needsVertical = (scrollAxis == ScrollAxis::Y || scrollAxis == ScrollAxis::XY) && absCanvasSize.y > absoluteSize.y;
-    bool needsHorizontal = (scrollAxis == ScrollAxis::X || scrollAxis == ScrollAxis::XY) && absCanvasSize.x > absoluteSize.x;
+    glm::vec2 absCanvasSize = m_sfProps.canvasSize.resolve(absoluteSize);
+    bool needsVertical = (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) && absCanvasSize.y > absoluteSize.y;
+    bool needsHorizontal = (m_sfProps.scrollAxis == ScrollAxis::X || m_sfProps.scrollAxis == ScrollAxis::XY) && absCanvasSize.x > absoluteSize.x;
 
-    if (scrollBarVisibility == ScrollBarVisibility::NEVER) {
+    if (m_sfProps.scrollBarVisibility == ScrollBarVisibility::NEVER) {
         needsVertical = false;
         needsHorizontal = false;
     }
@@ -125,35 +167,40 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
         if (m_verticalBar == nullptr) {
             m_verticalBar = std::make_unique<Frame>();
             m_verticalBar->name = "vertical bar";
-            m_verticalBar->zIndex = getZIndex() + 1;
-            m_verticalBar->size = UDim2::fromScale(1.0f, 1.0f);
+            m_verticalBar->setBaseProperties({.zIndex = getZIndex() + 1});
+            m_verticalBar->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
         }
         if (m_verticalThumb == nullptr) {
             m_verticalThumb = std::make_unique<Frame>();
-            m_verticalThumb->zIndex = getZIndex() + 2;
-            m_verticalBar->name = "vertical thumb";
-            m_verticalThumb->size = UDim2::fromScale(1.0f, 1.0f);
+            m_verticalThumb->setBaseProperties({.zIndex = getZIndex() + 2});
+            m_verticalThumb->name = "vertical thumb";
+            m_verticalThumb->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
         }
 
-        float trackHeight = absoluteSize.y - (needsHorizontal ? scrollBarThickness : 0.0f);
+        float trackHeight = absoluteSize.y - (needsHorizontal ? m_sfProps.scrollBarThickness : 0.0f);
         float thumbRatio = absoluteSize.y / absCanvasSize.y;
         float thumbHeight = trackHeight * thumbRatio;
         float scrollRatio = m_scrollOffset.y / (absCanvasSize.y - absoluteSize.y);
         float thumbY = scrollRatio * (trackHeight - thumbHeight);
 
-        m_verticalBar->backgroundColor = scrollBarColor;
-        m_verticalBar->backgroundTransparency = scrollBarTransparency;
-        m_verticalBar->markDirty();
-        m_verticalBar->computeAbsolutes(glm::vec2(scrollBarThickness, trackHeight),
-                                        absolutePosition + glm::vec2(absoluteSize.x - scrollBarThickness, 0.0f), absoluteRotation);
+        m_verticalBar->setBaseProperties({
+            .backgroundColor = m_sfProps.scrollBarColor,
+            .backgroundTransparency = m_sfProps.scrollBarTransparency,
+        });
+        m_verticalBar->computeAbsolutes(
+            glm::vec2(m_sfProps.scrollBarThickness, trackHeight),
+            absolutePosition + glm::vec2(absoluteSize.x - m_sfProps.scrollBarThickness, 0.0f),
+            absoluteRotation);
         m_verticalBar->draw(ctx);
 
-        m_verticalThumb->backgroundColor = scrollBarThumbColor;
-        m_verticalThumb->backgroundTransparency = scrollBarThumbTransparency;
-        m_verticalThumb->markDirty();
-        m_verticalThumb->computeAbsolutes(glm::vec2(scrollBarThickness, thumbHeight),
-                                          absolutePosition + glm::vec2(absoluteSize.x - scrollBarThickness, thumbY),
-                                          absoluteRotation);
+        m_verticalThumb->setBaseProperties({
+            .backgroundColor = m_sfProps.scrollBarThumbColor,
+            .backgroundTransparency = m_sfProps.scrollBarThumbTransparency,
+        });
+        m_verticalThumb->computeAbsolutes(
+            glm::vec2(m_sfProps.scrollBarThickness, thumbHeight),
+            absolutePosition + glm::vec2(absoluteSize.x - m_sfProps.scrollBarThickness, thumbY),
+            absoluteRotation);
         m_verticalThumb->draw(ctx);
     } else {
         m_verticalBar.reset();
@@ -164,36 +211,40 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
         if (m_horizontalBar == nullptr) {
             m_horizontalBar = std::make_unique<Frame>();
             m_horizontalBar->name = "Horizontal Bar";
-            m_horizontalBar->zIndex = getZIndex() + 1;
-            m_horizontalBar->size = UDim2::fromScale(1.0f, 1.0f);
+            m_horizontalBar->setBaseProperties({.zIndex = getZIndex() + 1});
+            m_horizontalBar->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
         }
         if (m_horizontalThumb == nullptr) {
             m_horizontalThumb = std::make_unique<Frame>();
-            m_horizontalThumb->zIndex = getZIndex() + 2;
+            m_horizontalThumb->setBaseProperties({.zIndex = getZIndex() + 2});
             m_horizontalThumb->name = "Horizontal Thumb";
-            m_horizontalThumb->size = UDim2::fromScale(1.0f, 1.0f);
+            m_horizontalThumb->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
         }
 
-        float trackWidth = absoluteSize.x - (needsVertical ? scrollBarThickness : 0.0f);
+        float trackWidth = absoluteSize.x - (needsVertical ? m_sfProps.scrollBarThickness : 0.0f);
         float thumbRatio = absoluteSize.x / absCanvasSize.x;
         float thumbWidth = trackWidth * thumbRatio;
         float scrollRatio = m_scrollOffset.x / (absCanvasSize.x - absoluteSize.x);
         float thumbX = scrollRatio * (trackWidth - thumbWidth);
 
-        m_horizontalBar->backgroundColor = scrollBarColor;
-        m_horizontalBar->backgroundTransparency = scrollBarTransparency;
-        m_horizontalBar->markDirty();
-        m_horizontalBar->computeAbsolutes(glm::vec2(trackWidth, scrollBarThickness),
-                                          absolutePosition + glm::vec2(0.0f, absoluteSize.y - scrollBarThickness),
-                                          absoluteRotation);
+        m_horizontalBar->setBaseProperties({
+            .backgroundColor = m_sfProps.scrollBarColor,
+            .backgroundTransparency = m_sfProps.scrollBarTransparency,
+        });
+        m_horizontalBar->computeAbsolutes(
+            glm::vec2(trackWidth, m_sfProps.scrollBarThickness),
+            absolutePosition + glm::vec2(0.0f, absoluteSize.y - m_sfProps.scrollBarThickness),
+            absoluteRotation);
         m_horizontalBar->draw(ctx);
 
-        m_horizontalThumb->backgroundColor = scrollBarThumbColor;
-        m_horizontalThumb->backgroundTransparency = scrollBarThumbTransparency;
-        m_horizontalThumb->markDirty();
-        m_horizontalThumb->computeAbsolutes(glm::vec2(thumbWidth, scrollBarThickness),
-                                            absolutePosition + glm::vec2(thumbX, absoluteSize.y - scrollBarThickness),
-                                            absoluteRotation);
+        m_horizontalThumb->setBaseProperties({
+            .backgroundColor = m_sfProps.scrollBarThumbColor,
+            .backgroundTransparency = m_sfProps.scrollBarThumbTransparency,
+        });
+        m_horizontalThumb->computeAbsolutes(
+            glm::vec2(thumbWidth, m_sfProps.scrollBarThickness),
+            absolutePosition + glm::vec2(thumbX, absoluteSize.y - m_sfProps.scrollBarThickness),
+            absoluteRotation);
         m_horizontalThumb->draw(ctx);
     } else {
         m_horizontalBar.reset();
@@ -203,10 +254,10 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
 
 EventResult ScrollingFrame::onMouseScrollUp()
 {
-    if (scrollAxis == ScrollAxis::Y || scrollAxis == ScrollAxis::XY) {
-        m_scrollOffset.y -= scrollSpeed;
+    if (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) {
+        m_scrollOffset.y -= m_sfProps.scrollSpeed;
     } else {
-        m_scrollOffset.x -= scrollSpeed;
+        m_scrollOffset.x -= m_sfProps.scrollSpeed;
     }
     markDirty();
     return EventResult::CONSUMED;
@@ -214,10 +265,10 @@ EventResult ScrollingFrame::onMouseScrollUp()
 
 EventResult ScrollingFrame::onMouseScrollDown()
 {
-    if (scrollAxis == ScrollAxis::Y || scrollAxis == ScrollAxis::XY) {
-        m_scrollOffset.y += scrollSpeed;
+    if (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) {
+        m_scrollOffset.y += m_sfProps.scrollSpeed;
     } else {
-        m_scrollOffset.x += scrollSpeed;
+        m_scrollOffset.x += m_sfProps.scrollSpeed;
     }
     markDirty();
     return EventResult::CONSUMED;

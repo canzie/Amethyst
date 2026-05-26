@@ -11,6 +11,7 @@
 #define AMETHYST__DROPDOWN_H
 
 #include "components/dropdown_item.h"
+#include "components/properties.h"
 #include "components/text_button.h"
 #include "modules/color.h"
 
@@ -25,13 +26,6 @@ class Instance;
 class InvisibleButton;
 class OverlayLayer;
 class UIObject;
-
-enum class DropdownDirection {
-    DOWN,
-    UP,
-    LEFT,
-    RIGHT
-};
 
 class Dropdown : public TextButton {
   public:
@@ -48,22 +42,15 @@ class Dropdown : public TextButton {
     void closeImmediate();
     bool isOpen() const { return m_state == State::OPEN; }
 
-    DropdownDirection popupDirection = DropdownDirection::DOWN;
-    int maxVisibleItems = 8;
-    float itemHeight = 24.0f;
-    float popupWidth = 180.0f;
-    float itemFontSize = 14.0f;
-
-    Color3 popupBackground = {0.18f, 0.18f, 0.18f};
-    Color4 itemTextColor = {0.92f, 0.92f, 0.92f, 1.0f};
-    Color4 itemDisabledColor = {0.45f, 0.45f, 0.45f, 1.0f};
-    Color3 itemHoverBackground = {0.25f, 0.42f, 0.65f};
-    Color3 separatorColor = {0.32f, 0.32f, 0.32f};
+    bool setDropdownProperties(const DropdownProperties &props);
+    const DropdownProperties &getDropdownProperties() const { return m_ddProps; }
 
     std::function<void()> onOpenedCb;
     std::function<void()> onClosedCb;
 
   protected:
+    DropdownProperties m_ddProps;
+
     EventResult onMouseButton1Down(uint32_t x, uint32_t y) override;
 
   private:

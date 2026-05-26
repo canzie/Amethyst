@@ -2,86 +2,87 @@
 
 #include "components/extensions/ui_grid_layout.h"
 #include "components/extensions/ui_list_layout.h"
+#include "components/text_label.h"
 #include "components/ui_layer.h"
-#include "modules/style.h"
+// #include "modules/style.h"  // TODO: update style system to use property structs
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 #include "utils/profiling.h"
 
 namespace Amethyst {
 
-static void applyStyle(CollapsibleHeader &ch)
-{
-    const auto &style = Style::instance();
-    ch.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::COLLAPSIBLE_HEADER);
-    ch.backgroundTransparency =
-        style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::COLLAPSIBLE_HEADER);
-    ch.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::COLLAPSIBLE_HEADER);
-    ch.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::COLLAPSIBLE_HEADER);
-    ch.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::COLLAPSIBLE_HEADER);
-    ch.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::COLLAPSIBLE_HEADER);
-    ch.headerColor = style.get<Color3>(StyleProperty::HEADER_COLOR, ComponentType::COLLAPSIBLE_HEADER);
-    ch.headerTransparency = style.get<float>(StyleProperty::HEADER_TRANSPARENCY, ComponentType::COLLAPSIBLE_HEADER);
-    ch.headerHeight = style.get<float>(StyleProperty::HEADER_HEIGHT, ComponentType::COLLAPSIBLE_HEADER);
-    ch.titleColor = style.get<Color4>(StyleProperty::TEXT_COLOR, ComponentType::COLLAPSIBLE_HEADER);
-    ch.fontSize = style.get<float>(StyleProperty::FONT_SIZE, ComponentType::COLLAPSIBLE_HEADER);
-    ch.indicatorSize =
-        style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_SIZE, ComponentType::COLLAPSIBLE_HEADER);
-    ch.indicatorPadding =
-        style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_PADDING, ComponentType::COLLAPSIBLE_HEADER);
-    ch.indicatorColor =
-        style.get<Color4>(StyleProperty::DISCLOSURE_TRIANGLE_COLOR, ComponentType::COLLAPSIBLE_HEADER);
-}
+// static void applyStyle(CollapsibleHeader &ch) { ... }  // TODO: update style system to use property structs
 
-CollapsibleHeader::CollapsibleHeader()
+CollapsibleHeader::CollapsibleHeader() : CollapsibleHeader(nullptr, nullptr) {}
+
+CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, std::unique_ptr<UIObject> customHeader)
 {
-    applyStyle(*this);
+    m_chProps.expanded = 1;
+    m_chProps.title.fontSize = 14.0f;
+    m_chProps.title.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
+    m_chProps.title.textXAlignment = TextXAlignment::LEFT;
+    m_chProps.title.textYAlignment = TextYAlignment::CENTER;
+    m_chProps.headerHeight = 30.0f;
+    m_chProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
+    m_chProps.headerTransparency = 0.0f;
+    m_chProps.headerCornerRadius = 0.0f;
+    m_chProps.showIndicator = 1;
+    m_chProps.indicatorSize = 10.0f;
+    m_chProps.indicatorPadding = 6.0f;
+    m_chProps.indicatorColor = Color4{0.7f, 0.7f, 0.7f, 1.0f};
+
+    // applyStyle(*this);
 
     m_headerBackground = std::make_unique<Frame>();
     m_headerBackground->parent = this;
-    m_headerBackground->interactable = false;
-    m_headerBackground->size = UDim2::fromScale(1.0f, 1.0f);
+    m_headerBackground->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
 
     m_headerButton = std::make_unique<InvisibleButton>();
     m_headerButton->parent = this;
-    m_headerButton->size = UDim2::fromScale(1.0f, 1.0f);
+    m_headerButton->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
     m_headerButton->onMouseButton1ClickCb = [this]() {
         toggle();
         return EventResult::CONSUMED;
     };
 
-    m_indicator = std::make_unique<Frame>();
-    m_indicator->parent = this;
-    m_indicator->interactable = false;
-    m_indicator->size = UDim2::fromScale(1.0f, 1.0f);
+    if (customIndicator != nullptr) {
+        m_indicator = customIndicator.get();
+        m_headerBackground->addChild(std::move(customIndicator));
+    } else {
+        auto indicator = std::make_unique<Frame>();
+        m_indicator = indicator.get();
+        m_headerBackground->addChild(std::move(indicator));
+    }
 
-    m_titleLabel = std::make_unique<TextLabel>();
-    m_titleLabel->parent = this;
-    m_titleLabel->interactable = false;
-    m_titleLabel->size = UDim2::fromScale(1.0f, 1.0f);
+    if (customHeader != nullptr) {
+        m_headerContent = customHeader.get();
+        m_headerBackground->addChild(std::move(customHeader));
+    } else {
+        auto label = std::make_unique<TextLabel>();
+        m_headerContent = label.get();
+        m_headerBackground->addChild(std::move(label));
+    }
 }
 
 CollapsibleHeader::~CollapsibleHeader()
 {
     m_headerBackground->parent = nullptr;
     m_headerButton->parent = nullptr;
-    m_indicator->parent = nullptr;
-    m_titleLabel->parent = nullptr;
 }
 
 void CollapsibleHeader::toggle()
 {
-    expanded = !expanded;
+    m_chProps.expanded ^= 1;
     markDirty();
     if (onToggled) {
-        onToggled(expanded);
+        onToggled(static_cast<bool>(m_chProps.expanded));
     }
 }
 
 void CollapsibleHeader::expand()
 {
-    if (!expanded) {
-        expanded = true;
+    if (!static_cast<bool>(m_chProps.expanded)) {
+        m_chProps.expanded = 1;
         markDirty();
         if (onToggled) {
             onToggled(true);
@@ -91,13 +92,84 @@ void CollapsibleHeader::expand()
 
 void CollapsibleHeader::collapse()
 {
-    if (expanded) {
-        expanded = false;
+    if (static_cast<bool>(m_chProps.expanded)) {
+        m_chProps.expanded = 0;
         markDirty();
         if (onToggled) {
             onToggled(false);
         }
     }
+}
+
+bool CollapsibleHeader::setCollapsibleHeaderProperties(const CollapsibleHeaderProperties &props)
+{
+    bool changed = false;
+
+#define AM_APPLY(field)                                             \
+    if (propIsSet(props.field) && m_chProps.field != props.field) { \
+        m_chProps.field = props.field;                              \
+        changed = true;                                             \
+    }
+
+    AM_APPLY(expanded)
+    AM_APPLY(headerHeight)
+    AM_APPLY(headerColor)
+    AM_APPLY(headerTransparency)
+    AM_APPLY(headerCornerRadius)
+    AM_APPLY(showIndicator)
+    AM_APPLY(indicatorSize)
+    AM_APPLY(indicatorPadding)
+    AM_APPLY(indicatorColor)
+
+#undef AM_APPLY
+#define AM_APPLY(field)                                                               \
+    if (propIsSet(props.title.field) && m_chProps.title.field != props.title.field) { \
+        m_chProps.title.field = props.title.field;                                    \
+        changed = true;                                                               \
+    }
+#define AM_APPLY_STR(field)                                                         \
+    if (!props.title.field.empty() && m_chProps.title.field != props.title.field) { \
+        m_chProps.title.field = props.title.field;                                  \
+        changed = true;                                                             \
+    }
+
+    AM_APPLY_STR(text)
+    AM_APPLY_STR(fontFamily)
+    AM_APPLY(fontSize)
+    AM_APPLY(textColor)
+    AM_APPLY(textXAlignment)
+    AM_APPLY(textYAlignment)
+    AM_APPLY(textTruncate)
+    AM_APPLY(richText)
+    AM_APPLY(textWrapped)
+    AM_APPLY(textScaled)
+    AM_APPLY(lineHeight)
+    AM_APPLY(strokeThickness)
+    AM_APPLY(strokeColor)
+
+#undef AM_APPLY
+#undef AM_APPLY_STR
+
+    if (changed) {
+        markDirty();
+    }
+    return changed;
+}
+
+CollapsibleHeader &CollapsibleHeader::header(std::function<void(Frame &)> fn)
+{
+    if (fn) {
+        fn(*m_headerBackground);
+    }
+    return *this;
+}
+
+CollapsibleHeader &CollapsibleHeader::indicator(std::function<void(UIObject &)> fn)
+{
+    if (fn) {
+        fn(*m_indicator);
+    }
+    return *this;
 }
 
 void CollapsibleHeader::draw(DrawContext &ctx)
@@ -119,64 +191,58 @@ void CollapsibleHeader::draw(DrawContext &ctx)
     }
 
     glm::vec4 childClip = computeChildClipRect();
+    bool expanded = static_cast<bool>(m_chProps.expanded);
+    bool showIndicator = static_cast<bool>(m_chProps.showIndicator);
+    float contentOffset =
+        m_chProps.indicatorPadding + (showIndicator ? m_chProps.indicatorSize + m_chProps.indicatorPadding : 0.0f);
 
-    m_headerBackground->backgroundColor = headerColor;
-    m_headerBackground->backgroundTransparency = headerTransparency;
-    m_headerBackground->cornerRadius = headerCornerRadius;
-    m_headerBackground->borderPixelSize = 0.0f;
-    m_headerBackground->zIndex = getZIndex() + 1;
+    m_indicator->setBaseProperties({
+        .anchorPoint = {0.5f, 0.5f},
+        .backgroundColor = Color3(m_chProps.indicatorColor),
+        .backgroundTransparency = 1.0f - m_chProps.indicatorColor.a,
+        .borderPixelSize = 0.0f,
+        .position = UDim2{{0.0f, m_chProps.indicatorPadding + m_chProps.indicatorSize * 0.5f}, {0.5f, 0.0f}},
+        .size = UDim2::fromOffset(m_chProps.indicatorSize, m_chProps.indicatorSize),
+        .rotation = expanded ? 90.0f : 0.0f,
+        .visible = m_chProps.showIndicator,
+        .zIndex = getZIndex() + 2,
+    });
+
+    m_headerContent->setBaseProperties({
+        .position = UDim2{{0.0f, contentOffset}, {0.0f, 0.0f}},
+        .size = UDim2{{1.0f, -(contentOffset + m_chProps.indicatorPadding)}, {1.0f, 0.0f}},
+        .visible = 1,
+        .zIndex = getZIndex() + 2,
+    });
+
+    if (auto *label = m_headerContent->as<TextLabel>()) {
+        label->setTextProperties({
+            .text = m_chProps.title.text,
+            .fontFamily = m_chProps.title.fontFamily,
+            .fontSize = m_chProps.title.fontSize,
+            .textColor = m_chProps.title.textColor,
+            .textXAlignment = m_chProps.title.textXAlignment,
+            .textYAlignment = m_chProps.title.textYAlignment,
+        });
+        label->setBaseProperties({.backgroundTransparency = 1.0f});
+    }
+
+    m_headerBackground->setBaseProperties({
+        .backgroundColor = m_chProps.headerColor,
+        .backgroundTransparency = m_chProps.headerTransparency,
+        .borderPixelSize = 0.0f,
+        .cornerRadius = m_chProps.headerCornerRadius,
+        .zIndex = getZIndex() + 1,
+    });
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
-    m_headerBackground->computeAbsolutes({absoluteSize.x, headerHeight}, absolutePosition, absoluteRotation);
+    m_headerBackground->computeAbsolutes({absoluteSize.x, m_chProps.headerHeight}, absolutePosition, absoluteRotation);
     m_headerBackground->draw(ctx);
 
-    if (showIndicator) {
-        float indicatorX = absolutePosition.x + indicatorPadding;
-        float indicatorCenterY = absolutePosition.y + headerHeight * 0.5f;
-
-        m_indicator->visible = true;
-        m_indicator->backgroundColor = Color3(indicatorColor);
-        m_indicator->backgroundTransparency = 1.0f - indicatorColor.a;
-        m_indicator->borderPixelSize = 0.0f;
-        m_indicator->rotation = expanded ? 90.0f : 0.0f;
-        m_indicator->anchorPoint = {0.5f, 0.5f};
-        m_indicator->zIndex = getZIndex() + 2;
-        m_indicator->clipRect = childClip;
-        m_indicator->markDirty();
-        m_indicator->computeAbsolutes({indicatorSize, indicatorSize},
-                                      {indicatorX + indicatorSize * 0.5f, indicatorCenterY}, absoluteRotation);
-        m_indicator->draw(ctx);
-    } else {
-        m_indicator->visible = false;
-        m_indicator->markDirty();
-        m_indicator->draw(ctx);
-    }
-
-    float titleOffset = indicatorPadding;
-    if (showIndicator) {
-        titleOffset += indicatorSize + indicatorPadding;
-    }
-    float titleWidth = absoluteSize.x - titleOffset - indicatorPadding;
-
-    m_titleLabel->text = title;
-    m_titleLabel->fontFamily = fontFamily;
-    m_titleLabel->fontSize = fontSize;
-    m_titleLabel->textColor = titleColor;
-    m_titleLabel->textXAlignment = titleXAlignment;
-    m_titleLabel->textYAlignment = titleYAlignment;
-    m_titleLabel->backgroundTransparency = 1.0f;
-    m_titleLabel->zIndex = getZIndex() + 2;
-    m_titleLabel->clipRect = childClip;
-    m_titleLabel->visible = true;
-    m_titleLabel->markDirty();
-    m_titleLabel->computeAbsolutes({titleWidth, headerHeight},
-                                   absolutePosition + glm::vec2(titleOffset, 0.0f), absoluteRotation);
-    m_titleLabel->draw(ctx);
-
-    m_headerButton->zIndex = getZIndex() + 3;
+    m_headerButton->setBaseProperties({.zIndex = getZIndex() + 3});
     m_headerButton->clipRect = childClip;
     m_headerButton->markDirty();
-    m_headerButton->computeAbsolutes({absoluteSize.x, headerHeight}, absolutePosition, absoluteRotation);
+    m_headerButton->computeAbsolutes({absoluteSize.x, m_chProps.headerHeight}, absolutePosition, absoluteRotation);
     m_headerButton->draw(ctx);
 
     if (expanded) {
@@ -186,9 +252,8 @@ void CollapsibleHeader::draw(DrawContext &ctx)
             listLayout->apply(m_children);
         }
 
-        glm::vec2 contentPos = absoluteContentPosition + glm::vec2(0.0f, headerHeight);
-        glm::vec2 contentSize = {absoluteContentSize.x,
-                                 glm::max(absoluteContentSize.y - headerHeight, 0.0f)};
+        glm::vec2 contentPos = absoluteContentPosition + glm::vec2(0.0f, m_chProps.headerHeight);
+        glm::vec2 contentSize = {absoluteContentSize.x, glm::max(absoluteContentSize.y - m_chProps.headerHeight, 0.0f)};
 
         for (auto &child : m_children) {
             if (auto *drawable = child->as<UIObject>()) {
@@ -202,13 +267,13 @@ void CollapsibleHeader::draw(DrawContext &ctx)
     } else {
         for (auto &child : m_children) {
             if (auto *drawable = child->as<UIObject>()) {
-                bool originalVisible = drawable->visible;
-                drawable->visible = false;
+                uint8_t originalVisible = drawable->getBaseProperties().visible;
+                drawable->setBaseProperties({.visible = 0});
                 drawable->markDirty();
                 drawable->clipRect = childClip;
                 drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
                 drawable->draw(ctx);
-                drawable->visible = originalVisible;
+                drawable->setBaseProperties({.visible = originalVisible});
             }
         }
     }
@@ -220,8 +285,9 @@ std::vector<Instance *> CollapsibleHeader::getHittableInstances()
 {
     std::vector<Instance *> result;
     result.push_back(m_headerButton.get());
+    result.push_back(m_headerContent);
 
-    if (expanded) {
+    if (static_cast<bool>(m_chProps.expanded)) {
         for (auto &child : m_children) {
             result.push_back(child.get());
         }

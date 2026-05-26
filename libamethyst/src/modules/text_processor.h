@@ -31,7 +31,7 @@ struct TextLayoutParams {
     Color4 strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
     TextXAlignment xAlign = TextXAlignment::LEFT;
     TextYAlignment yAlign = TextYAlignment::TOP;
-    TextTruncate truncate = TextTruncate::NONE;
+    TextTruncate truncate = TextTruncate::OFF;
     bool wrap = false;
 };
 

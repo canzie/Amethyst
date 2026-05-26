@@ -12,6 +12,7 @@
 
 #include "components/common.h"
 #include "components/frame.h"
+#include "components/properties.h"
 #include "components/text_button.h"
 #include "components/ui_object.h"
 
@@ -91,33 +92,21 @@ class TreeView : public UIObject {
 
     std::vector<Instance *> getHittableInstances() override;
 
+    bool setTreeViewProperties(const TreeViewProperties &props);
+    const TreeViewProperties &getTreeViewProperties() const { return m_tvProps; }
+
   public:
     uint32_t numCols = 1;
     std::vector<float> columnWeights;
-    float rowHeight = 0.0f;
-    UDim4 cellPadding;
-
-    bool showColumnSeparators = false;
-    float columnSeparatorWidth = 1.0f;
-    Color4 columnSeparatorColor = {0.3f, 0.3f, 0.3f, 1.0f};
-
-    float indentPerLevel = 16.0f;
-
-    bool showDisclosureTriangles = true;
-    float disclosureTriangleSize = 10.0f;
-    float disclosureTrianglePadding = 4.0f;
-    Color4 disclosureTriangleColor = {0.7f, 0.7f, 0.7f, 1.0f};
 
     int32_t hoveredRow = -1;
     int32_t selectedRow = -1;
-    Color4 rowBackgroundColor = {0.18f, 0.18f, 0.2f, 1.0f};
-    Color4 rowAlternateColor = {0.22f, 0.22f, 0.24f, 1.0f};
-    Color4 rowHoverColor = {0.3f, 0.3f, 0.35f, 1.0f};
-    Color4 rowSelectedColor = {0.25f, 0.4f, 0.65f, 1.0f};
-    bool fillRows = true;
 
     std::function<void(uint32_t)> onRowClicked;
     std::function<void(uint32_t, bool)> onRowToggled;
+
+  protected:
+    TreeViewProperties m_tvProps;
 
   private:
     std::vector<float> computeColumnPositions(float tableWidth) const;

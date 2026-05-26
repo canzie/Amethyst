@@ -66,6 +66,7 @@ target_compile_definitions(amethyst PRIVATE TOML_EXCEPTIONS=0)
 
 target_compile_options(amethyst PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic -Werror>
+    $<$<CXX_COMPILER_ID:Clang>:-Wno-reorder-init-list -Wno-missing-designated-field-initializers>
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
 )
 

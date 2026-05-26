@@ -16,6 +16,59 @@
 
 namespace Amethyst {
 
+TextInput::TextInput()
+{
+    m_tiProps.placeholderColor = Color4{0.5f, 0.5f, 0.5f, 1.0f};
+    m_tiProps.selectionColor = Color4{0.3f, 0.5f, 0.9f, 0.5f};
+    m_tiProps.cursorColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
+    m_tiProps.text.fontSize = 14.0f;
+    m_tiProps.text.textColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
+    m_tiProps.text.textXAlignment = TextXAlignment::LEFT;
+    m_tiProps.text.textYAlignment = TextYAlignment::CENTER;
+    m_tiProps.multiline = 0;
+    m_tiProps.maxLength = -1;
+    m_tiProps.readOnly = 0;
+    m_tiProps.cursorBlinkRate = 0.5f;
+}
+
+bool TextInput::setTextInputProperties(const TextInputProperties &props)
+{
+    bool changed = false;
+#define AM_APPLY(field) \
+    if (propIsSet(props.field) && m_tiProps.field != props.field) { \
+        m_tiProps.field = props.field; \
+        changed = true; \
+    }
+    AM_APPLY(multiline)
+    AM_APPLY(maxLength)
+    AM_APPLY(readOnly)
+    AM_APPLY(cursorBlinkRate)
+#undef AM_APPLY
+    if (!props.placeholderText.empty() && m_tiProps.placeholderText != props.placeholderText) {
+        m_tiProps.placeholderText = props.placeholderText;
+        changed = true;
+    }
+    if (propIsSet(props.placeholderColor) && m_tiProps.placeholderColor != props.placeholderColor) {
+        m_tiProps.placeholderColor = props.placeholderColor;
+        changed = true;
+    }
+    if (propIsSet(props.selectionColor) && m_tiProps.selectionColor != props.selectionColor) {
+        m_tiProps.selectionColor = props.selectionColor;
+        changed = true;
+    }
+    if (propIsSet(props.cursorColor) && m_tiProps.cursorColor != props.cursorColor) {
+        m_tiProps.cursorColor = props.cursorColor;
+        changed = true;
+    }
+    if (applyTextProperties(m_tiProps.text, props.text)) {
+        changed = true;
+    }
+    if (changed) {
+        markDirty();
+    }
+    return changed;
+}
+
 TextInput::~TextInput()
 {
     for (auto *alloc : m_textAllocations) {

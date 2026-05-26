@@ -18,100 +18,162 @@
 
 namespace Amethyst {
 
-static void applyStyle(Slider &slider)
+static void s_applyStyle(Slider &slider)
 {
     const auto &style = Style::instance();
-    slider.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SLIDER);
-    slider.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SLIDER);
-    slider.sliderColor = style.get<Color3>(StyleProperty::SLIDER_COLOR, ComponentType::SLIDER);
-    slider.sliderTransparency = style.get<float>(StyleProperty::SLIDER_TRANSPARENCY, ComponentType::SLIDER);
-    slider.thumbColor = style.get<Color3>(StyleProperty::THUMB_COLOR, ComponentType::SLIDER);
-    slider.thumbTransparency = style.get<float>(StyleProperty::THUMB_TRANSPARENCY, ComponentType::SLIDER);
-    slider.trackCornerRadius = style.get<float>(StyleProperty::TRACK_CORNER_RADIUS, ComponentType::SLIDER);
-    slider.thumbCornerRadius = style.get<float>(StyleProperty::THUMB_CORNER_RADIUS, ComponentType::SLIDER);
-    slider.labelColor = style.get<Color4>(StyleProperty::LABEL_COLOR, ComponentType::SLIDER);
-    slider.labelPadding = style.get<UDim>(StyleProperty::LABEL_PADDING, ComponentType::SLIDER);
-    slider.valueColor = style.get<Color4>(StyleProperty::VALUE_COLOR, ComponentType::SLIDER);
-    slider.fontSize = style.get<float>(StyleProperty::FONT_SIZE, ComponentType::SLIDER);
+    slider.setBaseProperties({
+        .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SLIDER),
+        .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SLIDER),
+    });
+    slider.setSliderProperties({
+        .sliderColor = style.get<Color3>(StyleProperty::SLIDER_COLOR, ComponentType::SLIDER),
+        .sliderTransparency = style.get<float>(StyleProperty::SLIDER_TRANSPARENCY, ComponentType::SLIDER),
+        .thumbColor = style.get<Color3>(StyleProperty::THUMB_COLOR, ComponentType::SLIDER),
+        .thumbTransparency = style.get<float>(StyleProperty::THUMB_TRANSPARENCY, ComponentType::SLIDER),
+        .trackCornerRadius = style.get<float>(StyleProperty::TRACK_CORNER_RADIUS, ComponentType::SLIDER),
+        .thumbCornerRadius = style.get<float>(StyleProperty::THUMB_CORNER_RADIUS, ComponentType::SLIDER),
+        .labelColor = style.get<Color4>(StyleProperty::LABEL_COLOR, ComponentType::SLIDER),
+        .labelPadding = style.get<UDim>(StyleProperty::LABEL_PADDING, ComponentType::SLIDER),
+        .valueColor = style.get<Color4>(StyleProperty::VALUE_COLOR, ComponentType::SLIDER),
+        .fontSize = style.get<float>(StyleProperty::FONT_SIZE, ComponentType::SLIDER),
+    });
 }
 
-static void setupSideLabel(TextLabel &label, const Slider *slider, float &outLabelWidth, float &outLabelHeight)
+static void s_setupSideLabel(TextLabel &label, const Slider *slider, float &outLabelWidth, float &outLabelHeight)
 {
+    const auto &sp = slider->getSliderProperties();
     outLabelWidth = 0.0f;
     outLabelHeight = 0.0f;
 
-    if (slider->label.empty()) {
-        label.visible = false;
+    if (sp.label.empty()) {
+        label.setBaseProperties({.visible = 0});
         return;
     }
 
-    label.text = slider->label;
-    label.fontSize = slider->fontSize;
-    label.textColor = slider->labelColor;
-    label.textYAlignment = TextYAlignment::CENTER;
-    label.backgroundColor = slider->backgroundColor;
-    label.backgroundTransparency = slider->backgroundTransparency;
-    label.visible = true;
+    label.setTextProperties({
+        .text = sp.label,
+        .fontSize = sp.fontSize,
+        .textColor = sp.labelColor,
+        .textYAlignment = TextYAlignment::CENTER,
+    });
+    label.setBaseProperties({
+        .backgroundColor = slider->getBaseProperties().backgroundColor,
+        .backgroundTransparency = slider->getBaseProperties().backgroundTransparency,
+        .visible = 1,
+    });
 
-    float padding = slider->labelPadding.resolve(slider->labelSide == LabelSide::LEFT || slider->labelSide == LabelSide::RIGHT
-                                                     ? slider->absoluteSize.x
-                                                     : slider->absoluteSize.y);
+    float padding = sp.labelPadding.resolve(
+        sp.labelSide == LabelSide::LEFT || sp.labelSide == LabelSide::RIGHT ? slider->absoluteSize.x : slider->absoluteSize.y);
 
-    if (slider->labelSide == LabelSide::LEFT || slider->labelSide == LabelSide::RIGHT) {
-        outLabelWidth = slider->fontSize * slider->label.length() * 0.6f + padding;
-        label.size = UDim2::fromOffset(outLabelWidth, slider->absoluteSize.y);
+    if (sp.labelSide == LabelSide::LEFT || sp.labelSide == LabelSide::RIGHT) {
+        outLabelWidth = sp.fontSize * sp.label.length() * 0.6f + padding;
+        label.setBaseProperties({.size = UDim2::fromOffset(outLabelWidth, slider->absoluteSize.y)});
     } else {
-        outLabelHeight = slider->fontSize * 1.5f + padding;
-        label.size = UDim2::fromOffset(slider->absoluteSize.x, outLabelHeight);
+        outLabelHeight = sp.fontSize * 1.5f + padding;
+        label.setBaseProperties({.size = UDim2::fromOffset(slider->absoluteSize.x, outLabelHeight)});
     }
 
-    if (slider->labelSide == LabelSide::LEFT || slider->labelSide == LabelSide::TOP) {
-        label.position = UDim2::fromOffset(0, 0);
+    if (sp.labelSide == LabelSide::LEFT || sp.labelSide == LabelSide::TOP) {
+        label.setBaseProperties({.position = UDim2::fromOffset(0, 0)});
     }
-
-    label.markDirty();
 }
 
-static void setupTrack(Frame &track, float x, float y, float width, float height, const Slider *slider)
+static void s_setupTrack(Frame &track, float x, float y, float width, float height, const Slider *slider)
 {
-    track.position = UDim2::fromOffset(x, y);
-    track.size = UDim2::fromOffset(width, height);
-    track.backgroundColor = slider->sliderColor;
-    track.backgroundTransparency = slider->sliderTransparency;
-    track.cornerRadius = slider->trackCornerRadius;
-    track.markDirty();
+    const auto &sp = slider->getSliderProperties();
+    track.setBaseProperties({
+        .position = UDim2::fromOffset(x, y),
+        .size = UDim2::fromOffset(width, height),
+        .backgroundColor = sp.sliderColor,
+        .backgroundTransparency = sp.sliderTransparency,
+        .cornerRadius = sp.trackCornerRadius,
+    });
 }
 
-static void setupThumb(Frame &thumb, float x, float y, float width, float height, const Slider *slider)
+static void s_setupThumb(Frame &thumb, float x, float y, float width, float height, const Slider *slider)
 {
-    thumb.position = UDim2::fromOffset(x, y);
-    thumb.size = UDim2::fromOffset(width, height);
-    thumb.backgroundColor = slider->thumbColor;
-    thumb.backgroundTransparency = slider->thumbTransparency;
-    thumb.cornerRadius = slider->thumbCornerRadius;
-    thumb.markDirty();
+    const auto &sp = slider->getSliderProperties();
+    thumb.setBaseProperties({
+        .position = UDim2::fromOffset(x, y),
+        .size = UDim2::fromOffset(width, height),
+        .backgroundColor = sp.thumbColor,
+        .backgroundTransparency = sp.thumbTransparency,
+        .cornerRadius = sp.thumbCornerRadius,
+    });
 }
 
-static void setupValueLabel(TextLabel &label, float x, float y, float width, float height, const Slider *slider,
-                            const std::string &text)
+static void s_setupValueLabel(TextLabel &label, float x, float y, float width, float height, const Slider *slider,
+                              const std::string &text)
 {
-    label.text = text;
-    label.fontSize = slider->fontSize * 0.8f;
-    label.textColor = slider->valueColor;
-    label.textXAlignment = TextXAlignment::CENTER;
-    label.textYAlignment = TextYAlignment::CENTER;
-    label.position = UDim2::fromOffset(x, y);
-    label.size = UDim2::fromOffset(width, height);
-    label.backgroundColor = Color3(0.0f);
-    label.backgroundTransparency = 1.0f;
-    label.interactable = false;
-    label.markDirty();
+    const auto &sp = slider->getSliderProperties();
+    label.setTextProperties({
+        .text = text,
+        .fontSize = sp.fontSize * 0.8f,
+        .textColor = sp.valueColor,
+        .textXAlignment = TextXAlignment::CENTER,
+        .textYAlignment = TextYAlignment::CENTER,
+    });
+    label.setBaseProperties({
+        .position = UDim2::fromOffset(x, y),
+        .size = UDim2::fromOffset(width, height),
+        .backgroundColor = Color3(0.0f),
+        .backgroundTransparency = 1.0f,
+        .interactable = 0,
+    });
 }
 
 Slider::Slider()
 {
+    m_sProps.sliderColor = Color3{0.5f, 0.5f, 0.5f};
+    m_sProps.sliderTransparency = 0.0f;
+    m_sProps.thumbColor = Color3{0.8f, 0.8f, 0.8f};
+    m_sProps.thumbTransparency = 0.0f;
+    m_sProps.trackCornerRadius = 0.0f;
+    m_sProps.thumbCornerRadius = 0.0f;
+    m_sProps.labelColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
+    m_sProps.labelSide = LabelSide::LEFT;
+    m_sProps.labelPadding = UDim::fromOffset(5.0f);
+    m_sProps.valueColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
+    m_sProps.fontSize = 14.0f;
+    m_sProps.layout = ValueControlLayout::SIDE_BY_SIDE;
+
     m_sideLabel.parent = this;
-    applyStyle(*this);
+    s_applyStyle(*this);
+}
+
+bool Slider::setSliderProperties(const SliderProperties &props)
+{
+    bool changed = false;
+#define AM_APPLY(field)                                            \
+    if (propIsSet(props.field) && m_sProps.field != props.field) { \
+        m_sProps.field = props.field;                              \
+        changed = true;                                            \
+    }
+    AM_APPLY(sliderColor)
+    AM_APPLY(sliderTransparency)
+    AM_APPLY(thumbColor)
+    AM_APPLY(thumbTransparency)
+    AM_APPLY(trackCornerRadius)
+    AM_APPLY(thumbCornerRadius)
+    AM_APPLY(labelColor)
+    AM_APPLY(labelSide)
+    AM_APPLY(labelPadding)
+    AM_APPLY(valueColor)
+    AM_APPLY(fontSize)
+    AM_APPLY(layout)
+#undef AM_APPLY
+    if (!props.label.empty() && m_sProps.label != props.label) {
+        m_sProps.label = props.label;
+        changed = true;
+    }
+    if (!props.valueSuffix.empty() && m_sProps.valueSuffix != props.valueSuffix) {
+        m_sProps.valueSuffix = props.valueSuffix;
+        changed = true;
+    }
+    if (changed) {
+        markDirty();
+    }
+    return changed;
 }
 
 SliderFloat::SliderFloat()
@@ -154,14 +216,16 @@ void SliderFloat::draw(DrawContext &ctx)
 void SliderFloat::updateComponents()
 {
     float labelWidth, labelHeight;
-    setupSideLabel(m_sideLabel, this, labelWidth, labelHeight);
+    s_setupSideLabel(m_sideLabel, this, labelWidth, labelHeight);
 
-    float trackX = (labelSide == LabelSide::LEFT) ? labelWidth : 0.0f;
-    float trackY = (labelSide == LabelSide::TOP) ? labelHeight : 0.0f;
-    float trackWidth = absoluteSize.x - ((labelSide == LabelSide::LEFT || labelSide == LabelSide::RIGHT) ? labelWidth : 0.0f);
-    float trackHeight = absoluteSize.y - ((labelSide == LabelSide::TOP || labelSide == LabelSide::BOTTOM) ? labelHeight : 0.0f);
+    float trackX = (m_sProps.labelSide == LabelSide::LEFT) ? labelWidth : 0.0f;
+    float trackY = (m_sProps.labelSide == LabelSide::TOP) ? labelHeight : 0.0f;
+    float trackWidth =
+        absoluteSize.x - ((m_sProps.labelSide == LabelSide::LEFT || m_sProps.labelSide == LabelSide::RIGHT) ? labelWidth : 0.0f);
+    float trackHeight =
+        absoluteSize.y - ((m_sProps.labelSide == LabelSide::TOP || m_sProps.labelSide == LabelSide::BOTTOM) ? labelHeight : 0.0f);
 
-    setupTrack(m_track, trackX, trackY, trackWidth, trackHeight, this);
+    s_setupTrack(m_track, trackX, trackY, trackWidth, trackHeight, this);
 
     float range = max - min;
     float thumbWidth = std::max(10.0f, std::min(20.0f, trackWidth / (range / speed)));
@@ -169,7 +233,7 @@ void SliderFloat::updateComponents()
     float normalizedValue = (value - min) / range;
     float thumbX = trackX + normalizedValue * (trackWidth - thumbWidth);
 
-    setupThumb(m_thumb, thumbX, trackY, thumbWidth, trackHeight, this);
+    s_setupThumb(m_thumb, thumbX, trackY, thumbWidth, trackHeight, this);
 
     UIDragDetector *dragDetector = m_thumb.getExtension<UIDragDetector>();
     if (!dragDetector) {
@@ -191,15 +255,15 @@ void SliderFloat::updateComponents()
         markDirty();
     };
 
-    setupValueLabel(m_valueLabel, trackX, trackY, trackWidth, trackHeight, this, formatValue());
+    s_setupValueLabel(m_valueLabel, trackX, trackY, trackWidth, trackHeight, this, formatValue());
 }
 
 std::string SliderFloat::formatValue() const
 {
-    if (!valueRef) return "0" + valueSuffix;
+    if (!valueRef) return "0" + m_sProps.valueSuffix;
 
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2) << *valueRef << valueSuffix;
+    oss << std::fixed << std::setprecision(2) << *valueRef << m_sProps.valueSuffix;
     return oss.str();
 }
 
@@ -250,14 +314,16 @@ void SliderInt::draw(DrawContext &ctx)
 void SliderInt::updateComponents()
 {
     float labelWidth, labelHeight;
-    setupSideLabel(m_sideLabel, this, labelWidth, labelHeight);
+    s_setupSideLabel(m_sideLabel, this, labelWidth, labelHeight);
 
-    float trackX = (labelSide == LabelSide::LEFT) ? labelWidth : 0.0f;
-    float trackY = (labelSide == LabelSide::TOP) ? labelHeight : 0.0f;
-    float trackWidth = absoluteSize.x - ((labelSide == LabelSide::LEFT || labelSide == LabelSide::RIGHT) ? labelWidth : 0.0f);
-    float trackHeight = absoluteSize.y - ((labelSide == LabelSide::TOP || labelSide == LabelSide::BOTTOM) ? labelHeight : 0.0f);
+    float trackX = (m_sProps.labelSide == LabelSide::LEFT) ? labelWidth : 0.0f;
+    float trackY = (m_sProps.labelSide == LabelSide::TOP) ? labelHeight : 0.0f;
+    float trackWidth =
+        absoluteSize.x - ((m_sProps.labelSide == LabelSide::LEFT || m_sProps.labelSide == LabelSide::RIGHT) ? labelWidth : 0.0f);
+    float trackHeight =
+        absoluteSize.y - ((m_sProps.labelSide == LabelSide::TOP || m_sProps.labelSide == LabelSide::BOTTOM) ? labelHeight : 0.0f);
 
-    setupTrack(m_track, trackX, trackY, trackWidth, trackHeight, this);
+    s_setupTrack(m_track, trackX, trackY, trackWidth, trackHeight, this);
 
     float range = static_cast<float>(max - min);
     float thumbWidth = std::max(10.0f, std::min(20.0f, trackWidth / (range / speed)));
@@ -265,7 +331,7 @@ void SliderInt::updateComponents()
     float normalizedValue = (value - min) / range;
     float thumbX = trackX + normalizedValue * (trackWidth - thumbWidth);
 
-    setupThumb(m_thumb, thumbX, trackY, thumbWidth, trackHeight, this);
+    s_setupThumb(m_thumb, thumbX, trackY, thumbWidth, trackHeight, this);
 
     UIDragDetector *dragDetector = m_thumb.getExtension<UIDragDetector>();
     if (!dragDetector) {
@@ -289,14 +355,14 @@ void SliderInt::updateComponents()
         markDirty();
     };
 
-    setupValueLabel(m_valueLabel, trackX, trackY, trackWidth, trackHeight, this, formatValue());
+    s_setupValueLabel(m_valueLabel, trackX, trackY, trackWidth, trackHeight, this, formatValue());
 }
 
 std::string SliderInt::formatValue() const
 {
-    if (!valueRef) return "0" + valueSuffix;
+    if (!valueRef) return "0" + m_sProps.valueSuffix;
 
-    return std::to_string(*valueRef) + valueSuffix;
+    return std::to_string(*valueRef) + m_sProps.valueSuffix;
 }
 
 std::vector<Instance *> SliderInt::getHittableInstances()
@@ -353,16 +419,18 @@ void SliderVec2::draw(DrawContext &ctx)
 void SliderVec2::updateComponents()
 {
     float labelWidth, labelHeight;
-    setupSideLabel(m_sideLabel, this, labelWidth, labelHeight);
+    s_setupSideLabel(m_sideLabel, this, labelWidth, labelHeight);
 
-    float baseX = (labelSide == LabelSide::LEFT) ? labelWidth : 0.0f;
-    float baseY = (labelSide == LabelSide::TOP) ? labelHeight : 0.0f;
-    float availableWidth = absoluteSize.x - ((labelSide == LabelSide::LEFT || labelSide == LabelSide::RIGHT) ? labelWidth : 0.0f);
-    float availableHeight = absoluteSize.y - ((labelSide == LabelSide::TOP || labelSide == LabelSide::BOTTOM) ? labelHeight : 0.0f);
+    float baseX = (m_sProps.labelSide == LabelSide::LEFT) ? labelWidth : 0.0f;
+    float baseY = (m_sProps.labelSide == LabelSide::TOP) ? labelHeight : 0.0f;
+    float availableWidth =
+        absoluteSize.x - ((m_sProps.labelSide == LabelSide::LEFT || m_sProps.labelSide == LabelSide::RIGHT) ? labelWidth : 0.0f);
+    float availableHeight =
+        absoluteSize.y - ((m_sProps.labelSide == LabelSide::TOP || m_sProps.labelSide == LabelSide::BOTTOM) ? labelHeight : 0.0f);
 
     float trackWidth, trackHeight, spacing = 5.0f;
 
-    if (layout == ValueControlLayout::STACKED) {
+    if (m_sProps.layout == ValueControlLayout::STACKED) {
         trackWidth = availableWidth;
         trackHeight = (availableHeight - spacing) / 2.0f;
     } else {
@@ -371,10 +439,10 @@ void SliderVec2::updateComponents()
     }
 
     for (int i = 0; i < 2; i++) {
-        float trackX = (layout == ValueControlLayout::STACKED) ? baseX : baseX + i * (trackWidth + spacing);
-        float trackY = (layout == ValueControlLayout::STACKED) ? baseY + i * (trackHeight + spacing) : baseY;
+        float trackX = (m_sProps.layout == ValueControlLayout::STACKED) ? baseX : baseX + i * (trackWidth + spacing);
+        float trackY = (m_sProps.layout == ValueControlLayout::STACKED) ? baseY + i * (trackHeight + spacing) : baseY;
 
-        setupTrack(m_track[i], trackX, trackY, trackWidth, trackHeight, this);
+        s_setupTrack(m_track[i], trackX, trackY, trackWidth, trackHeight, this);
 
         float range = max[i] - min[i];
         float thumbWidth = std::max(10.0f, std::min(20.0f, trackWidth / (range / speed)));
@@ -382,7 +450,7 @@ void SliderVec2::updateComponents()
         float normalizedValue = (value - min[i]) / range;
         float thumbXPos = trackX + normalizedValue * (trackWidth - thumbWidth);
 
-        setupThumb(m_thumb[i], thumbXPos, trackY, thumbWidth, trackHeight, this);
+        s_setupThumb(m_thumb[i], thumbXPos, trackY, thumbWidth, trackHeight, this);
 
         UIDragDetector *dragDetector = m_thumb[i].getExtension<UIDragDetector>();
         if (!dragDetector) {
@@ -404,16 +472,16 @@ void SliderVec2::updateComponents()
             markDirty();
         };
 
-        setupValueLabel(m_valueLabel[i], trackX, trackY, trackWidth, trackHeight, this, formatValue(i));
+        s_setupValueLabel(m_valueLabel[i], trackX, trackY, trackWidth, trackHeight, this, formatValue(i));
     }
 }
 
 std::string SliderVec2::formatValue(int component) const
 {
-    if (!valueRef) return "0" + valueSuffix;
+    if (!valueRef) return "0" + m_sProps.valueSuffix;
 
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2) << (*valueRef)[component] << valueSuffix;
+    oss << std::fixed << std::setprecision(2) << (*valueRef)[component] << m_sProps.valueSuffix;
     return oss.str();
 }
 
@@ -473,16 +541,18 @@ void SliderVec3::draw(DrawContext &ctx)
 void SliderVec3::updateComponents()
 {
     float labelWidth, labelHeight;
-    setupSideLabel(m_sideLabel, this, labelWidth, labelHeight);
+    s_setupSideLabel(m_sideLabel, this, labelWidth, labelHeight);
 
-    float baseX = (labelSide == LabelSide::LEFT) ? labelWidth : 0.0f;
-    float baseY = (labelSide == LabelSide::TOP) ? labelHeight : 0.0f;
-    float availableWidth = absoluteSize.x - ((labelSide == LabelSide::LEFT || labelSide == LabelSide::RIGHT) ? labelWidth : 0.0f);
-    float availableHeight = absoluteSize.y - ((labelSide == LabelSide::TOP || labelSide == LabelSide::BOTTOM) ? labelHeight : 0.0f);
+    float baseX = (m_sProps.labelSide == LabelSide::LEFT) ? labelWidth : 0.0f;
+    float baseY = (m_sProps.labelSide == LabelSide::TOP) ? labelHeight : 0.0f;
+    float availableWidth =
+        absoluteSize.x - ((m_sProps.labelSide == LabelSide::LEFT || m_sProps.labelSide == LabelSide::RIGHT) ? labelWidth : 0.0f);
+    float availableHeight =
+        absoluteSize.y - ((m_sProps.labelSide == LabelSide::TOP || m_sProps.labelSide == LabelSide::BOTTOM) ? labelHeight : 0.0f);
 
     float trackWidth, trackHeight, spacing = 5.0f;
 
-    if (layout == ValueControlLayout::STACKED) {
+    if (m_sProps.layout == ValueControlLayout::STACKED) {
         trackWidth = availableWidth;
         trackHeight = (availableHeight - 2 * spacing) / 3.0f;
     } else {
@@ -491,10 +561,10 @@ void SliderVec3::updateComponents()
     }
 
     for (int i = 0; i < 3; i++) {
-        float trackX = (layout == ValueControlLayout::STACKED) ? baseX : baseX + i * (trackWidth + spacing);
-        float trackY = (layout == ValueControlLayout::STACKED) ? baseY + i * (trackHeight + spacing) : baseY;
+        float trackX = (m_sProps.layout == ValueControlLayout::STACKED) ? baseX : baseX + i * (trackWidth + spacing);
+        float trackY = (m_sProps.layout == ValueControlLayout::STACKED) ? baseY + i * (trackHeight + spacing) : baseY;
 
-        setupTrack(m_track[i], trackX, trackY, trackWidth, trackHeight, this);
+        s_setupTrack(m_track[i], trackX, trackY, trackWidth, trackHeight, this);
 
         float range = max[i] - min[i];
         float thumbWidth = std::max(10.0f, std::min(20.0f, trackWidth / (range / speed)));
@@ -502,7 +572,7 @@ void SliderVec3::updateComponents()
         float normalizedValue = (value - min[i]) / range;
         float thumbXPos = trackX + normalizedValue * (trackWidth - thumbWidth);
 
-        setupThumb(m_thumb[i], thumbXPos, trackY, thumbWidth, trackHeight, this);
+        s_setupThumb(m_thumb[i], thumbXPos, trackY, thumbWidth, trackHeight, this);
 
         UIDragDetector *dragDetector = m_thumb[i].getExtension<UIDragDetector>();
         if (!dragDetector) {
@@ -524,16 +594,16 @@ void SliderVec3::updateComponents()
             markDirty();
         };
 
-        setupValueLabel(m_valueLabel[i], trackX, trackY, trackWidth, trackHeight, this, formatValue(i));
+        s_setupValueLabel(m_valueLabel[i], trackX, trackY, trackWidth, trackHeight, this, formatValue(i));
     }
 }
 
 std::string SliderVec3::formatValue(int component) const
 {
-    if (!valueRef) return "0" + valueSuffix;
+    if (!valueRef) return "0" + m_sProps.valueSuffix;
 
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2) << (*valueRef)[component] << valueSuffix;
+    oss << std::fixed << std::setprecision(2) << (*valueRef)[component] << m_sProps.valueSuffix;
     return oss.str();
 }
 

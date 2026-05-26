@@ -6,6 +6,7 @@
 #define AMETHYST__TEXT_LABEL_H
 
 #include "components/instance.h"
+#include "components/properties.h"
 #include "components/ui_label.h"
 
 #include <string>
@@ -22,22 +23,13 @@ class TextLabel : public UILabel {
 
     void draw(DrawContext &ctx) override;
 
-  public:
-    std::string text;
-    std::string fontFamily;
-    float fontSize = 14.0f;
-    Color4 textColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    TextXAlignment textXAlignment = TextXAlignment::LEFT;
-    TextYAlignment textYAlignment = TextYAlignment::TOP;
-    TextTruncate textTruncate = TextTruncate::NONE;
-    bool richText = false;
-    bool textWrapped = false;
-    bool textScaled = false;
-    float lineHeight = 1.0f;
-    float strokeThickness = 0.0f;
-    Color4 strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
+    bool setTextProperties(const TextProperties &props);
+    const TextProperties &getTextProperties() const { return m_textProps; }
 
     glm::vec2 getTextSize() const { return m_textSize; }
+
+  protected:
+    TextProperties m_textProps;
 
   private:
     std::vector<GeometryAllocation *> m_textAllocations;

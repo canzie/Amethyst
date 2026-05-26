@@ -12,6 +12,7 @@
 
 #include "components/common.h"
 #include "components/frame.h"
+#include "components/properties.h"
 #include "components/text_label.h"
 #include "components/ui_object.h"
 
@@ -129,29 +130,17 @@ class Table : public UIObject {
      */
     std::vector<Instance *> getHittableInstances() override;
 
+    bool setTableProperties(const TableProperties &props);
+    const TableProperties &getTableProperties() const { return m_tProps; }
+
   public:
-    float rowHeight = 0.0f;
-    UDim4 cellPadding;
-
-    bool showColumnSeparators = true;
-    float columnSeparatorWidth = 1.0f;
-    Color4 columnSeparatorColor = {0.3f, 0.3f, 0.3f, 1.0f};
-
-    bool showHeader = true;
-    float headerHeight = 28.0f;
-    Color3 headerColor = {0.25f, 0.25f, 0.28f};
-    Color4 headerTextColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    float headerFontSize = 14.0f;
-
-    Color4 rowBackgroundColor = {0.18f, 0.18f, 0.2f, 1.0f};
-    Color4 rowAlternateColor = {0.22f, 0.22f, 0.24f, 1.0f};
-    Color4 rowHoverColor = {0.3f, 0.3f, 0.35f, 1.0f};
-    Color4 rowSelectedColor = {0.25f, 0.4f, 0.65f, 1.0f};
-
     int32_t hoveredRow = -1;
     int32_t selectedRow = -1;
 
     std::function<void(uint32_t row)> onRowClicked;
+
+  protected:
+    TableProperties m_tProps;
 
   private:
     void rebuildColumnPositions();

@@ -1,43 +1,23 @@
 #ifndef AMETHYST__TAB_BAR_H
 #define AMETHYST__TAB_BAR_H
 
+#include "components/frame.h"
+#include "components/invisible_button.h"
+#include "components/properties.h"
 #include "components/text_button.h"
 #include "components/ui_object.h"
-#include "modules/color.h"
 #include "parsers/config/config_types.h"
 #include "rendering/draw_context.h"
 
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 namespace Amethyst {
 
-enum class TabBarMode {
-    INSIDE,
-    OUTSIDE
-};
-
-enum class TabBarVisibility {
-    AUTO,
-    NEVER,
-    ALWAYS
-};
-
-enum class TabCloseButtonVisibility {
-    HIDDEN,
-    ALWAYS,
-    ACTIVE_ONLY,
-    HOVERED_OR_ACTIVE,
-};
-
-enum class TabBarPosition {
-    TOP,
-    BOTTOM,
-    LEFT,
-    RIGHT
-};
+class TextLabel;
 
 class TabBar : public UIObject {
   public:
@@ -45,9 +25,35 @@ class TabBar : public UIObject {
     ~TabBar() override = default;
 
     void draw(DrawContext &ctx) override;
-    Instance *addChild(std::unique_ptr<Instance> child) override;
-    std::unique_ptr<Instance> removeChild(Instance *child) override;
     std::vector<Instance *> getHittableInstances() override;
+
+    /** @brief Not allowed. Use addTab() to add tabs. */
+    Instance *addChild(std::unique_ptr<Instance> child) override;
+    /** @brief Not allowed. Use removeTab() to remove tabs. */
+    std::unique_ptr<Instance> removeChild(Instance *child) override;
+
+    /**
+     * @brief Add a tab with a string label.
+     * @param content The content instance owned by this tab.
+     * @param label The text shown on the tab button.
+     * @return Raw pointer to the content instance.
+     */
+    Instance *addTab(std::unique_ptr<Instance> content, std::string_view label);
+
+    /**
+     * @brief Add a tab with a custom label frame.
+     * @param content The content instance owned by this tab.
+     * @param labelSetup Callback to populate the label Frame.
+     * @return Raw pointer to the content instance.
+     */
+    Instance *addTab(std::unique_ptr<Instance> content, std::function<void(Frame &)> labelSetup);
+
+    /**
+     * @brief Remove the tab whose content matches the given pointer.
+     * @param content Pointer to the content instance to remove.
+     * @return The removed content instance.
+     */
+    std::unique_ptr<Instance> removeTab(Instance *content);
 
     void select(int32_t index);
     void select(Instance *content);
@@ -57,34 +63,25 @@ class TabBar : public UIObject {
     TabBarConfig saveConfig() const;
     void applyConfig(const TabBarConfig &config);
 
-  public:
-    bool closeable = false;
-    bool persistLayout = false;
-    TabBarMode mode = TabBarMode::INSIDE;
-    TabBarPosition tabPosition = TabBarPosition::TOP;
-    TabBarVisibility visibility = TabBarVisibility::ALWAYS;
-    float barThickness = 30.0f;
-    float tabWidth = 100.0f;
-    float tabSpacing = 0.0f;
-    int32_t selectedIndex = 0;
-    Color3 tabColor{};
-    Color3 focussedTabColor{};
-    Color3 hoveredTabColor{};
-    Color3 pressedTabColor{};
+    bool setTabBarProperties(const TabBarProperties &props);
+    const TabBarProperties &getTabBarProperties() const { return m_tbProps; }
 
-    TabCloseButtonVisibility closeButtonVisibility = TabCloseButtonVisibility::HOVERED_OR_ACTIVE;
     std::function<void(Instance *content)> onTabClosed;
-
     std::function<void(Instance *content)> onTabTornOff;
     std::function<void(Instance *content, glm::vec2 pos)> onTornOffTabMoved;
     std::function<void(Instance *content, glm::vec2 dropPos)> onTornOffTabReleased;
     std::function<void(int32_t index)> onSelectionChanged;
 
+  protected:
+    TabBarProperties m_tbProps;
+
   private:
     struct Tab {
-        std::unique_ptr<TextButton> button;
-        Instance *content = nullptr;
-        UIObject *closeButton = nullptr;
+        std::unique_ptr<Frame> labelFrame;
+        std::unique_ptr<InvisibleButton> button;
+        TextLabel *label = nullptr;
+        TextButton *closeButton = nullptr;
+        std::unique_ptr<Instance> content;
     };
 
     void setupTabButton(Tab &tab, int32_t index);

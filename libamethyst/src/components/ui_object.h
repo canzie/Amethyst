@@ -7,6 +7,7 @@
 
 #include "components/common.h"
 #include "components/extensions/ui_extension.h"
+#include "components/properties.h"
 #include "components/ui_base_2d.h"
 #include "rendering/instance_data.h"
 #include <cstdint>
@@ -20,7 +21,7 @@ class Window;
 
 class UIObject : public UIBase2D {
   public:
-    UIObject() = default;
+    UIObject();
     virtual ~UIObject();
     UIObject(const UIObject &) = delete;
     UIObject &operator=(const UIObject &) = delete;
@@ -31,19 +32,7 @@ class UIObject : public UIBase2D {
     InstanceData createInstanceData() const;
     Window *getWindow();
 
-    glm::vec4 computeChildClipRect() const
-    {
-        if (!clipsDescendants) {
-            return clipRect;
-        }
-        glm::vec4 myBounds = {absolutePosition.x, absolutePosition.y, absolutePosition.x + absoluteSize.x,
-                              absolutePosition.y + absoluteSize.y};
-        if (clipRect == glm::vec4(0.0f)) {
-            return myBounds;
-        }
-        return {glm::max(clipRect.x, myBounds.x), glm::max(clipRect.y, myBounds.y), glm::min(clipRect.z, myBounds.z),
-                glm::min(clipRect.w, myBounds.w)};
-    }
+    glm::vec4 computeChildClipRect() const;
 
     template <typename T> T *getExtension()
     {
@@ -61,11 +50,14 @@ class UIObject : public UIBase2D {
     template <typename T> void removeExtension() { m_extensions.erase(std::type_index(typeid(T))); }
 
     bool isVisible() const;
-    int32_t getRelativeZIndex() const { return zIndex; }
+    int32_t getRelativeZIndex() const { return m_uiObjProps.zIndex; }
     int32_t getAbsoluteZIndex() const;
     int32_t getZIndex() const override;
-    bool isHitTestVisible() const override { return visible && interactable; }
-    bool getClipsDescendants() const override { return clipsDescendants; }
+    bool isHitTestVisible() const override { return m_uiObjProps.visible && m_uiObjProps.interactable; }
+    bool getClipsDescendants() const override { return static_cast<bool>(m_uiObjProps.clipsDescendants); }
+
+    bool setBaseProperties(BaseProperties props);
+    const BaseProperties &getBaseProperties() const { return m_uiObjProps; }
 
   protected:
     friend class Window;
@@ -82,32 +74,10 @@ class UIObject : public UIBase2D {
     virtual EventResult onMouseScrollDown(void) { return EventResult::PROPAGATE; }
 
   public:
-    bool active = false;
-    glm::vec2 anchorPoint = glm::vec2(0.0f);
-    AutomaticSize automaticSize = AutomaticSize::NONE;
-    Color3 backgroundColor = {1.0f, 1.0f, 1.0f};
-    float backgroundTransparency = 0.0f;
-    BorderMode borderMode = BorderMode::OUTLINE;
-    float borderPixelSize = 0.0f;
-    Color3 borderColor = {0.0f, 0.0f, 0.0f};
-    float borderTransparency = 0.0f;
-    bool clipsDescendants = true;
-    float cornerRadius = 0.0f;
-    GuiState guiState = GuiState::IDLE;
-    bool interactable = true;
-    LayoutOrder layoutOrder = 0;
-
-    UDim4 padding;
-    UDim4 margin;
-
-    UDim2 position;
-    UDim2 size;
-    Degrees rotation = 0.0f;
-    bool visible = true;
-    int32_t zIndex = 1;
-    ZIndexBehavior zindexBehavior = ZIndexBehavior::SIBLING;
-
     std::function<void(bool hovered)> onHoverChanged;
+
+  protected:
+    BaseProperties m_uiObjProps;
 
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;

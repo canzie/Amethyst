@@ -8,6 +8,12 @@ namespace Amethyst {
 
 MenuBar::MenuBar()
 {
+    m_mbProps.entryPaddingX = 12.0f;
+    m_mbProps.entryPaddingY = 4.0f;
+    m_mbProps.entryFontSize = 14.0f;
+    m_mbProps.entryHoverBackground = Color3{0.25f, 0.25f, 0.30f};
+    m_mbProps.entryActiveBackground = Color3{0.28f, 0.42f, 0.62f};
+
     auto *layout = addExtension<UIListLayout>();
     layout->fillDirection = FillDirection::FILL_HORIZONTAL;
     layout->verticalFlex = UiFlexAlignment::FILL;
@@ -18,59 +24,61 @@ MenuBar::MenuBar()
 Dropdown *MenuBar::addMenu(std::string label, std::vector<DropdownItem> items)
 {
     auto *entry = add<Dropdown>();
-    entry->text = label;
     entry->setItems(std::move(items));
-    entry->maxVisibleItems = INT_MAX;
-    entry->popupDirection = DropdownDirection::DOWN;
-    entry->fontSize = entryFontSize;
-    entry->autoButtonColor = false;
-    entry->backgroundColor = backgroundColor;
-    entry->backgroundTransparency = backgroundTransparency;
-    entry->borderPixelSize = 0.0f;
-    entry->textXAlignment = TextXAlignment::CENTER;
-    entry->textYAlignment = TextYAlignment::CENTER;
-    entry->padding = {
-        UDim::fromOffset(entryPaddingY), UDim::fromOffset(entryPaddingX),
-        UDim::fromOffset(entryPaddingY), UDim::fromOffset(entryPaddingX)
-    };
-    // estimate width from label; height filled by UIListLayout verticalFlex
-    float estWidth = static_cast<float>(label.size()) * entryFontSize * 0.6f + 2.0f * entryPaddingX;
-    entry->size = UDim2::fromOffset(estWidth, 0.0f);
+    entry->setDropdownProperties({
+        .maxVisibleItems = INT_MAX,
+        .popupDirection = DropdownDirection::DOWN,
+    });
+    entry->setTextProperties({
+        .text = label,
+        .fontSize = m_mbProps.entryFontSize,
+        .textXAlignment = TextXAlignment::CENTER,
+        .textYAlignment = TextYAlignment::CENTER,
+    });
+    entry->setButtonProperties({.autoButtonColor = 0});
+    entry->setBaseProperties({
+        .backgroundColor = getBaseProperties().backgroundColor,
+        .backgroundTransparency = getBaseProperties().backgroundTransparency,
+        .borderPixelSize = 0.0f,
+    });
+    entry->setBaseProperties({
+        .padding = {
+            UDim::fromOffset(m_mbProps.entryPaddingY), UDim::fromOffset(m_mbProps.entryPaddingX),
+            UDim::fromOffset(m_mbProps.entryPaddingY), UDim::fromOffset(m_mbProps.entryPaddingX)
+        },
+    });
+    float estWidth = static_cast<float>(label.size()) * m_mbProps.entryFontSize * 0.6f + 2.0f * m_mbProps.entryPaddingX;
+    entry->setBaseProperties({.size = UDim2::fromOffset(estWidth, 0.0f)});
     entry->layoutOrder = static_cast<LayoutOrder>(m_entries.size());
 
     entry->onMouseEnterCb = [this, entry]() {
-        Color3 newBg = entry->isOpen() ? entryActiveBackground : entryHoverBackground;
-        if (entry->backgroundColor != newBg) {
-            entry->backgroundColor = newBg;
-            entry->markDirty();
+        Color3 newBg = entry->isOpen() ? m_mbProps.entryActiveBackground : m_mbProps.entryHoverBackground;
+        if (entry->getBaseProperties().backgroundColor != newBg) {
+            entry->setBaseProperties({.backgroundColor = newBg});
         }
         onEntryHovered(entry);
         return EventResult::CONSUMED;
     };
     entry->onMouseLeaveCb = [this, entry]() {
-        Color3 newBg = entry->isOpen() ? entryActiveBackground : backgroundColor;
-        if (entry->backgroundColor != newBg) {
-            entry->backgroundColor = newBg;
-            entry->markDirty();
+        Color3 newBg = entry->isOpen() ? m_mbProps.entryActiveBackground : getBaseProperties().backgroundColor;
+        if (entry->getBaseProperties().backgroundColor != newBg) {
+            entry->setBaseProperties({.backgroundColor = newBg});
         }
         return EventResult::CONSUMED;
     };
     entry->onOpenedCb = [this, entry]() {
         m_openEntry = entry;
-        if (entry->backgroundColor != entryActiveBackground) {
-            entry->backgroundColor = entryActiveBackground;
-            entry->markDirty();
+        if (entry->getBaseProperties().backgroundColor != m_mbProps.entryActiveBackground) {
+            entry->setBaseProperties({.backgroundColor = m_mbProps.entryActiveBackground});
         }
     };
     entry->onClosedCb = [this, entry]() {
         onEntryClosed(entry);
-        if (entry->backgroundColor != backgroundColor) {
-            entry->backgroundColor = backgroundColor;
-            entry->markDirty();
+        if (entry->getBaseProperties().backgroundColor != getBaseProperties().backgroundColor) {
+            entry->setBaseProperties({.backgroundColor = getBaseProperties().backgroundColor});
         }
     };
 
-    entry->markDirty();
     m_entries.push_back(entry);
     markDirty();
     return entry;
@@ -102,5 +110,24 @@ void MenuBar::onEntryClosed(Dropdown *entry)
     }
 }
 
+bool MenuBar::setMenuBarProperties(const MenuBarProperties &props)
+{
+    bool changed = false;
+#define AM_APPLY(field) \
+    if (propIsSet(props.field) && m_mbProps.field != props.field) { \
+        m_mbProps.field = props.field; \
+        changed = true; \
+    }
+    AM_APPLY(entryPaddingX)
+    AM_APPLY(entryPaddingY)
+    AM_APPLY(entryFontSize)
+    AM_APPLY(entryHoverBackground)
+    AM_APPLY(entryActiveBackground)
+#undef AM_APPLY
+    if (changed) {
+        markDirty();
+    }
+    return changed;
+}
 
 } // namespace Amethyst

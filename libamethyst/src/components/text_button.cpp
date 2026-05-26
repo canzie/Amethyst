@@ -10,18 +10,34 @@ namespace Amethyst {
 static void applyStyle(TextButton &button)
 {
     const auto &style = Style::instance();
-    button.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TEXT_BUTTON);
-    button.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TEXT_BUTTON);
-    button.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TEXT_BUTTON);
-    button.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TEXT_BUTTON);
-    button.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TEXT_BUTTON);
-    button.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TEXT_BUTTON);
-    button.textColor = style.get<Color4>(StyleProperty::TEXT_COLOR, ComponentType::TEXT_BUTTON);
-    button.fontSize = style.get<float>(StyleProperty::FONT_SIZE, ComponentType::TEXT_BUTTON);
+    BaseProperties bp;
+    bp.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TEXT_BUTTON);
+    bp.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TEXT_BUTTON);
+    bp.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TEXT_BUTTON);
+    bp.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TEXT_BUTTON);
+    bp.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TEXT_BUTTON);
+    bp.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TEXT_BUTTON);
+    button.setBaseProperties(bp);
+
+    TextProperties tp;
+    tp.textColor = style.get<Color4>(StyleProperty::TEXT_COLOR, ComponentType::TEXT_BUTTON);
+    tp.fontSize = style.get<float>(StyleProperty::FONT_SIZE, ComponentType::TEXT_BUTTON);
+    button.setTextProperties(tp);
 }
 
 TextButton::TextButton()
 {
+    m_textProps.textColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
+    m_textProps.fontSize = 14.0f;
+    m_textProps.textXAlignment = TextXAlignment::LEFT;
+    m_textProps.textYAlignment = TextYAlignment::TOP;
+    m_textProps.textTruncate = TextTruncate::OFF;
+    m_textProps.textWrapped = 0;
+    m_textProps.textScaled = 0;
+    m_textProps.lineHeight = 1.0f;
+    m_textProps.strokeThickness = 0.0f;
+    m_textProps.strokeColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
+
     applyStyle(*this);
 }
 
@@ -32,6 +48,11 @@ TextButton::~TextButton()
             alloc->registry->release(*alloc);
         }
     }
+}
+
+bool TextButton::setTextProperties(const TextProperties &props)
+{
+    return applyTextProperties(m_textProps, props);
 }
 
 void TextButton::draw(DrawContext &ctx)
@@ -51,16 +72,16 @@ void TextButton::draw(DrawContext &ctx)
             ctx.geometry->update(*m_geometryAlloc, data);
         }
 
-        if (ctx.textProcessor && ctx.geometry && !text.empty()) {
-            uint32_t pixelSize = static_cast<uint32_t>(fontSize);
-            m_textSize = ctx.textProcessor->measureTextAtlas(text, pixelSize);
-            float effectiveFontSize = fontSize;
+        if (ctx.textProcessor && ctx.geometry && !m_textProps.text.empty()) {
+            uint32_t pixelSize = static_cast<uint32_t>(m_textProps.fontSize);
+            m_textSize = ctx.textProcessor->measureTextAtlas(m_textProps.text, pixelSize);
+            float effectiveFontSize = m_textProps.fontSize;
 
-            if (textScaled) {
+            if (m_textProps.textScaled) {
                 if (m_textSize.x > 0.0f && m_textSize.y > 0.0f) {
                     float scaleX = absoluteContentSize.x / m_textSize.x;
                     float scaleY = absoluteContentSize.y / m_textSize.y;
-                    effectiveFontSize = fontSize * std::min(scaleX, scaleY);
+                    effectiveFontSize = m_textProps.fontSize * std::min(scaleX, scaleY);
                 }
             }
 
@@ -68,16 +89,16 @@ void TextButton::draw(DrawContext &ctx)
             params.position = absoluteContentPosition;
             params.bounds = absoluteContentSize;
             params.fontSize = effectiveFontSize;
-            params.color = textColor;
-            params.lineHeight = lineHeight;
-            params.strokeThickness = strokeThickness;
-            params.strokeColor = strokeColor;
-            params.xAlign = textXAlignment;
-            params.yAlign = textYAlignment;
-            params.truncate = textTruncate;
-            params.wrap = textWrapped;
+            params.color = m_textProps.textColor;
+            params.lineHeight = m_textProps.lineHeight;
+            params.strokeThickness = m_textProps.strokeThickness;
+            params.strokeColor = m_textProps.strokeColor;
+            params.xAlign = m_textProps.textXAlignment;
+            params.yAlign = m_textProps.textYAlignment;
+            params.truncate = m_textProps.textTruncate;
+            params.wrap = static_cast<bool>(m_textProps.textWrapped);
 
-            auto glyphs = ctx.textProcessor->layoutTextAtlas(text, params);
+            auto glyphs = ctx.textProcessor->layoutTextAtlas(m_textProps.text, params);
 
             for (auto &glyphData : glyphs) {
                 glyphData.zIndex = data.zIndex + 1;

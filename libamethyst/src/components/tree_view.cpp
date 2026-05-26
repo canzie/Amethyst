@@ -17,21 +17,25 @@ namespace Amethyst {
 static void s_applyStyle(TreeView &tree)
 {
     const auto &style = Style::instance();
-    tree.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TREE_VIEW);
-    tree.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TREE_VIEW);
-    tree.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TREE_VIEW);
-    tree.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TREE_VIEW);
-    tree.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TREE_VIEW);
-    tree.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TREE_VIEW);
-    tree.rowHeight = style.get<float>(StyleProperty::ROW_HEIGHT, ComponentType::TREE_VIEW);
-    tree.rowBackgroundColor = style.get<Color4>(StyleProperty::ROW_BACKGROUND_COLOR, ComponentType::TREE_VIEW);
-    tree.rowAlternateColor = style.get<Color4>(StyleProperty::ROW_ALTERNATE_COLOR, ComponentType::TREE_VIEW);
-    tree.rowHoverColor = style.get<Color4>(StyleProperty::ROW_HOVER_COLOR, ComponentType::TREE_VIEW);
-    tree.rowSelectedColor = style.get<Color4>(StyleProperty::ROW_SELECTED_COLOR, ComponentType::TREE_VIEW);
-    tree.indentPerLevel = style.get<float>(StyleProperty::INDENT_PER_LEVEL, ComponentType::TREE_VIEW);
-    tree.disclosureTriangleSize = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_SIZE, ComponentType::TREE_VIEW);
-    tree.disclosureTrianglePadding = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_PADDING, ComponentType::TREE_VIEW);
-    tree.disclosureTriangleColor = style.get<Color4>(StyleProperty::DISCLOSURE_TRIANGLE_COLOR, ComponentType::TREE_VIEW);
+    tree.setBaseProperties({
+        .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TREE_VIEW),
+        .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TREE_VIEW),
+        .borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TREE_VIEW),
+        .borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TREE_VIEW),
+        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TREE_VIEW),
+        .cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TREE_VIEW),
+    });
+    tree.setTreeViewProperties({
+        .rowHeight = style.get<float>(StyleProperty::ROW_HEIGHT, ComponentType::TREE_VIEW),
+        .rowBackgroundColor = style.get<Color4>(StyleProperty::ROW_BACKGROUND_COLOR, ComponentType::TREE_VIEW),
+        .rowAlternateColor = style.get<Color4>(StyleProperty::ROW_ALTERNATE_COLOR, ComponentType::TREE_VIEW),
+        .rowHoverColor = style.get<Color4>(StyleProperty::ROW_HOVER_COLOR, ComponentType::TREE_VIEW),
+        .rowSelectedColor = style.get<Color4>(StyleProperty::ROW_SELECTED_COLOR, ComponentType::TREE_VIEW),
+        .indentPerLevel = style.get<float>(StyleProperty::INDENT_PER_LEVEL, ComponentType::TREE_VIEW),
+        .disclosureTriangleSize = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_SIZE, ComponentType::TREE_VIEW),
+        .disclosureTrianglePadding = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_PADDING, ComponentType::TREE_VIEW),
+        .disclosureTriangleColor = style.get<Color4>(StyleProperty::DISCLOSURE_TRIANGLE_COLOR, ComponentType::TREE_VIEW),
+    });
 }
 
 inline static float calculateRowY(uint32_t row, float rowHeight)
@@ -41,7 +45,53 @@ inline static float calculateRowY(uint32_t row, float rowHeight)
 
 TreeView::TreeView()
 {
+    m_tvProps.rowHeight = 0.0f;
+    m_tvProps.cellPadding = {};
+    m_tvProps.showColumnSeparators = 0;
+    m_tvProps.columnSeparatorWidth = 1.0f;
+    m_tvProps.columnSeparatorColor = {0.3f, 0.3f, 0.3f, 1.0f};
+    m_tvProps.indentPerLevel = 16.0f;
+    m_tvProps.showDisclosureTriangles = 1;
+    m_tvProps.disclosureTriangleSize = 10.0f;
+    m_tvProps.disclosureTrianglePadding = 4.0f;
+    m_tvProps.disclosureTriangleColor = {0.7f, 0.7f, 0.7f, 1.0f};
+    m_tvProps.rowBackgroundColor = {0.18f, 0.18f, 0.2f, 1.0f};
+    m_tvProps.rowAlternateColor = {0.22f, 0.22f, 0.24f, 1.0f};
+    m_tvProps.rowHoverColor = {0.3f, 0.3f, 0.35f, 1.0f};
+    m_tvProps.rowSelectedColor = {0.25f, 0.4f, 0.65f, 1.0f};
+    m_tvProps.fillRows = 1;
+
     s_applyStyle(*this);
+}
+
+bool TreeView::setTreeViewProperties(const TreeViewProperties &props)
+{
+    bool changed = false;
+#define AM_APPLY(field) \
+    if (propIsSet(props.field) && m_tvProps.field != props.field) { \
+        m_tvProps.field = props.field; \
+        changed = true; \
+    }
+    AM_APPLY(rowHeight)
+    AM_APPLY(cellPadding)
+    AM_APPLY(showColumnSeparators)
+    AM_APPLY(columnSeparatorWidth)
+    AM_APPLY(columnSeparatorColor)
+    AM_APPLY(showDisclosureTriangles)
+    AM_APPLY(disclosureTriangleSize)
+    AM_APPLY(disclosureTrianglePadding)
+    AM_APPLY(disclosureTriangleColor)
+    AM_APPLY(indentPerLevel)
+    AM_APPLY(rowBackgroundColor)
+    AM_APPLY(rowAlternateColor)
+    AM_APPLY(rowHoverColor)
+    AM_APPLY(rowSelectedColor)
+    AM_APPLY(fillRows)
+#undef AM_APPLY
+    if (changed) {
+        markDirty();
+    }
+    return changed;
 }
 
 std::vector<float> TreeView::computeColumnPositions(float tableWidth) const
@@ -69,7 +119,7 @@ std::vector<float> TreeView::computeColumnPositions(float tableWidth) const
 void TreeView::updateSeparators()
 {
     m_separators.clear();
-    if (!showColumnSeparators || numCols <= 1) {
+    if (!static_cast<bool>(m_tvProps.showColumnSeparators) || numCols <= 1) {
         return;
     }
 
@@ -79,11 +129,13 @@ void TreeView::updateSeparators()
         accumulatedScale += colWeight;
 
         auto sep = std::make_unique<Frame>();
-        sep->position = UDim2(accumulatedScale, -columnSeparatorWidth / 2.0f, 0.0f, 0.0f);
-        sep->size = UDim2(0.0f, columnSeparatorWidth, 1.0f, 0.0f);
-        sep->backgroundColor = Color3(columnSeparatorColor);
-        sep->backgroundTransparency = 1.0f - columnSeparatorColor.a;
-        sep->zIndex = getZIndex() + 1;
+        sep->setBaseProperties({
+            .backgroundColor = Color3(m_tvProps.columnSeparatorColor),
+            .backgroundTransparency = 1.0f - m_tvProps.columnSeparatorColor.a,
+            .position = UDim2{{accumulatedScale, -m_tvProps.columnSeparatorWidth / 2.0f}, {0.0f, 0.0f}},
+            .size = UDim2{{0.0f, m_tvProps.columnSeparatorWidth}, {1.0f, 0.0f}},
+            .zIndex = getZIndex() + 1,
+        });
         sep->markDirty();
         m_separators.push_back(std::move(sep));
     }
@@ -345,8 +397,8 @@ void TreeView::clearRowCells(DrawContext &ctx, uint32_t row)
     uint32_t endIdx = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(m_children.size()));
     for (uint32_t i = r.firstCellIndex; i < endIdx; i++) {
         auto *obj = m_children[i]->as<UIObject>();
-        if (obj != nullptr && obj->visible) {
-            obj->visible = false;
+        if (obj != nullptr && obj->getBaseProperties().visible != 0) {
+            obj->setBaseProperties({.visible = 0});
             obj->markDirty();
             obj->draw(ctx);
         }
@@ -442,9 +494,9 @@ bool TreeView::isRowVisible(uint32_t row) const
 
 float TreeView::getRowIndent(uint32_t row) const
 {
-    float indent = static_cast<float>(depth(row)) * indentPerLevel;
-    if (showDisclosureTriangles) {
-        indent += disclosureTriangleSize + disclosureTrianglePadding * 2.0f;
+    float indent = static_cast<float>(depth(row)) * m_tvProps.indentPerLevel;
+    if (static_cast<bool>(m_tvProps.showDisclosureTriangles)) {
+        indent += m_tvProps.disclosureTriangleSize + m_tvProps.disclosureTrianglePadding * 2.0f;
     }
     return indent;
 }
@@ -454,32 +506,33 @@ void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t b
 {
     TextButton *btn = m_rowDisclosures[bufferSlot].get();
 
-    if (!showDisclosureTriangles || !hasChildren(row)) {
-        btn->visible = false;
-        btn->interactable = false;
+    if (!static_cast<bool>(m_tvProps.showDisclosureTriangles) || !hasChildren(row)) {
+        btn->setBaseProperties({.interactable = 0, .visible = 0});
         btn->markDirty();
         btn->draw(ctx);
         return;
     }
 
-    btn->visible = true;
-    btn->interactable = true;
-
     float rowDepth = static_cast<float>(depth(row));
-    float x = absolutePosition.x + rowDepth * indentPerLevel + disclosureTrianglePadding;
+    float x = absolutePosition.x + rowDepth * m_tvProps.indentPerLevel + m_tvProps.disclosureTrianglePadding;
     float centerY = y + m_computedRowHeight * 0.5f;
-    btn->zIndex = getZIndex() + 2;
-    btn->backgroundColor = Color3(disclosureTriangleColor);
-    btn->backgroundTransparency = 1.0f - disclosureTriangleColor.a;
-    btn->rotation = expanded ? 90.0f : 0.0f;
-    btn->anchorPoint = {0.5f, 0.5f};
+
+    btn->setBaseProperties({
+        .anchorPoint = {0.5f, 0.5f},
+        .backgroundColor = Color3(m_tvProps.disclosureTriangleColor),
+        .backgroundTransparency = 1.0f - m_tvProps.disclosureTriangleColor.a,
+        .interactable = 1,
+        .rotation = expanded ? 90.0f : 0.0f,
+        .visible = 1,
+        .zIndex = getZIndex() + 2,
+    });
     btn->clipRect = childClip;
     btn->onMouseButton1ClickCb = [this, row]() { toggle(row); return EventResult::CONSUMED; };
     btn->markDirty();
 
-    glm::vec2 triSize = {disclosureTriangleSize, disclosureTriangleSize};
-    glm::vec2 triPos = {x, centerY - disclosureTriangleSize * 0.5f};
-    btn->computeAbsolutes(triSize, triPos + triSize * 0.5f, absoluteRotation);
+    float triSize = m_tvProps.disclosureTriangleSize;
+    glm::vec2 triPos = {x, centerY - triSize * 0.5f};
+    btn->computeAbsolutes({triSize, triSize}, triPos + glm::vec2(triSize * 0.5f), absoluteRotation);
     btn->draw(ctx);
 }
 
@@ -494,17 +547,19 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t bufferSlo
 
     Frame *bg = m_rowBackgrounds[bufferSlot].get();
 
-    Color4 bgColor = rowBackgroundColor;
+    Color4 bgColor = m_tvProps.rowBackgroundColor;
     if (static_cast<int32_t>(row) == selectedRow) {
-        bgColor = rowSelectedColor;
+        bgColor = m_tvProps.rowSelectedColor;
     } else if (static_cast<int32_t>(row) == hoveredRow) {
-        bgColor = rowHoverColor;
-    } else if (visualIndex % 2 == 1 && rowAlternateColor.a > 0.0f) {
-        bgColor = rowAlternateColor;
+        bgColor = m_tvProps.rowHoverColor;
+    } else if (visualIndex % 2 == 1 && m_tvProps.rowAlternateColor.a > 0.0f) {
+        bgColor = m_tvProps.rowAlternateColor;
     }
 
-    bg->backgroundColor = Color3(bgColor);
-    bg->backgroundTransparency = 1.0f - bgColor.a;
+    bg->setBaseProperties({
+        .backgroundColor = Color3(bgColor),
+        .backgroundTransparency = 1.0f - bgColor.a,
+    });
     bg->clipRect = childClip;
     bg->markDirty();
     bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + glm::vec2(0.0f, rowY), absoluteRotation);
@@ -532,7 +587,7 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t bufferSlo
             continue;
         }
 
-        drawable->visible = true;
+        drawable->setBaseProperties({.visible = 1});
 
         float cellX = colPositions[col];
         float cellWidth = colPositions[col + 1] - cellX;
@@ -561,16 +616,20 @@ void TreeView::ensureSlotCapacity(uint32_t slotCount)
     while (m_rowBackgrounds.size() < slotCount) {
         auto frame = std::make_unique<Frame>();
         frame->parent = this;
-        frame->zIndex = getZIndex();
-        frame->size = UDim2::fromScale(1.0f, 1.0f);
+        frame->setBaseProperties({
+            .size = UDim2::fromScale(1.0f, 1.0f),
+            .zIndex = getZIndex(),
+        });
         m_rowBackgrounds.push_back(std::move(frame));
     }
     while (m_rowDisclosures.size() < slotCount) {
         auto btn = std::make_unique<TextButton>();
         btn->parent = this;
-        btn->zIndex = getZIndex() + 2;
-        btn->size = UDim2::fromScale(1.0f, 1.0f);
-        btn->autoButtonColor = false;
+        btn->setBaseProperties({
+            .size = UDim2::fromScale(1.0f, 1.0f),
+            .zIndex = getZIndex() + 2,
+        });
+        btn->setButtonProperties({.autoButtonColor = 0});
         m_rowDisclosures.push_back(std::move(btn));
     }
 }
@@ -644,9 +703,13 @@ void TreeView::drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint3
         uint32_t visualIndex = firstVisibleSlot + i;
         float rowY = calculateRowY(visualIndex, m_computedRowHeight);
         Frame *bg = m_rowBackgrounds[i].get();
-        Color4 bgColor = (visualIndex % 2 == 1 && rowAlternateColor.a > 0.0f) ? rowAlternateColor : rowBackgroundColor;
-        bg->backgroundColor = Color3(bgColor);
-        bg->backgroundTransparency = 1.0f - bgColor.a;
+        Color4 bgColor = (visualIndex % 2 == 1 && m_tvProps.rowAlternateColor.a > 0.0f)
+                             ? m_tvProps.rowAlternateColor
+                             : m_tvProps.rowBackgroundColor;
+        bg->setBaseProperties({
+            .backgroundColor = Color3(bgColor),
+            .backgroundTransparency = 1.0f - bgColor.a,
+        });
         bg->clipRect = childClip;
         bg->markDirty();
         bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + glm::vec2(0.0f, rowY), absoluteRotation);
@@ -660,8 +723,7 @@ void TreeView::clearUnusedSlots(DrawContext &ctx, uint32_t fromSlot)
 
     for (uint32_t i = fromSlot; i < m_rowDisclosures.size(); i++) {
         TextButton *btn = m_rowDisclosures[i].get();
-        btn->visible = false;
-        btn->interactable = false;
+        btn->setBaseProperties({.interactable = 0, .visible = 0});
         btn->markDirty();
         btn->draw(ctx);
     }
@@ -688,12 +750,12 @@ void TreeView::draw(DrawContext &ctx)
 
     if (flags & FLAG_DIRTY) {
         updateSeparators();
-        m_resolvedPadding = cellPadding.resolve(absoluteSize);
+        m_resolvedPadding = m_tvProps.cellPadding.resolve(absoluteSize);
     }
 
     glm::vec4 childClip = computeChildClipRect();
 
-    m_computedRowHeight = rowHeight > 0.0f ? rowHeight : 24.0f;
+    m_computedRowHeight = m_tvProps.rowHeight > 0.0f ? m_tvProps.rowHeight : 24.0f;
 
     float viewportHeight = childClip.w - childClip.y;
     if (viewportHeight <= 0.0f) {
@@ -718,7 +780,7 @@ void TreeView::draw(DrawContext &ctx)
 
     uint32_t usedSlots = drawVisibleRows(ctx, colPositions, childClip, firstVisibleSlot, slotCount);
 
-    if (fillRows) {
+    if (static_cast<bool>(m_tvProps.fillRows)) {
         drawEmptyRows(ctx, childClip, usedSlots, slotCount, firstVisibleSlot);
     }
 

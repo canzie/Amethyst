@@ -15,7 +15,44 @@
 
 namespace Amethyst {
 
-Dropdown::Dropdown() = default;
+Dropdown::Dropdown()
+{
+    m_ddProps.popupDirection = DropdownDirection::DOWN;
+    m_ddProps.maxVisibleItems = 8;
+    m_ddProps.itemHeight = 24.0f;
+    m_ddProps.popupWidth = 180.0f;
+    m_ddProps.itemFontSize = 14.0f;
+    m_ddProps.popupBackground = Color3{0.18f, 0.18f, 0.18f};
+    m_ddProps.itemTextColor = Color4{0.92f, 0.92f, 0.92f, 1.0f};
+    m_ddProps.itemDisabledColor = Color4{0.45f, 0.45f, 0.45f, 1.0f};
+    m_ddProps.itemHoverBackground = Color3{0.25f, 0.42f, 0.65f};
+    m_ddProps.separatorColor = Color3{0.32f, 0.32f, 0.32f};
+}
+
+bool Dropdown::setDropdownProperties(const DropdownProperties &props)
+{
+    bool changed = false;
+#define AM_APPLY(field) \
+    if (propIsSet(props.field) && m_ddProps.field != props.field) { \
+        m_ddProps.field = props.field; \
+        changed = true; \
+    }
+    AM_APPLY(popupDirection)
+    AM_APPLY(maxVisibleItems)
+    AM_APPLY(itemHeight)
+    AM_APPLY(popupWidth)
+    AM_APPLY(itemFontSize)
+    AM_APPLY(popupBackground)
+    AM_APPLY(itemTextColor)
+    AM_APPLY(itemDisabledColor)
+    AM_APPLY(itemHoverBackground)
+    AM_APPLY(separatorColor)
+#undef AM_APPLY
+    if (changed) {
+        markDirty();
+    }
+    return changed;
+}
 
 Dropdown::~Dropdown()
 {
@@ -256,52 +293,57 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
 
         if (item.kind() == DropdownItem::Kind::SEPARATOR) {
             auto *sep = container->add<Frame>();
-            sep->size = UDim2::fromOffset(popupWidth, 8.0f);
-            sep->backgroundColor = separatorColor;
-            sep->backgroundTransparency = 0.5f;
-            sep->borderPixelSize = 0.0f;
-            sep->interactable = false;
-            sep->zIndex = zIdx;
+            sep->setBaseProperties({
+                .size = UDim2::fromOffset(m_ddProps.popupWidth, 8.0f),
+                .backgroundColor = m_ddProps.separatorColor,
+                .backgroundTransparency = 0.5f,
+                .borderPixelSize = 0.0f,
+                .interactable = 0,
+                .zIndex = zIdx,
+            });
             sep->layoutOrder = static_cast<LayoutOrder>(idx * 100);
-            sep->markDirty();
             continue;
         }
 
         auto *row = container->add<TextButton>();
-        row->size = UDim2::fromOffset(popupWidth, itemHeight);
-        row->zIndex = zIdx;
+        row->setBaseProperties({
+            .size = UDim2::fromOffset(m_ddProps.popupWidth, m_ddProps.itemHeight),
+            .backgroundColor = m_ddProps.popupBackground,
+            .backgroundTransparency = 0.0f,
+            .borderPixelSize = 0.0f,
+            .zIndex = zIdx,
+        });
         row->layoutOrder = static_cast<LayoutOrder>(idx * 100);
-        row->autoButtonColor = false;
-        row->backgroundColor = popupBackground;
-        row->backgroundTransparency = 0.0f;
-        row->borderPixelSize = 0.0f;
-        row->textXAlignment = TextXAlignment::LEFT;
-        row->textYAlignment = TextYAlignment::CENTER;
-        row->fontSize = itemFontSize;
-        row->textWrapped = false;
-        row->padding = {
-            UDim::fromOffset(0.0f), UDim::fromOffset(8.0f),
-            UDim::fromOffset(0.0f), UDim::fromOffset(8.0f)
-        };
-        row->text = buildItemText(item);
-        row->textColor = item.enabled ? itemTextColor : itemDisabledColor;
+        row->setButtonProperties({.autoButtonColor = 0});
+        row->setTextProperties({
+            .textXAlignment = TextXAlignment::LEFT,
+            .textYAlignment = TextYAlignment::CENTER,
+            .fontSize = m_ddProps.itemFontSize,
+            .textWrapped = 0,
+            .text = buildItemText(item),
+            .textColor = item.enabled ? m_ddProps.itemTextColor : m_ddProps.itemDisabledColor,
+        });
+        row->setBaseProperties({
+            .padding = {
+                UDim::fromOffset(0.0f), UDim::fromOffset(8.0f),
+                UDim::fromOffset(0.0f), UDim::fromOffset(8.0f)
+            },
+        });
 
         if (!item.enabled) {
-            row->interactable = false;
-            row->markDirty();
+            row->setBaseProperties({.interactable = 0});
             continue;
         }
 
-        Color3 hoverBg = itemHoverBackground;
-        Color3 normalBg = popupBackground;
+        Color3 hoverBg = m_ddProps.itemHoverBackground;
+        Color3 normalBg = m_ddProps.popupBackground;
 
         row->onMouseLeaveCb = [this, row, normalBg, hoverBg, depth]() {
             bool isSubmenuSource = depth < m_submenuSourceRows.size() &&
                                    m_submenuSourceRows[depth] == row;
             Color3 newBg = isSubmenuSource ? hoverBg : normalBg;
-            if (row->backgroundColor != newBg) {
-                row->backgroundColor = newBg;
-                row->markDirty();
+            if (row->getBaseProperties().backgroundColor != newBg) {
+                row->setBaseProperties({.backgroundColor = newBg});
             }
             return EventResult::CONSUMED;
         };
@@ -311,17 +353,16 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
             fullPath.push_back(idx);
             size_t parentDepth = path.size();
             row->onMouseEnterCb = [this, row, hoverBg, fullPath = std::move(fullPath), parentDepth]() {
-                if (row->backgroundColor != hoverBg) {
-                    row->backgroundColor = hoverBg;
-                    row->markDirty();
+                if (row->getBaseProperties().backgroundColor != hoverBg) {
+                    row->setBaseProperties({.backgroundColor = hoverBg});
                 }
                 UIObject *parentPanel = parentDepth == 0 ? m_popup : m_submenuStack[parentDepth - 1];
                 float preferredX = parentPanel->absolutePosition.x + parentPanel->absoluteSize.x;
-                float altX = parentPanel->absolutePosition.x - popupWidth;
+                float altX = parentPanel->absolutePosition.x - m_ddProps.popupWidth;
                 float viewportW = m_overlayPtr->absoluteSize.x;
-                float subX = (preferredX + popupWidth <= viewportW) ? preferredX
+                float subX = (preferredX + m_ddProps.popupWidth <= viewportW) ? preferredX
                            : (altX >= 0.0f)                         ? altX
-                           : std::max(0.0f, viewportW - popupWidth);
+                           : std::max(0.0f, viewportW - m_ddProps.popupWidth);
                 float subY = row->absolutePosition.y;
                 buildSubmenuAtPath(m_overlayPtr, fullPath, {subX, subY});
                 m_submenuSourceRows.push_back(row);
@@ -330,9 +371,8 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
             row->onMouseButton1ClickCb = []() { return EventResult::CONSUMED; };
         } else {
             row->onMouseEnterCb = [this, row, hoverBg, depth]() {
-                if (row->backgroundColor != hoverBg) {
-                    row->backgroundColor = hoverBg;
-                    row->markDirty();
+                if (row->getBaseProperties().backgroundColor != hoverBg) {
+                    row->setBaseProperties({.backgroundColor = hoverBg});
                 }
                 closeSubmenuFrom(depth);
                 return EventResult::CONSUMED;
@@ -352,13 +392,10 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
             DropdownItem *itemPtr = &items[idx];
             row->onMouseButton1ClickCb = [this, row, itemPtr]() {
                 std::get<DropdownToggle>(itemPtr->payload).toggle();
-                row->text = buildItemText(*itemPtr);
-                row->markDirty();
+                row->setTextProperties({.text = buildItemText(*itemPtr)});
                 return EventResult::CONSUMED;
             };
         }
-
-        row->markDirty();
     }
 }
 

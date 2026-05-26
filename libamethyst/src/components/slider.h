@@ -7,6 +7,7 @@
 
 #include "components/common.h"
 #include "components/frame.h"
+#include "components/properties.h"
 #include "components/text_label.h"
 #include "components/ui_object.h"
 #include <functional>
@@ -21,26 +22,11 @@ class Slider : public UIObject {
     Slider();
     virtual ~Slider() = default;
 
-  public:
-    Color3 sliderColor = {0.5f, 0.5f, 0.5f};
-    float sliderTransparency = 0.0f;
-    Color3 thumbColor = {0.8f, 0.8f, 0.8f};
-    float thumbTransparency = 0.0f;
-    float trackCornerRadius = 0.0f;
-    float thumbCornerRadius = 0.0f;
-
-    std::string label;
-    Color4 labelColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    LabelSide labelSide = LabelSide::LEFT;
-    UDim labelPadding = UDim::fromOffset(5.0f);
-
-    Color4 valueColor = {0.0f, 0.0f, 0.0f, 1.0f};
-    std::string valueSuffix;
-    float fontSize = 14.0f;
-
-    ValueControlLayout layout = ValueControlLayout::SIDE_BY_SIDE;
+    bool setSliderProperties(const SliderProperties &props);
+    const SliderProperties &getSliderProperties() const { return m_sProps; }
 
   protected:
+    SliderProperties m_sProps;
     TextLabel m_sideLabel;
 };
 
