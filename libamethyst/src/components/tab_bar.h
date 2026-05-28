@@ -21,6 +21,14 @@ class TextLabel;
 
 class TabBar : public UIObject {
   public:
+    struct Tab {
+        Frame *labelFrame = nullptr;
+        std::unique_ptr<InvisibleButton> button;
+        TextLabel *label = nullptr;
+        TextButton *closeButton = nullptr;
+        std::unique_ptr<Instance> content;
+    };
+
     TabBar();
     ~TabBar() override = default;
 
@@ -49,6 +57,12 @@ class TabBar : public UIObject {
     Instance *addTab(std::unique_ptr<Instance> content, std::function<void(Frame &)> labelSetup);
 
     /**
+     * @brief Add a pre-built tab to this TabBar, refreshing its interaction callbacks.
+     * @param tab Ownership of the tab, typically obtained from another TabBar via a torn-off drag.
+     */
+    void addTab(std::unique_ptr<Tab> tab);
+
+    /**
      * @brief Remove the tab whose content matches the given pointer.
      * @param content Pointer to the content instance to remove.
      * @return The removed content instance.
@@ -59,6 +73,8 @@ class TabBar : public UIObject {
     void select(Instance *content);
     Instance *getSelectedContent() const;
     int32_t getTabCount() const { return static_cast<int32_t>(m_tabs.size()); }
+    Instance *getTabContent(int32_t index) const;
+    std::vector<std::unique_ptr<Tab>> removeAllTabs();
 
     TabBarConfig saveConfig() const;
     void applyConfig(const TabBarConfig &config);
@@ -69,22 +85,17 @@ class TabBar : public UIObject {
     std::function<void(Instance *content)> onTabClosed;
     std::function<void(Instance *content)> onTabTornOff;
     std::function<void(Instance *content, glm::vec2 pos)> onTornOffTabMoved;
-    std::function<void(Instance *content, glm::vec2 dropPos)> onTornOffTabReleased;
+    std::function<void(std::unique_ptr<Tab>, glm::vec2 dropPos)> onTornOffTabReleased;
     std::function<void(int32_t index)> onSelectionChanged;
 
   protected:
     TabBarProperties m_tbProps;
 
   private:
-    struct Tab {
-        std::unique_ptr<Frame> labelFrame;
-        std::unique_ptr<InvisibleButton> button;
-        TextLabel *label = nullptr;
-        TextButton *closeButton = nullptr;
-        std::unique_ptr<Instance> content;
-    };
-
     void setupTabButton(Tab &tab, int32_t index);
+    void ensureTabComponents(Tab &tab);
+    void setupTabDragCallbacks(Tab &tab);
+    void setupTabInteractionCallbacks(Tab &tab);
     void layoutTabs();
     void layoutContent();
     void markAllTabsDirty();
@@ -97,11 +108,13 @@ class TabBar : public UIObject {
 
     int32_t findTabIndex(const Tab *tab) const;
     int32_t indexFromPosition(float pos) const;
+    std::unique_ptr<Tab> extractTab(Instance *content);
 
   private:
     std::vector<std::unique_ptr<Tab>> m_tabs;
     Tab *m_draggedTab = nullptr;
     bool m_tornOff = false;
+    int32_t m_selectedIndex = 0;
     int32_t m_lastSelectedIndex = 0;
 };
 

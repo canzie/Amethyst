@@ -14,12 +14,13 @@ function(add_amethyst_demo target_name source_file)
     )
     target_compile_options(${target_name} PRIVATE
         $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-reorder-init-list -Wno-missing-designated-field-initializers>
         $<$<CXX_COMPILER_ID:MSVC>:/W4>
     )
 endfunction()
 
 add_amethyst_demo(amethyst_testapp main.cpp)
-add_amethyst_demo(amethyst_demo_menus demo_menus.cpp)
-add_amethyst_demo(amethyst_demo_treeview demo_treeview.cpp)
-add_amethyst_demo(amethyst_demo_collapsible_header demo_collapsible_header.cpp)
-add_amethyst_demo(amethyst_demo_svg demo_svg.cpp)
+#add_amethyst_demo(amethyst_demo_menus demo_menus.cpp)
+#add_amethyst_demo(amethyst_demo_treeview demo_treeview.cpp)
+#add_amethyst_demo(amethyst_demo_collapsible_header demo_collapsible_header.cpp)
+#add_amethyst_demo(amethyst_demo_svg demo_svg.cpp)

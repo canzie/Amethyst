@@ -19,7 +19,7 @@ struct DrawContext;
 
 class TextInput : public UIObject {
   public:
-    TextInput() = default;
+    TextInput();
     virtual ~TextInput();
 
     void draw(DrawContext &ctx) override;

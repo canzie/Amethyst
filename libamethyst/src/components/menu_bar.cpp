@@ -26,30 +26,28 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<DropdownItem> items)
     auto *entry = add<Dropdown>();
     entry->setItems(std::move(items));
     entry->setDropdownProperties({
-        .maxVisibleItems = INT_MAX,
         .popupDirection = DropdownDirection::DOWN,
+        .maxVisibleItems = INT_MAX,
     });
     entry->setTextProperties({
-        .text = label,
         .fontSize = m_mbProps.entryFontSize,
         .textXAlignment = TextXAlignment::CENTER,
         .textYAlignment = TextYAlignment::CENTER,
+        .text = label,
     });
     entry->setButtonProperties({.autoButtonColor = 0});
+    float estWidth = static_cast<float>(label.size()) * m_mbProps.entryFontSize * 0.6f + 2.0f * m_mbProps.entryPaddingX;
     entry->setBaseProperties({
         .backgroundColor = getBaseProperties().backgroundColor,
         .backgroundTransparency = getBaseProperties().backgroundTransparency,
         .borderPixelSize = 0.0f,
-    });
-    entry->setBaseProperties({
+        .layoutOrder = static_cast<LayoutOrder>(m_entries.size()),
         .padding = {
             UDim::fromOffset(m_mbProps.entryPaddingY), UDim::fromOffset(m_mbProps.entryPaddingX),
             UDim::fromOffset(m_mbProps.entryPaddingY), UDim::fromOffset(m_mbProps.entryPaddingX)
         },
+        .size = UDim2::fromOffset(estWidth, 0.0f),
     });
-    float estWidth = static_cast<float>(label.size()) * m_mbProps.entryFontSize * 0.6f + 2.0f * m_mbProps.entryPaddingX;
-    entry->setBaseProperties({.size = UDim2::fromOffset(estWidth, 0.0f)});
-    entry->layoutOrder = static_cast<LayoutOrder>(m_entries.size());
 
     entry->onMouseEnterCb = [this, entry]() {
         Color3 newBg = entry->isOpen() ? m_mbProps.entryActiveBackground : m_mbProps.entryHoverBackground;

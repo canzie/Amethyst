@@ -17,7 +17,7 @@ struct Font;
 
 class Checkbox : public UIObject {
   public:
-    Checkbox() = default;
+    Checkbox();
     virtual ~Checkbox() = default;
 
     void draw(DrawContext &ctx) override;

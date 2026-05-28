@@ -9,7 +9,6 @@
 #include "components/invisible_button.h"
 #include "components/tab_bar.h"
 #include "components/ui_layer.h"
-#include "components/ui_object.h"
 #include "parsers/config/config_types.h"
 
 #include <cstdint>
@@ -63,18 +62,32 @@ class DockingLayer : public UILayer {
     void draw(DrawContext &ctx) override;
     std::vector<Instance *> getHittableInstances() override;
 
-    void dock(std::unique_ptr<Instance> obj, glm::vec2 pos);
-    std::unique_ptr<Instance> undock(UIBase2D *obj);
-
     DockLayoutConfig saveConfig() const;
     void applyConfig(const DockLayoutConfig &config);
-    int32_t dock(std::unique_ptr<Instance> content, int32_t targetLeaf, DockZone zone, float ratio);
 
-    DockZone hitTestZone(int32_t nodeIndex, glm::vec2 position);
-    int32_t findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
-    int32_t findNodeByResizeHandlePosition(glm::vec2 pos, int32_t nodeIndex);
-    int32_t splitNode(int32_t nodeIndex, DockZone targetZone, std::unique_ptr<Instance> newContent);
-    void recalculateChildren(int32_t parentIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
+    bool isEmpty() const { return m_rootNode < 0; }
+
+    /**
+     * @brief Create an empty leaf node. If no root exists, this node becomes the root.
+     * @return Index of the new leaf node.
+     */
+    int32_t createLeaf();
+
+    /**
+     * @brief Split an empty leaf node into two child leaves along the given axis.
+     * @param nodeIndex Index of the leaf to split. Must be empty (no TabBar attached yet).
+     * @param axis HORIZONTAL splits top/bottom, VERTICAL splits left/right.
+     * @param ratio Fraction of the available space given to the first child, in [0, 1].
+     * @return Indices of the first and second child leaf nodes.
+     */
+    std::pair<int32_t, int32_t> splitLeaf(int32_t nodeIndex, SplitAxis axis, float ratio);
+
+    /**
+     * @brief Obtain the TabBar for a leaf node, creating one if it does not exist yet.
+     * @param nodeIndex Index of the leaf node.
+     * @return Pointer to the leaf's TabBar. Never null for a valid leaf index.
+     */
+    TabBar *obtainLeafTabBar(int32_t nodeIndex);
 
   private:
     int32_t createNode();
@@ -87,6 +100,11 @@ class DockingLayer : public UILayer {
     void initDockHints();
     void updateDockHints(glm::vec2 mousePos);
     void hideDockHints();
+    DockZone hitTestZone(int32_t nodeIndex, glm::vec2 position);
+    int32_t findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
+    int32_t findNodeByResizeHandlePosition(glm::vec2 pos, int32_t nodeIndex);
+    int32_t splitNode(int32_t nodeIndex, DockZone targetZone, std::unique_ptr<TabBar::Tab> tab);
+    void recalculateChildren(int32_t parentIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
 
   public:
     float outerSpacing = 0.0f;

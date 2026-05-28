@@ -178,7 +178,7 @@ void TextInput::update(float deltaTime)
     processKeyboardInput();
 
     m_cursorBlinkTimer += deltaTime;
-    if (m_cursorBlinkTimer >= cursorBlinkRate) {
+    if (m_cursorBlinkTimer >= m_tiProps.cursorBlinkRate) {
         m_cursorBlinkTimer = 0.0f;
         m_cursorVisible = !m_cursorVisible;
         markDirty();
@@ -187,7 +187,7 @@ void TextInput::update(float deltaTime)
 
 void TextInput::processKeyboardInput()
 {
-    if (!m_focused || readOnly) {
+    if (!m_focused || m_tiProps.readOnly) {
         return;
     }
 
@@ -279,7 +279,7 @@ void TextInput::processKeyboardInput()
             break;
 
         case KEY_ENTER:
-            if (multiline) {
+            if (m_tiProps.multiline) {
                 insertText("\n");
             } else if (onEnterPressed) {
                 onEnterPressed();
@@ -321,7 +321,7 @@ void TextInput::processKeyboardInput()
 
 void TextInput::insertText(const std::string &text)
 {
-    if (readOnly) {
+    if (m_tiProps.readOnly) {
         return;
     }
 
@@ -329,7 +329,7 @@ void TextInput::insertText(const std::string &text)
         deleteSelection();
     }
 
-    if (maxLength >= 0 && static_cast<int32_t>(m_text.size() + text.size()) > maxLength) {
+    if (m_tiProps.maxLength >= 0 && static_cast<int32_t>(m_text.size() + text.size()) > m_tiProps.maxLength) {
         return;
     }
 
@@ -427,7 +427,7 @@ void TextInput::copy()
 
 void TextInput::paste()
 {
-    if (readOnly) {
+    if (m_tiProps.readOnly) {
         return;
     }
 
@@ -439,7 +439,7 @@ void TextInput::paste()
 
 void TextInput::cut()
 {
-    if (readOnly || !m_selectionStart.has_value()) {
+    if (m_tiProps.readOnly || !m_selectionStart.has_value()) {
         return;
     }
 
@@ -466,24 +466,24 @@ void TextInput::releaseTextAllocations(GeometryRegistry *)
 
 void TextInput::drawText(DrawContext &ctx)
 {
-    switch (textYAlignment) {
+    switch (m_tiProps.text.textYAlignment) {
     case TextYAlignment::CENTER:
-        m_textBaselineY = absoluteContentPosition.y + (absoluteContentSize.y - fontSize) / 2.0f;
+        m_textBaselineY = absoluteContentPosition.y + (absoluteContentSize.y - m_tiProps.text.fontSize) / 2.0f;
         break;
     case TextYAlignment::BOTTOM:
-        m_textBaselineY = absoluteContentPosition.y + absoluteContentSize.y - fontSize;
+        m_textBaselineY = absoluteContentPosition.y + absoluteContentSize.y - m_tiProps.text.fontSize;
         break;
     default:
         m_textBaselineY = absoluteContentPosition.y;
         break;
     }
 
-    bool shouldShowPlaceholder = m_text.empty() && !placeholderText.empty();
+    bool shouldShowPlaceholder = m_text.empty() && !m_tiProps.placeholderText.empty();
     bool modeChanged = (shouldShowPlaceholder != m_showingPlaceholder);
     m_showingPlaceholder = shouldShowPlaceholder;
 
-    const std::string &textToRender = m_showingPlaceholder ? placeholderText : m_text;
-    const Color4 &colorToUse = m_showingPlaceholder ? placeholderColor : textColor;
+    const std::string &textToRender = m_showingPlaceholder ? m_tiProps.placeholderText : m_text;
+    const Color4 &colorToUse = m_showingPlaceholder ? m_tiProps.placeholderColor : m_tiProps.text.textColor;
 
     if (textToRender.empty()) {
         releaseTextAllocations(ctx.geometry);
@@ -494,11 +494,11 @@ void TextInput::drawText(DrawContext &ctx)
     TextLayoutParams params;
     params.position = absoluteContentPosition;
     params.bounds = absoluteContentSize;
-    params.fontSize = fontSize;
+    params.fontSize = m_tiProps.text.fontSize;
     params.color = colorToUse;
-    params.xAlign = textXAlignment;
-    params.yAlign = textYAlignment;
-    params.wrap = multiline;
+    params.xAlign = m_tiProps.text.textXAlignment;
+    params.yAlign = m_tiProps.text.textYAlignment;
+    params.wrap = m_tiProps.multiline;
 
     auto glyphs = ctx.textProcessor->layoutTextAtlas(textToRender, params);
     int32_t desiredZIndex = getZIndex() + 1;
@@ -523,7 +523,7 @@ void TextInput::drawText(DrawContext &ctx)
         m_charPositions.push_back(0.0f);
     } else {
         m_charPositions.reserve(m_text.size() + 1);
-        uint32_t pixelSize = static_cast<uint32_t>(fontSize);
+        uint32_t pixelSize = static_cast<uint32_t>(m_tiProps.text.fontSize);
         float currentX = 0.0f;
         for (size_t i = 0; i <= m_text.size(); ++i) {
             m_charPositions.push_back(currentX);
@@ -542,13 +542,13 @@ void TextInput::drawSelection(DrawContext &ctx)
 
         if (selEnd > selStart && selStart < m_charPositions.size() && selEnd < m_charPositions.size()) {
             glm::vec2 selPos = {absoluteContentPosition.x + m_charPositions[selStart], m_textBaselineY};
-            glm::vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], fontSize * 1.2f};
+            glm::vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], m_tiProps.text.fontSize * 1.2f};
             glm::vec2 centerPos = selPos + selSize * 0.5f;
 
             InstanceData data{};
             data.translation = centerPos;
             data.scale = selSize;
-            data.setFillColor(selectionColor);
+            data.setFillColor(m_tiProps.selectionColor);
             data.setPrimitiveType(PRIMITIVE_RECT);
             data.zIndex = getZIndex();
 
@@ -576,13 +576,13 @@ void TextInput::drawCursor(DrawContext &ctx)
         }
 
         glm::vec2 cursorPos = {absoluteContentPosition.x + cursorX, m_textBaselineY};
-        glm::vec2 cursorSize = {1.0f, fontSize * 1.2f};
+        glm::vec2 cursorSize = {1.0f, m_tiProps.text.fontSize * 1.2f};
         glm::vec2 centerPos = cursorPos + cursorSize * 0.5f;
 
         InstanceData data{};
         data.translation = centerPos;
         data.scale = cursorSize;
-        data.setFillColor(cursorColor);
+        data.setFillColor(m_tiProps.cursorColor);
         data.setPrimitiveType(PRIMITIVE_RECT);
         data.zIndex = getZIndex();
 

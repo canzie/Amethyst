@@ -217,12 +217,12 @@ void CollapsibleHeader::draw(DrawContext &ctx)
 
     if (auto *label = m_headerContent->as<TextLabel>()) {
         label->setTextProperties({
-            .text = m_chProps.title.text,
-            .fontFamily = m_chProps.title.fontFamily,
             .fontSize = m_chProps.title.fontSize,
             .textColor = m_chProps.title.textColor,
             .textXAlignment = m_chProps.title.textXAlignment,
             .textYAlignment = m_chProps.title.textYAlignment,
+            .text = m_chProps.title.text,
+            .fontFamily = m_chProps.title.fontFamily,
         });
         label->setBaseProperties({.backgroundTransparency = 1.0f});
     }
@@ -267,8 +267,8 @@ void CollapsibleHeader::draw(DrawContext &ctx)
     } else {
         for (auto &child : m_children) {
             if (auto *drawable = child->as<UIObject>()) {
-                uint8_t originalVisible = drawable->getBaseProperties().visible;
-                drawable->setBaseProperties({.visible = 0});
+                int8_t originalVisible = drawable->getBaseProperties().visible;
+                drawable->setBaseProperties({.visible = false});
                 drawable->markDirty();
                 drawable->clipRect = childClip;
                 drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);

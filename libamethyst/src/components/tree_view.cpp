@@ -20,21 +20,21 @@ static void s_applyStyle(TreeView &tree)
     tree.setBaseProperties({
         .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TREE_VIEW),
         .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TREE_VIEW),
+        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TREE_VIEW),
         .borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TREE_VIEW),
         .borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TREE_VIEW),
-        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TREE_VIEW),
         .cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TREE_VIEW),
     });
     tree.setTreeViewProperties({
         .rowHeight = style.get<float>(StyleProperty::ROW_HEIGHT, ComponentType::TREE_VIEW),
+        .disclosureTriangleSize = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_SIZE, ComponentType::TREE_VIEW),
+        .disclosureTrianglePadding = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_PADDING, ComponentType::TREE_VIEW),
+        .disclosureTriangleColor = style.get<Color4>(StyleProperty::DISCLOSURE_TRIANGLE_COLOR, ComponentType::TREE_VIEW),
+        .indentPerLevel = style.get<float>(StyleProperty::INDENT_PER_LEVEL, ComponentType::TREE_VIEW),
         .rowBackgroundColor = style.get<Color4>(StyleProperty::ROW_BACKGROUND_COLOR, ComponentType::TREE_VIEW),
         .rowAlternateColor = style.get<Color4>(StyleProperty::ROW_ALTERNATE_COLOR, ComponentType::TREE_VIEW),
         .rowHoverColor = style.get<Color4>(StyleProperty::ROW_HOVER_COLOR, ComponentType::TREE_VIEW),
         .rowSelectedColor = style.get<Color4>(StyleProperty::ROW_SELECTED_COLOR, ComponentType::TREE_VIEW),
-        .indentPerLevel = style.get<float>(StyleProperty::INDENT_PER_LEVEL, ComponentType::TREE_VIEW),
-        .disclosureTriangleSize = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_SIZE, ComponentType::TREE_VIEW),
-        .disclosureTrianglePadding = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_PADDING, ComponentType::TREE_VIEW),
-        .disclosureTriangleColor = style.get<Color4>(StyleProperty::DISCLOSURE_TRIANGLE_COLOR, ComponentType::TREE_VIEW),
     });
 }
 
@@ -67,10 +67,10 @@ TreeView::TreeView()
 bool TreeView::setTreeViewProperties(const TreeViewProperties &props)
 {
     bool changed = false;
-#define AM_APPLY(field) \
+#define AM_APPLY(field)                                             \
     if (propIsSet(props.field) && m_tvProps.field != props.field) { \
-        m_tvProps.field = props.field; \
-        changed = true; \
+        m_tvProps.field = props.field;                              \
+        changed = true;                                             \
     }
     AM_APPLY(rowHeight)
     AM_APPLY(cellPadding)
@@ -527,7 +527,10 @@ void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t b
         .zIndex = getZIndex() + 2,
     });
     btn->clipRect = childClip;
-    btn->onMouseButton1ClickCb = [this, row]() { toggle(row); return EventResult::CONSUMED; };
+    btn->onMouseButton1ClickCb = [this, row]() {
+        toggle(row);
+        return EventResult::CONSUMED;
+    };
     btn->markDirty();
 
     float triSize = m_tvProps.disclosureTriangleSize;
@@ -703,9 +706,8 @@ void TreeView::drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint3
         uint32_t visualIndex = firstVisibleSlot + i;
         float rowY = calculateRowY(visualIndex, m_computedRowHeight);
         Frame *bg = m_rowBackgrounds[i].get();
-        Color4 bgColor = (visualIndex % 2 == 1 && m_tvProps.rowAlternateColor.a > 0.0f)
-                             ? m_tvProps.rowAlternateColor
-                             : m_tvProps.rowBackgroundColor;
+        Color4 bgColor = (visualIndex % 2 == 1 && m_tvProps.rowAlternateColor.a > 0.0f) ? m_tvProps.rowAlternateColor
+                                                                                        : m_tvProps.rowBackgroundColor;
         bg->setBaseProperties({
             .backgroundColor = Color3(bgColor),
             .backgroundTransparency = 1.0f - bgColor.a,

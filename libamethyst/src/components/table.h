@@ -30,9 +30,9 @@ enum class TableColumnSizing {
 };
 
 struct TableColumn {
-    std::string header;
+    std::string header{};
     TableColumnSizing sizing = TableColumnSizing::STRETCH;
-    float width = 1.0f;
+    float weight = 1.0f;
     float minWidth = 0.0f;
     float maxWidth = 0.0f;
 };
@@ -55,6 +55,15 @@ class Table : public UIObject {
      * @param cols The new set of column definitions
      */
     void setColumns(std::vector<TableColumn> cols);
+
+    /**
+     * @brief Grow column count to newCount, re-striding existing cell data.
+     * @param newCount New column count; no-op if <= current count
+     *
+     * New columns are anonymous STRETCH. Used by TableScope to support
+     * inferred column counts when no explicit columns are declared.
+     */
+    void resizeColumns(uint32_t newCount);
 
     /**
      * @brief Get the number of columns currently defined

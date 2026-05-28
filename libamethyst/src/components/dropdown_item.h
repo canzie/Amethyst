@@ -19,24 +19,23 @@ struct DropdownAction {
 };
 
 struct DropdownToggle {
-    /// stateRef must outlive the DropdownItem if provided.
-    bool *stateRef = nullptr;
-    bool value = false;
+    explicit DropdownToggle(std::function<void(bool)> cb) : onToggled(std::move(cb)) {}
+
     std::function<void(bool)> onToggled;
 
-    bool currentState() const { return stateRef ? *stateRef : value; }
+    bool currentState() const { return m_value; }
     void toggle()
     {
-        bool next = !currentState();
-        if (stateRef)
-            *stateRef = next;
-        else
-            value = next;
-        if (onToggled) onToggled(next);
+        m_value = !m_value;
+        if (onToggled) onToggled(m_value);
     }
+
+  private:
+    bool m_value = false;
 };
 
 struct DropdownSeparator {};
+struct DropdownSelect {};
 
 struct DropdownSubmenu {
     std::vector<DropdownItem> items;
@@ -44,9 +43,9 @@ struct DropdownSubmenu {
 
 class DropdownItem {
   public:
-    using Payload = std::variant<DropdownAction, DropdownToggle, DropdownSeparator, DropdownSubmenu>;
+    using Payload = std::variant<DropdownAction, DropdownToggle, DropdownSeparator, DropdownSubmenu, DropdownSelect>;
 
-    enum class Kind { ACTION, TOGGLE, SEPARATOR, SUBMENU };
+    enum class Kind { ACTION, TOGGLE, SEPARATOR, SUBMENU, SELECT };
 
     std::string label;
     std::string shortcutHint;
@@ -56,8 +55,7 @@ class DropdownItem {
     Kind kind() const { return static_cast<Kind>(payload.index()); }
 
     static DropdownItem action(std::string label, std::function<void()> cb);
-    static DropdownItem toggle(std::string label, bool *stateRef = nullptr,
-                               std::function<void(bool)> cb = {});
+    static DropdownItem toggle(std::string label, std::function<void(bool)> cb = {});
     static DropdownItem separator();
     static DropdownItem submenu(std::string label, std::vector<DropdownItem> items);
 

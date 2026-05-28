@@ -19,7 +19,7 @@ void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
         if (aObj && bObj) {
             switch (sortOrder) {
             case SortOrder::SORT_LAYOUT_ORDER:
-                return aObj->layoutOrder < bObj->layoutOrder;
+                return aObj->getBaseProperties().layoutOrder < bObj->getBaseProperties().layoutOrder;
             case SortOrder::SORT_NAME:
                 return a->name < b->name;
             };
@@ -56,7 +56,7 @@ void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
     for (auto child : sortedChildren) {
         auto *obj = child->as<UIObject>();
         if (obj == nullptr) continue;
-        if (!obj->visible) continue;
+        if (obj->getBaseProperties().visible == 0) continue;
 
         uint32_t mainIndex = childIndex % maxCells;
         uint32_t crossIndex = childIndex / maxCells;
@@ -102,8 +102,10 @@ void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
             break;
         }
 
-        obj->size = UDim2::fromOffset(m_absoluteCellSize.x, m_absoluteCellSize.y);
-        obj->position = UDim2::fromOffset(cellX + alignOffsetX, cellY + alignOffsetY);
+        obj->setBaseProperties({
+            .position = UDim2::fromOffset(cellX + alignOffsetX, cellY + alignOffsetY),
+            .size = UDim2::fromOffset(m_absoluteCellSize.x, m_absoluteCellSize.y),
+        });
         child->markDirty();
 
         childIndex++;

@@ -182,11 +182,11 @@ void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_
         switch (button) {
         case MOUSE_BUTTON_1:
             capturedObject->onMouseButton1Up(x, y);
-            if (stillOver) capturedObject->onMouseButton1Click();
+            if (m_mouseCapturedBy == capturedObject && stillOver) capturedObject->onMouseButton1Click();
             break;
         case MOUSE_BUTTON_2:
             capturedObject->onMouseButton2Up(x, y);
-            if (stillOver) capturedObject->onMouseButton2Click();
+            if (m_mouseCapturedBy == capturedObject && stillOver) capturedObject->onMouseButton2Click();
             break;
         default:
             break;

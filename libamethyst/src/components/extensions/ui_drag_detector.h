@@ -5,22 +5,14 @@
 #ifndef AMETHYST__UI_DRAG_DETECTOR_H
 #define AMETHYST__UI_DRAG_DETECTOR_H
 
+#include "components/common.h"
 #include "components/extensions/ui_extension.h"
 #include "components/ui_object.h"
-#include "glm/fwd.hpp"
 #include <cstdint>
 #include <functional>
 #include <glm/glm.hpp>
 
 namespace Amethyst {
-
-enum class DragMode : uint8_t {
-    FREE,
-    HORIZONTAL,
-    VERTICAL,
-    SOFT_HORIZONTAL,
-    SOFT_VERTICAL,
-};
 
 class UIDragDetector : public UIExtension {
   public:

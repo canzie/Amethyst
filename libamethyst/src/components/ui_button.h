@@ -18,67 +18,18 @@ class UIButton : public UIObject {
     virtual ~UIButton() = default;
 
     bool setButtonProperties(const ButtonProperties &props);
-    const ButtonProperties &getButtonProperties();
+    const ButtonProperties &getButtonProperties() const;
 
   protected:
-    EventResult onMouseButton1Down(uint32_t x, uint32_t y) override
-    {
-        UIObject::onMouseButton1Down(x, y);
-        if (onMouseButton1DownCb) return onMouseButton1DownCb(x, y);
-        return EventResult::CONSUMED;
-    }
-
-    EventResult onMouseButton1Up(uint32_t x, uint32_t y) override
-    {
-        UIObject::onMouseButton1Up(x, y);
-        if (onMouseButton1UpCb) return onMouseButton1UpCb(x, y);
-        return EventResult::CONSUMED;
-    }
-
-    EventResult onMouseButton1Click(void) override
-    {
-        if (onMouseButton1ClickCb) return onMouseButton1ClickCb();
-        return EventResult::CONSUMED;
-    }
-
-    EventResult onMouseButton2Down(uint32_t x, uint32_t y) override
-    {
-        if (onMouseButton2DownCb) return onMouseButton2DownCb(x, y);
-        return EventResult::CONSUMED;
-    }
-
-    EventResult onMouseButton2Up(uint32_t x, uint32_t y) override
-    {
-        if (onMouseButton2UpCb) return onMouseButton2UpCb(x, y);
-        return EventResult::CONSUMED;
-    }
-
-    EventResult onMouseButton2Click(void) override
-    {
-        if (onMouseButton2ClickCb) return onMouseButton2ClickCb();
-        return EventResult::CONSUMED;
-    }
-
-    EventResult onMouseEnter(void) override
-    {
-        UIObject::onMouseEnter();
-        if (onMouseEnterCb) return onMouseEnterCb();
-        return EventResult::CONSUMED;
-    }
-
-    EventResult onMouseLeave(void) override
-    {
-        UIObject::onMouseLeave();
-        if (onMouseLeaveCb) return onMouseLeaveCb();
-        return EventResult::CONSUMED;
-    }
-
-    EventResult onMouseMoved(uint32_t x, uint32_t y) override
-    {
-        UIObject::onMouseMoved(x, y);
-        if (onMouseMovedCb) return onMouseMovedCb(x, y);
-        return EventResult::CONSUMED;
-    }
+    EventResult onMouseButton1Down(uint32_t x, uint32_t y) override;
+    EventResult onMouseButton1Up(uint32_t x, uint32_t y) override;
+    EventResult onMouseButton1Click() override;
+    EventResult onMouseButton2Down(uint32_t x, uint32_t y) override;
+    EventResult onMouseButton2Up(uint32_t x, uint32_t y) override;
+    EventResult onMouseButton2Click() override;
+    EventResult onMouseEnter() override;
+    EventResult onMouseLeave() override;
+    EventResult onMouseMoved(uint32_t x, uint32_t y) override;
 
   protected:
     ButtonProperties m_btnProps;

@@ -1,19 +1,28 @@
 #include "components/ui_scope.h"
 
+#include "components/canvas.h"
+#include "components/dropdown.h"
+#include "components/menu_bar.h"
 #include "components/checkbox.h"
 #include "components/collapsible_header.h"
+#include "components/container.h"
 #include "components/frame.h"
 #include "components/image_button.h"
 #include "components/image_label.h"
 #include "components/invisible_button.h"
 #include "components/scrolling_frame.h"
+#include "components/slider.h"
 #include "components/tab_bar.h"
 #include "components/text_button.h"
+#include "components/text_input.h"
 #include "components/text_label.h"
 #include "components/tree_view.h"
 
 namespace Amethyst {
 
+CanvasScope::CanvasScope(Canvas &c) : UIScope(c), component(c) {}
+DropdownScope::DropdownScope(Dropdown &d) : component(d) {}
+MenuBarScope::MenuBarScope(MenuBar &mb) : UIScope(mb), component(mb) {}
 FrameScope::FrameScope(Frame &f) : UIScope(f), component(f) {}
 TabScope::TabScope(Frame &lf, Frame &cf) : labelFrame(lf), contentFrame(cf) {}
 ScrollingFrameScope::ScrollingFrameScope(ScrollingFrame &sf) : UIScope(sf), component(sf) {}
@@ -25,7 +34,50 @@ ImageButtonScope::ImageButtonScope(ImageButton &ib) : UIScope(ib), component(ib)
 InvisibleButtonScope::InvisibleButtonScope(InvisibleButton &ib) : UIScope(ib), component(ib) {}
 CheckboxScope::CheckboxScope(Checkbox &cb) : UIScope(cb), component(cb) {}
 CollapsibleHeaderScope::CollapsibleHeaderScope(CollapsibleHeader &ch) : UIScope(ch), component(ch) {}
+TextInputScope::TextInputScope(TextInput &ti) : UIScope(ti), component(ti) {}
+SliderFloatScope::SliderFloatScope(SliderFloat &s) : UIScope(s), component(s) {}
+SliderIntScope::SliderIntScope(SliderInt &s) : UIScope(s), component(s) {}
+SliderVec2Scope::SliderVec2Scope(SliderVec2 &s) : UIScope(s), component(s) {}
+SliderVec3Scope::SliderVec3Scope(SliderVec3 &s) : UIScope(s), component(s) {}
 TreeViewScope::TreeViewScope(TreeView &tv) : UIScope(tv), component(tv) {}
+
+UIScope &UIScope::canvas(BaseProperties base, std::function<void(CanvasScope &)> fn)
+{
+    auto *c = m_parent->add<Canvas>();
+    c->setBaseProperties(base);
+    if (fn) {
+        CanvasScope scope(*c);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::dropdown(BaseProperties base, TextProperties text, DropdownProperties ddProps,
+                           std::function<void(DropdownScope &)> fn)
+{
+    auto *d = m_parent->add<Dropdown>();
+    d->setBaseProperties(base);
+    d->setTextProperties(text);
+    d->setDropdownProperties(ddProps);
+    if (fn) {
+        DropdownScope scope(*d);
+        fn(scope);
+        d->setItems(std::move(scope.pendingItems));
+    }
+    return *this;
+}
+
+UIScope &UIScope::menuBar(BaseProperties base, MenuBarProperties props, std::function<void(MenuBarScope &)> fn)
+{
+    auto *mb = m_parent->add<MenuBar>();
+    mb->setBaseProperties(base);
+    mb->setMenuBarProperties(props);
+    if (fn) {
+        MenuBarScope scope(*mb);
+        fn(scope);
+    }
+    return *this;
+}
 
 UIScope &UIScope::frame(BaseProperties props, std::function<void(FrameScope &)> fn)
 {
@@ -151,6 +203,78 @@ UIScope &UIScope::tabBar(BaseProperties base, TabBarProperties props, std::funct
     return *this;
 }
 
+UIScope &UIScope::table(BaseProperties base, TableProperties props, std::function<void(TableScope &)> fn)
+{
+    auto *t = m_parent->add<Table>();
+    t->setBaseProperties(base);
+    t->setTableProperties(props);
+    if (fn) {
+        TableScope scope(*t);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::textInput(BaseProperties base, TextInputProperties props, std::function<void(TextInputScope &)> fn)
+{
+    auto *ti = m_parent->add<TextInput>();
+    ti->setBaseProperties(base);
+    ti->setTextInputProperties(props);
+    if (fn) {
+        TextInputScope scope(*ti);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::sliderFloat(BaseProperties base, SliderProperties props, std::function<void(SliderFloatScope &)> fn)
+{
+    auto *s = m_parent->add<SliderFloat>();
+    s->setBaseProperties(base);
+    s->setSliderProperties(props);
+    if (fn) {
+        SliderFloatScope scope(*s);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::sliderInt(BaseProperties base, SliderProperties props, std::function<void(SliderIntScope &)> fn)
+{
+    auto *s = m_parent->add<SliderInt>();
+    s->setBaseProperties(base);
+    s->setSliderProperties(props);
+    if (fn) {
+        SliderIntScope scope(*s);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::sliderVec2(BaseProperties base, SliderProperties props, std::function<void(SliderVec2Scope &)> fn)
+{
+    auto *s = m_parent->add<SliderVec2>();
+    s->setBaseProperties(base);
+    s->setSliderProperties(props);
+    if (fn) {
+        SliderVec2Scope scope(*s);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::sliderVec3(BaseProperties base, SliderProperties props, std::function<void(SliderVec3Scope &)> fn)
+{
+    auto *s = m_parent->add<SliderVec3>();
+    s->setBaseProperties(base);
+    s->setSliderProperties(props);
+    if (fn) {
+        SliderVec3Scope scope(*s);
+        fn(scope);
+    }
+    return *this;
+}
+
 UIScope &UIScope::treeView(BaseProperties base, TreeViewProperties props, std::function<void(TreeViewScope &)> fn)
 {
     auto *tv = m_parent->add<TreeView>();
@@ -215,6 +339,128 @@ CollapsibleHeaderScope &CollapsibleHeaderScope::indicator(std::function<void(UIS
         UIScope scope(obj);
         fn(scope);
     });
+    return *this;
+}
+
+TableRowScope::TableRowScope(Table &t) : component(t) {}
+
+TableRowScope &TableRowScope::cell(std::function<void(UIScope &)> fn)
+{
+    m_pendingCells.emplace_back(std::move(fn));
+    return *this;
+}
+
+TableScope::TableScope(Table &t) : UIScope(t), component(t) {}
+
+TableScope &TableScope::column(std::string header, float weight, TableColumnSizing sizing)
+{
+    m_columnsExplicit = true;
+    component.addColumn({.header = header, .sizing = sizing, .weight = weight});
+    return *this;
+}
+
+TableScope &TableScope::column(TableColumn col)
+{
+    m_columnsExplicit = true;
+    component.addColumn(std::move(col));
+    return *this;
+}
+
+TableScope &TableScope::row(std::function<void(TableRowScope &)> rowFn)
+{
+    TableRowScope rowScope(component);
+    rowFn(rowScope);
+
+    uint32_t cellCount = static_cast<uint32_t>(rowScope.m_pendingCells.size());
+    if (cellCount == 0) {
+        return *this;
+    }
+
+    if (!m_columnsExplicit && cellCount > component.columnCount()) {
+        component.resizeColumns(cellCount);
+    }
+
+    component.addRow();
+
+    for (auto &cellFn : rowScope.m_pendingCells) {
+        auto container = std::make_unique<Container>();
+        UIScope cellScope(*container);
+        cellFn(cellScope);
+        container->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
+        component.nextCell(std::move(container));
+    }
+
+    return *this;
+}
+
+DropdownScope &DropdownScope::action(std::string label, std::function<void()> onSelect)
+{
+    pendingItems.emplace_back(DropdownItem::action(std::move(label), std::move(onSelect)));
+    return *this;
+}
+
+DropdownScope &DropdownScope::toggle(std::string label, std::function<void(bool)> onToggle)
+{
+    pendingItems.emplace_back(DropdownItem::toggle(std::move(label), std::move(onToggle)));
+    return *this;
+}
+
+DropdownScope &DropdownScope::separator()
+{
+    pendingItems.emplace_back(DropdownItem::separator());
+    return *this;
+}
+
+DropdownScope &DropdownScope::submenu(std::string label, std::function<void(DropdownScope &)> fn)
+{
+    DropdownScope sub(component);
+    fn(sub);
+    pendingItems.emplace_back(DropdownItem::submenu(std::move(label), std::move(sub.pendingItems)));
+    return *this;
+}
+
+DropdownScope &DropdownScope::items(std::vector<std::string> labels)
+{
+    for (auto &lbl : labels) {
+        DropdownItem item;
+        item.label = lbl;
+        item.payload = DropdownSelect{};
+        pendingItems.emplace_back(std::move(item));
+    }
+    return *this;
+}
+
+MenuBarScope &MenuBarScope::menuItem(std::string label, std::function<void(DropdownScope &)> fn)
+{
+    Dropdown *entry = component.addMenu(std::move(label), {});
+    if (fn) {
+        DropdownScope scope(*entry);
+        fn(scope);
+        entry->setItems(std::move(scope.pendingItems));
+    }
+    return *this;
+}
+
+DockScope::DockScope(DockingLayer &layer) : m_layer(layer), m_nodeIndex(layer.createLeaf()) {}
+
+DockScope &DockScope::split(SplitAxis axis, float ratio, std::function<void(DockScope &)> fnFirst,
+                            std::function<void(DockScope &)> fnSecond)
+{
+    auto [first, second] = m_layer.splitLeaf(m_nodeIndex, axis, ratio);
+    DockScope firstScope(m_layer, first);
+    fnFirst(firstScope);
+    DockScope secondScope(m_layer, second);
+    fnSecond(secondScope);
+    return *this;
+}
+
+DockScope &DockScope::panel(std::function<void(TabBarScope &)> fn)
+{
+    TabBar *tb = m_layer.obtainLeafTabBar(m_nodeIndex);
+    if (fn) {
+        TabBarScope scope(*tb);
+        fn(scope);
+    }
     return *this;
 }
 

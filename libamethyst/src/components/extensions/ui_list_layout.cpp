@@ -19,7 +19,7 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
         if (aObj && bObj) {
             switch (sortOrder) {
             case SortOrder::SORT_LAYOUT_ORDER:
-                return aObj->layoutOrder < bObj->layoutOrder;
+                return aObj->getBaseProperties().layoutOrder < bObj->getBaseProperties().layoutOrder;
             case SortOrder::SORT_NAME:
                 return a->name < b->name;
             };
@@ -44,7 +44,7 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
     for (auto child : sortedChildren) {
         auto *obj = child->as<UIObject>();
         if (obj != nullptr) {
-            glm::vec2 childSize = obj->size.resolve(ownerSize);
+            glm::vec2 childSize = obj->getBaseProperties().size.resolve(ownerSize);
             totalChildSize += isVertical ? childSize.y : childSize.x;
             validChildren++;
         }
@@ -93,22 +93,20 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
         auto *obj = child->as<UIObject>();
         if (obj == nullptr) continue;
 
-        glm::vec2 childSize = obj->size.resolve(ownerSize);
+        glm::vec2 childSize = obj->getBaseProperties().size.resolve(ownerSize);
         float crossOffset = 0.0f;
 
         if (crossAxisFlex == UiFlexAlignment::FILL) {
-            crossOffset = 0.0f;
             if (isVertical) {
-                obj->size = UDim2::fromOffset(crossContainerSize, childSize.y);
+                childSize.x = crossContainerSize;
             } else {
-                obj->size = UDim2::fromOffset(childSize.x, crossContainerSize);
+                childSize.y = crossContainerSize;
             }
         } else {
             float itemCrossSize = isVertical ? childSize.x : childSize.y;
             if (isVertical) {
                 switch (horizontalAlignment) {
                 case HorizontalAlignment::ALIGN_LEFT:
-                    crossOffset = 0.0f;
                     break;
                 case HorizontalAlignment::ALIGN_CENTER_H:
                     crossOffset = (crossContainerSize - itemCrossSize) / 2.0f;
@@ -120,7 +118,6 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
             } else {
                 switch (verticalAlignment) {
                 case VerticalAlignment::ALIGN_TOP:
-                    crossOffset = 0.0f;
                     break;
                 case VerticalAlignment::ALIGN_CENTER_V:
                     crossOffset = (crossContainerSize - itemCrossSize) / 2.0f;
@@ -133,18 +130,22 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
         }
 
         if (isVertical) {
-            obj->position = UDim2::fromOffset(crossOffset, currentOffset);
             float itemSize = childSize.y + extraItemSize;
-            if (extraItemSize > 0.0f) {
-                obj->size = UDim2::fromOffset(childSize.x, itemSize);
+            BaseProperties props;
+            props.position = UDim2::fromOffset(crossOffset, currentOffset);
+            if (extraItemSize > 0.0f || crossAxisFlex == UiFlexAlignment::FILL) {
+                props.size = UDim2::fromOffset(childSize.x, itemSize);
             }
+            obj->setBaseProperties(props);
             currentOffset += itemSize + spacing;
         } else {
-            obj->position = UDim2::fromOffset(currentOffset, crossOffset);
             float itemSize = childSize.x + extraItemSize;
-            if (extraItemSize > 0.0f) {
-                obj->size = UDim2::fromOffset(itemSize, childSize.y);
+            BaseProperties props;
+            props.position = UDim2::fromOffset(currentOffset, crossOffset);
+            if (extraItemSize > 0.0f || crossAxisFlex == UiFlexAlignment::FILL) {
+                props.size = UDim2::fromOffset(itemSize, childSize.y);
             }
+            obj->setBaseProperties(props);
             currentOffset += itemSize + spacing;
         }
 

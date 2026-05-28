@@ -24,7 +24,7 @@ void UIDragDetector::handleMouseDown(uint32_t x, uint32_t y)
     }
 
     m_dragStartMouse = mousePosParentRelative;
-    m_dragStartOffset = m_owner->position.offset;
+    m_dragStartOffset = m_owner->getBaseProperties().position.offset;
 
     if (onDragStart) {
         onDragStart(glm::vec2(x, y));
@@ -52,6 +52,8 @@ void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
     glm::vec2 delta = mousePosParentRelative - m_dragStartMouse;
 
     switch (mode) {
+    case DragMode::NONE:
+        return;
     case DragMode::FREE:
         break;
     case DragMode::HORIZONTAL:
@@ -80,8 +82,9 @@ void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
         break;
     }
 
-    m_owner->position.offset = m_dragStartOffset + delta;
-    m_owner->markDirty();
+    UDim2 pos = m_owner->getBaseProperties().position;
+    pos.offset = m_dragStartOffset + delta;
+    m_owner->setBaseProperties({.position = pos});
 
     if (onDragUpdate) {
         onDragUpdate(delta, glm::vec2(x, y));
@@ -96,12 +99,17 @@ void UIDragDetector::handleMouseUp(uint32_t x, uint32_t y)
 
     m_isDragging = false;
 
-    if (onDragEnd) {
-        onDragEnd(glm::vec2(x, y));
-    }
-
+    // Release capture before firing onDragEnd: onDragEnd may destroy m_owner
+    // (e.g. torn-off tab drop rebuilds the tab button via setupTabButton).
+    // After releaseMouse, m_mouseCapturedBy is null and onDestroy is cleared,
+    // so the destruction that follows is safe.
     if (auto *window = m_owner->getWindow()) {
         window->releaseMouse(m_owner);
+    }
+
+    if (onDragEnd) {
+        onDragEnd(glm::vec2(x, y));
+        // onDragEnd may have destroyed *this; no member access after this point.
     }
 }
 

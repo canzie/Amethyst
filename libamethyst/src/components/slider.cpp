@@ -51,10 +51,10 @@ static void s_setupSideLabel(TextLabel &label, const Slider *slider, float &outL
     }
 
     label.setTextProperties({
-        .text = sp.label,
         .fontSize = sp.fontSize,
         .textColor = sp.labelColor,
         .textYAlignment = TextYAlignment::CENTER,
+        .text = sp.label,
     });
     label.setBaseProperties({
         .backgroundColor = slider->getBaseProperties().backgroundColor,
@@ -82,11 +82,11 @@ static void s_setupTrack(Frame &track, float x, float y, float width, float heig
 {
     const auto &sp = slider->getSliderProperties();
     track.setBaseProperties({
-        .position = UDim2::fromOffset(x, y),
-        .size = UDim2::fromOffset(width, height),
         .backgroundColor = sp.sliderColor,
         .backgroundTransparency = sp.sliderTransparency,
         .cornerRadius = sp.trackCornerRadius,
+        .position = UDim2::fromOffset(x, y),
+        .size = UDim2::fromOffset(width, height),
     });
 }
 
@@ -94,11 +94,11 @@ static void s_setupThumb(Frame &thumb, float x, float y, float width, float heig
 {
     const auto &sp = slider->getSliderProperties();
     thumb.setBaseProperties({
-        .position = UDim2::fromOffset(x, y),
-        .size = UDim2::fromOffset(width, height),
         .backgroundColor = sp.thumbColor,
         .backgroundTransparency = sp.thumbTransparency,
         .cornerRadius = sp.thumbCornerRadius,
+        .position = UDim2::fromOffset(x, y),
+        .size = UDim2::fromOffset(width, height),
     });
 }
 
@@ -107,18 +107,18 @@ static void s_setupValueLabel(TextLabel &label, float x, float y, float width, f
 {
     const auto &sp = slider->getSliderProperties();
     label.setTextProperties({
-        .text = text,
         .fontSize = sp.fontSize * 0.8f,
         .textColor = sp.valueColor,
         .textXAlignment = TextXAlignment::CENTER,
         .textYAlignment = TextYAlignment::CENTER,
+        .text = text,
     });
     label.setBaseProperties({
-        .position = UDim2::fromOffset(x, y),
-        .size = UDim2::fromOffset(width, height),
         .backgroundColor = Color3(0.0f),
         .backgroundTransparency = 1.0f,
         .interactable = 0,
+        .position = UDim2::fromOffset(x, y),
+        .size = UDim2::fromOffset(width, height),
     });
 }
 

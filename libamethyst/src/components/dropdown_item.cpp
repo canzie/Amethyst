@@ -10,11 +10,11 @@ DropdownItem DropdownItem::action(std::string label, std::function<void()> cb)
     return item;
 }
 
-DropdownItem DropdownItem::toggle(std::string label, bool *stateRef, std::function<void(bool)> cb)
+DropdownItem DropdownItem::toggle(std::string label, std::function<void(bool)> cb)
 {
     DropdownItem item;
     item.label = std::move(label);
-    item.payload = DropdownToggle{stateRef, false, std::move(cb)};
+    item.payload = DropdownToggle(std::move(cb));
     return item;
 }
 

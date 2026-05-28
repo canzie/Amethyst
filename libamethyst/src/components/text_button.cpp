@@ -101,7 +101,7 @@ void TextButton::draw(DrawContext &ctx)
             auto glyphs = ctx.textProcessor->layoutTextAtlas(m_textProps.text, params);
 
             for (auto &glyphData : glyphs) {
-                glyphData.zIndex = data.zIndex + 1;
+                glyphData.zIndex = getAbsoluteZIndex() + 1;
                 glyphData.clipRect = clipRect;
                 glyphData.setVisible(isVisible());
             }

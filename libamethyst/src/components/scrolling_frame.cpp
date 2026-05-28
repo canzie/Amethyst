@@ -15,9 +15,9 @@ static void applyStyle(ScrollingFrame &frame)
     frame.setBaseProperties({
         .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SCROLLING_FRAME),
         .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SCROLLING_FRAME),
+        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::SCROLLING_FRAME),
         .borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::SCROLLING_FRAME),
         .borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::SCROLLING_FRAME),
-        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::SCROLLING_FRAME),
         .cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::SCROLLING_FRAME),
     });
     ScrollingFrameProperties sfp;
@@ -121,15 +121,18 @@ void ScrollingFrame::draw(DrawContext &ctx)
 
     glm::vec4 childClip = computeChildClipRect();
 
+    glm::vec2 canvasOrigin = m_sfProps.canvasPosition.resolve(absCanvasSize);
+
     for (auto &child : m_children) {
         auto *obj = child->as<UIObject>();
         if (obj == nullptr) continue;
 
-        glm::vec2 childPos = m_sfProps.canvasPosition.resolve(absCanvasSize) - m_scrollOffset;
+        glm::vec2 childRelPos = obj->getBaseProperties().position.resolve(absCanvasSize);
+        glm::vec2 childEffectivePos = canvasOrigin + childRelPos - m_scrollOffset;
         glm::vec2 childSize = obj->getBaseProperties().size.resolve(absCanvasSize);
 
-        bool inViewport = (childPos.x + childSize.x > 0.0f) && (childPos.x < absoluteSize.x) && (childPos.y + childSize.y > 0.0f) &&
-                          (childPos.y < absoluteSize.y);
+        bool inViewport = (childEffectivePos.x + childSize.x > 0.0f) && (childEffectivePos.x < absoluteSize.x) &&
+                          (childEffectivePos.y + childSize.y > 0.0f) && (childEffectivePos.y < absoluteSize.y);
 
         bool original = obj->isVisible();
         bool effective = original && inViewport;
@@ -140,11 +143,11 @@ void ScrollingFrame::draw(DrawContext &ctx)
             lastViewport = effective;
         }
 
-        obj->setBaseProperties({.visible = static_cast<uint8_t>(effective)});
+        obj->setBaseProperties({.visible = static_cast<int8_t>(effective)});
         obj->clipRect = childClip;
         obj->computeAbsolutes(absCanvasSize, absolutePosition - m_scrollOffset, absoluteRotation);
         obj->draw(ctx);
-        obj->setBaseProperties({.visible = static_cast<uint8_t>(original)});
+        obj->setBaseProperties({.visible = static_cast<int8_t>(original)});
     }
 
     drawScrollbars(ctx);
@@ -154,9 +157,11 @@ void ScrollingFrame::draw(DrawContext &ctx)
 
 void ScrollingFrame::drawScrollbars(DrawContext &ctx)
 {
+    bool sfVisible = isVisible();
+
     glm::vec2 absCanvasSize = m_sfProps.canvasSize.resolve(absoluteSize);
-    bool needsVertical = (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) && absCanvasSize.y > absoluteSize.y;
-    bool needsHorizontal = (m_sfProps.scrollAxis == ScrollAxis::X || m_sfProps.scrollAxis == ScrollAxis::XY) && absCanvasSize.x > absoluteSize.x;
+    bool needsVertical = sfVisible && (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) && absCanvasSize.y > absoluteSize.y;
+    bool needsHorizontal = sfVisible && (m_sfProps.scrollAxis == ScrollAxis::X || m_sfProps.scrollAxis == ScrollAxis::XY) && absCanvasSize.x > absoluteSize.x;
 
     if (m_sfProps.scrollBarVisibility == ScrollBarVisibility::NEVER) {
         needsVertical = false;
@@ -187,6 +192,8 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
             .backgroundColor = m_sfProps.scrollBarColor,
             .backgroundTransparency = m_sfProps.scrollBarTransparency,
         });
+        m_verticalBar->clipRect = clipRect;
+        m_verticalBar->markDirty();
         m_verticalBar->computeAbsolutes(
             glm::vec2(m_sfProps.scrollBarThickness, trackHeight),
             absolutePosition + glm::vec2(absoluteSize.x - m_sfProps.scrollBarThickness, 0.0f),
@@ -197,6 +204,8 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
             .backgroundColor = m_sfProps.scrollBarThumbColor,
             .backgroundTransparency = m_sfProps.scrollBarThumbTransparency,
         });
+        m_verticalThumb->clipRect = clipRect;
+        m_verticalThumb->markDirty();
         m_verticalThumb->computeAbsolutes(
             glm::vec2(m_sfProps.scrollBarThickness, thumbHeight),
             absolutePosition + glm::vec2(absoluteSize.x - m_sfProps.scrollBarThickness, thumbY),
@@ -231,6 +240,8 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
             .backgroundColor = m_sfProps.scrollBarColor,
             .backgroundTransparency = m_sfProps.scrollBarTransparency,
         });
+        m_horizontalBar->clipRect = clipRect;
+        m_horizontalBar->markDirty();
         m_horizontalBar->computeAbsolutes(
             glm::vec2(trackWidth, m_sfProps.scrollBarThickness),
             absolutePosition + glm::vec2(0.0f, absoluteSize.y - m_sfProps.scrollBarThickness),
@@ -241,6 +252,8 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
             .backgroundColor = m_sfProps.scrollBarThumbColor,
             .backgroundTransparency = m_sfProps.scrollBarThumbTransparency,
         });
+        m_horizontalThumb->clipRect = clipRect;
+        m_horizontalThumb->markDirty();
         m_horizontalThumb->computeAbsolutes(
             glm::vec2(thumbWidth, m_sfProps.scrollBarThickness),
             absolutePosition + glm::vec2(thumbX, absoluteSize.y - m_sfProps.scrollBarThickness),

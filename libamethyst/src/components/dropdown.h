@@ -45,6 +45,7 @@ class Dropdown : public TextButton {
     bool setDropdownProperties(const DropdownProperties &props);
     const DropdownProperties &getDropdownProperties() const { return m_ddProps; }
 
+    std::function<void(std::string_view)> onItemSelected;
     std::function<void()> onOpenedCb;
     std::function<void()> onClosedCb;
 

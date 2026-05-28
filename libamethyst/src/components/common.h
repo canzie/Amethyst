@@ -13,6 +13,7 @@
 namespace Amethyst {
 
 using Degrees = float;
+using am_bool = int8_t;
 
 /**
  * @brief Opaque texture handle for bindless textures.
@@ -272,6 +273,15 @@ enum class TabBarPosition {
     BOTTOM,
     LEFT,
     RIGHT,
+};
+
+enum class DragMode {
+    NONE,
+    FREE,
+    HORIZONTAL,
+    VERTICAL,
+    SOFT_HORIZONTAL,
+    SOFT_VERTICAL,
 };
 
 /**

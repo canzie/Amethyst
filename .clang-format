@@ -151,6 +151,16 @@ Standard: Latest
 StatementMacros:
   - Q_UNUSED
   - QT_REQUIRE_VERSION
+  - AM_ASSERT
+  - AM_ASSERT_MSG
+  - AM_CHECK
+  - AM_UNREACHABLE
+  - AM_LOG_TRACE
+  - AM_LOG_DEBUG
+  - AM_LOG_INFO
+  - AM_LOG_WARN
+  - AM_LOG_ERROR
+  - AM_LOG_CRITICAL
 TabWidth: 8
 UseCRLF: false
 UseTab: Never

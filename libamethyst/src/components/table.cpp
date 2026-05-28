@@ -14,17 +14,17 @@ static void s_applyStyle(Table &table)
     table.setBaseProperties({
         .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TABLE),
         .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TABLE),
+        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TABLE),
         .borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TABLE),
         .borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TABLE),
-        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TABLE),
         .cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TABLE),
     });
     table.setTableProperties({
         .rowHeight = style.get<float>(StyleProperty::ROW_HEIGHT, ComponentType::TABLE),
         .columnSeparatorWidth = style.get<float>(StyleProperty::COLUMN_SEPARATOR_WIDTH, ComponentType::TABLE),
         .columnSeparatorColor = style.get<Color4>(StyleProperty::COLUMN_SEPARATOR_COLOR, ComponentType::TABLE),
-        .headerColor = style.get<Color3>(StyleProperty::HEADER_COLOR, ComponentType::TABLE),
         .headerHeight = style.get<float>(StyleProperty::HEADER_HEIGHT, ComponentType::TABLE),
+        .headerColor = style.get<Color3>(StyleProperty::HEADER_COLOR, ComponentType::TABLE),
         .rowBackgroundColor = style.get<Color4>(StyleProperty::ROW_BACKGROUND_COLOR, ComponentType::TABLE),
         .rowAlternateColor = style.get<Color4>(StyleProperty::ROW_ALTERNATE_COLOR, ComponentType::TABLE),
         .rowHoverColor = style.get<Color4>(StyleProperty::ROW_HOVER_COLOR, ComponentType::TABLE),
@@ -34,6 +34,7 @@ static void s_applyStyle(Table &table)
 
 Table::Table()
 {
+    m_tProps.cellPadding = UDim4{};
     m_tProps.showColumnSeparators = 1;
     m_tProps.columnSeparatorWidth = 1.0f;
     m_tProps.columnSeparatorColor = Color4{0.3f, 0.3f, 0.3f, 1.0f};
@@ -91,6 +92,33 @@ Table::~Table()
     for (auto &lbl : m_headerLabels) {
         lbl->parent = nullptr;
     }
+}
+
+void Table::resizeColumns(uint32_t newCount)
+{
+    uint32_t oldCount = columnCount();
+    if (newCount <= oldCount) {
+        return;
+    }
+
+    while (static_cast<uint32_t>(m_columns.size()) < newCount) {
+        m_columns.push_back({.weight = 1.0f});
+    }
+
+    if (m_cells.empty()) {
+        markDirty();
+        return;
+    }
+
+    uint32_t numSlots = static_cast<uint32_t>(m_cells.size()) / oldCount;
+    std::vector<Instance *> newCells(numSlots * newCount, nullptr);
+    for (uint32_t r = 0; r < numSlots; r++) {
+        for (uint32_t c = 0; c < oldCount; c++) {
+            newCells[r * newCount + c] = m_cells[r * oldCount + c];
+        }
+    }
+    m_cells = std::move(newCells);
+    markDirty();
 }
 
 void Table::addColumn(TableColumn col)
@@ -241,29 +269,17 @@ void Table::rebuildColumnPositions()
     m_columnPositions.push_back(0.0f);
 
     float totalWidth = absoluteSize.x;
-    float fixedTotal = 0.0f;
-    float stretchTotal = 0.0f;
-
+    float weightTotal = 0.0f;
     for (const auto &col : m_columns) {
-        if (col.sizing == TableColumnSizing::FIXED) {
-            fixedTotal += col.width;
-        } else {
-            stretchTotal += col.width;
-        }
+        weightTotal += col.weight;
     }
-
-    float remaining = std::max(0.0f, totalWidth - fixedTotal);
-    if (stretchTotal <= 0.0f) {
-        stretchTotal = 1.0f;
+    if (weightTotal <= 0.0f) {
+        weightTotal = 1.0f;
     }
 
     float x = 0.0f;
     for (const auto &col : m_columns) {
-        if (col.sizing == TableColumnSizing::FIXED) {
-            x += col.width;
-        } else {
-            x += (col.width / stretchTotal) * remaining;
-        }
+        x += (col.weight / weightTotal) * totalWidth;
         m_columnPositions.push_back(x);
     }
 }
@@ -272,7 +288,7 @@ void Table::updateSeparators()
 {
     m_separators.clear();
     uint32_t cols = columnCount();
-    if (!showColumnSeparators || cols <= 1) {
+    if (!m_tProps.showColumnSeparators || cols <= 1) {
         return;
     }
 
@@ -280,11 +296,13 @@ void Table::updateSeparators()
         float xPos = m_columnPositions[i + 1];
 
         auto sep = std::make_unique<Frame>();
-        sep->position = UDim2(0.0f, xPos - columnSeparatorWidth / 2.0f, 0.0f, 0.0f);
-        sep->size = UDim2(0.0f, columnSeparatorWidth, 1.0f, 0.0f);
-        sep->backgroundColor = Color3(columnSeparatorColor);
-        sep->backgroundTransparency = 1.0f - columnSeparatorColor.a;
-        sep->zIndex = getZIndex() + 1;
+        sep->setBaseProperties({
+            .backgroundColor = Color3(m_tProps.columnSeparatorColor),
+            .backgroundTransparency = 1.0f - m_tProps.columnSeparatorColor.a,
+            .position = UDim2(0.0f, xPos - m_tProps.columnSeparatorWidth / 2.0f, 0.0f, 0.0f),
+            .size = UDim2(0.0f, m_tProps.columnSeparatorWidth, 1.0f, 0.0f),
+            .zIndex = getZIndex() + 1,
+        });
         sep->markDirty();
         m_separators.push_back(std::move(sep));
     }
@@ -320,31 +338,37 @@ void Table::drawHeader(DrawContext &ctx, const glm::vec4 &childClip)
     uint32_t cols = columnCount();
     ensureHeaderCapacity();
 
-    m_headerBackground->backgroundColor = headerColor;
-    m_headerBackground->backgroundTransparency = 0.0f;
+    m_headerBackground->setBaseProperties({
+        .backgroundColor = m_tProps.headerColor,
+        .backgroundTransparency = 0.0f,
+        .zIndex = getZIndex(),
+    });
     m_headerBackground->clipRect = childClip;
-    m_headerBackground->zIndex = getZIndex();
     m_headerBackground->markDirty();
-    m_headerBackground->computeAbsolutes({absoluteSize.x, headerHeight}, absolutePosition, absoluteRotation);
+    m_headerBackground->computeAbsolutes({absoluteSize.x, m_tProps.headerHeight}, absolutePosition, absoluteRotation);
     m_headerBackground->draw(ctx);
 
     for (uint32_t col = 0; col < cols; col++) {
         TextLabel *lbl = m_headerLabels[col].get();
-        lbl->text = m_columns[col].header;
-        lbl->size = UDim2::fromScale(1.0f, 1.0f);
-        lbl->textColor = headerTextColor;
-        lbl->fontSize = headerFontSize;
-        lbl->backgroundTransparency = 1.0f;
-        lbl->textXAlignment = TextXAlignment::LEFT;
-        lbl->textYAlignment = TextYAlignment::CENTER;
+        lbl->setBaseProperties({
+            .backgroundTransparency = 1.0f,
+            .size = UDim2::fromScale(1.0f, 1.0f),
+            .zIndex = getZIndex() + 1,
+        });
+        lbl->setTextProperties({
+            .fontSize = m_tProps.headerText.fontSize,
+            .textColor = m_tProps.headerText.textColor,
+            .textXAlignment = TextXAlignment::LEFT,
+            .textYAlignment = TextYAlignment::CENTER,
+            .text = m_columns[col].header,
+        });
         lbl->clipRect = childClip;
-        lbl->zIndex = getZIndex() + 1;
         lbl->markDirty();
 
         float cellX = m_columnPositions[col] + m_resolvedPadding.w;
         float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col] - m_resolvedPadding.w - m_resolvedPadding.y;
 
-        lbl->computeAbsolutes({cellWidth, headerHeight}, absolutePosition + glm::vec2(cellX, 0.0f), absoluteRotation);
+        lbl->computeAbsolutes({cellWidth, m_tProps.headerHeight}, absolutePosition + glm::vec2(cellX, 0.0f), absoluteRotation);
         lbl->draw(ctx);
     }
 }
@@ -363,19 +387,22 @@ void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex,
     uint32_t cols = columnCount();
 
     Frame *bg = m_rowBackgrounds[visualIndex].get();
-    Color4 bgColor = rowBackgroundColor;
+    Color4 bgColor = m_tProps.rowBackgroundColor;
     if (static_cast<int32_t>(logicalRow) == selectedRow) {
-        bgColor = rowSelectedColor;
+        bgColor = m_tProps.rowSelectedColor;
     } else if (static_cast<int32_t>(logicalRow) == hoveredRow) {
-        bgColor = rowHoverColor;
-    } else if (visualIndex % 2 == 1 && rowAlternateColor.a > 0.0f) {
-        bgColor = rowAlternateColor;
+        bgColor = m_tProps.rowHoverColor;
+    } else if (visualIndex % 2 == 1 && m_tProps.rowAlternateColor.a > 0.0f) {
+        bgColor = m_tProps.rowAlternateColor;
     }
 
-    bg->backgroundColor = Color3(bgColor);
-    bg->backgroundTransparency = 1.0f - bgColor.a;
+    bg->setBaseProperties({
+        .backgroundColor = Color3(bgColor),
+        .backgroundTransparency = 1.0f - bgColor.a,
+        .size = UDim2::fromScale(1.0f, 1.0f),
+        .zIndex = getZIndex(),
+    });
     bg->clipRect = childClip;
-    bg->zIndex = getZIndex();
     bg->markDirty();
     bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + glm::vec2(0.0f, y), absoluteRotation);
     bg->draw(ctx);
@@ -416,15 +443,15 @@ void Table::draw(DrawContext &ctx)
     if (flags & FLAG_DIRTY) {
         rebuildColumnPositions();
         updateSeparators();
-        m_resolvedPadding = cellPadding.resolve(absoluteSize);
+        m_resolvedPadding = m_tProps.cellPadding.resolve(absoluteSize);
     }
 
-    m_computedRowHeight = rowHeight > 0.0f ? rowHeight : 24.0f;
+    m_computedRowHeight = m_tProps.rowHeight > 0.0f ? m_tProps.rowHeight : 24.0f;
 
     glm::vec4 childClip = computeChildClipRect();
-    float dataStartY = showHeader ? headerHeight : 0.0f;
+    float dataStartY = m_tProps.showHeader ? m_tProps.headerHeight : 0.0f;
 
-    if (showHeader) {
+    if (m_tProps.showHeader) {
         drawHeader(ctx, childClip);
     }
 
@@ -440,8 +467,7 @@ void Table::draw(DrawContext &ctx)
 
     for (uint32_t i = visibleCount; i < m_rowBackgrounds.size(); i++) {
         Frame *bg = m_rowBackgrounds[i].get();
-        bg->visible = false;
-        bg->markDirty();
+        bg->setBaseProperties({.visible = false});
         bg->draw(ctx);
     }
 

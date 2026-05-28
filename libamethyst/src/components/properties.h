@@ -14,7 +14,7 @@ namespace Amethyst {
 constexpr float PROP_UNSET_FLOAT = std::numeric_limits<float>::quiet_NaN();
 constexpr int32_t PROP_UNSET_INT32 = INT32_MIN;
 constexpr uint32_t PROP_UNSET_UINT32 = UINT32_MAX;
-constexpr uint8_t PROP_UNSET_BOOL = UINT8_MAX;
+constexpr am_bool PROP_UNSET_BOOL = -1;
 
 inline bool propIsSet(float v)
 {
@@ -28,7 +28,7 @@ inline bool propIsSet(uint32_t v)
 {
     return v != PROP_UNSET_UINT32;
 }
-inline bool propIsSet(uint8_t v)
+inline bool propIsSet(am_bool v)
 {
     return v != PROP_UNSET_BOOL;
 }
@@ -124,9 +124,13 @@ inline bool propIsSet(TabBarPosition v)
 {
     return v != TabBarPosition::NONE;
 }
+inline bool propIsSet(DragMode v)
+{
+    return v != DragMode::NONE;
+}
 
 struct BaseProperties {
-    uint8_t active = PROP_UNSET_BOOL;
+    am_bool active = PROP_UNSET_BOOL;
     glm::vec2 anchorPoint = glm::vec2(PROP_UNSET_FLOAT);
     AutomaticSize automaticSize = AutomaticSize::NONE;
     Color3 backgroundColor = Color3(PROP_UNSET_FLOAT);
@@ -135,17 +139,17 @@ struct BaseProperties {
     float borderPixelSize = PROP_UNSET_FLOAT;
     Color3 borderColor = Color3(PROP_UNSET_FLOAT);
     float borderTransparency = PROP_UNSET_FLOAT;
-    uint8_t clipsDescendants = PROP_UNSET_BOOL;
+    am_bool clipsDescendants = PROP_UNSET_BOOL;
     float cornerRadius = PROP_UNSET_FLOAT;
     GuiState guiState = GuiState::NONE;
-    uint8_t interactable = PROP_UNSET_BOOL;
+    am_bool interactable = PROP_UNSET_BOOL;
     LayoutOrder layoutOrder = PROP_UNSET_UINT32;
     UDim4 padding = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
     UDim4 margin = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
     UDim2 position = UDim2(glm::vec2(PROP_UNSET_FLOAT), glm::vec2(0));
     UDim2 size = UDim2(glm::vec2(PROP_UNSET_FLOAT), glm::vec2(0));
     Degrees rotation = PROP_UNSET_FLOAT;
-    uint8_t visible = PROP_UNSET_BOOL;
+    am_bool visible = PROP_UNSET_BOOL;
     int32_t zIndex = PROP_UNSET_INT32;
     ZIndexBehavior zindexBehavior = ZIndexBehavior::NONE;
 };
@@ -156,28 +160,28 @@ struct TextProperties {
     TextXAlignment textXAlignment = TextXAlignment::NONE;
     TextYAlignment textYAlignment = TextYAlignment::NONE;
     TextTruncate textTruncate = TextTruncate::NONE;
-    uint8_t richText = PROP_UNSET_BOOL;
-    uint8_t textWrapped = PROP_UNSET_BOOL;
-    uint8_t textScaled = PROP_UNSET_BOOL;
+    am_bool richText = PROP_UNSET_BOOL;
+    am_bool textWrapped = PROP_UNSET_BOOL;
+    am_bool textScaled = PROP_UNSET_BOOL;
     float lineHeight = PROP_UNSET_FLOAT;
     float strokeThickness = PROP_UNSET_FLOAT;
     Color4 strokeColor = Color4(PROP_UNSET_FLOAT);
-    std::string text;
-    std::string fontFamily;
+    std::string text{};
+    std::string fontFamily{};
 };
 
 struct ImageProperties {
-    AmTextureId image;
+    AmTextureId image{};
     Color4 imageColor = Color4(PROP_UNSET_FLOAT);
     float imageTransparency = PROP_UNSET_FLOAT;
     ImageScaleType scaleType = ImageScaleType::NONE;
     glm::vec2 tileSize = glm::vec2(PROP_UNSET_FLOAT);
-    std::string svg;
+    std::string svg{};
 };
 
 struct ButtonProperties {
-    uint8_t autoButtonColor = PROP_UNSET_BOOL;
-    uint8_t modal = PROP_UNSET_BOOL;
+    am_bool autoButtonColor = PROP_UNSET_BOOL;
+    am_bool modal = PROP_UNSET_BOOL;
 };
 
 struct ScrollingFrameProperties {
@@ -191,7 +195,7 @@ struct ScrollingFrameProperties {
     Color3 scrollBarThumbColor = Color3(PROP_UNSET_FLOAT);
     float scrollBarThumbTransparency = PROP_UNSET_FLOAT;
     float scrollSpeed = PROP_UNSET_FLOAT;
-    uint8_t elasticScrolling = PROP_UNSET_BOOL;
+    am_bool elasticScrolling = PROP_UNSET_BOOL;
 };
 
 struct CheckboxProperties {
@@ -203,17 +207,17 @@ struct CheckboxProperties {
     float checkTransparency = PROP_UNSET_FLOAT;
     float checkboxSize = PROP_UNSET_FLOAT;
     UDim labelPadding = {PROP_UNSET_FLOAT, 0};
-    std::string label;
+    std::string label{};
 };
 
 struct CollapsibleHeaderProperties {
-    uint8_t expanded = PROP_UNSET_BOOL;
-    TextProperties title;
+    am_bool expanded = PROP_UNSET_BOOL;
+    TextProperties title{};
     float headerHeight = PROP_UNSET_FLOAT;
     Color3 headerColor = Color3(PROP_UNSET_FLOAT);
     float headerTransparency = PROP_UNSET_FLOAT;
     float headerCornerRadius = PROP_UNSET_FLOAT;
-    uint8_t showIndicator = PROP_UNSET_BOOL;
+    am_bool showIndicator = PROP_UNSET_BOOL;
     float indicatorSize = PROP_UNSET_FLOAT;
     float indicatorPadding = PROP_UNSET_FLOAT;
     Color4 indicatorColor = Color4(PROP_UNSET_FLOAT);
@@ -233,8 +237,8 @@ struct DropdownProperties {
 };
 
 struct TabBarProperties {
-    uint8_t closeable = PROP_UNSET_BOOL;
-    uint8_t persistLayout = PROP_UNSET_BOOL;
+    am_bool closeable = PROP_UNSET_BOOL;
+    am_bool persistLayout = PROP_UNSET_BOOL;
     TabBarMode mode = TabBarMode::NONE;
     TabBarPosition tabPosition = TabBarPosition::NONE;
     TabBarVisibility visibility = TabBarVisibility::NONE;
@@ -242,12 +246,12 @@ struct TabBarProperties {
     float tabWidth = PROP_UNSET_FLOAT;
     float tabSpacing = PROP_UNSET_FLOAT;
     float tabOffset = PROP_UNSET_FLOAT;
-    int32_t selectedIndex = PROP_UNSET_INT32;
     Color3 tabColor = Color3(PROP_UNSET_FLOAT);
     Color3 focussedTabColor = Color3(PROP_UNSET_FLOAT);
     Color3 hoveredTabColor = Color3(PROP_UNSET_FLOAT);
     Color3 pressedTabColor = Color3(PROP_UNSET_FLOAT);
     TabCloseButtonVisibility closeButtonVisibility = TabCloseButtonVisibility::NONE;
+    am_bool tabTearOffEnabled = PROP_UNSET_BOOL;
 };
 
 struct MenuBarProperties {
@@ -259,13 +263,13 @@ struct MenuBarProperties {
 };
 
 struct TextInputProperties {
-    TextProperties text;
+    TextProperties text{};
     Color4 placeholderColor = Color4(PROP_UNSET_FLOAT);
     Color4 selectionColor = Color4(PROP_UNSET_FLOAT);
     Color4 cursorColor = Color4(PROP_UNSET_FLOAT);
-    uint8_t multiline = PROP_UNSET_BOOL;
+    am_bool multiline = PROP_UNSET_BOOL;
     int32_t maxLength = PROP_UNSET_INT32;
-    uint8_t readOnly = PROP_UNSET_BOOL;
+    am_bool readOnly = PROP_UNSET_BOOL;
     float cursorBlinkRate = PROP_UNSET_FLOAT;
     std::string placeholderText;
 };
@@ -273,13 +277,13 @@ struct TextInputProperties {
 struct TableProperties {
     float rowHeight = PROP_UNSET_FLOAT;
     UDim4 cellPadding = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
-    uint8_t showColumnSeparators = PROP_UNSET_BOOL;
+    am_bool showColumnSeparators = PROP_UNSET_BOOL;
     float columnSeparatorWidth = PROP_UNSET_FLOAT;
     Color4 columnSeparatorColor = Color4(PROP_UNSET_FLOAT);
-    uint8_t showHeader = PROP_UNSET_BOOL;
+    am_bool showHeader = PROP_UNSET_BOOL;
     float headerHeight = PROP_UNSET_FLOAT;
     Color3 headerColor = Color3(PROP_UNSET_FLOAT);
-    TextProperties headerText;
+    TextProperties headerText{};
     Color4 rowBackgroundColor = Color4(PROP_UNSET_FLOAT);
     Color4 rowAlternateColor = Color4(PROP_UNSET_FLOAT);
     Color4 rowHoverColor = Color4(PROP_UNSET_FLOAT);
@@ -299,17 +303,17 @@ struct SliderProperties {
     Color4 valueColor = Color4(PROP_UNSET_FLOAT);
     float fontSize = PROP_UNSET_FLOAT;
     ValueControlLayout layout = ValueControlLayout::NONE;
-    std::string label;
-    std::string valueSuffix;
+    std::string label{};
+    std::string valueSuffix{};
 };
 
 struct TreeViewProperties {
     float rowHeight = PROP_UNSET_FLOAT;
     UDim4 cellPadding = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
-    uint8_t showColumnSeparators = PROP_UNSET_BOOL;
+    am_bool showColumnSeparators = PROP_UNSET_BOOL;
     float columnSeparatorWidth = PROP_UNSET_FLOAT;
     Color4 columnSeparatorColor = Color4(PROP_UNSET_FLOAT);
-    uint8_t showDisclosureTriangles = PROP_UNSET_BOOL;
+    am_bool showDisclosureTriangles = PROP_UNSET_BOOL;
     float disclosureTriangleSize = PROP_UNSET_FLOAT;
     float disclosureTrianglePadding = PROP_UNSET_FLOAT;
     Color4 disclosureTriangleColor = Color4(PROP_UNSET_FLOAT);
@@ -318,14 +322,22 @@ struct TreeViewProperties {
     Color4 rowAlternateColor = Color4(PROP_UNSET_FLOAT);
     Color4 rowHoverColor = Color4(PROP_UNSET_FLOAT);
     Color4 rowSelectedColor = Color4(PROP_UNSET_FLOAT);
-    uint8_t fillRows = PROP_UNSET_BOOL;
+    am_bool fillRows = PROP_UNSET_BOOL;
 };
 
 inline bool applyTextProperties(TextProperties &dest, const TextProperties &src)
 {
     bool changed = false;
-#define AM_APPLY(field) if (propIsSet(src.field) && dest.field != src.field) { dest.field = src.field; changed = true; }
-#define AM_APPLY_STR(field) if (!src.field.empty() && dest.field != src.field) { dest.field = src.field; changed = true; }
+#define AM_APPLY(field)                                    \
+    if (propIsSet(src.field) && dest.field != src.field) { \
+        dest.field = src.field;                            \
+        changed = true;                                    \
+    }
+#define AM_APPLY_STR(field)                              \
+    if (!src.field.empty() && dest.field != src.field) { \
+        dest.field = src.field;                          \
+        changed = true;                                  \
+    }
     AM_APPLY_STR(text)
     AM_APPLY_STR(fontFamily)
     AM_APPLY(fontSize)

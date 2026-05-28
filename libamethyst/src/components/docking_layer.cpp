@@ -9,6 +9,7 @@
 #include "logging/log.h"
 #include "parsers/config/layout_config.h"
 #include "rendering/draw_context.h"
+#include "utils/am_assert.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -87,90 +88,6 @@ std::vector<Instance *> DockingLayer::getHittableInstances()
     for (auto &tabBar : m_tabBars) {
         result.push_back(tabBar.get());
     }
-    return result;
-}
-
-void DockingLayer::dock(std::unique_ptr<Instance> obj, glm::vec2 pos)
-{
-    if (m_rootNode < 0) {
-        int32_t nodeIdx = createNode();
-        m_rootNode = nodeIdx;
-
-        auto tabBar = std::make_unique<TabBar>();
-        tabBar->parent = this;
-        setupTabBarCallbacks(tabBar.get());
-        tabBar->addChild(std::move(obj));
-        m_nodes[nodeIdx].content = tabBar.get();
-        tabBar->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-        tabBar->position = UDim2::fromScale(0.0f);
-        tabBar->size = UDim2::fromScale(1.0f);
-        m_tabBars.push_back(std::move(tabBar));
-    } else {
-        int32_t targetNode = findNodeByPosition(pos, m_rootNode, absoluteSize, absolutePosition);
-        if (targetNode < 0) return;
-        DockZone targetZone = hitTestZone(targetNode, pos);
-        if (targetZone == DockZone::CENTER) {
-            DockNode &node = m_nodes[targetNode];
-            node.content->addChild(std::move(obj));
-        } else {
-            splitNode(targetNode, targetZone, std::move(obj));
-        }
-    }
-
-    markDirty();
-}
-
-int32_t DockingLayer::dock(std::unique_ptr<Instance> content, int32_t targetLeaf, DockZone zone, float ratio)
-{
-    if (targetLeaf < 0) {
-        int32_t nodeIdx = createNode();
-        if (m_rootNode < 0) m_rootNode = nodeIdx;
-
-        auto tabBar = std::make_unique<TabBar>();
-        tabBar->parent = this;
-        setupTabBarCallbacks(tabBar.get());
-        tabBar->addChild(std::move(content));
-        m_nodes[nodeIdx].content = tabBar.get();
-        tabBar->position = UDim2::fromScale(0.0f);
-        tabBar->size = UDim2::fromScale(1.0f);
-        m_tabBars.push_back(std::move(tabBar));
-        markDirty();
-        return nodeIdx;
-    }
-
-    if (targetLeaf >= static_cast<int32_t>(m_nodes.size()) || !m_nodes[targetLeaf].isLeaf()) {
-        AM_LOG_WARN("dock: target {} is not a valid leaf node", targetLeaf);
-        return -1;
-    }
-
-    if (zone == DockZone::CENTER) {
-        m_nodes[targetLeaf].content->addChild(std::move(content));
-        markDirty();
-        return targetLeaf;
-    }
-
-    int32_t newLeaf = splitNode(targetLeaf, zone, std::move(content));
-    m_nodes[targetLeaf].ratio = ratio;
-    markDirty();
-    return newLeaf;
-}
-
-std::unique_ptr<Instance> DockingLayer::undock(UIBase2D *obj)
-{
-    glm::vec2 objPos = obj->absolutePosition;
-    int32_t nodeIndex = findNodeByPosition(objPos, m_rootNode, absoluteSize, absolutePosition);
-    if (nodeIndex < 0) {
-        return nullptr;
-    }
-
-    DockNode &node = m_nodes[nodeIndex];
-    auto result = node.content->removeChild(obj);
-
-    if (node.content->getChildren().empty()) {
-        collapseNode(nodeIndex);
-    }
-
-    markDirty();
     return result;
 }
 
@@ -324,8 +241,7 @@ void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec
         contentSize.x -= (leftSpacing + rightSpacing);
         contentSize.y -= (topSpacing + bottomSpacing);
 
-        node.content->size = UDim2::fromScale(1.0f, 1.0f);
-        node.content->position = UDim2::fromScale(0.0f, 0.0f);
+        node.content->setBaseProperties({.position = UDim2::fromScale(0.0f, 0.0f), .size = UDim2::fromScale(1.0f, 1.0f)});
         node.content->computeAbsolutes(contentSize, contentPos, 0.0f);
         node.content->markDirty();
         return;
@@ -349,11 +265,15 @@ void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec
 
     if (node.resizeHandle) {
         if (node.axis == SplitAxis::VERTICAL) {
-            node.resizeHandle->position = UDim2(node.ratio, -m_resizeHandleThickness / 2.0f, 0.0f, 0.0f);
-            node.resizeHandle->size = UDim2(0.0f, m_resizeHandleThickness, 1.0f, 0.0f);
+            node.resizeHandle->setBaseProperties({
+                .position = UDim2(node.ratio, -m_resizeHandleThickness / 2.0f, 0.0f, 0.0f),
+                .size = UDim2(0.0f, m_resizeHandleThickness, 1.0f, 0.0f),
+            });
         } else {
-            node.resizeHandle->position = UDim2(0.0f, 0.0f, node.ratio, -m_resizeHandleThickness / 2.0f);
-            node.resizeHandle->size = UDim2(1.0f, 0.0f, 0.0f, m_resizeHandleThickness);
+            node.resizeHandle->setBaseProperties({
+                .position = UDim2(0.0f, 0.0f, node.ratio, -m_resizeHandleThickness / 2.0f),
+                .size = UDim2(1.0f, 0.0f, 0.0f, m_resizeHandleThickness),
+            });
         }
         node.resizeHandle->computeAbsolutes(nodeSize, nodePosition, 0.0f);
     }
@@ -368,21 +288,32 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm:
 
     node.resizeHandle = std::make_unique<InvisibleButton>();
     node.resizeHandle->parent = this;
-    node.resizeHandle->zIndex = 10;
 
     if (node.axis == SplitAxis::VERTICAL) {
-        node.resizeHandle->position = UDim2(node.ratio, -m_resizeHandleThickness / 2.0f, 0.0f, 0.0f);
-        node.resizeHandle->size = UDim2(0.0f, m_resizeHandleThickness, 1.0f, 0.0f);
+        node.resizeHandle->setBaseProperties({
+            .position = UDim2(node.ratio, -m_resizeHandleThickness / 2.0f, 0.0f, 0.0f),
+            .size = UDim2(0.0f, m_resizeHandleThickness, 1.0f, 0.0f),
+            .zIndex = 10,
+        });
     } else {
-        node.resizeHandle->position = UDim2(0.0f, 0.0f, node.ratio, -m_resizeHandleThickness / 2.0f);
-        node.resizeHandle->size = UDim2(1.0f, 0.0f, 0.0f, m_resizeHandleThickness);
+        node.resizeHandle->setBaseProperties({
+            .position = UDim2(0.0f, 0.0f, node.ratio, -m_resizeHandleThickness / 2.0f),
+            .size = UDim2(1.0f, 0.0f, 0.0f, m_resizeHandleThickness),
+            .zIndex = 10,
+        });
     }
 
     CursorShape cursorShape = (node.axis == SplitAxis::VERTICAL) ? CURSOR_HORI_RESIZE : CURSOR_VERT_RESIZE;
 
-    node.resizeHandle->onMouseEnterCb = [cursorShape]() { InputInterface::setCursorShape(cursorShape); return EventResult::CONSUMED; };
+    node.resizeHandle->onMouseEnterCb = [cursorShape]() {
+        InputInterface::setCursorShape(cursorShape);
+        return EventResult::CONSUMED;
+    };
 
-    node.resizeHandle->onMouseLeaveCb = []() { InputInterface::setCursorShape(CURSOR_ARROW); return EventResult::CONSUMED; };
+    node.resizeHandle->onMouseLeaveCb = []() {
+        InputInterface::setCursorShape(CURSOR_ARROW);
+        return EventResult::CONSUMED;
+    };
 
     auto *drag = node.resizeHandle->addExtension<UIDragDetector>();
     drag->mode = (node.axis == SplitAxis::VERTICAL) ? DragMode::HORIZONTAL : DragMode::VERTICAL;
@@ -417,7 +348,7 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm:
     node.resizeHandle->computeAbsolutes(nodeSize, nodePosition, 0.0f);
 }
 
-int32_t DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, std::unique_ptr<Instance> newContent)
+int32_t DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, std::unique_ptr<TabBar::Tab> tab)
 {
     if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(m_nodes.size())) {
         return -1;
@@ -441,7 +372,8 @@ int32_t DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, std::unique_pt
     auto newTabBar = std::make_unique<TabBar>();
     newTabBar->parent = this;
     setupTabBarCallbacks(newTabBar.get());
-    newTabBar->addChild(std::move(newContent));
+    newTabBar->setTabBarProperties({.tabTearOffEnabled = true});
+    newTabBar->addTab(std::move(tab));
     m_nodes[newChild].content = newTabBar.get();
     m_nodes[newChild].parentNode = nodeIndex;
 
@@ -474,15 +406,15 @@ void DockingLayer::recalculateChildren(int32_t parentIndex, glm::vec2 parentSize
     DockNode &secondChild = m_nodes[parentNode.secondChild];
 
     if (parentNode.axis == SplitAxis::HORIZONTAL) {
-        firstChild.content->size = UDim2::fromScale(1.0f, parentNode.ratio);
-        firstChild.content->position = UDim2::fromScale(0.0f);
-        secondChild.content->size = UDim2::fromScale(1.0f, 1.0f - parentNode.ratio);
-        secondChild.content->position = UDim2::fromScale(0.0f, parentNode.ratio);
+        firstChild.content->setBaseProperties(
+            {.position = UDim2::fromScale(0.0f), .size = UDim2::fromScale(1.0f, parentNode.ratio)});
+        secondChild.content->setBaseProperties(
+            {.position = UDim2::fromScale(0.0f, parentNode.ratio), .size = UDim2::fromScale(1.0f, 1.0f - parentNode.ratio)});
     } else {
-        firstChild.content->size = UDim2::fromScale(parentNode.ratio, 1.0f);
-        firstChild.content->position = UDim2::fromScale(0.0f);
-        secondChild.content->size = UDim2::fromScale(1.0f - parentNode.ratio, 1.0f);
-        secondChild.content->position = UDim2::fromScale(parentNode.ratio, 0.0f);
+        firstChild.content->setBaseProperties(
+            {.position = UDim2::fromScale(0.0f), .size = UDim2::fromScale(parentNode.ratio, 1.0f)});
+        secondChild.content->setBaseProperties(
+            {.position = UDim2::fromScale(parentNode.ratio, 0.0f), .size = UDim2::fromScale(1.0f - parentNode.ratio, 1.0f)});
     }
 
     firstChild.content->computeAbsolutes(parentSize, parentPosition, 0.0f);
@@ -571,18 +503,30 @@ int32_t DockingLayer::findNodeByResizeHandlePosition(glm::vec2 pos, int32_t node
 
 void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
 {
-    tabBar->onTornOffTabReleased = [this, tabBar](Instance *content, glm::vec2 dropPos) {
+    tabBar->onTornOffTabReleased = [this, tabBar](std::unique_ptr<TabBar::Tab> tab, glm::vec2 dropPos) {
         hideDockHints();
         int32_t sourceNode = findNodeByPosition(tabBar->absolutePosition, m_rootNode, absoluteSize, absolutePosition);
-        auto panel = tabBar->removeChild(content);
 
-        if (tabBar->getChildren().empty()) {
+        if (tabBar->getTabCount() == 0) {
             collapseNode(sourceNode);
         }
 
-        if (panel) {
-            dock(std::move(panel), dropPos);
+        int32_t targetNode = findNodeByPosition(dropPos, m_rootNode, absoluteSize, absolutePosition);
+        if (targetNode < 0) {
+            int32_t root = createLeaf();
+            obtainLeafTabBar(root)->addTab(std::move(tab));
+            markDirty();
+            return;
         }
+
+        DockZone zone = hitTestZone(targetNode, dropPos);
+        if (zone == DockZone::CENTER) {
+            m_nodes[targetNode].content->addTab(std::move(tab));
+        } else {
+            splitNode(targetNode, zone, std::move(tab));
+        }
+
+        markDirty();
     };
 
     tabBar->onTornOffTabMoved = [this](Instance *, glm::vec2 pos) { updateDockHints(pos); };
@@ -596,13 +540,14 @@ void DockingLayer::initDockHints()
     for (auto &hint : m_dockHintComponents) {
         hint = std::make_unique<Frame>();
         hint->parent = this;
-        hint->visible = false;
-        hint->interactable = false;
-        hint->backgroundColor = hintColor;
-        hint->backgroundTransparency = hintTransparency;
-        hint->borderPixelSize = 0.0f;
-        hint->cornerRadius = 0.0f;
-        hint->markDirty();
+        hint->setBaseProperties({
+            .backgroundColor = hintColor,
+            .backgroundTransparency = hintTransparency,
+            .borderPixelSize = 0.0f,
+            .cornerRadius = 0.0f,
+            .interactable = false,
+            .visible = false,
+        });
     }
 }
 
@@ -629,44 +574,98 @@ void DockingLayer::updateDockHints(glm::vec2 mousePos)
     const float centerSize = 0.34f;
 
     auto &leftHint = m_dockHintComponents[0];
-    leftHint->visible = true;
-    leftHint->position = UDim2::fromOffset(nodePos.x - layerPos.x, nodePos.y - layerPos.y);
-    leftHint->size = UDim2::fromOffset(nodeSize.x * zoneSize, nodeSize.y);
-    leftHint->markDirty();
+    leftHint->setBaseProperties({
+        .position = UDim2::fromOffset(nodePos.x - layerPos.x, nodePos.y - layerPos.y),
+        .size = UDim2::fromOffset(nodeSize.x * zoneSize, nodeSize.y),
+        .visible = true,
+    });
 
     auto &rightHint = m_dockHintComponents[1];
-    rightHint->visible = true;
-    rightHint->position = UDim2::fromOffset(nodePos.x - layerPos.x + nodeSize.x * (1.0f - zoneSize), nodePos.y - layerPos.y);
-    rightHint->size = UDim2::fromOffset(nodeSize.x * zoneSize, nodeSize.y);
-    rightHint->markDirty();
+    rightHint->setBaseProperties({
+        .position = UDim2::fromOffset(nodePos.x - layerPos.x + nodeSize.x * (1.0f - zoneSize), nodePos.y - layerPos.y),
+        .size = UDim2::fromOffset(nodeSize.x * zoneSize, nodeSize.y),
+        .visible = true,
+    });
 
     auto &topHint = m_dockHintComponents[2];
-    topHint->visible = true;
-    topHint->position = UDim2::fromOffset(nodePos.x - layerPos.x, nodePos.y - layerPos.y);
-    topHint->size = UDim2::fromOffset(nodeSize.x, nodeSize.y * zoneSize);
-    topHint->markDirty();
+    topHint->setBaseProperties({
+        .position = UDim2::fromOffset(nodePos.x - layerPos.x, nodePos.y - layerPos.y),
+        .size = UDim2::fromOffset(nodeSize.x, nodeSize.y * zoneSize),
+        .visible = true,
+    });
 
     auto &bottomHint = m_dockHintComponents[3];
-    bottomHint->visible = true;
-    bottomHint->position = UDim2::fromOffset(nodePos.x - layerPos.x, nodePos.y - layerPos.y + nodeSize.y * (1.0f - zoneSize));
-    bottomHint->size = UDim2::fromOffset(nodeSize.x, nodeSize.y * zoneSize);
-    bottomHint->markDirty();
+    bottomHint->setBaseProperties({
+        .position = UDim2::fromOffset(nodePos.x - layerPos.x, nodePos.y - layerPos.y + nodeSize.y * (1.0f - zoneSize)),
+        .size = UDim2::fromOffset(nodeSize.x, nodeSize.y * zoneSize),
+        .visible = true,
+    });
 
     auto &centerHint = m_dockHintComponents[4];
-    centerHint->visible = true;
-    centerHint->position =
-        UDim2::fromOffset(nodePos.x - layerPos.x + nodeSize.x * zoneSize, nodePos.y - layerPos.y + nodeSize.y * zoneSize);
-    centerHint->size = UDim2::fromOffset(nodeSize.x * centerSize, nodeSize.y * centerSize);
-    centerHint->markDirty();
+    centerHint->setBaseProperties({
+        .position =
+            UDim2::fromOffset(nodePos.x - layerPos.x + nodeSize.x * zoneSize, nodePos.y - layerPos.y + nodeSize.y * zoneSize),
+        .size = UDim2::fromOffset(nodeSize.x * centerSize, nodeSize.y * centerSize),
+        .visible = true,
+    });
 }
 
 void DockingLayer::hideDockHints()
 {
 
     for (auto &hint : m_dockHintComponents) {
-        hint->visible = false;
-        hint->markDirty();
+        hint->setBaseProperties({.visible = false});
     }
+}
+
+int32_t DockingLayer::createLeaf()
+{
+    int32_t idx = createNode();
+    if (m_rootNode < 0) {
+        m_rootNode = idx;
+    }
+    return idx;
+}
+
+std::pair<int32_t, int32_t> DockingLayer::splitLeaf(int32_t nodeIndex, SplitAxis axis, float ratio)
+{
+    AM_ASSERT(nodeIndex >= 0 && nodeIndex < static_cast<int32_t>(m_nodes.size()), "Invalid node index");
+    AM_ASSERT(m_nodes[nodeIndex].isLeaf(), "splitLeaf called on non-leaf node");
+    AM_ASSERT(m_nodes[nodeIndex].content == nullptr, "splitLeaf called on non-empty leaf");
+
+    int32_t firstChild = createLeaf();
+    int32_t secondChild = createLeaf();
+
+    m_nodes[nodeIndex].axis = axis;
+    m_nodes[nodeIndex].ratio = ratio;
+    m_nodes[nodeIndex].firstChild = firstChild;
+    m_nodes[nodeIndex].secondChild = secondChild;
+    m_nodes[firstChild].parentNode = nodeIndex;
+    m_nodes[secondChild].parentNode = nodeIndex;
+
+    setupResizeHandle(nodeIndex, absoluteSize, absolutePosition);
+    markDirty();
+    return {firstChild, secondChild};
+}
+
+TabBar *DockingLayer::obtainLeafTabBar(int32_t nodeIndex)
+{
+    AM_ASSERT(nodeIndex >= 0 && nodeIndex < static_cast<int32_t>(m_nodes.size()), "Invalid node index");
+    AM_ASSERT(m_nodes[nodeIndex].isLeaf(), "obtainLeafTabBar called on non-leaf node");
+
+    if (!m_nodes[nodeIndex].content) {
+        auto tabBar = std::make_unique<TabBar>();
+        tabBar->parent = this;
+        setupTabBarCallbacks(tabBar.get());
+        tabBar->setTabBarProperties({.tabTearOffEnabled = true});
+        tabBar->setBaseProperties({
+            .position = UDim2::fromScale(0.0f),
+            .size = UDim2::fromScale(1.0f),
+        });
+        m_nodes[nodeIndex].content = tabBar.get();
+        m_tabBars.push_back(std::move(tabBar));
+    }
+    return m_nodes[nodeIndex].content;
 }
 
 static int32_t s_saveNode(const std::vector<DockNode> &nodes, int32_t nodeIndex, DockLayoutConfig &cfg)
@@ -680,8 +679,10 @@ static int32_t s_saveNode(const std::vector<DockNode> &nodes, int32_t nodeIndex,
     if (node.isLeaf()) {
         DockNodeConfig &out = cfg.nodes[cfgIndex];
         if (node.content) {
-            for (auto &child : node.content->getChildren()) {
-                out.panels.push_back(child->name);
+            for (int32_t j = 0; j < node.content->getTabCount(); ++j) {
+                if (auto *c = node.content->getTabContent(j)) {
+                    out.panels.push_back(c->name);
+                }
             }
             if (auto *sel = node.content->getSelectedContent()) {
                 out.selected = sel->name;
@@ -715,12 +716,12 @@ void DockingLayer::applyConfig(const DockLayoutConfig &config)
 {
     if (config.nodes.empty()) return;
 
-    std::unordered_map<std::string, std::unique_ptr<Instance>> panelsByName;
+    std::unordered_map<std::string, std::unique_ptr<TabBar::Tab>> panelsByName;
     for (auto &node : m_nodes) {
-        if (!node.isLeaf() || !node.content) continue;
-        for (auto &child : node.content->removeAllChildren()) {
-            if (!child->name.empty()) {
-                panelsByName[child->name] = std::move(child);
+        if (!node.isLeaf() || node.content == nullptr) continue;
+        for (auto &tab : node.content->removeAllTabs()) {
+            if (tab->content != nullptr && !tab->content->name.empty()) {
+                panelsByName[tab->content->name] = std::move(tab);
             }
         }
     }
@@ -743,26 +744,30 @@ void DockingLayer::applyConfig(const DockLayoutConfig &config)
             auto tabBar = std::make_unique<TabBar>();
             tabBar->parent = this;
             setupTabBarCallbacks(tabBar.get());
+            tabBar->setTabBarProperties({.tabTearOffEnabled = true});
 
             for (const auto &panelName : src.panels) {
                 auto it = panelsByName.find(panelName);
                 if (it != panelsByName.end()) {
-                    tabBar->addChild(std::move(it->second));
+                    tabBar->addTab(std::move(it->second));
                     panelsByName.erase(it);
                 }
             }
 
             if (!src.selected.empty()) {
-                for (auto &child : tabBar->getChildren()) {
-                    if (child->name == src.selected) {
-                        tabBar->select(child.get());
+                for (int32_t j = 0; j < tabBar->getTabCount(); ++j) {
+                    auto *c = tabBar->getTabContent(j);
+                    if (c && c->name == src.selected) {
+                        tabBar->select(c);
                         break;
                     }
                 }
             }
 
-            tabBar->position = UDim2::fromScale(0.0f);
-            tabBar->size = UDim2::fromScale(1.0f);
+            tabBar->setBaseProperties({
+                .position = UDim2::fromScale(0.0f),
+                .size = UDim2::fromScale(1.0f),
+            });
             dst.content = tabBar.get();
             m_tabBars.push_back(std::move(tabBar));
         } else {
@@ -788,7 +793,7 @@ void DockingLayer::applyConfig(const DockLayoutConfig &config)
     while (collapsed) {
         collapsed = false;
         for (int32_t i = 0; i < static_cast<int32_t>(m_nodes.size()); ++i) {
-            if (m_nodes[i].isLeaf() && m_nodes[i].content && m_nodes[i].content->getChildren().empty()) {
+            if (m_nodes[i].isLeaf() && m_nodes[i].content != nullptr && m_nodes[i].content->getTabCount() == 0) {
                 collapseNode(i);
                 processPendingDeletions();
                 collapsed = true;
@@ -797,10 +802,10 @@ void DockingLayer::applyConfig(const DockLayoutConfig &config)
         }
     }
 
-    for (auto &[panelName, panel] : panelsByName) {
+    for (auto &[panelName, tab] : panelsByName) {
         for (auto &node : m_nodes) {
-            if (node.isLeaf() && node.content) {
-                node.content->addChild(std::move(panel));
+            if (node.isLeaf() && node.content != nullptr) {
+                node.content->addTab(std::move(tab));
                 break;
             }
         }
