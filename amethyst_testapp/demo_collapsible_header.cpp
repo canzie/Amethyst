@@ -1,13 +1,12 @@
 #include "amethyst/Amethyst.h"
 #include "amethyst__vk13_glfw.h"
-#include "components/collapsible_header.h"
-#include "components/image_button.h"
-#include "components/image_label.h"
-#include "components/table.h"
+#include "components/ui_scope.h"
 #include "modules/style.h"
 #include "vk_context.h"
 
 #include <string>
+
+using namespace Amethyst;
 
 static const char *SVG_ARROW = R"(
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
@@ -21,12 +20,11 @@ static const char *SVG_GEAR = R"(
 </svg>
 )";
 
-
 int main()
 {
-    Amethyst::Log::Init();
+    Log::Init();
 
-    Amethyst::Style::load(AMETHYST_ASSETS_DIR "/theme.toml");
+    Style::load(AMETHYST_ASSETS_DIR "/theme.toml");
 
     VkContext ctx;
     if (!contextInit(ctx, 900, 700, "Amethyst - CollapsibleHeader Demo")) {
@@ -34,13 +32,13 @@ int main()
         return 1;
     }
 
-    Amethyst::AmethystContext amCtx;
+    AmethystContext amCtx;
     if (!amCtx.loadFont(AMETHYST_ASSETS_DIR "/fonts/OpenSans-Regular.ttf")) {
         AM_LOG_ERROR("Failed to load font");
         return 1;
     }
 
-    Amethyst::VulkanInitInfo initInfo{};
+    VulkanInitInfo initInfo{};
     initInfo.device = ctx.device;
     initInfo.instance = ctx.instance;
     initInfo.physicalDevice = ctx.physicalDevice;
@@ -54,10 +52,10 @@ int main()
     initInfo.vertexShaderPath = AMETHYST_SHADER_DIR "/ui.vs.spv";
     initInfo.fragmentShaderPath = AMETHYST_SHADER_DIR "/ui.fs.spv";
 
-    Amethyst::GLFWInitInfo glfwInfo{};
+    GLFWInitInfo glfwInfo{};
     glfwInfo.window = ctx.window;
 
-    Amethyst::VkBackend backend;
+    VkBackend backend;
     backend.init(initInfo, glfwInfo);
 
     amCtx.init(backend);
@@ -67,332 +65,271 @@ int main()
         static_cast<float>(ctx.swapchainExtent.height),
     };
 
-    Amethyst::Window window;
+    Window window;
     window.absoluteSize = screenSize;
     window.absoluteRotation = 0.0f;
     window.setDisplayOrder(10);
 
-    auto *statusLabel = window.add<Amethyst::TextLabel>();
-    statusLabel->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 24.0f);
-    statusLabel->position = Amethyst::UDim2::fromOffset(0.0f, 0.0f);
-    statusLabel->backgroundColor = {0.12f, 0.12f, 0.14f};
-    statusLabel->backgroundTransparency = 0.0f;
-    statusLabel->textColor = {0.7f, 0.7f, 0.7f, 1.0f};
-    statusLabel->fontSize = 13.0f;
-    statusLabel->textXAlignment = Amethyst::TextXAlignment::LEFT;
-    statusLabel->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    statusLabel->text = "Click any header to toggle";
-    statusLabel->markDirty();
+    TextLabel *statusLabel = nullptr;
 
-    auto *container = window.add<Amethyst::ScrollingFrame>();
-    container->size = Amethyst::UDim2(1.0f, -20.0f, 1.0f, -34.0f);
-    container->position = Amethyst::UDim2::fromOffset(10.0f, 29.0f);
-    container->backgroundColor = Amethyst::Color3::fromHex(0x1A1A1E);
-    container->canvasSize = Amethyst::UDim2::fromOffset(880, 1200);
-    container->scrollBarColor = {0.2f, 0.2f, 0.25f};
-    container->scrollBarThumbColor = {0.45f, 0.45f, 0.55f};
-    container->clipsDescendants = true;
-    container->markDirty();
+    UIScope(window)
+        .textLabel({.backgroundColor = {0.12f, 0.12f, 0.14f},
+                    .backgroundTransparency = 0.0f,
+                    .position = {0.0f, 0.0f, 0.0f, 0.0f},
+                    .size = {1.0f, 0.0f, 0.0f, 24.0f}},
+                   {.fontSize = 13.0f,
+                    .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
+                    .textXAlignment = TextXAlignment::LEFT,
+                    .textYAlignment = TextYAlignment::CENTER,
+                    .text = "Click any header to toggle"},
+                   [&statusLabel](TextLabelScope &t) { statusLabel = &t.component; })
+        .scrollingFrame(
+            {.backgroundColor = Color3::fromHex(0x1A1A1E),
+             .clipsDescendants = true,
+             .position = UDim2::fromOffset(10.0f, 29.0f),
+             .size = {1.0f, -20.0f, 1.0f, -34.0f}},
+            {.canvasSize = UDim2::fromOffset(880, 1200),
+             .scrollBarColor = {0.2f, 0.2f, 0.25f},
+             .scrollBarThumbColor = {0.45f, 0.45f, 0.55f}},
+            [statusLabel](ScrollingFrameScope &sf) {
+                // --- Section 1: General Settings ---
+                sf.collapsibleHeader(
+                      {.backgroundColor = {0.16f, 0.16f, 0.18f},
+                       .backgroundTransparency = 0.0f,
+                       .cornerRadius = 4.0f,
+                       .position = {0.0f, 0.0f, 0.0f, 0.0f},
+                       .size = {1.0f, 0.0f, 0.0f, 180.0f}},
+                      {.expanded = true,
+                       .title = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .text = "General Settings"},
+                       .headerHeight = 32.0f,
+                       .headerColor = {0.22f, 0.28f, 0.38f},
+                       .headerCornerRadius = 4.0f,
+                       .indicatorColor = {0.8f, 0.85f, 1.0f, 1.0f}},
+                      [statusLabel](CollapsibleHeaderScope &ch) {
+                          ch.component.onToggled = [statusLabel](bool exp) {
+                              statusLabel->setTextProperties(
+                                  {.text = std::string("General Settings: ") + (exp ? "expanded" : "collapsed")});
+                          };
+                          ch.textLabel({.backgroundTransparency = 1.0f,
+                                        .position = UDim2::fromOffset(10.0f, 10.0f),
+                                        .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                       {.fontSize = 13.0f,
+                                        .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                        .textYAlignment = TextYAlignment::CENTER,
+                                        .text = "Resolution: 1920x1080"});
+                          ch.textLabel({.backgroundTransparency = 1.0f,
+                                        .position = UDim2::fromOffset(10.0f, 38.0f),
+                                        .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                       {.fontSize = 13.0f,
+                                        .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                        .textYAlignment = TextYAlignment::CENTER,
+                                        .text = "Fullscreen: Off"});
+                          ch.textLabel({.backgroundTransparency = 1.0f,
+                                        .position = UDim2::fromOffset(10.0f, 66.0f),
+                                        .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                       {.fontSize = 13.0f,
+                                        .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                        .textYAlignment = TextYAlignment::CENTER,
+                                        .text = "VSync: Enabled"});
+                      })
+                    // --- Section 2: Audio (starts collapsed) ---
+                    .collapsibleHeader({.backgroundColor = {0.16f, 0.16f, 0.18f},
+                                        .backgroundTransparency = 0.0f,
+                                        .cornerRadius = 4.0f,
+                                        .position = {0.0f, 0.0f, 0.0f, 190.0f},
+                                        .size = {1.0f, 0.0f, 0.0f, 150.0f}},
+                                       {.expanded = false,
+                                        .title = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .text = "Audio"},
+                                        .headerHeight = 32.0f,
+                                        .headerColor = {0.28f, 0.22f, 0.32f},
+                                        .headerCornerRadius = 4.0f,
+                                        .indicatorColor = {0.9f, 0.75f, 1.0f, 1.0f}},
+                                       [statusLabel](CollapsibleHeaderScope &ch) {
+                                           ch.component.onToggled = [statusLabel](bool exp) {
+                                               statusLabel->setTextProperties(
+                                                   {.text = std::string("Audio: ") + (exp ? "expanded" : "collapsed")});
+                                           };
+                                           ch.textLabel({.backgroundTransparency = 1.0f,
+                                                         .position = UDim2::fromOffset(10.0f, 10.0f),
+                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                                        {.fontSize = 13.0f,
+                                                         .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                                         .textYAlignment = TextYAlignment::CENTER,
+                                                         .text = "Master Volume: 80%"});
+                                           ch.textLabel({.backgroundTransparency = 1.0f,
+                                                         .position = UDim2::fromOffset(10.0f, 38.0f),
+                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                                        {.fontSize = 13.0f,
+                                                         .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                                         .textYAlignment = TextYAlignment::CENTER,
+                                                         .text = "Music: 60%"});
+                                           ch.textLabel({.backgroundTransparency = 1.0f,
+                                                         .position = UDim2::fromOffset(10.0f, 66.0f),
+                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                                        {.fontSize = 13.0f,
+                                                         .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                                         .textYAlignment = TextYAlignment::CENTER,
+                                                         .text = "SFX: 100%"});
+                                       })
+                    // --- Section 3: Graphics (table inside) ---
+                    .collapsibleHeader({.backgroundColor = {0.16f, 0.16f, 0.18f},
+                                        .backgroundTransparency = 0.0f,
+                                        .cornerRadius = 4.0f,
+                                        .position = {0.0f, 0.0f, 0.0f, 350.0f},
+                                        .size = {1.0f, 0.0f, 0.0f, 210.0f}},
+                                       {.title = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .text = "Graphics"},
+                                        .headerHeight = 32.0f,
+                                        .headerColor = {0.2f, 0.32f, 0.25f},
+                                        .headerCornerRadius = 4.0f,
+                                        .indicatorSize = 12.0f,
+                                        .indicatorColor = {0.6f, 1.0f, 0.7f, 1.0f}},
+                                       [statusLabel](CollapsibleHeaderScope &ch) {
+                                           ch.component.onToggled = [statusLabel](bool exp) {
+                                               statusLabel->setTextProperties(
+                                                   {.text = std::string("Graphics: ") + (exp ? "expanded" : "collapsed")});
+                                           };
+                                           ch.table({.backgroundColor = {0.14f, 0.14f, 0.16f},
+                                                     .backgroundTransparency = 0.0f,
+                                                     .position = UDim2::fromOffset(5.0f, 5.0f),
+                                                     .size = {1.0f, -10.0f, 0.0f, 168.0f}},
+                                                    {.rowHeight = 28.0f,
+                                                     .cellPadding = {{2.0f, 0.0f}, {8.0f, 0.0f}, {2.0f, 0.0f}, {8.0f, 0.0f}},
+                                                     .showColumnSeparators = true,
+                                                     .columnSeparatorColor = {0.3f, 0.3f, 0.35f, 0.5f},
+                                                     .showHeader = true},
+                                                    [](TableScope &t) {
+                                                        t.column("Setting", 0.55f).column("Value", 0.45f);
 
-    // --- Section 1: General Settings ---
-    auto *section1 = container->add<Amethyst::CollapsibleHeader>();
-    section1->title = "General Settings";
-    section1->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 180.0f);
-    section1->position = Amethyst::UDim2::fromOffset(0.0f, 0.0f);
-    section1->headerColor = {0.22f, 0.28f, 0.38f};
-    section1->headerHeight = 32.0f;
-    section1->fontSize = 15.0f;
-    section1->titleColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    section1->indicatorColor = {0.8f, 0.85f, 1.0f, 1.0f};
-    section1->backgroundColor = {0.16f, 0.16f, 0.18f};
-    section1->backgroundTransparency = 0.0f;
-    section1->cornerRadius = 4.0f;
-    section1->headerCornerRadius = 4.0f;
-    section1->onToggled = [statusLabel](bool exp) {
-        statusLabel->text = std::string("General Settings: ") + (exp ? "expanded" : "collapsed");
-        statusLabel->markDirty();
-    };
-    section1->markDirty();
+                                                        struct SettingRow {
+                                                            const char *setting;
+                                                            const char *value;
+                                                        };
+                                                        SettingRow graphicsRows[] = {
+                                                            {"Shadow Quality", "Ultra"},    {"Anti-Aliasing", "TAA"},
+                                                            {"Texture Quality", "High"},    {"Draw Distance", "Far"},
+                                                            {"Ambient Occlusion", "HBAO+"}, {"Anisotropic", "16x"},
+                                                        };
 
-    auto *lbl1 = section1->add<Amethyst::TextLabel>();
-    lbl1->text = "Resolution: 1920x1080";
-    lbl1->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    lbl1->position = Amethyst::UDim2::fromOffset(10.0f, 10.0f);
-    lbl1->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
-    lbl1->fontSize = 13.0f;
-    lbl1->backgroundTransparency = 1.0f;
-    lbl1->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    lbl1->markDirty();
+                                                        for (auto &row : graphicsRows) {
+                                                            t.row([&row](TableRowScope &r) {
+                                                                r.cell([&row](UIScope &cell) {
+                                                                    cell.textLabel({.backgroundTransparency = 1.0f,
+                                                                                    .size = UDim2::fromScale(1.0f, 1.0f)},
+                                                                                   {.fontSize = 13.0f,
+                                                                                    .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
+                                                                                    .textYAlignment = TextYAlignment::CENTER,
+                                                                                    .text = row.setting});
+                                                                });
+                                                                r.cell([&row](UIScope &cell) {
+                                                                    cell.textLabel({.backgroundTransparency = 1.0f,
+                                                                                    .size = UDim2::fromScale(1.0f, 1.0f)},
+                                                                                   {.fontSize = 13.0f,
+                                                                                    .textColor = {0.5f, 0.9f, 0.6f, 1.0f},
+                                                                                    .textYAlignment = TextYAlignment::CENTER,
+                                                                                    .text = row.value});
+                                                                });
+                                                            });
+                                                        }
+                                                    });
+                                       })
+                    // --- Section 4: No indicator ---
+                    .collapsibleHeader(
+                        {.backgroundColor = {0.16f, 0.16f, 0.18f},
+                         .backgroundTransparency = 0.0f,
+                         .cornerRadius = 4.0f,
+                         .position = {0.0f, 0.0f, 0.0f, 560.0f},
+                         .size = {1.0f, 0.0f, 0.0f, 120.0f}},
+                        {.title = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .text = "Controls (no indicator)"},
+                         .headerHeight = 32.0f,
+                         .headerColor = {0.32f, 0.22f, 0.2f},
+                         .headerCornerRadius = 4.0f,
+                         .showIndicator = false},
+                        [statusLabel](CollapsibleHeaderScope &ch) {
+                            ch.component.onToggled = [statusLabel](bool exp) {
+                                statusLabel->setTextProperties(
+                                    {.text = std::string("Controls: ") + (exp ? "expanded" : "collapsed")});
+                            };
+                            ch.textLabel({.backgroundTransparency = 1.0f,
+                                          .position = UDim2::fromOffset(10.0f, 10.0f),
+                                          .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                         {.fontSize = 13.0f,
+                                          .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                          .textYAlignment = TextYAlignment::CENTER,
+                                          .text = "Mouse Sensitivity: 2.5"});
+                            ch.textLabel({.backgroundTransparency = 1.0f,
+                                          .position = UDim2::fromOffset(10.0f, 38.0f),
+                                          .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                         {.fontSize = 13.0f,
+                                          .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                          .textYAlignment = TextYAlignment::CENTER,
+                                          .text = "Invert Y: No"});
+                        })
+                    // --- Section 5: custom SVG indicator + custom header ---
+                    .collapsibleHeader({.backgroundColor = {0.16f, 0.16f, 0.18f},
+                                        .backgroundTransparency = 0.0f,
+                                        .cornerRadius = 4.0f,
+                                        .position = {0.0f, 0.0f, 0.0f, 690.0f},
+                                        .size = {1.0f, 0.0f, 0.0f, 160.0f}},
+                                       {.headerHeight = 36.0f, .headerCornerRadius = 4.0f, .indicatorSize = 18.0f},
+                                       [statusLabel](CollapsibleHeaderScope &ch) {
+                                           ch.component.onToggled = [statusLabel](bool exp) {
+                                               statusLabel->setTextProperties(
+                                                   {.text = std::string("Shader Pipeline: ") + (exp ? "expanded" : "collapsed")});
+                                           };
 
-    auto *lbl2 = section1->add<Amethyst::TextLabel>();
-    lbl2->text = "Fullscreen: Off";
-    lbl2->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    lbl2->position = Amethyst::UDim2::fromOffset(10.0f, 38.0f);
-    lbl2->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
-    lbl2->fontSize = 13.0f;
-    lbl2->backgroundTransparency = 1.0f;
-    lbl2->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    lbl2->markDirty();
+                                           ch.indicator([](UIScope &indicator) {
+                                               indicator.imageLabel({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f},
+                                                                    {.imageColor = {0.75f, 0.85f, 1.0f, 1.0f}, .svg = SVG_ARROW});
+                                           });
 
-    auto *lbl3 = section1->add<Amethyst::TextLabel>();
-    lbl3->text = "VSync: Enabled";
-    lbl3->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    lbl3->position = Amethyst::UDim2::fromOffset(10.0f, 66.0f);
-    lbl3->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
-    lbl3->fontSize = 13.0f;
-    lbl3->backgroundTransparency = 1.0f;
-    lbl3->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    lbl3->markDirty();
+                                           ch.header([statusLabel](FrameScope &header) {
+                                               header.textLabel({.backgroundTransparency = 1.0f,
+                                                                 .position = {0.0f, 0.0f, 0.0f, 0.0f},
+                                                                 .size = {1.0f, -36.0f, 1.0f, 0.0f}},
+                                                                {.fontSize = 15.0f,
+                                                                 .textColor = {1.0f, 1.0f, 1.0f, 1.0f},
+                                                                 .textXAlignment = TextXAlignment::LEFT,
+                                                                 .textYAlignment = TextYAlignment::CENTER,
+                                                                 .text = "Shader Pipeline"});
+                                               header.imageButton({.anchorPoint = {1.0f, 0.5f},
+                                                                   .backgroundColor = {0.28f, 0.28f, 0.38f},
+                                                                   .cornerRadius = 4.0f,
+                                                                   .position = {1.0f, -4.0f, 0.5f, 0.0f},
+                                                                   .size = UDim2::fromOffset(22.0f, 22.0f),
+                                                                   .zIndex = 101},
+                                                                  {.imageColor = {0.7f, 0.7f, 0.85f, 1.0f}, .svg = SVG_GEAR}, {},
+                                                                  [statusLabel](ImageButtonScope &btn) {
+                                                                      btn.component.onMouseButton1ClickCb = [statusLabel]() {
+                                                                          statusLabel->setTextProperties(
+                                                                              {.text = "Shader Pipeline: options clicked"});
+                                                                          return EventResult::CONSUMED;
+                                                                      };
+                                                                  });
+                                           });
 
-    // --- Section 2: Audio (starts collapsed) ---
-    auto *section2 = container->add<Amethyst::CollapsibleHeader>();
-    section2->title = "Audio";
-    section2->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 150.0f);
-    section2->position = Amethyst::UDim2::fromOffset(0.0f, 190.0f);
-    section2->headerColor = {0.28f, 0.22f, 0.32f};
-    section2->headerHeight = 32.0f;
-    section2->fontSize = 15.0f;
-    section2->titleColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    section2->indicatorColor = {0.9f, 0.75f, 1.0f, 1.0f};
-    section2->backgroundColor = {0.16f, 0.16f, 0.18f};
-    section2->backgroundTransparency = 0.0f;
-    section2->cornerRadius = 4.0f;
-    section2->headerCornerRadius = 4.0f;
-    section2->expanded = false;
-    section2->onToggled = [statusLabel](bool exp) {
-        statusLabel->text = std::string("Audio: ") + (exp ? "expanded" : "collapsed");
-        statusLabel->markDirty();
-    };
-    section2->markDirty();
-
-    auto *audioLbl1 = section2->add<Amethyst::TextLabel>();
-    audioLbl1->text = "Master Volume: 80%";
-    audioLbl1->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    audioLbl1->position = Amethyst::UDim2::fromOffset(10.0f, 10.0f);
-    audioLbl1->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
-    audioLbl1->fontSize = 13.0f;
-    audioLbl1->backgroundTransparency = 1.0f;
-    audioLbl1->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    audioLbl1->markDirty();
-
-    auto *audioLbl2 = section2->add<Amethyst::TextLabel>();
-    audioLbl2->text = "Music: 60%";
-    audioLbl2->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    audioLbl2->position = Amethyst::UDim2::fromOffset(10.0f, 38.0f);
-    audioLbl2->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
-    audioLbl2->fontSize = 13.0f;
-    audioLbl2->backgroundTransparency = 1.0f;
-    audioLbl2->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    audioLbl2->markDirty();
-
-    auto *audioLbl3 = section2->add<Amethyst::TextLabel>();
-    audioLbl3->text = "SFX: 100%";
-    audioLbl3->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    audioLbl3->position = Amethyst::UDim2::fromOffset(10.0f, 66.0f);
-    audioLbl3->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
-    audioLbl3->fontSize = 13.0f;
-    audioLbl3->backgroundTransparency = 1.0f;
-    audioLbl3->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    audioLbl3->markDirty();
-
-    // --- Section 3: Graphics (table inside) ---
-    auto *section3 = container->add<Amethyst::CollapsibleHeader>();
-    section3->title = "Graphics";
-    section3->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 210.0f);
-    section3->position = Amethyst::UDim2::fromOffset(0.0f, 350.0f);
-    section3->headerColor = {0.2f, 0.32f, 0.25f};
-    section3->headerHeight = 32.0f;
-    section3->fontSize = 15.0f;
-    section3->titleColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    section3->indicatorColor = {0.6f, 1.0f, 0.7f, 1.0f};
-    section3->indicatorSize = 12.0f;
-    section3->backgroundColor = {0.16f, 0.16f, 0.18f};
-    section3->backgroundTransparency = 0.0f;
-    section3->cornerRadius = 4.0f;
-    section3->headerCornerRadius = 4.0f;
-    section3->onToggled = [statusLabel](bool exp) {
-        statusLabel->text = std::string("Graphics: ") + (exp ? "expanded" : "collapsed");
-        statusLabel->markDirty();
-    };
-    section3->markDirty();
-
-    auto *table = section3->add<Amethyst::Table>();
-    table->size = Amethyst::UDim2(1.0f, -10.0f, 0.0f, 168.0f);
-    table->position = Amethyst::UDim2::fromOffset(5.0f, 5.0f);
-    table->addColumn({"Setting", Amethyst::TableColumnSizing::STRETCH, 0.55f});
-    table->addColumn({"Value", Amethyst::TableColumnSizing::STRETCH, 0.45f});
-    table->rowHeight = 28.0f;
-    table->showColumnSeparators = true;
-    table->showHeader = true;
-    table->columnSeparatorColor = {0.3f, 0.3f, 0.35f, 0.5f};
-    table->backgroundColor = {0.14f, 0.14f, 0.16f};
-    table->backgroundTransparency = 0.0f;
-    table->cellPadding = Amethyst::UDim4{
-        Amethyst::UDim::fromOffset(2.0f),
-        Amethyst::UDim::fromOffset(8.0f),
-        Amethyst::UDim::fromOffset(2.0f),
-        Amethyst::UDim::fromOffset(8.0f),
-    };
-    table->markDirty();
-
-    struct SettingRow {
-        const char *setting;
-        const char *value;
-    };
-    SettingRow graphicsRows[] = {
-        {"Shadow Quality", "Ultra"}, {"Anti-Aliasing", "TAA"},       {"Texture Quality", "High"},
-        {"Draw Distance", "Far"},    {"Ambient Occlusion", "HBAO+"}, {"Anisotropic", "16x"},
-    };
-
-    for (auto &row : graphicsRows) {
-        table->addRow();
-
-        auto settingLbl = std::make_unique<Amethyst::TextLabel>();
-        settingLbl->text = row.setting;
-        settingLbl->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
-        settingLbl->textColor = {0.7f, 0.7f, 0.7f, 1.0f};
-        settingLbl->fontSize = 13.0f;
-        settingLbl->backgroundTransparency = 1.0f;
-        settingLbl->textYAlignment = Amethyst::TextYAlignment::CENTER;
-        settingLbl->markDirty();
-        table->nextCell(std::move(settingLbl));
-
-        auto valueLbl = std::make_unique<Amethyst::TextLabel>();
-        valueLbl->text = row.value;
-        valueLbl->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
-        valueLbl->textColor = {0.5f, 0.9f, 0.6f, 1.0f};
-        valueLbl->fontSize = 13.0f;
-        valueLbl->backgroundTransparency = 1.0f;
-        valueLbl->textYAlignment = Amethyst::TextYAlignment::CENTER;
-        valueLbl->markDirty();
-        table->nextCell(std::move(valueLbl));
-    }
-
-    // --- Section 4: No indicator ---
-    auto *section4 = container->add<Amethyst::CollapsibleHeader>();
-    section4->title = "Controls (no indicator)";
-    section4->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 120.0f);
-    section4->position = Amethyst::UDim2::fromOffset(0.0f, 560.0f);
-    section4->headerColor = {0.32f, 0.22f, 0.2f};
-    section4->headerHeight = 32.0f;
-    section4->fontSize = 15.0f;
-    section4->titleColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    section4->showIndicator = false;
-    section4->backgroundColor = {0.16f, 0.16f, 0.18f};
-    section4->backgroundTransparency = 0.0f;
-    section4->cornerRadius = 4.0f;
-    section4->headerCornerRadius = 4.0f;
-    section4->onToggled = [statusLabel](bool exp) {
-        statusLabel->text = std::string("Controls: ") + (exp ? "expanded" : "collapsed");
-        statusLabel->markDirty();
-    };
-    section4->markDirty();
-
-    auto *ctrlLbl1 = section4->add<Amethyst::TextLabel>();
-    ctrlLbl1->text = "Mouse Sensitivity: 2.5";
-    ctrlLbl1->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    ctrlLbl1->position = Amethyst::UDim2::fromOffset(10.0f, 10.0f);
-    ctrlLbl1->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
-    ctrlLbl1->fontSize = 13.0f;
-    ctrlLbl1->backgroundTransparency = 1.0f;
-    ctrlLbl1->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    ctrlLbl1->markDirty();
-
-    auto *ctrlLbl2 = section4->add<Amethyst::TextLabel>();
-    ctrlLbl2->text = "Invert Y: No";
-    ctrlLbl2->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    ctrlLbl2->position = Amethyst::UDim2::fromOffset(10.0f, 38.0f);
-    ctrlLbl2->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
-    ctrlLbl2->fontSize = 13.0f;
-    ctrlLbl2->backgroundTransparency = 1.0f;
-    ctrlLbl2->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    ctrlLbl2->markDirty();
-
-    // --- Section 5: custom SVG indicator + custom header with options button ---
-
-    auto svgIndicator = std::make_unique<Amethyst::ImageLabel>(SVG_ARROW);
-    svgIndicator->imageColor = {0.75f, 0.85f, 1.0f, 1.0f};
-    svgIndicator->backgroundTransparency = 1.0f;
-    svgIndicator->borderPixelSize = 0.0f;
-
-    auto headerFrame = std::make_unique<Amethyst::Frame>();
-    headerFrame->backgroundTransparency = 1.0f;
-    headerFrame->borderPixelSize = 0.0f;
-
-    auto *sectionTitle = headerFrame->add<Amethyst::TextLabel>();
-    sectionTitle->text = "Shader Pipeline";
-    sectionTitle->size = Amethyst::UDim2(1.0f, -36.0f, 1.0f, 0.0f);
-    sectionTitle->position = Amethyst::UDim2::fromOffset(0.0f, 0.0f);
-    sectionTitle->textColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    sectionTitle->fontSize = 15.0f;
-    sectionTitle->textXAlignment = Amethyst::TextXAlignment::LEFT;
-    sectionTitle->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    sectionTitle->backgroundTransparency = 1.0f;
-    sectionTitle->markDirty();
-
-    auto *optionsBtn = headerFrame->add<Amethyst::ImageButton>(SVG_GEAR);
-    optionsBtn->size = Amethyst::UDim2::fromOffset(22.0f, 22.0f);
-    optionsBtn->position = Amethyst::UDim2{1.0f, -4.0f, 0.5f, 0.0f};
-    optionsBtn->anchorPoint = {1.0f, 0.5f};
-    optionsBtn->imageColor = {0.7f, 0.7f, 0.85f, 1.0f};
-    optionsBtn->backgroundColor = {0.28f, 0.28f, 0.38f};
-    optionsBtn->cornerRadius = 4.0f;
-    optionsBtn->zIndex = 101;
-    optionsBtn->onMouseButton1ClickCb = [statusLabel]() {
-        statusLabel->text = "Shader Pipeline: options clicked";
-        statusLabel->markDirty();
-        return Amethyst::EventResult::CONSUMED;
-    };
-    optionsBtn->markDirty();
-
-    auto *section5 = container->add<Amethyst::CollapsibleHeader>(
-        std::unique_ptr<Amethyst::UIObject>(std::move(svgIndicator)),
-        std::unique_ptr<Amethyst::UIObject>(std::move(headerFrame))
-    );
-    section5->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 160.0f);
-    section5->position = Amethyst::UDim2::fromOffset(0.0f, 690.0f);
-    section5->headerColor = {0.18f, 0.22f, 0.35f};
-    section5->headerHeight = 36.0f;
-    section5->indicatorSize = 18.0f;
-    section5->backgroundColor = {0.16f, 0.16f, 0.18f};
-    section5->backgroundTransparency = 0.0f;
-    section5->cornerRadius = 4.0f;
-    section5->headerCornerRadius = 4.0f;
-    section5->onToggled = [statusLabel](bool exp) {
-        statusLabel->text = std::string("Shader Pipeline: ") + (exp ? "expanded" : "collapsed");
-        statusLabel->markDirty();
-    };
-    section5->markDirty();
-
-    auto *shaderLbl1 = section5->add<Amethyst::TextLabel>();
-    shaderLbl1->text = "Vertex:   mesh.vert.spv";
-    shaderLbl1->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    shaderLbl1->position = Amethyst::UDim2::fromOffset(10.0f, 10.0f);
-    shaderLbl1->textColor = {0.75f, 0.85f, 1.0f, 1.0f};
-    shaderLbl1->fontSize = 13.0f;
-    shaderLbl1->backgroundTransparency = 1.0f;
-    shaderLbl1->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    shaderLbl1->markDirty();
-
-    auto *shaderLbl2 = section5->add<Amethyst::TextLabel>();
-    shaderLbl2->text = "Fragment: mesh.frag.spv";
-    shaderLbl2->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    shaderLbl2->position = Amethyst::UDim2::fromOffset(10.0f, 38.0f);
-    shaderLbl2->textColor = {0.75f, 0.85f, 1.0f, 1.0f};
-    shaderLbl2->fontSize = 13.0f;
-    shaderLbl2->backgroundTransparency = 1.0f;
-    shaderLbl2->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    shaderLbl2->markDirty();
-
-    auto *shaderLbl3 = section5->add<Amethyst::TextLabel>();
-    shaderLbl3->text = "Specialisation: SKINNING=1, SHADOWS=1";
-    shaderLbl3->size = Amethyst::UDim2(1.0f, -20.0f, 0.0f, 24.0f);
-    shaderLbl3->position = Amethyst::UDim2::fromOffset(10.0f, 66.0f);
-    shaderLbl3->textColor = {0.6f, 0.6f, 0.65f, 1.0f};
-    shaderLbl3->fontSize = 13.0f;
-    shaderLbl3->backgroundTransparency = 1.0f;
-    shaderLbl3->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    shaderLbl3->markDirty();
+                                           ch.textLabel({.backgroundTransparency = 1.0f,
+                                                         .position = UDim2::fromOffset(10.0f, 10.0f),
+                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                                        {.fontSize = 13.0f,
+                                                         .textColor = {0.75f, 0.85f, 1.0f, 1.0f},
+                                                         .textYAlignment = TextYAlignment::CENTER,
+                                                         .text = "Vertex:   mesh.vert.spv"});
+                                           ch.textLabel({.backgroundTransparency = 1.0f,
+                                                         .position = UDim2::fromOffset(10.0f, 38.0f),
+                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                                        {.fontSize = 13.0f,
+                                                         .textColor = {0.75f, 0.85f, 1.0f, 1.0f},
+                                                         .textYAlignment = TextYAlignment::CENTER,
+                                                         .text = "Fragment: mesh.frag.spv"});
+                                           ch.textLabel({.backgroundTransparency = 1.0f,
+                                                         .position = UDim2::fromOffset(10.0f, 66.0f),
+                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                                        {.fontSize = 13.0f,
+                                                         .textColor = {0.6f, 0.6f, 0.65f, 1.0f},
+                                                         .textYAlignment = TextYAlignment::CENTER,
+                                                         .text = "Specialisation: SKINNING=1, SHADOWS=1"});
+                                       });
+            });
 
     amCtx.draw(window);
 
@@ -425,6 +362,6 @@ int main()
 
     backend.shutdown();
     contextShutdown(ctx);
-    Amethyst::Log::Shutdown();
+    Log::Shutdown();
     return 0;
 }

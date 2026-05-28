@@ -1,30 +1,19 @@
 #include "amethyst/Amethyst.h"
 #include "amethyst__vk13_glfw.h"
-#include "components/scrolling_frame.h"
 #include "components/tree_view.h"
+#include "components/ui_scope.h"
 #include "modules/style.h"
 #include "vk_context.h"
 
 #include <string>
 
-static Amethyst::TextLabel *addLabel(Amethyst::TreeView *tv, const char *text, Amethyst::Color4 color)
-{
-    auto *lbl = tv->add<Amethyst::TextLabel>();
-    lbl->text = text;
-    lbl->textColor = color;
-    lbl->backgroundTransparency = 1.0f;
-    lbl->fontSize = 13.0f;
-    lbl->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    lbl->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
-    lbl->markDirty();
-    return lbl;
-}
+using namespace Amethyst;
 
 int main()
 {
-    Amethyst::Log::Init();
+    Log::Init();
 
-    Amethyst::Style::load(AMETHYST_ASSETS_DIR "/theme.toml");
+    Style::load(AMETHYST_ASSETS_DIR "/theme.toml");
 
     VkContext ctx;
     if (!contextInit(ctx, 800, 900, "Amethyst - TreeView Demo")) {
@@ -32,13 +21,13 @@ int main()
         return 1;
     }
 
-    Amethyst::AmethystContext amCtx;
+    AmethystContext amCtx;
     if (!amCtx.loadFont(AMETHYST_ASSETS_DIR "/fonts/OpenSans-Regular.ttf")) {
         AM_LOG_ERROR("Failed to load font");
         return 1;
     }
 
-    Amethyst::VulkanInitInfo initInfo{};
+    VulkanInitInfo initInfo{};
     initInfo.device = ctx.device;
     initInfo.instance = ctx.instance;
     initInfo.physicalDevice = ctx.physicalDevice;
@@ -52,10 +41,10 @@ int main()
     initInfo.vertexShaderPath = AMETHYST_SHADER_DIR "/ui.vs.spv";
     initInfo.fragmentShaderPath = AMETHYST_SHADER_DIR "/ui.fs.spv";
 
-    Amethyst::GLFWInitInfo glfwInfo{};
+    GLFWInitInfo glfwInfo{};
     glfwInfo.window = ctx.window;
 
-    Amethyst::VkBackend backend;
+    VkBackend backend;
     backend.init(initInfo, glfwInfo);
 
     amCtx.init(backend);
@@ -67,160 +56,229 @@ int main()
 
     bool running = true;
 
-    Amethyst::Window window;
+    Window window;
     window.absoluteSize = screenSize;
     window.absoluteRotation = 0.0f;
     window.setDisplayOrder(10);
 
-    auto *statusLabel = window.add<Amethyst::TextLabel>();
-    statusLabel->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 24.0f);
-    statusLabel->position = Amethyst::UDim2::fromOffset(0.0f, 0.0f);
-    statusLabel->backgroundColor = {0.12f, 0.12f, 0.14f};
-    statusLabel->backgroundTransparency = 0.0f;
-    statusLabel->textColor = {0.7f, 0.7f, 0.7f, 1.0f};
-    statusLabel->fontSize = 13.0f;
-    statusLabel->textXAlignment = Amethyst::TextXAlignment::LEFT;
-    statusLabel->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    statusLabel->text = "Selected row: (none)";
-    statusLabel->markDirty();
+    TextLabel *statusLabel = nullptr;
 
-    auto *scrollFrame = window.add<Amethyst::ScrollingFrame>();
-    scrollFrame->name = "Tree Scroll";
-    scrollFrame->size = Amethyst::UDim2(1.0f, 0.0f, 1.0f, -24.0f);
-    scrollFrame->position = Amethyst::UDim2::fromOffset(0.0f, 24.0f);
-    scrollFrame->backgroundColor = Amethyst::Color3::fromHex(0x1E1E1E);
-    scrollFrame->canvasSize = Amethyst::UDim2::fromOffset(800, 3200);
-    scrollFrame->scrollBarColor = {0.2f, 0.2f, 0.25f};
-    scrollFrame->scrollBarThumbColor = {0.45f, 0.45f, 0.55f};
-    scrollFrame->clipsDescendants = true;
-    scrollFrame->markDirty();
+    UIScope(window)
+        .textLabel({.backgroundColor = {0.12f, 0.12f, 0.14f},
+                    .backgroundTransparency = 0.0f,
+                    .position = {0.0f, 0.0f, 0.0f, 0.0f},
+                    .size = {1.0f, 0.0f, 0.0f, 24.0f}},
+                   {.fontSize = 13.0f,
+                    .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
+                    .textXAlignment = TextXAlignment::LEFT,
+                    .textYAlignment = TextYAlignment::CENTER,
+                    .text = "Selected row: (none)"},
+                   [&statusLabel](TextLabelScope &t) { statusLabel = &t.component; })
+        .scrollingFrame(
+            {.backgroundColor = Color3::fromHex(0x1E1E1E),
+             .clipsDescendants = true,
+             .position = {0.0f, 0.0f, 0.0f, 24.0f},
+             .size = {1.0f, 0.0f, 1.0f, -24.0f}},
+            {.canvasSize = UDim2::fromOffset(800, 3200),
+             .scrollBarColor = {0.2f, 0.2f, 0.25f},
+             .scrollBarThumbColor = {0.45f, 0.45f, 0.55f}},
+            [statusLabel](ScrollingFrameScope &sf) {
+                sf.treeView(
+                    {.backgroundColor = Color3::fromHex(0x1E1E1E),
+                     .backgroundTransparency = 0.0f,
+                     .clipsDescendants = true,
+                     .size = UDim2::fromScale(1.0f, 1.0f)},
+                    {.rowHeight = 22.0f,
+                     .showColumnSeparators = true,
+                     .indentPerLevel = 18.0f,
+                     .rowBackgroundColor = Color4::fromHex(0x1E1E1E),
+                     .rowAlternateColor = Color4::fromHex(0x252527),
+                     .rowHoverColor = {0.2f, 0.3f, 0.45f, 1.0f},
+                     .rowSelectedColor = {0.18f, 0.38f, 0.62f, 1.0f},
+                     .fillRows = true},
+                    [statusLabel](TreeViewScope &tv) {
+                        tv.component.numCols = 3;
+                        tv.component.columnWeights = {0.5f, 0.3f, 0.2f};
+                        tv.component.onRowClicked = [statusLabel](uint32_t row) {
+                            statusLabel->setTextProperties({.text = "Selected row: " + std::to_string(row)});
+                        };
 
-    auto *treeView = scrollFrame->add<Amethyst::TreeView>();
-    treeView->name = "TreeView Stress";
-    treeView->size = Amethyst::UDim2::fromScale(1.0f, 1.0f);
-    treeView->backgroundTransparency = 0.0f;
-    treeView->backgroundColor = Amethyst::Color3::fromHex(0x1E1E1E);
-    treeView->rowBackgroundColor = Amethyst::Color4::fromHex(0x1E1E1E);
-    treeView->rowAlternateColor = Amethyst::Color4::fromHex(0x252527);
-    treeView->rowHoverColor = {0.2f, 0.3f, 0.45f, 1.0f};
-    treeView->rowSelectedColor = {0.18f, 0.38f, 0.62f, 1.0f};
-    treeView->numCols = 3;
-    treeView->columnWeights = {0.5f, 0.3f, 0.2f};
-    treeView->showColumnSeparators = true;
-    treeView->rowHeight = 22.0f;
-    treeView->indentPerLevel = 18.0f;
-    treeView->clipsDescendants = true;
-    treeView->fillRows = true;
-    treeView->markDirty();
+                        const Color4 COL_DIM = {0.55f, 0.55f, 0.58f, 1.0f};
+                        const Color4 COL_ROOT = {1.0f, 1.0f, 1.0f, 1.0f};
+                        const Color4 COL_GROUP = {0.85f, 0.75f, 0.45f, 1.0f};
+                        const Color4 COL_SUBGRP = {0.65f, 0.85f, 0.65f, 1.0f};
+                        const Color4 COL_LEAF = {0.78f, 0.78f, 0.82f, 1.0f};
+                        const Color4 COL_SPEC = {0.55f, 0.75f, 1.0f, 1.0f};
 
-    treeView->onRowClicked = [statusLabel](uint32_t row) {
-        statusLabel->text = "Selected row: " + std::to_string(row);
-        statusLabel->markDirty();
-    };
+                        auto addRow = [&tv, &COL_DIM](uint32_t parent, const std::string &label, Color4 color,
+                                                      const char *type) -> uint32_t {
+                            uint32_t row = tv.component.beginRow(parent);
+                            tv.textLabel(
+                                {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                {.fontSize = 13.0f, .textColor = color, .textYAlignment = TextYAlignment::CENTER, .text = label});
+                            tv.textLabel(
+                                {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = type});
+                            tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                         {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                            tv.component.endRow();
+                            return row;
+                        };
 
-    const Amethyst::Color4 COL_DIM = {0.55f, 0.55f, 0.58f, 1.0f};
+                        // Scene root
+                        uint32_t scene = tv.component.beginRow();
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_ROOT, .textYAlignment = TextYAlignment::CENTER, .text = "Scene"});
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Root"});
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                        tv.component.endRow();
 
-    auto addRow = [&](uint32_t parent, const std::string &label, Amethyst::Color4 color, const char *type) -> uint32_t {
-        uint32_t row = treeView->beginRow(parent);
-        addLabel(treeView, label.c_str(), color);
-        addLabel(treeView, type, COL_DIM);
-        addLabel(treeView, "", COL_DIM);
-        treeView->endRow();
-        return row;
-    };
+                        // Entities: 50 flat children
+                        uint32_t entities = tv.component.beginRow(scene);
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f,
+                                      .textColor = COL_GROUP,
+                                      .textYAlignment = TextYAlignment::CENTER,
+                                      .text = "Entities"});
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Group"});
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                        tv.component.endRow();
+                        for (int i = 0; i < 50; i++) {
+                            addRow(entities, "entity_" + std::to_string(i), COL_LEAF, "Entity");
+                        }
 
-    const Amethyst::Color4 COL_ROOT   = {1.0f,  1.0f,  1.0f,  1.0f};
-    const Amethyst::Color4 COL_GROUP  = {0.85f, 0.75f, 0.45f, 1.0f};
-    const Amethyst::Color4 COL_SUBGRP = {0.65f, 0.85f, 0.65f, 1.0f};
-    const Amethyst::Color4 COL_LEAF   = {0.78f, 0.78f, 0.82f, 1.0f};
-    const Amethyst::Color4 COL_SPEC   = {0.55f, 0.75f, 1.0f,  1.0f};
+                        // Assets: two levels of nesting
+                        uint32_t assets = tv.component.beginRow(scene);
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f,
+                                      .textColor = COL_GROUP,
+                                      .textYAlignment = TextYAlignment::CENTER,
+                                      .text = "Assets"});
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Group"});
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                        tv.component.endRow();
 
-    uint32_t scene = treeView->beginRow();
-    addLabel(treeView, "Scene", COL_ROOT);
-    addLabel(treeView, "Root", COL_DIM);
-    addLabel(treeView, "", COL_DIM);
+                        uint32_t meshes = tv.component.beginRow(assets);
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f,
+                                      .textColor = COL_SUBGRP,
+                                      .textYAlignment = TextYAlignment::CENTER,
+                                      .text = "Meshes"});
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Folder"});
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                        tv.component.endRow();
+                        for (int i = 0; i < 20; i++) {
+                            addRow(meshes, "mesh_" + std::to_string(i) + ".obj", COL_LEAF, "Mesh");
+                        }
 
-    // ---- Entities: 50 flat children ----
-    uint32_t entities = treeView->beginRow(scene);
-    addLabel(treeView, "Entities", COL_GROUP);
-    addLabel(treeView, "Group", COL_DIM);
-    addLabel(treeView, "", COL_DIM);
-    for (int i = 0; i < 50; i++) {
-        addRow(entities, "entity_" + std::to_string(i), COL_LEAF, "Entity");
-    }
-    treeView->endRow();
+                        uint32_t textures = tv.component.beginRow(assets);
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f,
+                                      .textColor = COL_SUBGRP,
+                                      .textYAlignment = TextYAlignment::CENTER,
+                                      .text = "Textures"});
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Folder"});
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                        tv.component.endRow();
+                        for (int i = 0; i < 20; i++) {
+                            addRow(textures, "texture_" + std::to_string(i) + ".png", COL_LEAF, "Texture");
+                        }
 
-    // ---- Assets: two levels of nesting ----
-    uint32_t assets = treeView->beginRow(scene);
-    addLabel(treeView, "Assets", COL_GROUP);
-    addLabel(treeView, "Group", COL_DIM);
-    addLabel(treeView, "", COL_DIM);
+                        uint32_t shaders = tv.component.beginRow(assets);
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f,
+                                      .textColor = COL_SUBGRP,
+                                      .textYAlignment = TextYAlignment::CENTER,
+                                      .text = "Shaders"});
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Folder"});
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                        tv.component.endRow();
+                        for (int i = 0; i < 8; i++) {
+                            addRow(shaders, "shader_" + std::to_string(i) + ".glsl", COL_SPEC, "Shader");
+                        }
 
-    uint32_t meshes = treeView->beginRow(assets);
-    addLabel(treeView, "Meshes", COL_SUBGRP);
-    addLabel(treeView, "Folder", COL_DIM);
-    addLabel(treeView, "", COL_DIM);
-    for (int i = 0; i < 20; i++) {
-        addRow(meshes, "mesh_" + std::to_string(i) + ".obj", COL_LEAF, "Mesh");
-    }
-    treeView->endRow();
+                        // Systems: three levels
+                        uint32_t systems = tv.component.beginRow(scene);
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f,
+                                      .textColor = COL_GROUP,
+                                      .textYAlignment = TextYAlignment::CENTER,
+                                      .text = "Systems"});
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Group"});
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                        tv.component.endRow();
 
-    uint32_t textures = treeView->beginRow(assets);
-    addLabel(treeView, "Textures", COL_SUBGRP);
-    addLabel(treeView, "Folder", COL_DIM);
-    addLabel(treeView, "", COL_DIM);
-    for (int i = 0; i < 20; i++) {
-        addRow(textures, "texture_" + std::to_string(i) + ".png", COL_LEAF, "Texture");
-    }
-    treeView->endRow();
+                        uint32_t render = tv.component.beginRow(systems);
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f,
+                                      .textColor = COL_SUBGRP,
+                                      .textYAlignment = TextYAlignment::CENTER,
+                                      .text = "RenderSystem"});
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "System"});
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                        tv.component.endRow();
+                        addRow(render, "OpaquePass", COL_LEAF, "Pass");
+                        addRow(render, "ShadowPass", COL_LEAF, "Pass");
+                        addRow(render, "TransparentPass", COL_LEAF, "Pass");
+                        addRow(render, "PostProcess", COL_LEAF, "Pass");
 
-    uint32_t shaders = treeView->beginRow(assets);
-    addLabel(treeView, "Shaders", COL_SUBGRP);
-    addLabel(treeView, "Folder", COL_DIM);
-    addLabel(treeView, "", COL_DIM);
-    for (int i = 0; i < 8; i++) {
-        addRow(shaders, "shader_" + std::to_string(i) + ".glsl", COL_SPEC, "Shader");
-    }
-    treeView->endRow();
+                        uint32_t physics = tv.component.beginRow(systems);
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f,
+                                      .textColor = COL_SUBGRP,
+                                      .textYAlignment = TextYAlignment::CENTER,
+                                      .text = "PhysicsSystem"});
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "System"});
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                        tv.component.endRow();
+                        addRow(physics, "BroadPhase", COL_LEAF, "Phase");
+                        addRow(physics, "NarrowPhase", COL_LEAF, "Phase");
+                        addRow(physics, "Solver", COL_LEAF, "Solver");
 
-    treeView->endRow();
-
-    // ---- Systems: three levels ----
-    uint32_t systems = treeView->beginRow(scene);
-    addLabel(treeView, "Systems", COL_GROUP);
-    addLabel(treeView, "Group", COL_DIM);
-    addLabel(treeView, "", COL_DIM);
-
-    uint32_t render = treeView->beginRow(systems);
-    addLabel(treeView, "RenderSystem", COL_SUBGRP);
-    addLabel(treeView, "System", COL_DIM);
-    addLabel(treeView, "", COL_DIM);
-    addRow(render, "OpaquePass", COL_LEAF, "Pass");
-    addRow(render, "ShadowPass", COL_LEAF, "Pass");
-    addRow(render, "TransparentPass", COL_LEAF, "Pass");
-    addRow(render, "PostProcess", COL_LEAF, "Pass");
-    treeView->endRow();
-
-    uint32_t physics = treeView->beginRow(systems);
-    addLabel(treeView, "PhysicsSystem", COL_SUBGRP);
-    addLabel(treeView, "System", COL_DIM);
-    addLabel(treeView, "", COL_DIM);
-    addRow(physics, "BroadPhase", COL_LEAF, "Phase");
-    addRow(physics, "NarrowPhase", COL_LEAF, "Phase");
-    addRow(physics, "Solver", COL_LEAF, "Solver");
-    treeView->endRow();
-
-    uint32_t audio = treeView->beginRow(systems);
-    addLabel(treeView, "AudioSystem", COL_SUBGRP);
-    addLabel(treeView, "System", COL_DIM);
-    addLabel(treeView, "", COL_DIM);
-    addRow(audio, "SFX", COL_LEAF, "Channel");
-    addRow(audio, "Music", COL_LEAF, "Channel");
-    treeView->endRow();
-
-    treeView->endRow();
-
-    treeView->endRow();
+                        uint32_t audio = tv.component.beginRow(systems);
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f,
+                                      .textColor = COL_SUBGRP,
+                                      .textYAlignment = TextYAlignment::CENTER,
+                                      .text = "AudioSystem"});
+                        tv.textLabel(
+                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "System"});
+                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
+                        tv.component.endRow();
+                        addRow(audio, "SFX", COL_LEAF, "Channel");
+                        addRow(audio, "Music", COL_LEAF, "Channel");
+                    });
+            });
 
     amCtx.draw(window);
 
@@ -253,6 +311,6 @@ int main()
 
     backend.shutdown();
     contextShutdown(ctx);
-    Amethyst::Log::Shutdown();
+    Log::Shutdown();
     return 0;
 }

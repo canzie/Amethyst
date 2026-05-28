@@ -1,7 +1,10 @@
 #include "amethyst/Amethyst.h"
 #include "amethyst__vk13_glfw.h"
+#include "components/ui_scope.h"
 #include "modules/style.h"
 #include "vk_context.h"
+
+using namespace Amethyst;
 
 static const char *SVG_GEAR = R"(
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
@@ -41,9 +44,9 @@ static const char *SVG_CHECK = R"(
 
 int main()
 {
-    Amethyst::Log::Init();
+    Log::Init();
 
-    Amethyst::Style::load(AMETHYST_ASSETS_DIR "/theme.toml");
+    Style::load(AMETHYST_ASSETS_DIR "/theme.toml");
 
     VkContext ctx;
     if (!contextInit(ctx, 900, 600, "Amethyst - SVG Demo")) {
@@ -51,13 +54,13 @@ int main()
         return 1;
     }
 
-    Amethyst::AmethystContext amCtx;
+    AmethystContext amCtx;
     if (!amCtx.loadFont(AMETHYST_ASSETS_DIR "/fonts/OpenSans-Regular.ttf")) {
         AM_LOG_ERROR("Failed to load font");
         return 1;
     }
 
-    Amethyst::VulkanInitInfo initInfo{};
+    VulkanInitInfo initInfo{};
     initInfo.device = ctx.device;
     initInfo.instance = ctx.instance;
     initInfo.physicalDevice = ctx.physicalDevice;
@@ -71,10 +74,10 @@ int main()
     initInfo.vertexShaderPath = AMETHYST_SHADER_DIR "/ui.vs.spv";
     initInfo.fragmentShaderPath = AMETHYST_SHADER_DIR "/ui.fs.spv";
 
-    Amethyst::GLFWInitInfo glfwInfo{};
+    GLFWInitInfo glfwInfo{};
     glfwInfo.window = ctx.window;
 
-    Amethyst::VkBackend backend;
+    VkBackend backend;
     backend.init(initInfo, glfwInfo);
 
     amCtx.init(backend);
@@ -84,106 +87,85 @@ int main()
         static_cast<float>(ctx.swapchainExtent.height),
     };
 
-    Amethyst::Window window;
+    Window window;
     window.absoluteSize = screenSize;
     window.absoluteRotation = 0.0f;
     window.setDisplayOrder(10);
 
-    auto *title = window.add<Amethyst::TextLabel>();
-    title->text = "SVG Icons";
-    title->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 40.0f);
-    title->position = Amethyst::UDim2::fromOffset(0.0f, 10.0f);
-    title->fontSize = 20.0f;
-    title->textColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    title->backgroundTransparency = 1.0f;
-    title->textXAlignment = Amethyst::TextXAlignment::CENTER;
-    title->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    title->markDirty();
-
     struct IconDef {
         const char *svg;
         const char *label;
-        Amethyst::Color3 tint;
+        Color3 tint;
     };
 
     IconDef icons[] = {
-        {SVG_GEAR, "Settings", {0.7f, 0.7f, 0.8f}},
-        {SVG_STAR, "Favorite", {1.0f, 0.85f, 0.2f}},
-        {SVG_ARROW_RIGHT, "Next", {0.4f, 0.9f, 0.4f}},
-        {SVG_HOME, "Home", {0.5f, 0.7f, 1.0f}},
-        {SVG_HEART, "Like", {1.0f, 0.4f, 0.4f}},
-        {SVG_CHECK, "Done", {0.3f, 1.0f, 0.5f}},
+        {SVG_GEAR, "Settings", {0.7f, 0.7f, 0.8f}},    {SVG_STAR, "Favorite", {1.0f, 0.85f, 0.2f}},
+        {SVG_ARROW_RIGHT, "Next", {0.4f, 0.9f, 0.4f}}, {SVG_HOME, "Home", {0.5f, 0.7f, 1.0f}},
+        {SVG_HEART, "Like", {1.0f, 0.4f, 0.4f}},       {SVG_CHECK, "Done", {0.3f, 1.0f, 0.5f}},
     };
+
+    TextLabel *statusLabel = nullptr;
+
+    UIScope ui(window);
+
+    ui.textLabel({.backgroundTransparency = 1.0f, .position = {0.0f, 0.0f, 0.0f, 10.0f}, .size = {1.0f, 0.0f, 0.0f, 40.0f}},
+                 {.fontSize = 20.0f,
+                  .textColor = {1.0f, 1.0f, 1.0f, 1.0f},
+                  .textXAlignment = TextXAlignment::CENTER,
+                  .textYAlignment = TextYAlignment::CENTER,
+                  .text = "SVG Icons"});
 
     float xOffset = 40.0f;
     for (auto &icon : icons) {
-        auto *frame = window.add<Amethyst::Frame>();
-        frame->size = Amethyst::UDim2::fromOffset(120.0f, 160.0f);
-        frame->position = Amethyst::UDim2::fromOffset(xOffset, 70.0f);
-        frame->backgroundColor = {0.18f, 0.18f, 0.22f};
-        frame->cornerRadius = 8.0f;
-        frame->markDirty();
-
-        auto *img = frame->add<Amethyst::ImageLabel>(icon.svg);
-        img->size = Amethyst::UDim2::fromOffset(64.0f, 64.0f);
-        img->position = Amethyst::UDim2::fromOffset(28.0f, 20.0f);
-        img->imageColor = {icon.tint.r, icon.tint.g, icon.tint.b, 1.0f};
-        img->backgroundTransparency = 1.0f;
-        img->markDirty();
-
-        auto *lbl = frame->add<Amethyst::TextLabel>();
-        lbl->text = icon.label;
-        lbl->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 24.0f);
-        lbl->position = Amethyst::UDim2::fromOffset(0.0f, 100.0f);
-        lbl->fontSize = 14.0f;
-        lbl->textColor = {0.85f, 0.85f, 0.85f, 1.0f};
-        lbl->backgroundTransparency = 1.0f;
-        lbl->textXAlignment = Amethyst::TextXAlignment::CENTER;
-        lbl->textYAlignment = Amethyst::TextYAlignment::CENTER;
-        lbl->markDirty();
-
+        ui.frame({.backgroundColor = {0.18f, 0.18f, 0.22f},
+                  .cornerRadius = 8.0f,
+                  .position = UDim2::fromOffset(xOffset, 70.0f),
+                  .size = UDim2::fromOffset(120.0f, 160.0f)},
+                 [&icon](FrameScope &f) {
+                     f.imageLabel({.backgroundTransparency = 1.0f,
+                                   .position = UDim2::fromOffset(28.0f, 20.0f),
+                                   .size = UDim2::fromOffset(64.0f, 64.0f)},
+                                  {.imageColor = {icon.tint.r, icon.tint.g, icon.tint.b, 1.0f}, .svg = icon.svg});
+                     f.textLabel({.backgroundTransparency = 1.0f,
+                                  .position = {0.0f, 0.0f, 0.0f, 100.0f},
+                                  .size = {1.0f, 0.0f, 0.0f, 24.0f}},
+                                 {.fontSize = 14.0f,
+                                  .textColor = {0.85f, 0.85f, 0.85f, 1.0f},
+                                  .textXAlignment = TextXAlignment::CENTER,
+                                  .textYAlignment = TextYAlignment::CENTER,
+                                  .text = icon.label});
+                 });
         xOffset += 135.0f;
     }
 
-    auto *btnTitle = window.add<Amethyst::TextLabel>();
-    btnTitle->text = "SVG Buttons (hover to see effect)";
-    btnTitle->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 30.0f);
-    btnTitle->position = Amethyst::UDim2::fromOffset(0.0f, 260.0f);
-    btnTitle->fontSize = 16.0f;
-    btnTitle->textColor = {0.8f, 0.8f, 0.8f, 1.0f};
-    btnTitle->backgroundTransparency = 1.0f;
-    btnTitle->textXAlignment = Amethyst::TextXAlignment::CENTER;
-    btnTitle->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    btnTitle->markDirty();
+    ui.textLabel({.backgroundTransparency = 1.0f, .position = {0.0f, 0.0f, 0.0f, 260.0f}, .size = {1.0f, 0.0f, 0.0f, 30.0f}},
+                 {.fontSize = 16.0f,
+                  .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                  .textXAlignment = TextXAlignment::CENTER,
+                  .textYAlignment = TextYAlignment::CENTER,
+                  .text = "SVG Buttons (hover to see effect)"});
 
-    auto *statusLabel = window.add<Amethyst::TextLabel>();
-    statusLabel->text = "Click a button...";
-    statusLabel->size = Amethyst::UDim2(1.0f, 0.0f, 0.0f, 24.0f);
-    statusLabel->position = Amethyst::UDim2::fromOffset(0.0f, 540.0f);
-    statusLabel->fontSize = 13.0f;
-    statusLabel->textColor = {0.6f, 0.6f, 0.6f, 1.0f};
-    statusLabel->backgroundTransparency = 1.0f;
-    statusLabel->textXAlignment = Amethyst::TextXAlignment::CENTER;
-    statusLabel->textYAlignment = Amethyst::TextYAlignment::CENTER;
-    statusLabel->markDirty();
+    ui.textLabel({.backgroundTransparency = 1.0f, .position = {0.0f, 0.0f, 0.0f, 540.0f}, .size = {1.0f, 0.0f, 0.0f, 24.0f}},
+                 {.fontSize = 13.0f,
+                  .textColor = {0.6f, 0.6f, 0.6f, 1.0f},
+                  .textXAlignment = TextXAlignment::CENTER,
+                  .textYAlignment = TextYAlignment::CENTER,
+                  .text = "Click a button..."},
+                 [&statusLabel](TextLabelScope &t) { statusLabel = &t.component; });
 
     float btnX = 100.0f;
     for (int i = 0; i < 6; i++) {
-        auto *btn = window.add<Amethyst::ImageButton>(icons[i].svg);
-        btn->size = Amethyst::UDim2::fromOffset(80.0f, 80.0f);
-        btn->position = Amethyst::UDim2::fromOffset(btnX, 310.0f);
-        btn->imageColor = {icons[i].tint.r, icons[i].tint.g, icons[i].tint.b, 1.0f};
-        btn->backgroundColor = {0.22f, 0.22f, 0.28f};
-        btn->cornerRadius = 12.0f;
-        btn->markDirty();
-
-        const char *name = icons[i].label;
-        btn->onMouseButton1ClickCb = [statusLabel, name]() {
-            statusLabel->text = std::string("Clicked: ") + name;
-            statusLabel->markDirty();
-            return Amethyst::EventResult::CONSUMED;
-        };
-
+        ui.imageButton({.backgroundColor = {0.22f, 0.22f, 0.28f},
+                        .cornerRadius = 12.0f,
+                        .position = UDim2::fromOffset(btnX, 310.0f),
+                        .size = UDim2::fromOffset(80.0f, 80.0f)},
+                       {.imageColor = {icons[i].tint.r, icons[i].tint.g, icons[i].tint.b, 1.0f}, .svg = icons[i].svg}, {},
+                       [statusLabel, name = icons[i].label](ImageButtonScope &btn) {
+                           btn.component.onMouseButton1ClickCb = [statusLabel, name]() {
+                                 statusLabel->setTextProperties({.text = "Clicked: " + std::string(name)});
+                               return EventResult::CONSUMED;
+                           };
+                       });
         btnX += 115.0f;
     }
 
@@ -218,6 +200,6 @@ int main()
 
     backend.shutdown();
     contextShutdown(ctx);
-    Amethyst::Log::Shutdown();
+    Log::Shutdown();
     return 0;
 }
