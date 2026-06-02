@@ -30,9 +30,8 @@ class TextInput : public UIObject {
     void clearText();
 
   protected:
-    EventResult onMouseButton1Down(uint32_t x, uint32_t y) override;
-    EventResult onMouseButton1Up(uint32_t x, uint32_t y) override;
-    EventResult onMouseButton1Click() override;
+    EventResult onInputBegan(const InputObject &input) override;
+    EventResult onInputEnded(const InputObject &input) override;
     EventResult onMouseMoved(uint32_t x, uint32_t y) override;
     EventResult onMouseEnter() override;
     EventResult onMouseLeave() override;

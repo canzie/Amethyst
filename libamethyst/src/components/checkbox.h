@@ -7,15 +7,14 @@
 
 #include "components/common.h"
 #include "components/properties.h"
-#include "components/ui_object.h"
+#include "components/ui_button.h"
 #include <functional>
-#include <string>
 
 namespace Amethyst {
 
 struct Font;
 
-class Checkbox : public UIObject {
+class Checkbox : public UIButton {
   public:
     Checkbox();
     virtual ~Checkbox() = default;

@@ -41,6 +41,8 @@
 *.dwo
 
 
+CLAUDE.md
+
 .cache/
 .claude/
 .cursor/

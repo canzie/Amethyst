@@ -134,7 +134,10 @@ bool CollapsibleHeader::setCollapsibleHeaderProperties(const CollapsibleHeaderPr
     }
 
     AM_APPLY_STR(text)
-    AM_APPLY_STR(fontFamily)
+    if (props.title.fontFamily.has_value() && m_chProps.title.fontFamily != props.title.fontFamily) {
+        m_chProps.title.fontFamily = props.title.fontFamily;
+        changed = true;
+    }
     AM_APPLY(fontSize)
     AM_APPLY(textColor)
     AM_APPLY(textXAlignment)

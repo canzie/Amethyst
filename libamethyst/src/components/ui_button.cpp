@@ -24,9 +24,55 @@ const ButtonProperties &UIButton::getButtonProperties() const
     return m_btnProps;
 }
 
+EventResult UIButton::onInputBegan(const InputObject &input)
+{
+    UIObject::onInputBegan(input);
+
+    uint32_t x = static_cast<uint32_t>(input.position.x);
+    uint32_t y = static_cast<uint32_t>(input.position.y);
+    switch (input.type) {
+    case InputType::MOUSE_BUTTON_1:
+        return onMouseButton1Down(x, y);
+    case InputType::MOUSE_BUTTON_2:
+        return onMouseButton2Down(x, y);
+    default:
+        return EventResult::CONSUMED;
+    }
+}
+
+EventResult UIButton::onInputEnded(const InputObject &input)
+{
+    UIObject::onInputEnded(input);
+
+    uint32_t x = static_cast<uint32_t>(input.position.x);
+    uint32_t y = static_cast<uint32_t>(input.position.y);
+    bool over = containsPoint(glm::vec2(input.position.x, input.position.y));
+    switch (input.type) {
+    case InputType::MOUSE_BUTTON_1: {
+        EventResult up = onMouseButton1Up(x, y);
+        if (!over) {
+            return up;
+        }
+        EventResult click = onMouseButton1Click();
+        return (up == EventResult::CONSUMED && click == EventResult::CONSUMED) ? EventResult::CONSUMED
+                                                                               : EventResult::PROPAGATE;
+    }
+    case InputType::MOUSE_BUTTON_2: {
+        EventResult up = onMouseButton2Up(x, y);
+        if (!over) {
+            return up;
+        }
+        EventResult click = onMouseButton2Click();
+        return (up == EventResult::CONSUMED && click == EventResult::CONSUMED) ? EventResult::CONSUMED
+                                                                               : EventResult::PROPAGATE;
+    }
+    default:
+        return EventResult::CONSUMED;
+    }
+}
+
 EventResult UIButton::onMouseButton1Down(uint32_t x, uint32_t y)
 {
-    UIObject::onMouseButton1Down(x, y);
     if (onMouseButton1DownCb) {
         return onMouseButton1DownCb(x, y);
     }
@@ -35,7 +81,6 @@ EventResult UIButton::onMouseButton1Down(uint32_t x, uint32_t y)
 
 EventResult UIButton::onMouseButton1Up(uint32_t x, uint32_t y)
 {
-    UIObject::onMouseButton1Up(x, y);
     if (onMouseButton1UpCb) {
         return onMouseButton1UpCb(x, y);
     }

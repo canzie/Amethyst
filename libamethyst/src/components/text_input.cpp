@@ -106,9 +106,12 @@ void TextInput::clearText()
     }
 }
 
-EventResult TextInput::onMouseButton1Down(uint32_t x, uint32_t y)
+EventResult TextInput::onInputBegan(const InputObject &input)
 {
-    (void)y;
+    if (input.type != InputType::MOUSE_BUTTON_1) {
+        return UIObject::onInputBegan(input);
+    }
+
     if (!m_focused) {
         m_focused = true;
         InputInterface::clearKeyEvents();
@@ -117,7 +120,7 @@ EventResult TextInput::onMouseButton1Down(uint32_t x, uint32_t y)
         }
     }
 
-    size_t clickPos = getCursorFromMouseX(x);
+    size_t clickPos = getCursorFromMouseX(static_cast<uint32_t>(input.position.x));
     setCursorPosition(clickPos, false);
     m_draggingSelection = true;
 
@@ -128,20 +131,17 @@ EventResult TextInput::onMouseButton1Down(uint32_t x, uint32_t y)
     return EventResult::CONSUMED;
 }
 
-EventResult TextInput::onMouseButton1Up(uint32_t x, uint32_t y)
+EventResult TextInput::onInputEnded(const InputObject &input)
 {
-    (void)x;
-    (void)y;
+    if (input.type != InputType::MOUSE_BUTTON_1) {
+        return UIObject::onInputEnded(input);
+    }
+
     m_draggingSelection = false;
     Window *window = getWindow();
     if (window) {
         window->releaseMouse(this);
     }
-    return EventResult::CONSUMED;
-}
-
-EventResult TextInput::onMouseButton1Click()
-{
     return EventResult::CONSUMED;
 }
 

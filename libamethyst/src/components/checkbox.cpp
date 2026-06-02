@@ -19,10 +19,10 @@ Checkbox::Checkbox()
 bool Checkbox::setCheckboxProperties(const CheckboxProperties &props)
 {
     bool changed = false;
-#define AM_APPLY(field) \
+#define AM_APPLY(field)                                             \
     if (propIsSet(props.field) && m_cbProps.field != props.field) { \
-        m_cbProps.field = props.field; \
-        changed = true; \
+        m_cbProps.field = props.field;                              \
+        changed = true;                                             \
     }
     AM_APPLY(labelSide)
     AM_APPLY(labelColor)

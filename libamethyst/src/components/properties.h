@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <glm/vec2.hpp>
 #include <limits>
+#include <optional>
 #include <string>
 
 namespace Amethyst {
@@ -167,7 +168,7 @@ struct TextProperties {
     float strokeThickness = PROP_UNSET_FLOAT;
     Color4 strokeColor = Color4(PROP_UNSET_FLOAT);
     std::string text{};
-    std::string fontFamily{};
+    std::optional<std::string> fontFamily{};
 };
 
 struct ImageProperties {
@@ -343,7 +344,10 @@ inline bool applyTextProperties(TextProperties &dest, const TextProperties &src)
         changed = true;                                  \
     }
     AM_APPLY_STR(text)
-    AM_APPLY_STR(fontFamily)
+    if (src.fontFamily.has_value() && dest.fontFamily != src.fontFamily) {
+        dest.fontFamily = src.fontFamily;
+        changed = true;
+    }
     AM_APPLY(fontSize)
     AM_APPLY(textColor)
     AM_APPLY(textXAlignment)

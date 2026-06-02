@@ -174,58 +174,42 @@ Instance *Window::findClickedObject(uint32_t x, uint32_t y)
 void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_t y)
 {
     AM_PROFILE_FUNCTION();
-    (void)mods;
 
-    if (m_mouseCapturedBy && action == MOUSE_ACTION_RELEASE) {
-        UIObject *capturedObject = m_mouseCapturedBy;
-        bool stillOver = capturedObject->containsPoint(glm::vec2(x, y));
-        switch (button) {
-        case MOUSE_BUTTON_1:
-            capturedObject->onMouseButton1Up(x, y);
-            if (m_mouseCapturedBy == capturedObject && stillOver) capturedObject->onMouseButton1Click();
-            break;
-        case MOUSE_BUTTON_2:
-            capturedObject->onMouseButton2Up(x, y);
-            if (m_mouseCapturedBy == capturedObject && stillOver) capturedObject->onMouseButton2Click();
-            break;
-        default:
-            break;
-        }
+    InputType type;
+    switch (button) {
+    case MOUSE_BUTTON_1:
+        type = InputType::MOUSE_BUTTON_1;
+        break;
+    case MOUSE_BUTTON_2:
+        type = InputType::MOUSE_BUTTON_2;
+        break;
+    default:
+        return;
+    }
+
+    InputObject input{};
+    input.type = type;
+    input.position = {static_cast<float>(x), static_cast<float>(y), 0.0f};
+    input.modifiers = mods;
+    if (action == MOUSE_ACTION_PRESS) {
+        input.state = InputState::BEGIN;
+    } else if (action == MOUSE_ACTION_RELEASE) {
+        input.state = InputState::END;
+    } else {
+        return;
+    }
+
+    if (m_mouseCapturedBy && input.state == InputState::END) {
+        m_mouseCapturedBy->onInputEnded(input);
         return;
     }
 
     glm::vec2 point(x, y);
     s_dispatchRecursive(getHittableInstances(), point, [&](UIObject *obj) -> EventResult {
-        switch (button) {
-        case MOUSE_BUTTON_1:
-            switch (action) {
-            case MOUSE_ACTION_PRESS:
-                return obj->onMouseButton1Down(x, y);
-            case MOUSE_ACTION_RELEASE: {
-                EventResult up = obj->onMouseButton1Up(x, y);
-                EventResult click = obj->onMouseButton1Click();
-                return (up == EventResult::CONSUMED && click == EventResult::CONSUMED)
-                    ? EventResult::CONSUMED : EventResult::PROPAGATE;
-            }
-            default: break;
-            }
-            break;
-        case MOUSE_BUTTON_2:
-            switch (action) {
-            case MOUSE_ACTION_PRESS:
-                return obj->onMouseButton2Down(x, y);
-            case MOUSE_ACTION_RELEASE: {
-                EventResult up = obj->onMouseButton2Up(x, y);
-                EventResult click = obj->onMouseButton2Click();
-                return (up == EventResult::CONSUMED && click == EventResult::CONSUMED)
-                    ? EventResult::CONSUMED : EventResult::PROPAGATE;
-            }
-            default: break;
-            }
-            break;
-        default: break;
+        if (input.state == InputState::BEGIN) {
+            return obj->onInputBegan(input);
         }
-        return EventResult::CONSUMED;
+        return obj->onInputEnded(input);
     });
 }
 

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "treeview_redesign_v2.md",
+                "file": "properties_split_plan.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "treeview_redesign_v2"
+              "title": "properties_split_plan"
             }
           }
         ]
@@ -185,16 +185,22 @@
   },
   "active": "158d6e3fd352897f",
   "lastOpenFiles": [
+    "properties_split_plan.md.tmp.1491.03c5fc538563",
+    "properties_split_plan.md.tmp.1491.c9dce8b41319",
+    "properties_split_plan.md.tmp.1491.4070c2563f5c",
+    "properties_split_plan.md.tmp.1491.7f6f5e6a752e",
+    "properties_split_plan.md.tmp.1491.6c698ca9b2bd",
+    "properties_split_plan.md.tmp.1491.c22acf66fe51",
+    "properties_split_plan.md.tmp.1491.b3b88e61f1bd",
+    "properties_split_plan.md.tmp.1491.e563cfc19bf5",
+    "properties_split_plan.md.tmp.1491.0cd9ee9d865d",
+    "treeview_redesign_v2.md",
     "components/TreeView.md",
     "components/TreeView.md.tmp.32827.f3410dc2f83b",
     "Architecture.md",
     "Architecture.md.tmp.31113.3ab1ded49614",
-    "Architecture.md.tmp.31113.0f32ce8aef42",
     "Backend.md",
-    "Architecture.md.tmp.31113.a40786e1986e",
     "SVG Support Plan.md",
-    "Welcome.md",
-    "SVG Support Plan.md.tmp.1879.580a853aed36",
-    "SVG Support Plan.md.tmp.1879.b30dba35ee9a"
+    "Welcome.md"
   ]
 }

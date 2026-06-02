@@ -17,12 +17,9 @@ class Container : public UIObject {
     EventResult onMouseEnter() override { return EventResult::PROPAGATE; }
     EventResult onMouseLeave() override { return EventResult::PROPAGATE; }
     EventResult onMouseMoved(uint32_t, uint32_t) override { return EventResult::PROPAGATE; }
-    EventResult onMouseButton1Down(uint32_t, uint32_t) override { return EventResult::PROPAGATE; }
-    EventResult onMouseButton1Up(uint32_t, uint32_t) override { return EventResult::PROPAGATE; }
-    EventResult onMouseButton1Click() override { return EventResult::PROPAGATE; }
-    EventResult onMouseButton2Down(uint32_t, uint32_t) override { return EventResult::PROPAGATE; }
-    EventResult onMouseButton2Up(uint32_t, uint32_t) override { return EventResult::PROPAGATE; }
-    EventResult onMouseButton2Click() override { return EventResult::PROPAGATE; }
+    EventResult onInputBegan(const InputObject &) override { return EventResult::PROPAGATE; }
+    EventResult onInputChanged(const InputObject &) override { return EventResult::PROPAGATE; }
+    EventResult onInputEnded(const InputObject &) override { return EventResult::PROPAGATE; }
     EventResult onMouseScrollUp() override { return EventResult::PROPAGATE; }
     EventResult onMouseScrollDown() override { return EventResult::PROPAGATE; }
 };

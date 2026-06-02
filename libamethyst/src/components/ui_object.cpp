@@ -206,56 +206,27 @@ EventResult UIObject::onMouseLeave()
     return EventResult::CONSUMED;
 }
 
-// The button-specific virtuals translate the raw coordinate event into a generic
-// InputObject and dispatch it through onInput*, so any UIObject (e.g. a plain Frame)
-// can react via the settable onInput*Cb callbacks. This delegation is the temporary
-// bridge until the Window dispatch is reworked to emit InputObjects directly.
-static InputObject s_makeMouseInput(InputType type, InputState state, uint32_t x, uint32_t y)
-{
-    InputObject input{};
-    input.type = type;
-    input.state = state;
-    input.position = {static_cast<float>(x), static_cast<float>(y), 0.0f};
-    input.modifiers = InputInterface::getModifiers();
-    return input;
-}
-
 EventResult UIObject::onMouseMoved(uint32_t x, uint32_t y)
 {
     if (auto *drag = getExtension<UIDragDetector>()) {
         drag->handleMouseMove(x, y);
     }
-    return onInputChanged(s_makeMouseInput(InputType::MOUSE_MOVEMENT, InputState::CHANGE, x, y));
-}
 
-EventResult UIObject::onMouseButton1Down(uint32_t x, uint32_t y)
-{
-    if (auto *drag = getExtension<UIDragDetector>()) {
-        drag->handleMouseDown(x, y);
-    }
-    return onInputBegan(s_makeMouseInput(InputType::MOUSE_BUTTON_1, InputState::BEGIN, x, y));
-}
-
-EventResult UIObject::onMouseButton1Up(uint32_t x, uint32_t y)
-{
-    if (auto *drag = getExtension<UIDragDetector>()) {
-        drag->handleMouseUp(x, y);
-    }
-    return onInputEnded(s_makeMouseInput(InputType::MOUSE_BUTTON_1, InputState::END, x, y));
-}
-
-EventResult UIObject::onMouseButton2Down(uint32_t x, uint32_t y)
-{
-    return onInputBegan(s_makeMouseInput(InputType::MOUSE_BUTTON_2, InputState::BEGIN, x, y));
-}
-
-EventResult UIObject::onMouseButton2Up(uint32_t x, uint32_t y)
-{
-    return onInputEnded(s_makeMouseInput(InputType::MOUSE_BUTTON_2, InputState::END, x, y));
+    InputObject input{};
+    input.type = InputType::MOUSE_MOVEMENT;
+    input.state = InputState::CHANGE;
+    input.position = {static_cast<float>(x), static_cast<float>(y), 0.0f};
+    input.modifiers = InputInterface::getModifiers();
+    return onInputChanged(input);
 }
 
 EventResult UIObject::onInputBegan(const InputObject &input)
 {
+    if (input.type == InputType::MOUSE_BUTTON_1) {
+        if (auto *drag = getExtension<UIDragDetector>()) {
+            drag->handleMouseDown(static_cast<uint32_t>(input.position.x), static_cast<uint32_t>(input.position.y));
+        }
+    }
     if (onInputBeganCb) {
         return onInputBeganCb(input);
     }
@@ -272,6 +243,11 @@ EventResult UIObject::onInputChanged(const InputObject &input)
 
 EventResult UIObject::onInputEnded(const InputObject &input)
 {
+    if (input.type == InputType::MOUSE_BUTTON_1) {
+        if (auto *drag = getExtension<UIDragDetector>()) {
+            drag->handleMouseUp(static_cast<uint32_t>(input.position.x), static_cast<uint32_t>(input.position.y));
+        }
+    }
     if (onInputEndedCb) {
         return onInputEndedCb(input);
     }

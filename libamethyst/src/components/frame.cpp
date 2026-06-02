@@ -26,18 +26,6 @@ Frame::Frame()
     applyStyle(*this);
 }
 
-EventResult Frame::onMouseButton1Click()
-{
-    AM_LOG_INFO("Frame '{}' clicked (button 1)", name.empty() ? "(unnamed)" : name);
-    return EventResult::CONSUMED;
-}
-
-EventResult Frame::onMouseButton2Click()
-{
-    AM_LOG_INFO("Frame '{}' clicked (button 2)", name.empty() ? "(unnamed)" : name);
-    return EventResult::CONSUMED;
-}
-
 void Frame::draw(DrawContext &ctx)
 {
     AM_PROFILE_FUNCTION();

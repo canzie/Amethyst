@@ -154,9 +154,12 @@ class GizmoCanvas : public Canvas {
         return EventResult::CONSUMED;
     }
 
-    EventResult onMouseButton1Down(uint32_t x, uint32_t y) override
+    EventResult onInputBegan(const InputObject &input) override
     {
-        mousePos = glm::vec2(static_cast<float>(x), static_cast<float>(y));
+        if (input.type != InputType::MOUSE_BUTTON_1) {
+            return Canvas::onInputBegan(input);
+        }
+        mousePos = glm::vec2(input.position.x, input.position.y);
         mouseDown = true;
         if (auto *window = getWindow()) {
             window->captureMouse(this);
@@ -164,9 +167,12 @@ class GizmoCanvas : public Canvas {
         return EventResult::CONSUMED;
     }
 
-    EventResult onMouseButton1Up(uint32_t x, uint32_t y) override
+    EventResult onInputEnded(const InputObject &input) override
     {
-        mousePos = glm::vec2(static_cast<float>(x), static_cast<float>(y));
+        if (input.type != InputType::MOUSE_BUTTON_1) {
+            return Canvas::onInputEnded(input);
+        }
+        mousePos = glm::vec2(input.position.x, input.position.y);
         mouseUp = true;
         if (auto *window = getWindow()) {
             window->releaseMouse(this);

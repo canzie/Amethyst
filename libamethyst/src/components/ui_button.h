@@ -21,12 +21,15 @@ class UIButton : public UIObject {
     const ButtonProperties &getButtonProperties() const;
 
   protected:
-    EventResult onMouseButton1Down(uint32_t x, uint32_t y) override;
-    EventResult onMouseButton1Up(uint32_t x, uint32_t y) override;
-    EventResult onMouseButton1Click() override;
-    EventResult onMouseButton2Down(uint32_t x, uint32_t y) override;
-    EventResult onMouseButton2Up(uint32_t x, uint32_t y) override;
-    EventResult onMouseButton2Click() override;
+    EventResult onInputBegan(const InputObject &input) override;
+    EventResult onInputEnded(const InputObject &input) override;
+
+    virtual EventResult onMouseButton1Down(uint32_t x, uint32_t y);
+    virtual EventResult onMouseButton1Up(uint32_t x, uint32_t y);
+    virtual EventResult onMouseButton1Click();
+    virtual EventResult onMouseButton2Down(uint32_t x, uint32_t y);
+    virtual EventResult onMouseButton2Up(uint32_t x, uint32_t y);
+    virtual EventResult onMouseButton2Click();
     EventResult onMouseEnter() override;
     EventResult onMouseLeave() override;
     EventResult onMouseMoved(uint32_t x, uint32_t y) override;
