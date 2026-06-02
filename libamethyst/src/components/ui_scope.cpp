@@ -40,6 +40,7 @@ SliderIntScope::SliderIntScope(SliderInt &s) : UIScope(s), component(s) {}
 SliderVec2Scope::SliderVec2Scope(SliderVec2 &s) : UIScope(s), component(s) {}
 SliderVec3Scope::SliderVec3Scope(SliderVec3 &s) : UIScope(s), component(s) {}
 TreeViewScope::TreeViewScope(TreeView &tv) : UIScope(tv), component(tv) {}
+TreeRowScope::TreeRowScope(TreeView &tv, uint16_t depth) : component(tv), depth(depth) {}
 
 UIScope &UIScope::canvas(BaseProperties base, std::function<void(CanvasScope &)> fn)
 {
@@ -390,6 +391,74 @@ TableScope &TableScope::row(std::function<void(TableRowScope &)> rowFn)
         component.nextCell(std::move(container));
     }
 
+    return *this;
+}
+
+TreeRowScope &TreeRowScope::cell(std::function<void(UIScope &)> fn)
+{
+    pendingCells.emplace_back(std::move(fn));
+    return *this;
+}
+
+TreeRowScope &TreeRowScope::row(std::function<void(TreeRowScope &)> fn)
+{
+    pendingChildRows.emplace_back(std::move(fn));
+    return *this;
+}
+
+// Realizes a row depth-first: emit the parent's cells, then recurse into each child row at
+// depth+1. This append-then-recurse order is what produces the DFS build order TreeView's
+// depth-run model relies on.
+static void s_realizeTreeRow(TreeView &tv, uint16_t depth, TreeRowScope &scope, bool columnsExplicit)
+{
+    uint32_t cellCount = static_cast<uint32_t>(scope.pendingCells.size());
+    if (!columnsExplicit && cellCount > tv.columnCount()) {
+        tv.resizeColumns(cellCount);
+    }
+
+    tv.addRow(depth);
+
+    for (auto &cellFn : scope.pendingCells) {
+        auto container = std::make_unique<Container>();
+        if (cellFn) {
+            UIScope cellScope(*container);
+            cellFn(cellScope);
+        }
+        container->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
+        tv.nextCell(std::move(container));
+    }
+
+    for (auto &childFn : scope.pendingChildRows) {
+        TreeRowScope childScope(tv, static_cast<uint16_t>(depth + 1));
+        childFn(childScope);
+        s_realizeTreeRow(tv, static_cast<uint16_t>(depth + 1), childScope, columnsExplicit);
+    }
+}
+
+TreeViewScope &TreeViewScope::column(std::string header, float weight, TreeColumnSizing sizing)
+{
+    columnsExplicit = true;
+    component.addColumn({.header = header, .sizing = sizing, .weight = weight});
+    return *this;
+}
+
+TreeViewScope &TreeViewScope::column(TreeColumn col)
+{
+    columnsExplicit = true;
+    component.addColumn(std::move(col));
+    return *this;
+}
+
+TreeViewScope &TreeViewScope::row(std::function<void(TreeRowScope &)> rowFn)
+{
+    TreeRowScope rowScope(component, 0);
+    rowFn(rowScope);
+
+    if (rowScope.pendingCells.empty()) {
+        return *this;
+    }
+
+    s_realizeTreeRow(component, 0, rowScope, columnsExplicit);
     return *this;
 }
 

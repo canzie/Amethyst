@@ -56,7 +56,7 @@ rowAlternateColor = [43, 43, 43, 255]
 rowHoverColor = [60, 60, 60, 255]
 rowSelectedColor = [71, 114, 179, 255]
 indentPerLevel = 20.0
-disclosureTriangleSize = 8.0
+disclosureTriangleSize = 16.0
 disclosureTrianglePadding = 4.0
 disclosureTriangleColor = [140, 140, 140, 255]
 

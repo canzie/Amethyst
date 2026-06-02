@@ -6,5 +6,22 @@
 - more styling options overall
 - fix bug in collapsible header and make it so the content moves when collapsing the header
 - color picker
-- svg/icon in dropdown (optional, as menu bar doesnt need it)
 - use svg for checkbox
+- get rid of glm and spd for this lib, to make it slightly less dependent
+- treeview revision
+    - check ai slop code for issues (cpp file)
+    - find a way to propegate events to overlapping siblings
+        -? parent the cells to the bg frame
+            -? do we use per row frame? this does lead to waaay more bg frames then using a pool
+            -? can still keep the pool but correctly reparent?
+        -? does it make sense for the hoverstack to respect overlapping siblings? i guess? maybe in certain conditions like if the zindex 
+           is set to global it would, or some absolute positioning, so to support these cases we can make the hoverstack support evenresults, 
+           that way the treeview system can work unchagned(maybe need to force propegate some events)
+- styling system update
+    - thing about what goes into the styling and what does not
+    - do we split properties between layout and styling??
+    - make styling system return a fully non-sentinal properties object so manual defaults can be removed. better to rely on the styling system returning sane defaults with or witouth a provided stylesheet.
+    - let the style system have classes, some reserved. for states we could do it again like css, with :hover, :active, etc. just need to document this properly.
+    - to support the above, maybe move to something non-toml? not sure if toml can do this, if not, most likely write our own -> -1 dependency
+    - allow multiple files to be provided, makes it easier for the user to split up their work, internally it will all be appended and parsed as 1 big string anyay.
+

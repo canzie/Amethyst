@@ -869,12 +869,30 @@ void VkBackend::freeGeometryAllocation(GeometryRegistry *registry)
     }
 }
 
+static int s_translateModifiers(int glfwMods)
+{
+    int result = 0;
+    if (glfwMods & GLFW_MOD_SHIFT) {
+        result |= MOD_SHIFT;
+    }
+    if (glfwMods & GLFW_MOD_CONTROL) {
+        result |= MOD_CONTROL;
+    }
+    if (glfwMods & GLFW_MOD_ALT) {
+        result |= MOD_ALT;
+    }
+    if (glfwMods & GLFW_MOD_SUPER) {
+        result |= MOD_SUPER;
+    }
+    return result;
+}
+
 void VkBackend::mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 {
     if (g_glfwData.prevMouseButtonCallback) {
         g_glfwData.prevMouseButtonCallback(window, button, action, mods);
     }
-    InputInterface::onMouseButton(button, action, mods);
+    InputInterface::onMouseButton(button, action, s_translateModifiers(mods));
 }
 
 void VkBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
@@ -900,7 +918,7 @@ void VkBackend::keyCallback(GLFWwindow *window, int key, int scancode, int actio
     if (g_glfwData.prevKeyCallback) {
         g_glfwData.prevKeyCallback(window, key, scancode, action, mods);
     }
-    InputInterface::onKey(key, scancode, action, mods);
+    InputInterface::onKey(key, scancode, action, s_translateModifiers(mods));
 }
 
 void VkBackend::charCallback(GLFWwindow *window, unsigned int codepoint)

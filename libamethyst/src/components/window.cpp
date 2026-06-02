@@ -86,8 +86,8 @@ static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, 
                                     UIObject **stack, uint8_t &count, uint8_t capacity)
 {
     std::vector<Instance *> sorted(instances.begin(), instances.end());
-    std::sort(sorted.begin(), sorted.end(),
-              [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
+    std::stable_sort(sorted.begin(), sorted.end(),
+                     [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
 
     for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) {
         Instance *inst = *it;
@@ -125,8 +125,8 @@ template<typename Fn>
 static bool s_dispatchRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point, Fn &&fn)
 {
     std::vector<Instance *> sorted(instances.begin(), instances.end());
-    std::sort(sorted.begin(), sorted.end(),
-              [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
+    std::stable_sort(sorted.begin(), sorted.end(),
+                     [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
 
     for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) {
         Instance *inst = *it;

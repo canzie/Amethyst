@@ -1,16 +1,13 @@
 #include "components/tree_view.h"
 
-#include "logging/log.h"
+#include "amethyst/icons.h"
+#include "components/image_button.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
 #include "utils/am_assert.h"
-#include "utils/profiling.h"
 
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
-
-#define TREE_VIEW_MAX_SLOT_COUNT 100000u
 
 namespace Amethyst {
 
@@ -38,11 +35,6 @@ static void s_applyStyle(TreeView &tree)
     });
 }
 
-inline static float calculateRowY(uint32_t row, float rowHeight)
-{
-    return static_cast<float>(row) * (rowHeight - 1.0f);
-}
-
 TreeView::TreeView()
 {
     m_tvProps.rowHeight = 0.0f;
@@ -60,8 +52,26 @@ TreeView::TreeView()
     m_tvProps.rowHoverColor = {0.3f, 0.3f, 0.35f, 1.0f};
     m_tvProps.rowSelectedColor = {0.25f, 0.4f, 0.65f, 1.0f};
     m_tvProps.fillRows = 1;
+    m_tvProps.showHeader = 0;
+    m_tvProps.headerHeight = 28.0f;
+    m_tvProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
+    m_tvProps.headerText.fontSize = 14.0f;
+    m_tvProps.headerText.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
 
     s_applyStyle(*this);
+}
+
+TreeView::~TreeView()
+{
+    for (auto &bg : m_rowBackgrounds) {
+        bg->parent = nullptr;
+    }
+    if (m_headerBackground) {
+        m_headerBackground->parent = nullptr;
+    }
+    for (auto &lbl : m_headerLabels) {
+        lbl->parent = nullptr;
+    }
 }
 
 bool TreeView::setTreeViewProperties(const TreeViewProperties &props)
@@ -87,344 +97,184 @@ bool TreeView::setTreeViewProperties(const TreeViewProperties &props)
     AM_APPLY(rowHoverColor)
     AM_APPLY(rowSelectedColor)
     AM_APPLY(fillRows)
+    AM_APPLY(showHeader)
+    AM_APPLY(headerHeight)
+    AM_APPLY(headerColor)
 #undef AM_APPLY
+    if (applyTextProperties(m_tvProps.headerText, props.headerText)) {
+        changed = true;
+    }
     if (changed) {
         markDirty();
     }
     return changed;
 }
 
-std::vector<float> TreeView::computeColumnPositions(float tableWidth) const
+void TreeView::resizeColumns(uint32_t newCount)
 {
-    std::vector<float> positions;
-    positions.reserve(numCols + 1);
-    positions.push_back(0.0f);
-
-    if (columnWeights.empty()) {
-        float columnWidth = tableWidth / static_cast<float>(numCols);
-        for (uint32_t i = 1; i <= numCols; ++i) {
-            positions.push_back(columnWidth * static_cast<float>(i));
-        }
-    } else {
-        float accumulatedWidth = 0.0f;
-        for (uint32_t i = 0; i < numCols; ++i) {
-            accumulatedWidth += columnWeights[i] * tableWidth;
-            positions.push_back(accumulatedWidth);
-        }
-    }
-
-    return positions;
-}
-
-void TreeView::updateSeparators()
-{
-    m_separators.clear();
-    if (!static_cast<bool>(m_tvProps.showColumnSeparators) || numCols <= 1) {
+    uint32_t oldCount = columnCount();
+    if (newCount <= oldCount) {
         return;
     }
 
-    float accumulatedScale = 0.0f;
-    for (uint32_t i = 0; i < numCols - 1; ++i) {
-        float colWeight = columnWeights.empty() ? (1.0f / numCols) : columnWeights[i];
-        accumulatedScale += colWeight;
-
-        auto sep = std::make_unique<Frame>();
-        sep->setBaseProperties({
-            .backgroundColor = Color3(m_tvProps.columnSeparatorColor),
-            .backgroundTransparency = 1.0f - m_tvProps.columnSeparatorColor.a,
-            .position = UDim2{{accumulatedScale, -m_tvProps.columnSeparatorWidth / 2.0f}, {0.0f, 0.0f}},
-            .size = UDim2{{0.0f, m_tvProps.columnSeparatorWidth}, {1.0f, 0.0f}},
-            .zIndex = getZIndex() + 1,
-        });
-        sep->markDirty();
-        m_separators.push_back(std::move(sep));
-    }
-}
-
-TreeView::~TreeView()
-{
-    for (auto &bg : m_rowBackgrounds) {
-        bg->parent = nullptr;
-    }
-    for (auto &btn : m_rowDisclosures) {
-        btn->parent = nullptr;
-    }
-}
-
-uint32_t TreeView::allocateSlot()
-{
-    uint32_t index;
-    if (!m_freelist.empty()) {
-        index = m_freelist.back();
-        m_freelist.pop_back();
-        m_rows[index].generation++;
-    } else {
-        index = static_cast<uint32_t>(m_rows.size());
-        m_rows.emplace_back();
+    while (static_cast<uint32_t>(m_columns.size()) < newCount) {
+        m_columns.push_back({.weight = 1.0f});
     }
 
-    TreeRow &r = m_rows[index];
-    r.alive = true;
-    r.parent = INVALID_ROW;
-    r.firstChild = INVALID_ROW;
-    r.lastChild = INVALID_ROW;
-    r.nextSibling = INVALID_ROW;
-    r.prevSibling = INVALID_ROW;
-    r.firstCellIndex = INVALID_ROW;
-    r.expanded = true;
+    if (m_cells.empty()) {
+        markDirty();
+        return;
+    }
 
-    return index;
-}
-
-void TreeView::freeSlot(uint32_t index)
-{
-    TreeRow &r = m_rows[index];
-
-    if (r.firstCellIndex != INVALID_ROW) {
-        uint32_t endIdx = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(m_children.size()));
-        std::vector<Instance *> toRemove;
-        for (uint32_t i = r.firstCellIndex; i < endIdx; i++) {
-            if (m_children[i]) {
-                toRemove.push_back(m_children[i].get());
-            }
-        }
-        for (auto *child : toRemove) {
-            removeChild(child);
+    uint32_t numSlots = static_cast<uint32_t>(m_cells.size()) / oldCount;
+    std::vector<Instance *> newCells(numSlots * newCount, nullptr);
+    for (uint32_t r = 0; r < numSlots; r++) {
+        for (uint32_t c = 0; c < oldCount; c++) {
+            newCells[r * newCount + c] = m_cells[r * oldCount + c];
         }
     }
-
-    r.alive = false;
-    m_freelist.push_back(index);
-}
-
-bool TreeView::isValidRow(uint32_t index) const
-{
-    return index < m_rows.size() && m_rows[index].alive;
-}
-
-uint32_t TreeView::beginRow(uint32_t parentRow)
-{
-    AM_ASSERT(parentRow == INVALID_ROW || isValidRow(parentRow), "Parent row does not exist");
-
-    uint32_t newIndex = allocateSlot();
-    m_rows[newIndex].firstCellIndex = static_cast<uint32_t>(m_children.size());
-
-    linkRowToParent(newIndex, parentRow);
-    m_buildStack.push_back(newIndex);
-
+    m_cells = std::move(newCells);
     markDirty();
-    return newIndex;
 }
 
-void TreeView::endRow()
+void TreeView::addColumn(TreeColumn col)
 {
-    AM_ASSERT(!m_buildStack.empty(), "endRow() called without matching beginRow()");
-    m_buildStack.pop_back();
-}
-
-void TreeView::linkRowToParent(uint32_t row, uint32_t parentRow)
-{
-    TreeRow &r = m_rows[row];
-    r.parent = parentRow;
-
-    if (parentRow == INVALID_ROW) {
-        if (m_firstRoot == INVALID_ROW) {
-            m_firstRoot = row;
-            m_lastRoot = row;
-        } else {
-            m_rows[m_lastRoot].nextSibling = row;
-            r.prevSibling = m_lastRoot;
-            m_lastRoot = row;
-        }
-    } else {
-        TreeRow &parent = m_rows[parentRow];
-        if (parent.firstChild == INVALID_ROW) {
-            parent.firstChild = row;
-            parent.lastChild = row;
-        } else {
-            m_rows[parent.lastChild].nextSibling = row;
-            r.prevSibling = parent.lastChild;
-            parent.lastChild = row;
-        }
-    }
-}
-
-void TreeView::unlinkRow(uint32_t row)
-{
-    TreeRow &r = m_rows[row];
-
-    if (r.prevSibling != INVALID_ROW) {
-        m_rows[r.prevSibling].nextSibling = r.nextSibling;
-    }
-    if (r.nextSibling != INVALID_ROW) {
-        m_rows[r.nextSibling].prevSibling = r.prevSibling;
-    }
-
-    if (r.parent == INVALID_ROW) {
-        if (m_firstRoot == row) {
-            m_firstRoot = r.nextSibling;
-        }
-        if (m_lastRoot == row) {
-            m_lastRoot = r.prevSibling;
-        }
-    } else {
-        TreeRow &parent = m_rows[r.parent];
-        if (parent.firstChild == row) {
-            parent.firstChild = r.nextSibling;
-        }
-        if (parent.lastChild == row) {
-            parent.lastChild = r.prevSibling;
-        }
-    }
-
-    r.parent = INVALID_ROW;
-    r.prevSibling = INVALID_ROW;
-    r.nextSibling = INVALID_ROW;
-}
-
-void TreeView::removeRow(uint32_t row)
-{
-    AM_ASSERT(isValidRow(row), "Invalid row index");
-
-    TreeRow &r = m_rows[row];
-    for (uint32_t child = r.firstChild; child != INVALID_ROW;) {
-        uint32_t next = m_rows[child].nextSibling;
-        removeRow(child);
-        child = next;
-    }
-
-    unlinkRow(row);
-    freeSlot(row);
+    AM_ASSERT(m_cells.empty(), "Cannot add columns after rows have been added");
+    m_columns.push_back(std::move(col));
     markDirty();
+}
+
+void TreeView::setColumns(std::vector<TreeColumn> cols)
+{
+    AM_ASSERT(m_cells.empty(), "Cannot set columns after rows have been added");
+    m_columns = std::move(cols);
+    markDirty();
+}
+
+uint32_t TreeView::columnCount() const
+{
+    return static_cast<uint32_t>(m_columns.size());
+}
+
+uint32_t TreeView::addRow(uint16_t depth)
+{
+    uint32_t cols = columnCount();
+    AM_ASSERT(cols > 0, "Must add columns before adding rows");
+
+    uint32_t rowIndex = static_cast<uint32_t>(m_rows.size());
+    m_rows.push_back(TreeRow{depth, true, false});
+    m_cells.resize(m_cells.size() + cols, nullptr);
+
+    m_cursorRow = rowIndex;
+    m_cursorCol = 0;
+    markDirty();
+    return rowIndex;
+}
+
+Instance *TreeView::nextCell(std::unique_ptr<Instance> child)
+{
+    uint32_t cols = columnCount();
+    AM_ASSERT(m_cursorCol < cols, "nextCell() called but cursor is past the last column");
+    AM_ASSERT(m_cursorRow * cols + m_cursorCol < m_cells.size(), "Cursor row is out of bounds");
+
+    uint32_t idx = m_cursorRow * cols + m_cursorCol;
+
+    if (m_cells[idx]) {
+        Instance *old = m_cells[idx];
+        if (old->parent) {
+            old->parent->removeChild(old);
+        }
+        m_cells[idx] = nullptr;
+    }
+
+    Instance *raw = addChild(std::move(child));
+    m_cells[idx] = raw;
+    m_cursorCol++;
+    markDirty();
+    return raw;
+}
+
+void TreeView::setCursor(uint32_t row, uint32_t col)
+{
+    uint32_t cols = columnCount();
+    AM_ASSERT(col < cols, "Column index out of bounds");
+    AM_ASSERT(row * cols + col < m_cells.size(), "setCursor position out of bounds");
+    m_cursorRow = row;
+    m_cursorCol = col;
+}
+
+void TreeView::setCell(uint32_t row, uint32_t col, std::unique_ptr<Instance> child)
+{
+    uint32_t cols = columnCount();
+    AM_ASSERT(col < cols, "Column index out of bounds");
+    uint32_t idx = row * cols + col;
+    AM_ASSERT(idx < m_cells.size(), "Row index out of bounds");
+
+    if (m_cells[idx]) {
+        Instance *old = m_cells[idx];
+        if (old->parent) {
+            old->parent->removeChild(old);
+        }
+    }
+
+    Instance *raw = addChild(std::move(child));
+    m_cells[idx] = raw;
+    markDirty();
+}
+
+Instance *TreeView::getCell(uint32_t row, uint32_t col) const
+{
+    uint32_t cols = columnCount();
+    AM_ASSERT(col < cols, "Column index out of bounds");
+    uint32_t idx = row * cols + col;
+    if (idx >= m_cells.size()) {
+        return nullptr;
+    }
+    return m_cells[idx];
 }
 
 void TreeView::clear()
 {
     m_children.clear();
-
+    m_cells.clear();
     m_rows.clear();
-    m_freelist.clear();
-    m_firstRoot = INVALID_ROW;
-    m_lastRoot = INVALID_ROW;
-    m_buildStack.clear();
+    m_visible.clear();
     m_rowBackgrounds.clear();
-    m_rowDisclosures.clear();
+    m_disclosures.clear();
+    m_rowBySlot.clear();
+    m_cursorRow = 0;
+    m_cursorCol = 0;
     markDirty();
 }
 
 uint32_t TreeView::rowCount() const
 {
-    return static_cast<uint32_t>(m_rows.size() - m_freelist.size());
+    return static_cast<uint32_t>(m_rows.size());
 }
 
-TreeRow &TreeView::row(uint32_t index)
+uint16_t TreeView::depth(uint32_t row) const
 {
-    AM_ASSERT(isValidRow(index), "Invalid row index");
-    return m_rows[index];
-}
-
-const TreeRow &TreeView::row(uint32_t index) const
-{
-    AM_ASSERT(isValidRow(index), "Invalid row index");
-    return m_rows[index];
-}
-
-uint32_t TreeView::firstRootRow() const
-{
-    return m_firstRoot;
-}
-
-uint32_t TreeView::depth(uint32_t row) const
-{
-    AM_ASSERT(isValidRow(row), "Invalid row index");
-
-    uint32_t d = 0;
-    uint32_t current = m_rows[row].parent;
-    while (current != INVALID_ROW) {
-        d++;
-        current = m_rows[current].parent;
-    }
-    return d;
+    AM_ASSERT(row < m_rows.size(), "Row index out of bounds");
+    return m_rows[row].depth;
 }
 
 bool TreeView::hasChildren(uint32_t row) const
 {
-    AM_ASSERT(isValidRow(row), "Invalid row index");
-    return m_rows[row].firstChild != INVALID_ROW;
+    AM_ASSERT(row < m_rows.size(), "Row index out of bounds");
+    return m_rows[row].hasChildren;
 }
 
-bool TreeView::isAncestorOf(uint32_t ancestor, uint32_t descendant) const
+bool TreeView::isExpanded(uint32_t row) const
 {
-    AM_ASSERT(isValidRow(ancestor) && isValidRow(descendant), "Invalid row index");
-
-    uint32_t current = m_rows[descendant].parent;
-    while (current != INVALID_ROW) {
-        if (current == ancestor) {
-            return true;
-        }
-        current = m_rows[current].parent;
-    }
-    return false;
-}
-
-uint32_t TreeView::findRowContaining(Instance *child) const
-{
-    for (uint32_t i = 0; i < m_rows.size(); i++) {
-        if (!m_rows[i].alive) {
-            continue;
-        }
-        const TreeRow &r = m_rows[i];
-        if (r.firstCellIndex == INVALID_ROW) {
-            continue;
-        }
-        uint32_t endIndex = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(m_children.size()));
-        for (uint32_t j = r.firstCellIndex; j < endIndex; j++) {
-            if (m_children[j].get() == child) {
-                return i;
-            }
-        }
-    }
-    return INVALID_ROW;
-}
-
-void TreeView::clearRowCells(DrawContext &ctx, uint32_t row)
-{
-    AM_PROFILE_FUNCTION();
-
-    const TreeRow &r = m_rows[row];
-    if (r.firstCellIndex == INVALID_ROW) return;
-
-    uint32_t endIdx = std::min(r.firstCellIndex + numCols, static_cast<uint32_t>(m_children.size()));
-    for (uint32_t i = r.firstCellIndex; i < endIdx; i++) {
-        auto *obj = m_children[i]->as<UIObject>();
-        if (obj != nullptr && obj->getBaseProperties().visible != 0) {
-            obj->setBaseProperties({.visible = 0});
-            obj->markDirty();
-            obj->draw(ctx);
-        }
-    }
-}
-
-void TreeView::markRowDirty(uint32_t row)
-{
-    AM_PROFILE_FUNCTION();
-
-    for (uint32_t c = m_rows[row].firstChild; c != INVALID_ROW; c = m_rows[c].nextSibling) {
-        if (!m_rows[c].alive) continue;
-        m_rows[c].isDirty = true;
-        markRowDirty(c);
-    }
+    AM_ASSERT(row < m_rows.size(), "Row index out of bounds");
+    return m_rows[row].expanded;
 }
 
 void TreeView::toggle(uint32_t row)
 {
-    AM_PROFILE_FUNCTION();
-    AM_ASSERT(isValidRow(row), "Invalid row index");
-
+    AM_ASSERT(row < m_rows.size(), "Row index out of bounds");
     m_rows[row].expanded = !m_rows[row].expanded;
-    markRowDirty(row);
     markDirty();
-
     if (onRowToggled) {
         onRowToggled(row, m_rows[row].expanded);
     }
@@ -432,8 +282,7 @@ void TreeView::toggle(uint32_t row)
 
 void TreeView::expand(uint32_t row)
 {
-    AM_ASSERT(isValidRow(row), "Invalid row index");
-
+    AM_ASSERT(row < m_rows.size(), "Row index out of bounds");
     if (!m_rows[row].expanded) {
         m_rows[row].expanded = true;
         markDirty();
@@ -445,8 +294,7 @@ void TreeView::expand(uint32_t row)
 
 void TreeView::collapse(uint32_t row)
 {
-    AM_ASSERT(isValidRow(row), "Invalid row index");
-
+    AM_ASSERT(row < m_rows.size(), "Row index out of bounds");
     if (m_rows[row].expanded) {
         m_rows[row].expanded = false;
         markDirty();
@@ -459,9 +307,7 @@ void TreeView::collapse(uint32_t row)
 void TreeView::expandAll()
 {
     for (auto &r : m_rows) {
-        if (r.alive) {
-            r.expanded = true;
-        }
+        r.expanded = true;
     }
     markDirty();
 }
@@ -469,91 +315,179 @@ void TreeView::expandAll()
 void TreeView::collapseAll()
 {
     for (auto &r : m_rows) {
-        if (r.alive) {
-            r.expanded = false;
-        }
+        r.expanded = false;
     }
     markDirty();
 }
 
-bool TreeView::isRowVisible(uint32_t row) const
+void TreeView::fixupHasChildren()
 {
-    if (!isValidRow(row)) {
-        return false;
+    uint32_t n = static_cast<uint32_t>(m_rows.size());
+    for (uint32_t i = 0; i < n; i++) {
+        m_rows[i].hasChildren = (i + 1 < n && m_rows[i + 1].depth > m_rows[i].depth);
     }
+}
 
-    uint32_t p = m_rows[row].parent;
-    while (p != INVALID_ROW) {
-        if (!m_rows[p].expanded) {
-            return false;
+void TreeView::rebuildVisiblePlan()
+{
+    m_visible.clear();
+    uint32_t n = static_cast<uint32_t>(m_rows.size());
+    for (uint32_t i = 0; i < n;) {
+        m_visible.push_back(i);
+        if (!m_rows[i].expanded && m_rows[i].hasChildren) {
+            uint16_t d = m_rows[i].depth;
+            uint32_t j = i + 1;
+            while (j < n && m_rows[j].depth > d) {
+                j++;
+            }
+            i = j;
+        } else {
+            i++;
         }
-        p = m_rows[p].parent;
     }
-    return true;
 }
 
-float TreeView::getRowIndent(uint32_t row) const
+void TreeView::rebuildColumnPositions()
 {
-    float indent = static_cast<float>(depth(row)) * m_tvProps.indentPerLevel;
-    if (static_cast<bool>(m_tvProps.showDisclosureTriangles)) {
-        indent += m_tvProps.disclosureTriangleSize + m_tvProps.disclosureTrianglePadding * 2.0f;
+    m_columnPositions.clear();
+    uint32_t cols = columnCount();
+    m_columnPositions.reserve(cols + 1);
+    m_columnPositions.push_back(0.0f);
+
+    float totalWidth = absoluteSize.x;
+    float weightTotal = 0.0f;
+    for (const auto &col : m_columns) {
+        weightTotal += col.weight;
     }
-    return indent;
+    if (weightTotal <= 0.0f) {
+        weightTotal = 1.0f;
+    }
+
+    float x = 0.0f;
+    for (const auto &col : m_columns) {
+        x += (col.weight / weightTotal) * totalWidth;
+        m_columnPositions.push_back(x);
+    }
 }
 
-void TreeView::drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, float y, bool expanded,
-                                      const glm::vec4 &childClip)
+void TreeView::updateSeparators()
 {
-    TextButton *btn = m_rowDisclosures[bufferSlot].get();
-
-    if (!static_cast<bool>(m_tvProps.showDisclosureTriangles) || !hasChildren(row)) {
-        btn->setBaseProperties({.interactable = 0, .visible = 0});
-        btn->markDirty();
-        btn->draw(ctx);
+    m_separators.clear();
+    uint32_t cols = columnCount();
+    if (!static_cast<bool>(m_tvProps.showColumnSeparators) || cols <= 1) {
         return;
     }
 
-    float rowDepth = static_cast<float>(depth(row));
-    float x = absolutePosition.x + rowDepth * m_tvProps.indentPerLevel + m_tvProps.disclosureTrianglePadding;
-    float centerY = y + m_computedRowHeight * 0.5f;
+    for (uint32_t i = 0; i < cols - 1; i++) {
+        float xPos = m_columnPositions[i + 1];
 
-    btn->setBaseProperties({
-        .anchorPoint = {0.5f, 0.5f},
-        .backgroundColor = Color3(m_tvProps.disclosureTriangleColor),
-        .backgroundTransparency = 1.0f - m_tvProps.disclosureTriangleColor.a,
-        .interactable = 1,
-        .rotation = expanded ? 90.0f : 0.0f,
-        .visible = 1,
-        .zIndex = getZIndex() + 2,
-    });
-    btn->clipRect = childClip;
-    btn->onMouseButton1ClickCb = [this, row]() {
-        toggle(row);
-        return EventResult::CONSUMED;
-    };
-    btn->markDirty();
-
-    float triSize = m_tvProps.disclosureTriangleSize;
-    glm::vec2 triPos = {x, centerY - triSize * 0.5f};
-    btn->computeAbsolutes({triSize, triSize}, triPos + glm::vec2(triSize * 0.5f), absoluteRotation);
-    btn->draw(ctx);
+        auto sep = std::make_unique<Frame>();
+        sep->setBaseProperties({
+            .backgroundColor = Color3(m_tvProps.columnSeparatorColor),
+            .backgroundTransparency = 1.0f - m_tvProps.columnSeparatorColor.a,
+            .position = UDim2(0.0f, xPos - m_tvProps.columnSeparatorWidth / 2.0f, 0.0f, 0.0f),
+            .size = UDim2(0.0f, m_tvProps.columnSeparatorWidth, 1.0f, 0.0f),
+            .zIndex = getZIndex() + 1,
+        });
+        sep->markDirty();
+        m_separators.push_back(std::move(sep));
+    }
 }
 
-void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, uint32_t visualIndex,
-                              const std::vector<float> &colPositions, const glm::vec4 &childClip)
+void TreeView::ensureHeaderCapacity()
 {
-    AM_PROFILE_FUNCTION();
+    uint32_t cols = columnCount();
 
-    const TreeRow &r = m_rows[row];
-    float rowY = calculateRowY(visualIndex, m_computedRowHeight);
-    float indent = getRowIndent(row);
+    if (!m_headerBackground) {
+        m_headerBackground = std::make_unique<Frame>();
+        m_headerBackground->parent = this;
+    }
 
-    Frame *bg = m_rowBackgrounds[bufferSlot].get();
+    while (m_headerLabels.size() < cols) {
+        auto lbl = std::make_unique<TextLabel>();
+        lbl->parent = this;
+        m_headerLabels.push_back(std::move(lbl));
+    }
+}
+
+void TreeView::ensurePoolCapacity(uint32_t count)
+{
+    while (m_rowBackgrounds.size() < count) {
+        auto frame = std::make_unique<Frame>();
+        frame->parent = this;
+
+        auto disc = std::make_unique<ImageButton>();
+        disc->setSvg(Icons::ARROW);
+        m_disclosures.push_back(disc.get());
+        frame->addChild(std::move(disc));
+
+        m_rowBackgrounds.push_back(std::move(frame));
+        m_rowBySlot.push_back(INVALID_ROW);
+    }
+}
+
+// WIP: header rendering is wired but off by default and unverified against all themes.
+void TreeView::drawHeader(DrawContext &ctx, const glm::vec4 &childClip)
+{
+    uint32_t cols = columnCount();
+    ensureHeaderCapacity();
+
+    m_headerBackground->setBaseProperties({
+        .backgroundColor = m_tvProps.headerColor,
+        .backgroundTransparency = 0.0f,
+        .zIndex = getZIndex(),
+    });
+    m_headerBackground->clipRect = childClip;
+    m_headerBackground->markDirty();
+    m_headerBackground->computeAbsolutes({absoluteSize.x, m_tvProps.headerHeight}, absolutePosition, absoluteRotation);
+    m_headerBackground->draw(ctx);
+
+    for (uint32_t col = 0; col < cols; col++) {
+        TextLabel *lbl = m_headerLabels[col].get();
+        lbl->setBaseProperties({
+            .backgroundTransparency = 1.0f,
+            .size = UDim2::fromScale(1.0f, 1.0f),
+            .zIndex = getZIndex() + 1,
+        });
+        lbl->setTextProperties({
+            .fontSize = m_tvProps.headerText.fontSize,
+            .textColor = m_tvProps.headerText.textColor,
+            .textXAlignment = TextXAlignment::LEFT,
+            .textYAlignment = TextYAlignment::CENTER,
+            .text = m_columns[col].header,
+        });
+        lbl->clipRect = childClip;
+        lbl->markDirty();
+
+        float cellX = m_columnPositions[col] + m_cellPaddingPx.w;
+        float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col] - m_cellPaddingPx.w - m_cellPaddingPx.y;
+
+        lbl->computeAbsolutes({cellWidth, m_tvProps.headerHeight}, absolutePosition + glm::vec2(cellX, 0.0f), absoluteRotation);
+        lbl->draw(ctx);
+    }
+}
+
+void TreeView::drawSeparators(DrawContext &ctx, const glm::vec4 &childClip)
+{
+    for (auto &sep : m_separators) {
+        sep->clipRect = childClip;
+        sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+        sep->draw(ctx);
+    }
+}
+
+void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y,
+                       const glm::vec4 &childClip)
+{
+    uint32_t cols = columnCount();
+    uint32_t visualIndex = visibleIndex;
+
+    Frame *bg = m_rowBackgrounds[poolSlot].get();
 
     Color4 bgColor = m_tvProps.rowBackgroundColor;
-    if (static_cast<int32_t>(row) == selectedRow) {
+    if (static_cast<int32_t>(logicalRow) == selectedRow) {
         bgColor = m_tvProps.rowSelectedColor;
-    } else if (static_cast<int32_t>(row) == hoveredRow) {
+    } else if (static_cast<int32_t>(logicalRow) == hoveredRow) {
         bgColor = m_tvProps.rowHoverColor;
     } else if (visualIndex % 2 == 1 && m_tvProps.rowAlternateColor.a > 0.0f) {
         bgColor = m_tvProps.rowAlternateColor;
@@ -562,250 +496,219 @@ void TreeView::drawRowContent(DrawContext &ctx, uint32_t row, uint32_t bufferSlo
     bg->setBaseProperties({
         .backgroundColor = Color3(bgColor),
         .backgroundTransparency = 1.0f - bgColor.a,
+        .interactable = true,
+        .position = UDim2(0.0f, 0.0f, 0.0f, y),
+        .size = UDim2(1.0f, 0.0f, 0.0f, m_rowHeightPx),
+        .visible = true,
+        .zIndex = getZIndex(),
     });
     bg->clipRect = childClip;
     bg->markDirty();
-    bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + glm::vec2(0.0f, rowY), absoluteRotation);
-    bg->draw(ctx);
+    bg->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
 
-    drawDisclosureTriangle(ctx, row, bufferSlot, absolutePosition.y + rowY, r.expanded, childClip);
+    bg->onHoverChanged = [this, logicalRow](bool hovered) {
+        if (hovered) {
+            hoveredRow = static_cast<int32_t>(logicalRow);
+        } else if (hoveredRow == static_cast<int32_t>(logicalRow)) {
+            hoveredRow = -1;
+        }
+        markDirty();
+    };
+    bg->onInputBeganCb = [this, logicalRow](const InputObject &io) {
+        if (io.type == InputType::MOUSE_BUTTON_1) {
+            selectedRow = static_cast<int32_t>(logicalRow);
+            if (onRowClicked) {
+                onRowClicked(logicalRow);
+            }
+            markDirty();
+        }
+        return EventResult::CONSUMED;
+    };
 
-    if (r.firstCellIndex == INVALID_ROW) {
-        return;
+    ImageButton *disc = m_disclosures[poolSlot];
+    if (!static_cast<bool>(m_tvProps.showDisclosureTriangles) || !m_rows[logicalRow].hasChildren) {
+        disc->setBaseProperties({.interactable = false, .visible = false});
+    } else {
+        float rowDepth = static_cast<float>(m_rows[logicalRow].depth);
+        float triSize = m_tvProps.disclosureTriangleSize;
+        float x = rowDepth * m_tvProps.indentPerLevel + m_tvProps.disclosureTrianglePadding;
+
+        disc->setBaseProperties({
+            .anchorPoint = {0.5f, 0.5f},
+            .interactable = true,
+            .position = UDim2(0.0f, x + triSize * 0.5f, 0.5f, 0.0f),
+            .size = UDim2::fromOffset(triSize, triSize),
+            .rotation = m_rows[logicalRow].expanded ? 90.0f : 0.0f,
+            .visible = true,
+            .zIndex = getZIndex() + 2,
+        });
+        disc->setImageProperties({.imageColor = m_tvProps.disclosureTriangleColor});
+        disc->onMouseButton1ClickCb = [this, logicalRow]() {
+            toggle(logicalRow);
+            return EventResult::CONSUMED;
+        };
     }
 
-    for (uint32_t col = 0; col < numCols; col++) {
-        uint32_t childIndex = r.firstCellIndex + col;
-        if (childIndex >= m_children.size()) {
-            break;
-        }
+    float indent = static_cast<float>(m_rows[logicalRow].depth) * m_tvProps.indentPerLevel;
+    if (static_cast<bool>(m_tvProps.showDisclosureTriangles)) {
+        indent += m_tvProps.disclosureTriangleSize + m_tvProps.disclosureTrianglePadding * 2.0f;
+    }
 
-        Instance *child = m_children[childIndex].get();
-        if (!child) {
+    float totalWidth = absoluteSize.x;
+    float padT = m_cellPaddingPx.x;
+    float padR = m_cellPaddingPx.y;
+    float padB = m_cellPaddingPx.z;
+    float padL = m_cellPaddingPx.w;
+
+    for (uint32_t col = 0; col < cols; col++) {
+        Instance *cell = m_cells[logicalRow * cols + col];
+        if (!cell) {
             continue;
         }
 
-        auto *drawable = child->as<UIObject>();
+        auto *drawable = cell->as<UIObject>();
         if (!drawable) {
             continue;
         }
 
-        drawable->setBaseProperties({.visible = 1});
+        float startFrac = totalWidth > 0.0f ? m_columnPositions[col] / totalWidth : 0.0f;
+        float widthFrac = totalWidth > 0.0f ? (m_columnPositions[col + 1] - m_columnPositions[col]) / totalWidth : 0.0f;
+        float indentPx = col == 0 ? indent : 0.0f;
 
-        float cellX = colPositions[col];
-        float cellWidth = colPositions[col + 1] - cellX;
-
-        if (col == 0) {
-            cellX += indent;
-            cellWidth -= indent;
-        }
-
-        float paddedX = cellX + m_resolvedPadding.w;
-        float paddedY = rowY + m_resolvedPadding.x;
-        float paddedWidth = cellWidth - m_resolvedPadding.w - m_resolvedPadding.y;
-        float paddedHeight = m_computedRowHeight - m_resolvedPadding.x - m_resolvedPadding.z;
-
-        glm::vec2 cellSize = {paddedWidth, paddedHeight};
-        glm::vec2 cellPos = absolutePosition + glm::vec2(paddedX, paddedY);
-
-        drawable->clipRect = childClip;
-        drawable->computeAbsolutes(cellSize, cellPos, absoluteRotation);
-        drawable->draw(ctx);
-    }
-}
-
-void TreeView::ensureSlotCapacity(uint32_t slotCount)
-{
-    while (m_rowBackgrounds.size() < slotCount) {
-        auto frame = std::make_unique<Frame>();
-        frame->parent = this;
-        frame->setBaseProperties({
-            .size = UDim2::fromScale(1.0f, 1.0f),
-            .zIndex = getZIndex(),
+        drawable->setBaseProperties({
+            .position = UDim2(startFrac, padL + indentPx, 0.0f, padT),
+            .size = UDim2(widthFrac, -(padL + padR + indentPx), 1.0f, -(padT + padB)),
+            .visible = true,
         });
-        m_rowBackgrounds.push_back(std::move(frame));
-    }
-    while (m_rowDisclosures.size() < slotCount) {
-        auto btn = std::make_unique<TextButton>();
-        btn->parent = this;
-        btn->setBaseProperties({
-            .size = UDim2::fromScale(1.0f, 1.0f),
-            .zIndex = getZIndex() + 2,
-        });
-        btn->setButtonProperties({.autoButtonColor = 0});
-        m_rowDisclosures.push_back(std::move(btn));
-    }
-}
-
-uint32_t TreeView::drawVisibleRows(DrawContext &ctx, const std::vector<float> &colPositions, const glm::vec4 &childClip,
-                                   uint32_t firstVisibleSlot, uint32_t slotCount)
-{
-    AM_PROFILE_FUNCTION();
-
-    uint32_t visibleCount = 0;
-    uint32_t bufferSlot = 0;
-    std::vector<std::pair<uint32_t, bool>> stack;
-
-    for (uint32_t r = m_lastRoot; r != INVALID_ROW; r = m_rows[r].prevSibling) {
-        if (m_rows[r].alive) {
-            stack.push_back({r, true});
-        }
     }
 
-    while (!stack.empty()) {
-        auto [row, ancestorVisible] = stack.back();
-        stack.pop_back();
-
-        TreeRow &r = m_rows[row];
-
-        if (ancestorVisible) {
-            if (visibleCount >= firstVisibleSlot && bufferSlot < slotCount) {
-                drawRowContent(ctx, row, bufferSlot, visibleCount, colPositions, childClip);
-                bufferSlot++;
-                r.isDirty = true;
-            } else if (r.isDirty) {
-                clearRowCells(ctx, row);
-                r.isDirty = false;
-            }
-            visibleCount++;
-
-            if (r.expanded) {
-                for (uint32_t c = r.lastChild; c != INVALID_ROW; c = m_rows[c].prevSibling) {
-                    if (m_rows[c].alive) {
-                        stack.push_back({c, true});
-                    }
-                }
-            } else {
-                for (uint32_t c = r.lastChild; c != INVALID_ROW; c = m_rows[c].prevSibling) {
-                    if (m_rows[c].alive && m_rows[c].isDirty) {
-                        stack.push_back({c, false});
-                    }
-                }
-            }
-        } else {
-            clearRowCells(ctx, row);
-            r.isDirty = false;
-
-            for (uint32_t c = r.lastChild; c != INVALID_ROW; c = m_rows[c].prevSibling) {
-                if (m_rows[c].alive && m_rows[c].isDirty) {
-                    stack.push_back({c, false});
-                }
-            }
-        }
-    }
-
-    return bufferSlot;
-}
-
-void TreeView::drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint32_t fromSlot, uint32_t slotCount,
-                             uint32_t firstVisibleSlot)
-{
-    AM_PROFILE_FUNCTION();
-
-    for (uint32_t i = fromSlot; i < slotCount; i++) {
-        uint32_t visualIndex = firstVisibleSlot + i;
-        float rowY = calculateRowY(visualIndex, m_computedRowHeight);
-        Frame *bg = m_rowBackgrounds[i].get();
-        Color4 bgColor = (visualIndex % 2 == 1 && m_tvProps.rowAlternateColor.a > 0.0f) ? m_tvProps.rowAlternateColor
-                                                                                        : m_tvProps.rowBackgroundColor;
-        bg->setBaseProperties({
-            .backgroundColor = Color3(bgColor),
-            .backgroundTransparency = 1.0f - bgColor.a,
-        });
-        bg->clipRect = childClip;
-        bg->markDirty();
-        bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + glm::vec2(0.0f, rowY), absoluteRotation);
-        bg->draw(ctx);
-    }
-}
-
-void TreeView::clearUnusedSlots(DrawContext &ctx, uint32_t fromSlot)
-{
-    AM_PROFILE_FUNCTION();
-
-    for (uint32_t i = fromSlot; i < m_rowDisclosures.size(); i++) {
-        TextButton *btn = m_rowDisclosures[i].get();
-        btn->setBaseProperties({.interactable = 0, .visible = 0});
-        btn->markDirty();
-        btn->draw(ctx);
-    }
+    bg->draw(ctx);
 }
 
 void TreeView::draw(DrawContext &ctx)
 {
-    AM_PROFILE_FUNCTION();
-
     if (absolutePosition != m_lastAbsolutePosition || absoluteSize != m_lastAbsoluteSize) {
         flags |= FLAG_DIRTY;
         m_lastAbsolutePosition = absolutePosition;
         m_lastAbsoluteSize = absoluteSize;
     }
 
-    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
-        return;
-    }
-
-    if (numCols == 0) {
+    uint32_t cols = columnCount();
+    if (cols == 0) {
         flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
         return;
     }
 
     if (flags & FLAG_DIRTY) {
+        fixupHasChildren();
+        rebuildVisiblePlan();
+        rebuildColumnPositions();
         updateSeparators();
-        m_resolvedPadding = m_tvProps.cellPadding.resolve(absoluteSize);
+        m_cellPaddingPx = m_tvProps.cellPadding.resolve(absoluteSize);
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    m_rowHeightPx = m_tvProps.rowHeight > 0.0f ? m_tvProps.rowHeight : 24.0f;
 
-    m_computedRowHeight = m_tvProps.rowHeight > 0.0f ? m_tvProps.rowHeight : 24.0f;
+    glm::vec4 childClip = computeChildClipRect();
+    float headerH = static_cast<bool>(m_tvProps.showHeader) ? m_tvProps.headerHeight : 0.0f;
 
     float viewportHeight = childClip.w - childClip.y;
     if (viewportHeight <= 0.0f) {
         flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
         return;
     }
-    uint32_t slotCount = static_cast<uint32_t>(std::ceil(viewportHeight / m_computedRowHeight)) + 2;
-    AM_ASSERT(slotCount <= TREE_VIEW_MAX_SLOT_COUNT, "TreeView slotCount is unreasonably large, likely a layout or clip bug");
 
-    float scrolledY = std::max(0.0f, childClip.y - absolutePosition.y);
-    uint32_t firstVisibleSlot = static_cast<uint32_t>(std::floor(scrolledY / m_computedRowHeight));
+    float scrolledY = std::max(0.0f, childClip.y - absolutePosition.y - headerH);
+    uint32_t first = static_cast<uint32_t>(std::floor(scrolledY / m_rowHeightPx));
+    uint32_t count = static_cast<uint32_t>(std::ceil(viewportHeight / m_rowHeightPx)) + 2;
+    uint32_t totalVisible = static_cast<uint32_t>(m_visible.size());
+    if (first > totalVisible) {
+        first = totalVisible;
+    }
+    uint32_t last = std::min(first + count, totalVisible);
 
-    ensureSlotCapacity(slotCount);
+    uint32_t windowCount = last - first;
+    ensurePoolCapacity(windowCount);
 
-    std::vector<float> colPositions = computeColumnPositions(absoluteSize.x);
-
-    for (auto &sep : m_separators) {
-        sep->clipRect = childClip;
-        sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-        sep->draw(ctx);
+    if (static_cast<bool>(m_tvProps.showHeader)) {
+        drawHeader(ctx, childClip);
     }
 
-    uint32_t usedSlots = drawVisibleRows(ctx, colPositions, childClip, firstVisibleSlot, slotCount);
+    drawSeparators(ctx, childClip);
 
-    if (static_cast<bool>(m_tvProps.fillRows)) {
-        drawEmptyRows(ctx, childClip, usedSlots, slotCount, firstVisibleSlot);
+    for (uint32_t slot = 0; slot < m_rowBackgrounds.size(); slot++) {
+        uint32_t desired = slot < windowCount ? m_visible[first + slot] : INVALID_ROW;
+        if (m_rowBySlot[slot] != INVALID_ROW && m_rowBySlot[slot] != desired) {
+            parkRowCells(ctx, m_rowBySlot[slot]);
+            m_rowBySlot[slot] = INVALID_ROW;
+        }
     }
 
-    clearUnusedSlots(ctx, usedSlots);
+    for (uint32_t k = first; k < last; k++) {
+        uint32_t poolSlot = k - first;
+        uint32_t logicalRow = m_visible[k];
+        attachRowCells(poolSlot, logicalRow);
+        m_rowBySlot[poolSlot] = logicalRow;
+        float rowY = headerH + static_cast<float>(k) * m_rowHeightPx;
+        drawRow(ctx, logicalRow, poolSlot, k, rowY, childClip);
+    }
+
+    for (uint32_t slot = windowCount; slot < m_rowBackgrounds.size(); slot++) {
+        hideSlot(ctx, slot);
+    }
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+}
+
+void TreeView::attachRowCells(uint32_t poolSlot, uint32_t logicalRow)
+{
+    Frame *bg = m_rowBackgrounds[poolSlot].get();
+    uint32_t cols = columnCount();
+    for (uint32_t col = 0; col < cols; col++) {
+        Instance *cell = m_cells[logicalRow * cols + col];
+        if (cell == nullptr || cell->parent == bg) {
+            continue;
+        }
+        cell->reparent(bg);
+    }
+}
+
+void TreeView::parkRowCells(DrawContext &ctx, uint32_t logicalRow)
+{
+    uint32_t cols = columnCount();
+    for (uint32_t col = 0; col < cols; col++) {
+        Instance *cell = m_cells[logicalRow * cols + col];
+        if (cell == nullptr) {
+            continue;
+        }
+        if (auto *drawable = cell->as<UIObject>(); drawable && drawable->setBaseProperties({.visible = false})) {
+            drawable->draw(ctx);
+        }
+        if (cell->parent != this) {
+            cell->reparent(this);
+        }
+    }
+}
+
+void TreeView::hideSlot(DrawContext &ctx, uint32_t poolSlot)
+{
+    Frame *bg = m_rowBackgrounds[poolSlot].get();
+    ImageButton *disc = m_disclosures[poolSlot];
+    bool changed = bg->setBaseProperties({.interactable = false, .visible = false});
+    changed |= disc->setBaseProperties({.interactable = false, .visible = false});
+    if (changed) {
+        bg->markDirty();
+        bg->draw(ctx);
+    }
 }
 
 std::vector<Instance *> TreeView::getHittableInstances()
 {
     std::vector<Instance *> result;
-    result.reserve(m_rowBackgrounds.size() + m_rowDisclosures.size() + m_children.size());
-    for (auto &btn : m_rowDisclosures) {
-        result.push_back(btn.get());
-    }
-
+    result.reserve(m_rowBackgrounds.size());
     for (auto &bg : m_rowBackgrounds) {
         result.push_back(bg.get());
     }
-    for (auto &child : m_children) {
-        result.push_back(child.get());
-    }
-
     return result;
 }
 

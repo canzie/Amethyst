@@ -400,10 +400,11 @@ int main()
                                         .rowBackgroundColor = Amethyst::Color4::fromHex(0x282828),
                                         .rowAlternateColor = Amethyst::Color4::fromHex(0x2B2B2B),
                                     });
-                                    tv->numCols = 1;
+                                    tv->addColumn({});
 
-                                    auto addLabel = [tv](const char *text, Amethyst::Color4 color) {
-                                        auto *lbl = tv->add<Amethyst::TextLabel>();
+                                    auto addRow = [tv](uint16_t depth, const char *text, Amethyst::Color4 color) {
+                                        tv->addRow(depth);
+                                        auto lbl = std::make_unique<Amethyst::TextLabel>();
                                         lbl->setBaseProperties({
                                             .backgroundTransparency = 1.0f,
                                             .size = Amethyst::UDim2::fromScale(1.0f, 1.0f),
@@ -414,35 +415,17 @@ int main()
                                             .textYAlignment = Amethyst::TextYAlignment::CENTER,
                                             .text = text,
                                         });
+                                        tv->nextCell(std::move(lbl));
                                     };
 
-                                    uint32_t scene = tv->beginRow();
-                                    addLabel("Scene", {1.0f, 1.0f, 1.0f, 1.0f});
-
-                                    tv->beginRow(scene);
-                                    addLabel("Camera", {0.8f, 0.9f, 1.0f, 1.0f});
-                                    tv->endRow();
-
-                                    uint32_t player = tv->beginRow(scene);
-                                    addLabel("Player", {0.5f, 1.0f, 0.5f, 1.0f});
-                                    tv->beginRow(player);
-                                    addLabel("Mesh", {0.9f, 0.9f, 0.9f, 1.0f});
-                                    tv->endRow();
-                                    tv->beginRow(player);
-                                    addLabel("Collider", {0.9f, 0.9f, 0.9f, 1.0f});
-                                    tv->endRow();
-                                    tv->endRow();
-
-                                    uint32_t lights = tv->beginRow(scene);
-                                    addLabel("Lights", {1.0f, 1.0f, 0.5f, 1.0f});
-                                    tv->beginRow(lights);
-                                    addLabel("Sun", {1.0f, 0.9f, 0.6f, 1.0f});
-                                    tv->endRow();
-                                    tv->beginRow(lights);
-                                    addLabel("Point Light", {0.6f, 0.8f, 1.0f, 1.0f});
-                                    tv->endRow();
-                                    tv->endRow();
-                                    tv->endRow();
+                                    addRow(0, "Scene", {1.0f, 1.0f, 1.0f, 1.0f});
+                                    addRow(1, "Camera", {0.8f, 0.9f, 1.0f, 1.0f});
+                                    addRow(1, "Player", {0.5f, 1.0f, 0.5f, 1.0f});
+                                    addRow(2, "Mesh", {0.9f, 0.9f, 0.9f, 1.0f});
+                                    addRow(2, "Collider", {0.9f, 0.9f, 0.9f, 1.0f});
+                                    addRow(1, "Lights", {1.0f, 1.0f, 0.5f, 1.0f});
+                                    addRow(2, "Sun", {1.0f, 0.9f, 0.6f, 1.0f});
+                                    addRow(2, "Point Light", {0.6f, 0.8f, 1.0f, 1.0f});
                                 });
                         });
                     });

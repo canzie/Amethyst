@@ -45,6 +45,10 @@ class InputInterface {
     static bool pollCharEvent(uint32_t &outCodepoint);
     static void clearKeyEvents();
 
+    // WIP stopgap: caches the last mods bitmask seen by any input handler until modifiers
+    // are threaded through dispatch properly and InputObject can carry them end-to-end.
+    static int getModifiers();
+
   public:
     static std::function<void(CursorShape)> onCursorShapeChanged;
     static std::function<void(const std::string &)> onSetClipboardText;
@@ -57,6 +61,7 @@ class InputInterface {
     static inline std::vector<Window *> s_windows;
     static inline uint32_t s_mouseX = 0;
     static inline uint32_t s_mouseY = 0;
+    static inline int s_modifiers = 0;
     static inline CursorShape s_currentCursorShape = CursorShape::CURSOR_ARROW;
     static inline bool isWindowFocussed = false;
 

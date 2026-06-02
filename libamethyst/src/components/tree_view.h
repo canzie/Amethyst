@@ -1,10 +1,14 @@
 /**
  * @file tree_view.h
- * @brief Hierarchical tree view with columns
+ * @brief Hierarchical tree view built on a flat depth-run model.
  *
- * Displays a tree structure where each row can have child rows that can be
- * expanded/collapsed. Uses array-backed LCRS (left-child right-sibling) for
- * efficient traversal.
+ * TreeView is Table plus two things: collapse/expand (a collapsed row hides
+ * all descendants) and column-0 indentation with a disclosure indicator for
+ * rows that have children. Everything else mirrors Table.
+ *
+ * Rows are stored in DFS build order in m_rows. A visible plan (m_visible) is
+ * rebuilt on FLAG_DIRTY via a linear depth-skip scan. No LCRS, no handles, no
+ * per-row dirty flags. Culling is O(1) arithmetic over the flat visible plan.
  */
 
 #ifndef AMETHYST__TREE_VIEW_H
@@ -12,37 +16,38 @@
 
 #include "components/common.h"
 #include "components/frame.h"
+#include "components/input_events.h"
 #include "components/properties.h"
-#include "components/text_button.h"
+#include "components/text_label.h"
 #include "components/ui_object.h"
 
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace Amethyst {
 
-static constexpr uint32_t INVALID_ROW = UINT32_MAX;
+class ImageButton;
 
-struct TreeRow {
-    uint32_t generation = 0;
-    uint32_t parent = INVALID_ROW;
-    uint32_t firstChild = INVALID_ROW;
-    uint32_t lastChild = INVALID_ROW;
-    uint32_t nextSibling = INVALID_ROW;
-    uint32_t prevSibling = INVALID_ROW;
-    uint32_t firstCellIndex = INVALID_ROW;
-    bool expanded = true;
-    bool alive = false;
-    bool isDirty = true;
+enum class TreeColumnSizing {
+    FIXED,
+    STRETCH
 };
 
-struct TreeRowHandle {
-    uint32_t index = INVALID_ROW;
-    uint32_t generation = 0;
+struct TreeColumn {
+    std::string header{};
+    TreeColumnSizing sizing = TreeColumnSizing::STRETCH;
+    float weight = 1.0f;
+    float minWidth = 0.0f;
+    float maxWidth = 0.0f;
+};
 
-    bool operator==(const TreeRowHandle &) const = default;
+struct TreeRow {
+    uint16_t depth = 0;
+    bool expanded = true;
+    bool hasChildren = false;
 };
 
 class TreeView : public UIObject {
@@ -53,52 +58,140 @@ class TreeView : public UIObject {
     void draw(DrawContext &ctx) override;
 
     /**
-     * @brief Start building a new row
-     * @param parentRow Parent row index, or INVALID_ROW for root-level
-     * @return Index of the new row
-     *
-     * After calling beginRow(), add exactly numCols children, then call endRow().
+     * @brief Append a column definition. Must be called before adding rows.
+     * @param col The column definition to add
      */
-    uint32_t beginRow(uint32_t parentRow = INVALID_ROW);
+    void addColumn(TreeColumn col);
 
     /**
-     * @brief Finish building the current row
-     *
-     * Validates that exactly numCols children were added since beginRow().
+     * @brief Replace all column definitions. Must be called before adding rows.
+     * @param cols The new set of column definitions
      */
-    void endRow();
+    void setColumns(std::vector<TreeColumn> cols);
 
-    void removeRow(uint32_t row);
+    /**
+     * @brief Grow column count to newCount, re-striding existing cell data.
+     * @param newCount New column count; no-op if <= current count
+     *
+     * New columns are anonymous STRETCH. Used by TreeViewScope to support
+     * inferred column counts when no explicit columns are declared.
+     */
+    void resizeColumns(uint32_t newCount);
+
+    /**
+     * @brief Get the number of columns currently defined.
+     * @return The column count
+     */
+    uint32_t columnCount() const;
+
+    /**
+     * @brief Append a new row at the given depth and move the build cursor to (row, 0).
+     * @param depth Nesting depth (0 = root level)
+     * @return Stable row index valid for the lifetime of this build
+     */
+    uint32_t addRow(uint16_t depth = 0);
+
+    /**
+     * @brief Add a cell at the cursor position and advance the cursor column. Ownership is transferred.
+     * @param child The instance to place in the cell
+     * @return Non-owning pointer to the added child
+     */
+    Instance *nextCell(std::unique_ptr<Instance> child);
+
+    /**
+     * @brief Move the build cursor to an arbitrary (row, col) position.
+     * @param row Logical row index
+     * @param col Column index, must be < columnCount()
+     */
+    void setCursor(uint32_t row, uint32_t col);
+
+    /**
+     * @brief Place a cell at a specific position, replacing any existing cell. Ownership is transferred.
+     * @param row Logical row index
+     * @param col Column index, must be < columnCount()
+     * @param child The instance to place
+     */
+    void setCell(uint32_t row, uint32_t col, std::unique_ptr<Instance> child);
+
+    /**
+     * @brief Get the instance at a specific (row, col) position.
+     * @param row Logical row index
+     * @param col Column index
+     * @return Pointer to the cell instance, or nullptr if empty
+     */
+    Instance *getCell(uint32_t row, uint32_t col) const;
+
+    /**
+     * @brief Wipe all rows, cells, visible plan, and pools. Column definitions are preserved.
+     */
     void clear();
 
+    /**
+     * @brief Get the total number of rows.
+     * @return m_rows.size()
+     */
     uint32_t rowCount() const;
-    TreeRow &row(uint32_t index);
-    const TreeRow &row(uint32_t index) const;
-    uint32_t firstRootRow() const;
 
-    uint32_t depth(uint32_t row) const;
+    /**
+     * @brief Get the depth of a row.
+     * @param row Logical row index
+     * @return Nesting depth (0 = root)
+     */
+    uint16_t depth(uint32_t row) const;
+
+    /**
+     * @brief Whether a row has any children, derived from the depth-run invariant.
+     * @param row Logical row index
+     * @return true if the next row in build order has greater depth
+     */
     bool hasChildren(uint32_t row) const;
-    bool isAncestorOf(uint32_t ancestor, uint32_t descendant) const;
-    uint32_t findRowContaining(Instance *child) const;
 
-    template <typename Fn> void forEachRow(Fn &&fn) const;
-    template <typename Fn> void forEachVisibleRow(Fn &&fn) const;
+    /**
+     * @brief Whether a row is currently expanded.
+     * @param row Logical row index
+     */
+    bool isExpanded(uint32_t row) const;
 
+    /**
+     * @brief Toggle the expanded state of a row and mark dirty.
+     * @param row Logical row index
+     *
+     * No descendant walk. The visible plan rebuild handles hiding.
+     */
     void toggle(uint32_t row);
+
+    /**
+     * @brief Expand a row if not already expanded.
+     * @param row Logical row index
+     */
     void expand(uint32_t row);
+
+    /**
+     * @brief Collapse a row if not already collapsed.
+     * @param row Logical row index
+     */
     void collapse(uint32_t row);
+
+    /**
+     * @brief Expand every row in the tree.
+     */
     void expandAll();
+
+    /**
+     * @brief Collapse every row in the tree.
+     */
     void collapseAll();
 
+    /**
+     * @brief Collect all hittable instances (disclosures, row backgrounds, cell children).
+     * @return Vector of non-owning pointers to hittable instances
+     */
     std::vector<Instance *> getHittableInstances() override;
 
     bool setTreeViewProperties(const TreeViewProperties &props);
     const TreeViewProperties &getTreeViewProperties() const { return m_tvProps; }
 
   public:
-    uint32_t numCols = 1;
-    std::vector<float> columnWeights;
-
     int32_t hoveredRow = -1;
     int32_t selectedRow = -1;
 
@@ -109,104 +202,45 @@ class TreeView : public UIObject {
     TreeViewProperties m_tvProps;
 
   private:
-    std::vector<float> computeColumnPositions(float tableWidth) const;
+    static constexpr uint32_t INVALID_ROW = UINT32_MAX;
+
+    void fixupHasChildren();
+    void rebuildVisiblePlan();
+    void rebuildColumnPositions();
     void updateSeparators();
+    void ensureHeaderCapacity();
+    void ensurePoolCapacity(uint32_t count);
+    void drawHeader(DrawContext &ctx, const glm::vec4 &childClip);
+    void drawSeparators(DrawContext &ctx, const glm::vec4 &childClip);
+    void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y,
+                 const glm::vec4 &childClip);
+    void attachRowCells(uint32_t poolSlot, uint32_t logicalRow);
+    void parkRowCells(DrawContext &ctx, uint32_t logicalRow);
+    void hideSlot(DrawContext &ctx, uint32_t poolSlot);
 
-    bool isRowVisible(uint32_t row) const;
-    float getRowIndent(uint32_t row) const;
+    std::vector<TreeColumn> m_columns;
+    std::vector<Instance *> m_cells;
+    std::vector<TreeRow> m_rows;
+    std::vector<uint32_t> m_visible;
 
-    void drawRowContent(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, uint32_t visualIndex,
-                        const std::vector<float> &colPositions, const glm::vec4 &childClip);
-    void drawDisclosureTriangle(DrawContext &ctx, uint32_t row, uint32_t bufferSlot, float y, bool expanded,
-                                const glm::vec4 &childClip);
-    void linkRowToParent(uint32_t row, uint32_t parentRow);
-    void unlinkRow(uint32_t row);
-    void markRowDirty(uint32_t row);
-    void clearRowCells(DrawContext &ctx, uint32_t row);
+    uint32_t m_cursorRow = 0;
+    uint32_t m_cursorCol = 0;
 
-    void ensureSlotCapacity(uint32_t slotCount);
-    uint32_t drawVisibleRows(DrawContext &ctx, const std::vector<float> &colPositions, const glm::vec4 &childClip,
-                             uint32_t firstVisibleSlot, uint32_t slotCount);
-    void drawEmptyRows(DrawContext &ctx, const glm::vec4 &childClip, uint32_t fromSlot, uint32_t slotCount,
-                       uint32_t firstVisibleSlot);
-    void clearUnusedSlots(DrawContext &ctx, uint32_t fromSlot);
+    float m_rowHeightPx = 0.0f;
+    glm::vec4 m_cellPaddingPx = {0.0f, 0.0f, 0.0f, 0.0f};
+    std::vector<float> m_columnPositions;
 
-    uint32_t allocateSlot();
-    void freeSlot(uint32_t index);
-    bool isValidRow(uint32_t index) const;
-
-    float m_computedRowHeight = 0.0f;
-    glm::vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f};
     glm::vec2 m_lastAbsolutePosition = {0.0f, 0.0f};
     glm::vec2 m_lastAbsoluteSize = {0.0f, 0.0f};
+
     std::vector<std::unique_ptr<Frame>> m_separators;
-
-    std::vector<TreeRow> m_rows;
-    std::vector<uint32_t> m_freelist;
-    uint32_t m_firstRoot = INVALID_ROW;
-    uint32_t m_lastRoot = INVALID_ROW;
-
-    std::vector<uint32_t> m_buildStack;
-
     std::vector<std::unique_ptr<Frame>> m_rowBackgrounds;
-    std::vector<std::unique_ptr<TextButton>> m_rowDisclosures;
+    std::vector<ImageButton *> m_disclosures;
+    std::vector<uint32_t> m_rowBySlot;
+
+    std::unique_ptr<Frame> m_headerBackground;
+    std::vector<std::unique_ptr<TextLabel>> m_headerLabels;
 };
-
-template <typename Fn> void TreeView::forEachRow(Fn &&fn) const
-{
-    std::vector<uint32_t> stack;
-
-    for (uint32_t r = m_lastRoot; r != INVALID_ROW;) {
-        if (m_rows[r].alive) {
-            stack.push_back(r);
-        }
-        r = m_rows[r].prevSibling;
-    }
-
-    while (!stack.empty()) {
-        uint32_t current = stack.back();
-        stack.pop_back();
-
-        fn(current);
-
-        const TreeRow &r = m_rows[current];
-        for (uint32_t c = r.lastChild; c != INVALID_ROW;) {
-            if (m_rows[c].alive) {
-                stack.push_back(c);
-            }
-            c = m_rows[c].prevSibling;
-        }
-    }
-}
-
-template <typename Fn> void TreeView::forEachVisibleRow(Fn &&fn) const
-{
-    std::vector<uint32_t> stack;
-
-    for (uint32_t r = m_lastRoot; r != INVALID_ROW;) {
-        if (m_rows[r].alive) {
-            stack.push_back(r);
-        }
-        r = m_rows[r].prevSibling;
-    }
-
-    while (!stack.empty()) {
-        uint32_t current = stack.back();
-        stack.pop_back();
-
-        fn(current);
-
-        const TreeRow &r = m_rows[current];
-        if (r.expanded) {
-            for (uint32_t c = r.lastChild; c != INVALID_ROW;) {
-                if (m_rows[c].alive) {
-                    stack.push_back(c);
-                }
-                c = m_rows[c].prevSibling;
-            }
-        }
-    }
-}
 
 } // namespace Amethyst
 

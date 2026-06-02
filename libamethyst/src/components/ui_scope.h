@@ -6,6 +6,7 @@
 #include "components/instance.h"
 #include "components/properties.h"
 #include "components/table.h"
+#include "components/tree_view.h"
 
 #include <functional>
 #include <string_view>
@@ -200,9 +201,23 @@ struct SliderVec3Scope : UIScope {
     explicit SliderVec3Scope(SliderVec3 &s);
 };
 
+struct TreeRowScope {
+    TreeView &component;
+    uint16_t depth;
+    std::vector<std::function<void(UIScope &)>> pendingCells;
+    std::vector<std::function<void(TreeRowScope &)>> pendingChildRows;
+    TreeRowScope(TreeView &tv, uint16_t depth);
+    TreeRowScope &cell(std::function<void(UIScope &)> fn);
+    TreeRowScope &row(std::function<void(TreeRowScope &)> fn);
+};
+
 struct TreeViewScope : UIScope {
     TreeView &component;
+    bool columnsExplicit = false;
     explicit TreeViewScope(TreeView &tv);
+    TreeViewScope &column(std::string header, float weight, TreeColumnSizing sizing = TreeColumnSizing::STRETCH);
+    TreeViewScope &column(TreeColumn col);
+    TreeViewScope &row(std::function<void(TreeRowScope &)> fn);
 };
 
 struct DropdownScope {

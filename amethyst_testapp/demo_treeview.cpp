@@ -97,12 +97,6 @@ int main()
                      .rowSelectedColor = {0.18f, 0.38f, 0.62f, 1.0f},
                      .fillRows = true},
                     [statusLabel](TreeViewScope &tv) {
-                        tv.component.numCols = 3;
-                        tv.component.columnWeights = {0.5f, 0.3f, 0.2f};
-                        tv.component.onRowClicked = [statusLabel](uint32_t row) {
-                            statusLabel->setTextProperties({.text = "Selected row: " + std::to_string(row)});
-                        };
-
                         const Color4 COL_DIM = {0.55f, 0.55f, 0.58f, 1.0f};
                         const Color4 COL_ROOT = {1.0f, 1.0f, 1.0f, 1.0f};
                         const Color4 COL_GROUP = {0.85f, 0.75f, 0.45f, 1.0f};
@@ -110,173 +104,94 @@ int main()
                         const Color4 COL_LEAF = {0.78f, 0.78f, 0.82f, 1.0f};
                         const Color4 COL_SPEC = {0.55f, 0.75f, 1.0f, 1.0f};
 
-                        auto addRow = [&tv, &COL_DIM](uint32_t parent, const std::string &label, Color4 color,
-                                                      const char *type) -> uint32_t {
-                            uint32_t row = tv.component.beginRow(parent);
-                            tv.textLabel(
-                                {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                {.fontSize = 13.0f, .textColor = color, .textYAlignment = TextYAlignment::CENTER, .text = label});
-                            tv.textLabel(
-                                {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = type});
-                            tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                         {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                            tv.component.endRow();
-                            return row;
+                        tv.component.onRowClicked = [statusLabel](uint32_t row) {
+                            statusLabel->setTextProperties({.text = "Selected row: " + std::to_string(row)});
                         };
 
-                        // Scene root
-                        uint32_t scene = tv.component.beginRow();
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_ROOT, .textYAlignment = TextYAlignment::CENTER, .text = "Scene"});
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Root"});
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                        tv.component.endRow();
+                        tv.column("Name", 0.5f).column("Type", 0.3f).column("", 0.2f);
 
-                        // Entities: 50 flat children
-                        uint32_t entities = tv.component.beginRow(scene);
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f,
-                                      .textColor = COL_GROUP,
-                                      .textYAlignment = TextYAlignment::CENTER,
-                                      .text = "Entities"});
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Group"});
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                        tv.component.endRow();
-                        for (int i = 0; i < 50; i++) {
-                            addRow(entities, "entity_" + std::to_string(i), COL_LEAF, "Entity");
-                        }
+                        auto cellLabel = [](Color4 color, std::string text) {
+                            return [color, text](UIScope &c) {
+                                c.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
+                                            {.fontSize = 13.0f,
+                                             .textColor = color,
+                                             .textYAlignment = TextYAlignment::CENTER,
+                                             .text = text});
+                            };
+                        };
 
-                        // Assets: two levels of nesting
-                        uint32_t assets = tv.component.beginRow(scene);
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f,
-                                      .textColor = COL_GROUP,
-                                      .textYAlignment = TextYAlignment::CENTER,
-                                      .text = "Assets"});
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Group"});
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                        tv.component.endRow();
+                        auto labeled = [&](TreeRowScope &r, std::string name, Color4 color, std::string type) {
+                            r.cell(cellLabel(color, name)).cell(cellLabel(COL_DIM, type)).cell(nullptr);
+                        };
 
-                        uint32_t meshes = tv.component.beginRow(assets);
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f,
-                                      .textColor = COL_SUBGRP,
-                                      .textYAlignment = TextYAlignment::CENTER,
-                                      .text = "Meshes"});
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Folder"});
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                        tv.component.endRow();
-                        for (int i = 0; i < 20; i++) {
-                            addRow(meshes, "mesh_" + std::to_string(i) + ".obj", COL_LEAF, "Mesh");
-                        }
+                        tv.row([&](TreeRowScope &scene) {
+                            labeled(scene, "Scene", COL_ROOT, "Root");
 
-                        uint32_t textures = tv.component.beginRow(assets);
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f,
-                                      .textColor = COL_SUBGRP,
-                                      .textYAlignment = TextYAlignment::CENTER,
-                                      .text = "Textures"});
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Folder"});
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                        tv.component.endRow();
-                        for (int i = 0; i < 20; i++) {
-                            addRow(textures, "texture_" + std::to_string(i) + ".png", COL_LEAF, "Texture");
-                        }
+                            scene.row([&](TreeRowScope &entities) {
+                                labeled(entities, "Entities", COL_GROUP, "Group");
+                                for (int i = 0; i < 50; i++) {
+                                    entities.row([&, i](TreeRowScope &e) {
+                                        labeled(e, "entity_" + std::to_string(i), COL_LEAF, "Entity");
+                                    });
+                                }
+                            });
 
-                        uint32_t shaders = tv.component.beginRow(assets);
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f,
-                                      .textColor = COL_SUBGRP,
-                                      .textYAlignment = TextYAlignment::CENTER,
-                                      .text = "Shaders"});
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Folder"});
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                        tv.component.endRow();
-                        for (int i = 0; i < 8; i++) {
-                            addRow(shaders, "shader_" + std::to_string(i) + ".glsl", COL_SPEC, "Shader");
-                        }
+                            scene.row([&](TreeRowScope &assets) {
+                                labeled(assets, "Assets", COL_GROUP, "Group");
 
-                        // Systems: three levels
-                        uint32_t systems = tv.component.beginRow(scene);
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f,
-                                      .textColor = COL_GROUP,
-                                      .textYAlignment = TextYAlignment::CENTER,
-                                      .text = "Systems"});
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "Group"});
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                        tv.component.endRow();
+                                assets.row([&](TreeRowScope &meshes) {
+                                    labeled(meshes, "Meshes", COL_SUBGRP, "Folder");
+                                    for (int i = 0; i < 20; i++) {
+                                        meshes.row([&, i](TreeRowScope &m) {
+                                            labeled(m, "mesh_" + std::to_string(i) + ".obj", COL_LEAF, "Mesh");
+                                        });
+                                    }
+                                });
 
-                        uint32_t render = tv.component.beginRow(systems);
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f,
-                                      .textColor = COL_SUBGRP,
-                                      .textYAlignment = TextYAlignment::CENTER,
-                                      .text = "RenderSystem"});
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "System"});
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                        tv.component.endRow();
-                        addRow(render, "OpaquePass", COL_LEAF, "Pass");
-                        addRow(render, "ShadowPass", COL_LEAF, "Pass");
-                        addRow(render, "TransparentPass", COL_LEAF, "Pass");
-                        addRow(render, "PostProcess", COL_LEAF, "Pass");
+                                assets.row([&](TreeRowScope &textures) {
+                                    labeled(textures, "Textures", COL_SUBGRP, "Folder");
+                                    for (int i = 0; i < 20; i++) {
+                                        textures.row([&, i](TreeRowScope &t) {
+                                            labeled(t, "texture_" + std::to_string(i) + ".png", COL_LEAF, "Texture");
+                                        });
+                                    }
+                                });
 
-                        uint32_t physics = tv.component.beginRow(systems);
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f,
-                                      .textColor = COL_SUBGRP,
-                                      .textYAlignment = TextYAlignment::CENTER,
-                                      .text = "PhysicsSystem"});
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "System"});
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                        tv.component.endRow();
-                        addRow(physics, "BroadPhase", COL_LEAF, "Phase");
-                        addRow(physics, "NarrowPhase", COL_LEAF, "Phase");
-                        addRow(physics, "Solver", COL_LEAF, "Solver");
+                                assets.row([&](TreeRowScope &shaders) {
+                                    labeled(shaders, "Shaders", COL_SUBGRP, "Folder");
+                                    for (int i = 0; i < 8; i++) {
+                                        shaders.row([&, i](TreeRowScope &s) {
+                                            labeled(s, "shader_" + std::to_string(i) + ".glsl", COL_SPEC, "Shader");
+                                        });
+                                    }
+                                });
+                            });
 
-                        uint32_t audio = tv.component.beginRow(systems);
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f,
-                                      .textColor = COL_SUBGRP,
-                                      .textYAlignment = TextYAlignment::CENTER,
-                                      .text = "AudioSystem"});
-                        tv.textLabel(
-                            {.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                            {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER, .text = "System"});
-                        tv.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                     {.fontSize = 13.0f, .textColor = COL_DIM, .textYAlignment = TextYAlignment::CENTER});
-                        tv.component.endRow();
-                        addRow(audio, "SFX", COL_LEAF, "Channel");
-                        addRow(audio, "Music", COL_LEAF, "Channel");
+                            scene.row([&](TreeRowScope &systems) {
+                                labeled(systems, "Systems", COL_GROUP, "Group");
+
+                                systems.row([&](TreeRowScope &render) {
+                                    labeled(render, "RenderSystem", COL_SUBGRP, "System");
+                                    render.row([&](TreeRowScope &r) { labeled(r, "OpaquePass", COL_LEAF, "Pass"); });
+                                    render.row([&](TreeRowScope &r) { labeled(r, "ShadowPass", COL_LEAF, "Pass"); });
+                                    render.row([&](TreeRowScope &r) { labeled(r, "TransparentPass", COL_LEAF, "Pass"); });
+                                    render.row([&](TreeRowScope &r) { labeled(r, "PostProcess", COL_LEAF, "Pass"); });
+                                });
+
+                                systems.row([&](TreeRowScope &physics) {
+                                    labeled(physics, "PhysicsSystem", COL_SUBGRP, "System");
+                                    physics.row([&](TreeRowScope &r) { labeled(r, "BroadPhase", COL_LEAF, "Phase"); });
+                                    physics.row([&](TreeRowScope &r) { labeled(r, "NarrowPhase", COL_LEAF, "Phase"); });
+                                    physics.row([&](TreeRowScope &r) { labeled(r, "Solver", COL_LEAF, "Solver"); });
+                                });
+
+                                systems.row([&](TreeRowScope &audio) {
+                                    labeled(audio, "AudioSystem", COL_SUBGRP, "System");
+                                    audio.row([&](TreeRowScope &r) { labeled(r, "SFX", COL_LEAF, "Channel"); });
+                                    audio.row([&](TreeRowScope &r) { labeled(r, "Music", COL_LEAF, "Channel"); });
+                                });
+                            });
+                        });
                     });
             });
 

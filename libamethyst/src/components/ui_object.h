@@ -7,6 +7,7 @@
 
 #include "components/common.h"
 #include "components/extensions/ui_extension.h"
+#include "components/input_events.h"
 #include "components/properties.h"
 #include "components/ui_base_2d.h"
 #include "rendering/instance_data.h"
@@ -67,14 +68,26 @@ class UIObject : public UIBase2D {
     virtual EventResult onMouseButton1Down(uint32_t x, uint32_t y);
     virtual EventResult onMouseButton1Up(uint32_t x, uint32_t y);
     virtual EventResult onMouseButton1Click(void) { return EventResult::CONSUMED; }
-    virtual EventResult onMouseButton2Down(uint32_t, uint32_t) { return EventResult::CONSUMED; }
-    virtual EventResult onMouseButton2Up(uint32_t, uint32_t) { return EventResult::CONSUMED; }
+    virtual EventResult onMouseButton2Down(uint32_t x, uint32_t y);
+    virtual EventResult onMouseButton2Up(uint32_t x, uint32_t y);
     virtual EventResult onMouseButton2Click(void) { return EventResult::CONSUMED; }
     virtual EventResult onMouseScrollUp(void) { return EventResult::PROPAGATE; }
     virtual EventResult onMouseScrollDown(void) { return EventResult::PROPAGATE; }
 
+    // WIP: the button-specific virtuals above and these generic input virtuals coexist
+    // temporarily. The intended end state is that the button-specific virtuals move into
+    // UIButton (synthesized from InputObjects) once the Window dispatch is reworked.
+    // These are the intended long-term seam: subclasses override these to handle input
+    // as typed InputObjects rather than raw coordinates.
+    virtual EventResult onInputBegan(const InputObject &input);
+    virtual EventResult onInputChanged(const InputObject &input);
+    virtual EventResult onInputEnded(const InputObject &input);
+
   public:
     std::function<void(bool hovered)> onHoverChanged;
+    std::function<EventResult(const InputObject &)> onInputBeganCb;
+    std::function<EventResult(const InputObject &)> onInputChangedCb;
+    std::function<EventResult(const InputObject &)> onInputEndedCb;
 
   protected:
     BaseProperties m_uiObjProps;

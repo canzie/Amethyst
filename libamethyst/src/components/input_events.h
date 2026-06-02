@@ -96,6 +96,34 @@ struct ClickEvent {
 
 using ClickCallback = std::function<void(const ClickEvent &)>;
 
+enum class InputType {
+    NONE,
+    MOUSE_BUTTON_1,
+    MOUSE_BUTTON_2,
+    MOUSE_BUTTON_3,
+    MOUSE_MOVEMENT,
+    MOUSE_WHEEL,
+    KEYBOARD
+};
+
+enum class InputState {
+    NONE,
+    BEGIN,
+    CHANGE,
+    END,
+    CANCEL
+};
+
+// position/delta are vec3 so the z component can carry the scroll-wheel amount.
+struct InputObject {
+    InputType type = InputType::NONE;
+    InputState state = InputState::NONE;
+    glm::vec3 position{0.0f, 0.0f, 0.0f};
+    glm::vec3 delta{0.0f, 0.0f, 0.0f};
+    int keyCode = 0;
+    int modifiers = 0; // bitmask of KeyModifier (MOD_SHIFT/MOD_CONTROL/MOD_ALT/MOD_SUPER)
+};
+
 } // namespace Amethyst
 
 #endif // AMETHYST__INPUT_EVENTS_H

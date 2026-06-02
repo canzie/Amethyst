@@ -3,6 +3,7 @@
 
 #include "amethyst/amethyst_backend.h"
 #include "amethyst/amethyst_context.h"
+#include "amethyst/icons.h"
 #include "components/common.h"
 #include "components/instance.h"
 #include "components/ui_base_2d.h"

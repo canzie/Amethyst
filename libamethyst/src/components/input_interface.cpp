@@ -38,7 +38,7 @@ void InputInterface::setMousePosition(uint32_t x, uint32_t y)
 
 void InputInterface::onMouseButton(int button, int action, int mods)
 {
-    (void)mods;
+    s_modifiers = mods;
     for (Window *window : s_windows) {
         window->onMouseButton(button, action, mods, s_mouseX, s_mouseY);
     }
@@ -49,6 +49,11 @@ void InputInterface::onMouseScroll(float xoffset, float yoffset)
     for (Window *window : s_windows) {
         window->onMouseScroll(xoffset, yoffset, s_mouseX, s_mouseY);
     }
+}
+
+int InputInterface::getModifiers()
+{
+    return s_modifiers;
 }
 
 void InputInterface::setCursorShape(CursorShape shape)
@@ -63,6 +68,7 @@ void InputInterface::setCursorShape(CursorShape shape)
 
 void InputInterface::onKey(int key, int scancode, int action, int mods)
 {
+    s_modifiers = mods;
     s_keyBuffer[s_keyBufferHead] = KeyEvent{key, scancode, static_cast<KeyAction>(action), mods};
     s_keyBufferHead = (s_keyBufferHead + 1) & (KEY_BUFFER_SIZE - 1);
 }

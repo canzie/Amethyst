@@ -323,6 +323,10 @@ struct TreeViewProperties {
     Color4 rowHoverColor = Color4(PROP_UNSET_FLOAT);
     Color4 rowSelectedColor = Color4(PROP_UNSET_FLOAT);
     am_bool fillRows = PROP_UNSET_BOOL;
+    am_bool showHeader = PROP_UNSET_BOOL;
+    float headerHeight = PROP_UNSET_FLOAT;
+    Color3 headerColor = Color3(PROP_UNSET_FLOAT);
+    TextProperties headerText{};
 };
 
 inline bool applyTextProperties(TextProperties &dest, const TextProperties &src)
