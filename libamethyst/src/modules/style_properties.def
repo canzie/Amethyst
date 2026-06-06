@@ -1,0 +1,154 @@
+#ifndef AMETHYST__STYLE_PROPERTIES_DEF
+#define AMETHYST__STYLE_PROPERTIES_DEF
+
+// X-macro tables: the single source of truth for themeable properties.
+// AM_STYLE_PROPS rows are (ENUM, themeKey, CppType, ParseTag, defaultExpr) and
+// drive the defaults table + parser entries. ParseTag selects the value syntax
+// (LENGTH requires px, RATIO is a bare 0..1, etc.) independently of CppType.
+// Per-struct lists are (ENUM, field, CppType) and drive the matching getter.
+// A property may appear in several struct lists.
+
+#define AM_STYLE_PROPS(X)                                                                                     \
+    X(BACKGROUND_COLOR, "background-color", Color3, COLOR3, Color3(1.0f, 1.0f, 1.0f))                         \
+    X(BACKGROUND_TRANSPARENCY, "background-transparency", float, RATIO, 0.0f)                                 \
+    X(BORDER_COLOR, "border-color", Color3, COLOR3, Color3(0.0f, 0.0f, 0.0f))                                 \
+    X(BORDER_TRANSPARENCY, "border-transparency", float, RATIO, 0.0f)                                         \
+    X(BORDER_PIXEL_SIZE, "border-pixel-size", float, LENGTH, 0.0f)                                            \
+    X(BORDER_MODE, "border-mode", BorderMode, BMODE, BorderMode::OUTLINE)                                     \
+    X(CORNER_RADIUS, "corner-radius", float, LENGTH, 0.0f)                                                    \
+    X(PADDING_TOP, "padding-top", UDim, UDIM, UDim{})                                                         \
+    X(PADDING_RIGHT, "padding-right", UDim, UDIM, UDim{})                                                     \
+    X(PADDING_BOTTOM, "padding-bottom", UDim, UDIM, UDim{})                                                   \
+    X(PADDING_LEFT, "padding-left", UDim, UDIM, UDim{})                                                       \
+    X(FONT_FAMILY, "font-family", FontHandle, FONT, FontHandle{0})                                            \
+    X(FONT_SIZE, "font-size", float, LENGTH, 14.0f)                                                           \
+    X(TEXT_COLOR, "text-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                               \
+    X(TEXT_X_ALIGNMENT, "text-x-alignment", TextXAlignment, XALIGN, TextXAlignment::LEFT)                     \
+    X(TEXT_Y_ALIGNMENT, "text-y-alignment", TextYAlignment, YALIGN, TextYAlignment::TOP)                      \
+    X(LINE_HEIGHT, "line-height", float, RATIO, 1.0f)                                                         \
+    X(STROKE_THICKNESS, "stroke-thickness", float, LENGTH, 0.0f)                                              \
+    X(STROKE_COLOR, "stroke-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                           \
+    X(SCROLLBAR_COLOR, "scrollbar-color", Color3, COLOR3, Color3(0.7f))                                       \
+    X(SCROLLBAR_TRANSPARENCY, "scrollbar-transparency", float, RATIO, 0.0f)                                   \
+    X(SCROLLBAR_THICKNESS, "scrollbar-thickness", float, LENGTH, 8.0f)                                        \
+    X(SCROLLBAR_THUMB_COLOR, "scrollbar-thumb-color", Color3, COLOR3, Color3(0.5f))                           \
+    X(SCROLLBAR_THUMB_TRANSPARENCY, "scrollbar-thumb-transparency", float, RATIO, 0.0f)                       \
+    X(ROW_HEIGHT, "row-height", float, LENGTH, 0.0f)                                                          \
+    X(CELL_PADDING_TOP, "cell-padding-top", UDim, UDIM, UDim{})                                               \
+    X(CELL_PADDING_RIGHT, "cell-padding-right", UDim, UDIM, UDim{})                                           \
+    X(CELL_PADDING_BOTTOM, "cell-padding-bottom", UDim, UDIM, UDim{})                                         \
+    X(CELL_PADDING_LEFT, "cell-padding-left", UDim, UDIM, UDim{})                                             \
+    X(COLUMN_SEPARATOR_WIDTH, "column-separator-width", float, LENGTH, 1.0f)                                  \
+    X(COLUMN_SEPARATOR_COLOR, "column-separator-color", Color4, COLOR4, Color4(0.3f, 0.3f, 0.3f, 1.0f))       \
+    X(ROW_BACKGROUND_COLOR, "row-background-color", Color4, COLOR4, Color4(0.18f, 0.18f, 0.2f, 1.0f))         \
+    X(ROW_ALTERNATE_COLOR, "row-alternate-color", Color4, COLOR4, Color4(0.22f, 0.22f, 0.24f, 1.0f))          \
+    X(ROW_HOVER_COLOR, "row-hover-color", Color4, COLOR4, Color4(0.3f, 0.3f, 0.35f, 1.0f))                    \
+    X(ROW_SELECTED_COLOR, "row-selected-color", Color4, COLOR4, Color4(0.25f, 0.4f, 0.65f, 1.0f))             \
+    X(INDENT_PER_LEVEL, "indent-per-level", float, LENGTH, 16.0f)                                             \
+    X(DISCLOSURE_TRIANGLE_SIZE, "disclosure-triangle-size", float, LENGTH, 10.0f)                             \
+    X(DISCLOSURE_TRIANGLE_PADDING, "disclosure-triangle-padding", float, LENGTH, 4.0f)                        \
+    X(DISCLOSURE_TRIANGLE_COLOR, "disclosure-triangle-color", Color4, COLOR4, Color4(0.7f, 0.7f, 0.7f, 1.0f)) \
+    X(SLIDER_COLOR, "slider-color", Color3, COLOR3, Color3(0.5f))                                             \
+    X(SLIDER_TRANSPARENCY, "slider-transparency", float, RATIO, 0.0f)                                         \
+    X(THUMB_COLOR, "thumb-color", Color3, COLOR3, Color3(0.8f))                                               \
+    X(THUMB_TRANSPARENCY, "thumb-transparency", float, RATIO, 0.0f)                                           \
+    X(TRACK_CORNER_RADIUS, "track-corner-radius", float, LENGTH, 0.0f)                                        \
+    X(THUMB_CORNER_RADIUS, "thumb-corner-radius", float, LENGTH, 0.0f)                                        \
+    X(CHECK_COLOR, "check-color", Color3, COLOR3, Color3(0.0f, 0.0f, 0.0f))                                   \
+    X(CHECK_TRANSPARENCY, "check-transparency", float, RATIO, 0.0f)                                           \
+    X(CHECKBOX_SIZE, "checkbox-size", float, LENGTH, 20.0f)                                                   \
+    X(LABEL_COLOR, "label-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                             \
+    X(LABEL_PADDING, "label-padding", UDim, UDIM, UDim::fromOffset(5.0f))                                     \
+    X(VALUE_COLOR, "value-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                             \
+    X(HIGHLIGHT_COLOR, "highlight-color", Color3, COLOR3, Color3(0.7f, 0.7f, 0.9f))                           \
+    X(HIGHLIGHT_TRANSPARENCY, "highlight-transparency", float, RATIO, 0.0f)                                   \
+    X(TAB_WIDTH, "tab-width", float, LENGTH, 100.0f)                                                          \
+    X(TAB_SPACING, "tab-spacing", float, LENGTH, 0.0f)                                                        \
+    X(BAR_THICKNESS, "bar-thickness", float, LENGTH, 30.0f)                                                   \
+    X(TAB_COLOR, "tab-color", Color3, COLOR3, Color3(0.22f))                                                  \
+    X(TAB_ACTIVE_COLOR, "tab-active-color", Color3, COLOR3, Color3(0.32f))                                    \
+    X(TAB_HOVERED_COLOR, "tab-hovered-color", Color3, COLOR3, Color3(0.28f))                                  \
+    X(TAB_PRESSED_COLOR, "tab-pressed-color", Color3, COLOR3, Color3(0.18f))                                  \
+    X(HEADER_COLOR, "header-color", Color3, COLOR3, Color3(0.25f, 0.25f, 0.28f))                              \
+    X(HEADER_TRANSPARENCY, "header-transparency", float, RATIO, 0.0f)                                         \
+    X(HEADER_HEIGHT, "header-height", float, LENGTH, 30.0f)
+
+#define AM_BASE_STYLE_FIELDS(X)                               \
+    X(BACKGROUND_COLOR, backgroundColor, Color3)              \
+    X(BACKGROUND_TRANSPARENCY, backgroundTransparency, float) \
+    X(BORDER_MODE, borderMode, BorderMode)                    \
+    X(BORDER_PIXEL_SIZE, borderPixelSize, float)              \
+    X(BORDER_COLOR, borderColor, Color3)                      \
+    X(BORDER_TRANSPARENCY, borderTransparency, float)         \
+    X(CORNER_RADIUS, cornerRadius, float)
+
+#define AM_TEXT_STYLE_FIELDS(X)                         \
+    X(FONT_SIZE, fontSize, float)                       \
+    X(TEXT_COLOR, textColor, Color4)                    \
+    X(TEXT_X_ALIGNMENT, textXAlignment, TextXAlignment) \
+    X(TEXT_Y_ALIGNMENT, textYAlignment, TextYAlignment) \
+    X(LINE_HEIGHT, lineHeight, float)                   \
+    X(STROKE_THICKNESS, strokeThickness, float)         \
+    X(STROKE_COLOR, strokeColor, Color4)
+
+#define AM_SCROLLING_FRAME_STYLE_FIELDS(X)                  \
+    X(SCROLLBAR_COLOR, scrollBarColor, Color3)              \
+    X(SCROLLBAR_TRANSPARENCY, scrollBarTransparency, float) \
+    X(SCROLLBAR_THICKNESS, scrollBarThickness, float)       \
+    X(SCROLLBAR_THUMB_COLOR, scrollBarThumbColor, Color3)   \
+    X(SCROLLBAR_THUMB_TRANSPARENCY, scrollBarThumbTransparency, float)
+
+#define AM_SLIDER_STYLE_FIELDS(X)                 \
+    X(SLIDER_COLOR, sliderColor, Color3)          \
+    X(SLIDER_TRANSPARENCY, sliderTransparency, float) \
+    X(THUMB_COLOR, thumbColor, Color3)            \
+    X(THUMB_TRANSPARENCY, thumbTransparency, float) \
+    X(TRACK_CORNER_RADIUS, trackCornerRadius, float) \
+    X(THUMB_CORNER_RADIUS, thumbCornerRadius, float) \
+    X(LABEL_COLOR, labelColor, Color4)            \
+    X(LABEL_PADDING, labelPadding, UDim)          \
+    X(VALUE_COLOR, valueColor, Color4)            \
+    X(FONT_SIZE, fontSize, float)
+
+#define AM_TAB_BAR_STYLE_FIELDS(X)                \
+    X(BAR_THICKNESS, barThickness, float)         \
+    X(TAB_WIDTH, tabWidth, float)                 \
+    X(TAB_SPACING, tabSpacing, float)             \
+    X(TAB_COLOR, tabColor, Color3)                \
+    X(TAB_ACTIVE_COLOR, focussedTabColor, Color3) \
+    X(TAB_HOVERED_COLOR, hoveredTabColor, Color3) \
+    X(TAB_PRESSED_COLOR, pressedTabColor, Color3)
+
+#define AM_TABLE_STYLE_FIELDS(X)                       \
+    X(ROW_HEIGHT, rowHeight, float)                    \
+    X(COLUMN_SEPARATOR_WIDTH, columnSeparatorWidth, float) \
+    X(COLUMN_SEPARATOR_COLOR, columnSeparatorColor, Color4) \
+    X(HEADER_HEIGHT, headerHeight, float)              \
+    X(HEADER_COLOR, headerColor, Color3)               \
+    X(ROW_BACKGROUND_COLOR, rowBackgroundColor, Color4) \
+    X(ROW_ALTERNATE_COLOR, rowAlternateColor, Color4)  \
+    X(ROW_HOVER_COLOR, rowHoverColor, Color4)          \
+    X(ROW_SELECTED_COLOR, rowSelectedColor, Color4)
+
+#define AM_TREE_VIEW_STYLE_FIELDS(X)                   \
+    X(ROW_HEIGHT, rowHeight, float)                    \
+    X(DISCLOSURE_TRIANGLE_SIZE, disclosureTriangleSize, float) \
+    X(DISCLOSURE_TRIANGLE_PADDING, disclosureTrianglePadding, float) \
+    X(DISCLOSURE_TRIANGLE_COLOR, disclosureTriangleColor, Color4) \
+    X(INDENT_PER_LEVEL, indentPerLevel, float)         \
+    X(ROW_BACKGROUND_COLOR, rowBackgroundColor, Color4) \
+    X(ROW_ALTERNATE_COLOR, rowAlternateColor, Color4)  \
+    X(ROW_HOVER_COLOR, rowHoverColor, Color4)          \
+    X(ROW_SELECTED_COLOR, rowSelectedColor, Color4)
+
+#define AM_CHECKBOX_STYLE_FIELDS(X)         \
+    X(CHECK_COLOR, checkColor, Color3)      \
+    X(CHECK_TRANSPARENCY, checkTransparency, float) \
+    X(CHECKBOX_SIZE, checkboxSize, float)
+
+#define AM_COLLAPSIBLE_HEADER_STYLE_FIELDS(X) \
+    X(HEADER_HEIGHT, headerHeight, float)     \
+    X(HEADER_COLOR, headerColor, Color3)      \
+    X(HEADER_TRANSPARENCY, headerTransparency, float)
+
+#endif // AMETHYST__STYLE_PROPERTIES_DEF

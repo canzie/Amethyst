@@ -17,11 +17,12 @@ full feature set in one go (standalone classes + type-qualified classes), perfor
   `diff()`-based subtraction (to preserve inline overrides on a *dynamic* `addClass` after instance
   overrides) is NOT wired yet -- `diff()` exists on every struct, ready to use when needed. Known
   limitation: a dynamic `addClass` after instance overrides re-applies theme and drops those overrides.
-- **Built-in sub-element class** landed only on `CollapsibleHeader`'s header bar (`collapsible-header__header`,
+- **Built-in sub-element class** landed only on `CollapsibleHeader`'s header bar (now `collapsible-header#header`,
   with `headerColor` left sentinel so the class drives it). `Slider` thumb was skipped (it is drawn from
   `SliderStyleProperties`, not a child `UIObject`, so it has no class target).
-- The TOML parser is the **interim** front-end; replacing it with a custom CSS parser is the next task
-  (see "Next: drop TOML, write our own CSS parser").
+- **TOML is gone; the custom CSS parser shipped** (`.ams` files). See the updated
+  "Custom CSS parser (DONE)" section. toml++ is NOT removed from the build -- `parsers/config/layout_config.cpp`
+  still depends on it, so only the theme front-end was swapped.
 
 ## Premise: replace, don't extend
 
@@ -244,7 +245,28 @@ section header maps to a Scope:
 For each `key = value`, the generated parser entry parses `value` by tag and inserts into the current
 scope's sparse set. All three scope kinds share the same entries -- zero new property mapping.
 
-### Next: drop TOML, write our own CSS parser
+### Custom CSS parser (DONE)
+
+Shipped as built. Deltas from the design sketch below:
+- **File extension is `.ams`** (`libamethyst/assets/theme.ams`). All demos load it.
+- **Property + type names are kebab-case.** The `AM_STYLE_PROPS` X-macro gained a column: rows are now
+  `(ENUM, "kebab-key", CppType, ParseTag, default)`. `ParseTag` (`COLOR3/COLOR4/LENGTH/RATIO/UDIM/BMODE/
+  XALIGN/YALIGN/FONT`) selects value syntax independently of the C++ type, so `LENGTH` can require `px`
+  while `RATIO` stays unitless. Type selectors use a kebab map (`ui-object`, `text-button`, ... replacing
+  `general`, `textButtons`).
+- **Units:** lengths require `px` (warn if missing), ratios are bare `0..1` (or `%`), UDim takes
+  `px`/`%`/`50% + 8px`. Spacing shorthand is whitespace-separated (`padding: 10px 20px;`).
+- **Colors:** `#rgb` / `#rrggbb` / `#rrggbbaa`, plus `rgb()` / `rgba()` (alpha 0-255). The TOML `[r,g,b,a]`
+  array form is gone.
+- **Comma groups** (`.danger, frame { ... }`): the declaration block is parsed once and routed to each
+  selector independently; each class/type-class selector gets its own source-order stamp.
+- **`:pseudo` is tokenized but skipped** (debug log), reserved for the future `:hover`/`:active` work.
+- **`#` parts reuse the class store:** `collapsible-header#header` interns the whole selector string as a
+  standalone class token; the component attaches the identical string via `addClass`. No new scope kind,
+  no `style.h` change. The `#` in the canonical name structurally cannot collide with a `.class` selector
+  (which tokenizes a bare identifier), so parts are self-namespacing.
+
+### Original sketch: drop TOML, write our own CSS parser
 
 The TOML shape is a poor fit -- classes have to hide under `[class.x]` / `[type.class]` tables because
 TOML has no selector sigils, so `.danger` becomes `[class.danger]` and `button.primary` becomes

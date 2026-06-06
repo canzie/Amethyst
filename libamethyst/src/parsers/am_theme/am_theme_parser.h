@@ -10,21 +10,26 @@
 namespace Amethyst {
 
 /**
- * @brief Parses .toml theme files into a Style object.
+ * @brief Parses .amstyle (CSS-like) theme files into a Style object.
  *
- * Supports shorthand properties:
- *   padding = 10                  -> all sides
- *   padding = [10, 20]            -> vertical, horizontal
- *   padding = [10, 20, 30, 40]    -> top, right, bottom, left
+ * A rule is a comma-separated selector list and a brace-delimited declaration block:
+ *   text-button.primary, .danger { background-color: #4772b3; corner-radius: 4px; }
  *
- * Colors can be specified as:
- *   backgroundColor = "#ff0000"   -> hex
- *   backgroundColor = [255, 0, 0] -> RGB array
+ * Selectors: bare type (text-button), .class (.danger), type.class (table.compact),
+ * type#part (collapsible-header#header) for built-in sub-elements. A trailing
+ * :pseudo (e.g. :hover) is parsed but currently skipped.
+ *
+ * Values: lengths require px (corner-radius: 4px), ratios are unitless 0..1
+ * (background-transparency: 0.5), dimensions take px/% (padding: 50% + 8px), colors
+ * are #rgb / #rrggbb / #rrggbbaa or rgb()/rgba(). Spacing shorthand:
+ *   padding: 10px               -> all sides
+ *   padding: 10px 20px          -> vertical, horizontal
+ *   padding: 10px 20px 30px 40px -> top, right, bottom, left
  */
 class AmThemeParser {
   public:
     static std::optional<Style> parseFile(const std::filesystem::path &path);
-    static std::optional<Style> parseString(const std::string &tomlContent);
+    static std::optional<Style> parseString(const std::string &source);
 };
 
 } // namespace Amethyst

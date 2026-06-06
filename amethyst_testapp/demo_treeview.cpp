@@ -13,7 +13,7 @@ int main()
 {
     Log::Init();
 
-    Style::load(AMETHYST_ASSETS_DIR "/theme.toml");
+    Style::load(AMETHYST_ASSETS_DIR "/theme.ams");
 
     VkContext ctx;
     if (!contextInit(ctx, 800, 900, "Amethyst - TreeView Demo")) {

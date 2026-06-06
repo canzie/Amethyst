@@ -3,296 +3,563 @@
 #include "modules/style.h"
 #include "modules/style_properties.def"
 
-#include <functional>
-#include <optional>
+#include <array>
+#include <cctype>
+#include <cstdint>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <string_view>
-#include <toml++/toml.hpp>
 #include <unordered_map>
+#include <vector>
 
 namespace Amethyst {
 
-static Color3 s_parseColor3(const toml::node &node)
+static std::string_view s_trim(std::string_view sv)
 {
-    if (auto str = node.as_string()) {
-        std::string_view hex = **str;
-        if (!hex.empty() && hex[0] == '#') {
-            hex = hex.substr(1);
-        }
-        uint32_t value = std::stoul(std::string(hex), nullptr, 16);
-        return Color3::fromHex(value);
+    size_t b = sv.find_first_not_of(" \t\r\n\f");
+    if (b == std::string_view::npos) {
+        return {};
     }
-    if (auto arr = node.as_array()) {
-        if (arr->size() >= 3) {
-            return Color3::fromRgb(static_cast<uint8_t>((*arr)[0].value<int64_t>().value_or(0)),
-                                   static_cast<uint8_t>((*arr)[1].value<int64_t>().value_or(0)),
-                                   static_cast<uint8_t>((*arr)[2].value<int64_t>().value_or(0)));
+    size_t e = sv.find_last_not_of(" \t\r\n\f");
+    return sv.substr(b, e - b + 1);
+}
+
+static std::vector<std::string_view> s_split(std::string_view sv, char delim)
+{
+    std::vector<std::string_view> out;
+    size_t start = 0;
+    while (true) {
+        size_t pos = sv.find(delim, start);
+        if (pos == std::string_view::npos) {
+            out.push_back(s_trim(sv.substr(start)));
+            break;
+        }
+        out.push_back(s_trim(sv.substr(start, pos - start)));
+        start = pos + 1;
+    }
+    return out;
+}
+
+static std::vector<std::string_view> s_splitWhitespace(std::string_view sv)
+{
+    std::vector<std::string_view> out;
+    size_t i = 0;
+    while (i < sv.size()) {
+        while (i < sv.size() && std::isspace(static_cast<unsigned char>(sv[i]))) {
+            ++i;
+        }
+        size_t start = i;
+        while (i < sv.size() && !std::isspace(static_cast<unsigned char>(sv[i]))) {
+            ++i;
+        }
+        if (i > start) {
+            out.push_back(sv.substr(start, i - start));
         }
     }
+    return out;
+}
+
+static float s_parseNumber(std::string_view sv)
+{
+    std::string s(sv);
+    return std::strtof(s.c_str(), nullptr);
+}
+
+static bool s_endsWith(std::string_view sv, std::string_view suffix)
+{
+    return sv.size() >= suffix.size() && sv.substr(sv.size() - suffix.size()) == suffix;
+}
+
+static uint32_t s_parseHexDigits(std::string_view hex)
+{
+    return static_cast<uint32_t>(std::strtoul(std::string(hex).c_str(), nullptr, 16));
+}
+
+static std::string s_expandShortHex(std::string_view hex)
+{
+    std::string out;
+    out.reserve(hex.size() * 2);
+    for (char c : hex) {
+        out.push_back(c);
+        out.push_back(c);
+    }
+    return out;
+}
+
+static bool s_parseRgbCall(std::string_view sv, std::array<int, 4> &out, int &count)
+{
+    size_t open = sv.find('(');
+    size_t close = sv.find(')');
+    if (open == std::string_view::npos || close == std::string_view::npos || close < open) {
+        return false;
+    }
+    std::vector<std::string_view> parts = s_split(sv.substr(open + 1, close - open - 1), ',');
+    count = 0;
+    for (std::string_view p : parts) {
+        if (p.empty() || count >= 4) {
+            continue;
+        }
+        out[count++] = static_cast<int>(std::strtol(std::string(p).c_str(), nullptr, 10));
+    }
+    return count >= 3;
+}
+
+static Color3 s_parseColor3(std::string_view sv)
+{
+    sv = s_trim(sv);
+    if (!sv.empty() && sv[0] == '#') {
+        std::string_view hex = sv.substr(1);
+        std::string expanded;
+        if (hex.size() == 3) {
+            expanded = s_expandShortHex(hex);
+            hex = expanded;
+        }
+        return Color3::fromHex(s_parseHexDigits(hex.substr(0, 6)));
+    }
+    std::array<int, 4> rgb{};
+    int count = 0;
+    if (s_parseRgbCall(sv, rgb, count)) {
+        return Color3::fromRgb(static_cast<uint8_t>(rgb[0]), static_cast<uint8_t>(rgb[1]), static_cast<uint8_t>(rgb[2]));
+    }
+    AM_LOG_WARN("Invalid color3 value: {}", std::string(sv));
     return Color3(1.0f, 1.0f, 1.0f);
 }
 
-static Color4 s_parseColor4(const toml::node &node)
+static Color4 s_parseColor4(std::string_view sv)
 {
-    if (auto str = node.as_string()) {
-        std::string_view hex = **str;
-        if (!hex.empty() && hex[0] == '#') {
-            hex = hex.substr(1);
+    sv = s_trim(sv);
+    if (!sv.empty() && sv[0] == '#') {
+        std::string_view hex = sv.substr(1);
+        std::string expanded;
+        if (hex.size() == 3) {
+            expanded = s_expandShortHex(hex);
+            hex = expanded;
         }
-        uint32_t value = std::stoul(std::string(hex), nullptr, 16);
-        bool hasAlpha = hex.length() > 6;
-        return Color4::fromHex(value, hasAlpha);
+        bool hasAlpha = hex.size() >= 8;
+        return Color4::fromHex(s_parseHexDigits(hex.substr(0, hasAlpha ? 8 : 6)), hasAlpha);
     }
-    if (auto arr = node.as_array()) {
-        if (arr->size() >= 4) {
-            return Color4::fromRgb(static_cast<uint8_t>((*arr)[0].value<int64_t>().value_or(0)),
-                                   static_cast<uint8_t>((*arr)[1].value<int64_t>().value_or(0)),
-                                   static_cast<uint8_t>((*arr)[2].value<int64_t>().value_or(0)),
-                                   static_cast<uint8_t>((*arr)[3].value<int64_t>().value_or(0)));
-        }
-        if (arr->size() >= 3) {
-            return Color4::fromRgb(static_cast<uint8_t>((*arr)[0].value<int64_t>().value_or(0)),
-                                   static_cast<uint8_t>((*arr)[1].value<int64_t>().value_or(0)),
-                                   static_cast<uint8_t>((*arr)[2].value<int64_t>().value_or(0)));
-        }
+    std::array<int, 4> rgb{};
+    int count = 0;
+    if (s_parseRgbCall(sv, rgb, count)) {
+        uint8_t a = count >= 4 ? static_cast<uint8_t>(rgb[3]) : 255;
+        return Color4::fromRgb(static_cast<uint8_t>(rgb[0]), static_cast<uint8_t>(rgb[1]), static_cast<uint8_t>(rgb[2]), a);
     }
+    AM_LOG_WARN("Invalid color4 value: {}", std::string(sv));
     return Color4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-static BorderMode s_parseBorderMode(std::string_view str)
+static float s_parseLength(std::string_view sv)
 {
-    if (str == "outline") return BorderMode::OUTLINE;
-    if (str == "middle") return BorderMode::MIDDLE;
-    if (str == "inset") return BorderMode::INSET;
+    sv = s_trim(sv);
+    if (s_endsWith(sv, "px")) {
+        return s_parseNumber(sv.substr(0, sv.size() - 2));
+    }
+    AM_LOG_WARN("Length value missing 'px' unit: {}", std::string(sv));
+    return s_parseNumber(sv);
+}
+
+static float s_parseRatio(std::string_view sv)
+{
+    sv = s_trim(sv);
+    if (s_endsWith(sv, "px")) {
+        AM_LOG_WARN("Ratio value should be unitless (0..1): {}", std::string(sv));
+        return s_parseNumber(sv.substr(0, sv.size() - 2));
+    }
+    if (s_endsWith(sv, "%")) {
+        return s_parseNumber(sv.substr(0, sv.size() - 1)) / 100.0f;
+    }
+    return s_parseNumber(sv);
+}
+
+static UDim s_parseUDim(std::string_view sv)
+{
+    float scale = 0.0f;
+    float offset = 0.0f;
+    bool sawUnit = false;
+    for (std::string_view term : s_split(sv, '+')) {
+        if (term.empty()) {
+            continue;
+        }
+        if (s_endsWith(term, "%")) {
+            scale += s_parseNumber(term.substr(0, term.size() - 1)) / 100.0f;
+            sawUnit = true;
+        } else if (s_endsWith(term, "px")) {
+            offset += s_parseNumber(term.substr(0, term.size() - 2));
+            sawUnit = true;
+        } else {
+            offset += s_parseNumber(term);
+        }
+    }
+    if (!sawUnit) {
+        AM_LOG_WARN("Dimension value missing 'px' or '%' unit: {}", std::string(sv));
+    }
+    return UDim{scale, offset};
+}
+
+static BorderMode s_parseBorderMode(std::string_view sv)
+{
+    sv = s_trim(sv);
+    if (sv == "outline") {
+        return BorderMode::OUTLINE;
+    }
+    if (sv == "middle") {
+        return BorderMode::MIDDLE;
+    }
+    if (sv == "inset") {
+        return BorderMode::INSET;
+    }
     return BorderMode::OUTLINE;
 }
 
-static TextXAlignment s_parseTextXAlignment(std::string_view str)
+static TextXAlignment s_parseTextXAlignment(std::string_view sv)
 {
-    if (str == "left") return TextXAlignment::LEFT;
-    if (str == "center") return TextXAlignment::CENTER;
-    if (str == "right") return TextXAlignment::RIGHT;
+    sv = s_trim(sv);
+    if (sv == "left") {
+        return TextXAlignment::LEFT;
+    }
+    if (sv == "center") {
+        return TextXAlignment::CENTER;
+    }
+    if (sv == "right") {
+        return TextXAlignment::RIGHT;
+    }
     return TextXAlignment::LEFT;
 }
 
-static TextYAlignment s_parseTextYAlignment(std::string_view str)
+static TextYAlignment s_parseTextYAlignment(std::string_view sv)
 {
-    if (str == "top") return TextYAlignment::TOP;
-    if (str == "center") return TextYAlignment::CENTER;
-    if (str == "bottom") return TextYAlignment::BOTTOM;
+    sv = s_trim(sv);
+    if (sv == "top") {
+        return TextYAlignment::TOP;
+    }
+    if (sv == "center") {
+        return TextYAlignment::CENTER;
+    }
+    if (sv == "bottom") {
+        return TextYAlignment::BOTTOM;
+    }
     return TextYAlignment::TOP;
 }
 
-static UDim s_parseUDim(const toml::node &node)
+static std::string_view s_unquote(std::string_view sv)
 {
-    if (auto val = node.as_floating_point()) {
-        return UDim::fromOffset(static_cast<float>(**val));
+    sv = s_trim(sv);
+    if (sv.size() >= 2 && (sv.front() == '"' || sv.front() == '\'') && sv.back() == sv.front()) {
+        return sv.substr(1, sv.size() - 2);
     }
-    if (auto val = node.as_integer()) {
-        return UDim::fromOffset(static_cast<float>(**val));
-    }
-    if (auto tbl = node.as_table()) {
-        float scale = (*tbl)["scale"].value<double>().value_or(0.0);
-        float offset = (*tbl)["offset"].value<double>().value_or(0.0);
-        return UDim{scale, offset};
-    }
-    return UDim{};
+    return sv;
 }
 
-template <class T>
-static StyleValue s_parseValue(const toml::node &n, Style &style);
-
-template <>
-StyleValue s_parseValue<Color3>(const toml::node &n, Style &)
+static StyleValue s_parse_COLOR3(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseColor3(n));
+    return StyleValue(s_parseColor3(sv));
 }
 
-template <>
-StyleValue s_parseValue<Color4>(const toml::node &n, Style &)
+static StyleValue s_parse_COLOR4(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseColor4(n));
+    return StyleValue(s_parseColor4(sv));
 }
 
-template <>
-StyleValue s_parseValue<float>(const toml::node &n, Style &)
+static StyleValue s_parse_LENGTH(std::string_view sv, Style &)
 {
-    if (auto val = n.as_floating_point()) {
-        return StyleValue(static_cast<float>(**val));
-    }
-    if (auto val = n.as_integer()) {
-        return StyleValue(static_cast<float>(**val));
-    }
-    return StyleValue(0.0f);
+    return StyleValue(s_parseLength(sv));
 }
 
-template <>
-StyleValue s_parseValue<UDim>(const toml::node &n, Style &)
+static StyleValue s_parse_RATIO(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseUDim(n));
+    return StyleValue(s_parseRatio(sv));
 }
 
-template <>
-StyleValue s_parseValue<BorderMode>(const toml::node &n, Style &)
+static StyleValue s_parse_UDIM(std::string_view sv, Style &)
 {
-    if (auto str = n.as_string()) {
-        return StyleValue(s_parseBorderMode(**str));
-    }
-    return StyleValue(BorderMode::OUTLINE);
+    return StyleValue(s_parseUDim(sv));
 }
 
-template <>
-StyleValue s_parseValue<TextXAlignment>(const toml::node &n, Style &)
+static StyleValue s_parse_BMODE(std::string_view sv, Style &)
 {
-    if (auto str = n.as_string()) {
-        return StyleValue(s_parseTextXAlignment(**str));
-    }
-    return StyleValue(TextXAlignment::LEFT);
+    return StyleValue(s_parseBorderMode(sv));
 }
 
-template <>
-StyleValue s_parseValue<TextYAlignment>(const toml::node &n, Style &)
+static StyleValue s_parse_XALIGN(std::string_view sv, Style &)
 {
-    if (auto str = n.as_string()) {
-        return StyleValue(s_parseTextYAlignment(**str));
-    }
-    return StyleValue(TextYAlignment::TOP);
+    return StyleValue(s_parseTextXAlignment(sv));
 }
 
-template <>
-StyleValue s_parseValue<FontHandle>(const toml::node &n, Style &style)
+static StyleValue s_parse_YALIGN(std::string_view sv, Style &)
 {
-    return StyleValue(FontHandle{style.internFont(n.value_or<std::string>("default"))});
+    return StyleValue(s_parseTextYAlignment(sv));
+}
+
+static StyleValue s_parse_FONT(std::string_view sv, Style &style)
+{
+    return StyleValue(FontHandle{style.internFont(s_unquote(sv))});
 }
 
 struct PropParser {
     StyleProperty prop;
-    StyleValue (*parse)(const toml::node &, Style &);
+    StyleValue (*parse)(std::string_view, Style &);
 };
 
 static const std::unordered_map<std::string, PropParser> &s_propParsers()
 {
     static const std::unordered_map<std::string, PropParser> m = {
-#define X(PROP, key, Type, dflt) {#key, {StyleProperty::PROP, &s_parseValue<Type>}},
+#define X(PROP, key, Type, tag, dflt) {key, {StyleProperty::PROP, &s_parse_##tag}},
         AM_STYLE_PROPS(X)
 #undef X
     };
     return m;
 }
 
-using PropSink = std::function<void(StyleProperty, StyleValue)>;
+using Decl = std::pair<StyleProperty, StyleValue>;
 
-static void s_parseSpacing(const toml::node &n, const PropSink &sink, StyleProperty top, StyleProperty right, StyleProperty bottom,
-                           StyleProperty left)
+static void s_parseSpacing(std::string_view value, std::vector<Decl> &out, StyleProperty top, StyleProperty right,
+                           StyleProperty bottom, StyleProperty left)
 {
-    if (n.as_floating_point() || n.as_integer() || n.as_table()) {
-        UDim v = s_parseUDim(n);
-        sink(top, StyleValue(v));
-        sink(right, StyleValue(v));
-        sink(bottom, StyleValue(v));
-        sink(left, StyleValue(v));
-    } else if (auto arr = n.as_array()) {
-        if (arr->size() == 2) {
-            UDim vertical = s_parseUDim((*arr)[0]);
-            UDim horizontal = s_parseUDim((*arr)[1]);
-            sink(top, StyleValue(vertical));
-            sink(bottom, StyleValue(vertical));
-            sink(left, StyleValue(horizontal));
-            sink(right, StyleValue(horizontal));
-        } else if (arr->size() == 4) {
-            sink(top, StyleValue(s_parseUDim((*arr)[0])));
-            sink(right, StyleValue(s_parseUDim((*arr)[1])));
-            sink(bottom, StyleValue(s_parseUDim((*arr)[2])));
-            sink(left, StyleValue(s_parseUDim((*arr)[3])));
-        }
+    std::vector<std::string_view> tokens = s_splitWhitespace(value);
+    if (tokens.size() == 1) {
+        UDim v = s_parseUDim(tokens[0]);
+        out.push_back({top, StyleValue(v)});
+        out.push_back({right, StyleValue(v)});
+        out.push_back({bottom, StyleValue(v)});
+        out.push_back({left, StyleValue(v)});
+    } else if (tokens.size() == 2) {
+        UDim vertical = s_parseUDim(tokens[0]);
+        UDim horizontal = s_parseUDim(tokens[1]);
+        out.push_back({top, StyleValue(vertical)});
+        out.push_back({bottom, StyleValue(vertical)});
+        out.push_back({left, StyleValue(horizontal)});
+        out.push_back({right, StyleValue(horizontal)});
+    } else if (tokens.size() == 4) {
+        out.push_back({top, StyleValue(s_parseUDim(tokens[0]))});
+        out.push_back({right, StyleValue(s_parseUDim(tokens[1]))});
+        out.push_back({bottom, StyleValue(s_parseUDim(tokens[2]))});
+        out.push_back({left, StyleValue(s_parseUDim(tokens[3]))});
+    } else {
+        AM_LOG_WARN("Spacing shorthand expects 1, 2 or 4 values: {}", std::string(value));
     }
 }
 
-static bool s_handlePropEntry(std::string_view key, const toml::node &val, const PropSink &sink, Style &style)
+static void s_parseDeclaration(std::string_view key, std::string_view value, std::vector<Decl> &out, Style &style)
 {
     if (key == "padding") {
-        s_parseSpacing(val, sink, StyleProperty::PADDING_TOP, StyleProperty::PADDING_RIGHT, StyleProperty::PADDING_BOTTOM,
+        s_parseSpacing(value, out, StyleProperty::PADDING_TOP, StyleProperty::PADDING_RIGHT, StyleProperty::PADDING_BOTTOM,
                        StyleProperty::PADDING_LEFT);
-        return true;
+        return;
     }
-    if (key == "cellPadding") {
-        s_parseSpacing(val, sink, StyleProperty::CELL_PADDING_TOP, StyleProperty::CELL_PADDING_RIGHT,
+    if (key == "cell-padding") {
+        s_parseSpacing(value, out, StyleProperty::CELL_PADDING_TOP, StyleProperty::CELL_PADDING_RIGHT,
                        StyleProperty::CELL_PADDING_BOTTOM, StyleProperty::CELL_PADDING_LEFT);
-        return true;
+        return;
     }
 
     const auto &parsers = s_propParsers();
     auto it = parsers.find(std::string(key));
-    if (it != parsers.end()) {
-        sink(it->second.prop, it->second.parse(val, style));
-        return true;
+    if (it == parsers.end()) {
+        AM_LOG_WARN("Unknown style property: {}", std::string(key));
+        return;
     }
-    return false;
+    out.push_back({it->second.prop, it->second.parse(value, style)});
 }
 
-static void s_parseClassBlock(const toml::table &t, const PropSink &sink, Style &style)
+static std::vector<Decl> s_parseBlock(std::string_view block, Style &style)
 {
-    for (const auto &[k, v] : t) {
-        if (!s_handlePropEntry(k.str(), v, sink, style)) {
-            AM_LOG_WARN("Unknown style property: {}", k.str());
+    std::vector<Decl> out;
+    for (std::string_view stmt : s_split(block, ';')) {
+        if (stmt.empty()) {
+            continue;
         }
+        size_t colon = stmt.find(':');
+        if (colon == std::string_view::npos) {
+            AM_LOG_WARN("Malformed declaration (no ':'): {}", std::string(stmt));
+            continue;
+        }
+        std::string_view key = s_trim(stmt.substr(0, colon));
+        std::string_view value = s_trim(stmt.substr(colon + 1));
+        if (key.empty() || value.empty()) {
+            continue;
+        }
+        s_parseDeclaration(key, value, out, style);
     }
+    return out;
 }
 
-static std::optional<Style> s_parseToml(const toml::table &tbl)
+enum class SelectorKind {
+    TYPE,
+    CLASS,
+    TYPE_CLASS,
+    PART,
+    INVALID
+};
+
+struct Selector {
+    SelectorKind kind = SelectorKind::INVALID;
+    ComponentType type = ComponentType::UI_OBJECT;
+    StyleKey classToken = 0;
+    std::string className;
+    std::string_view pseudo;
+};
+
+static Selector s_parseSelector(std::string_view sel)
 {
-    Style style;
-    uint32_t order = 0;
+    Selector out;
+    sel = s_trim(sel);
+
+    size_t colon = sel.find(':');
+    if (colon != std::string_view::npos) {
+        out.pseudo = s_trim(sel.substr(colon + 1));
+        sel = s_trim(sel.substr(0, colon));
+    }
+    if (sel.empty()) {
+        return out;
+    }
+
     const auto &typeNames = Style::getComponentTypeNames();
 
-    for (const auto &[key, value] : tbl) {
-        std::string_view k = key.str();
+    if (sel[0] == '.') {
+        std::string name(s_trim(sel.substr(1)));
+        out.kind = SelectorKind::CLASS;
+        out.classToken = Style::classToken(name);
+        out.className = name;
+        return out;
+    }
 
-        if (k == "metadata") {
-            continue;
-        }
-
-        if (k == "class") {
-            if (auto classes = value.as_table()) {
-                for (const auto &[clsName, clsVal] : *classes) {
-                    if (auto clsTbl = clsVal.as_table()) {
-                        StyleKey tok = Style::classToken(clsName.str());
-                        style.registerClassName(tok, clsName.str());
-                        uint32_t o = order++;
-                        s_parseClassBlock(
-                            *clsTbl, [&](StyleProperty p, StyleValue v) { style.addClassValue(tok, o, p, v); }, style);
-                    }
-                }
-            }
-            continue;
-        }
-
-        auto typeIt = typeNames.find(std::string(k));
+    size_t hash = sel.find('#');
+    if (hash != std::string_view::npos) {
+        std::string_view typePart = s_trim(sel.substr(0, hash));
+        auto typeIt = typeNames.find(std::string(typePart));
         if (typeIt == typeNames.end()) {
-            AM_LOG_WARN("Unknown section in theme: {}", std::string(k));
-            continue;
+            AM_LOG_WARN("Unknown component type in selector: {}", std::string(typePart));
+            return out;
         }
-        ComponentType type = typeIt->second;
+        out.kind = SelectorKind::PART;
+        out.type = typeIt->second;
+        out.classToken = Style::classToken(sel);
+        out.className = std::string(sel);
+        return out;
+    }
 
-        auto section = value.as_table();
-        if (section == nullptr) {
-            continue;
+    size_t dot = sel.find('.');
+    if (dot != std::string_view::npos) {
+        std::string_view typePart = s_trim(sel.substr(0, dot));
+        std::string name(s_trim(sel.substr(dot + 1)));
+        auto typeIt = typeNames.find(std::string(typePart));
+        if (typeIt == typeNames.end()) {
+            AM_LOG_WARN("Unknown component type in selector: {}", std::string(typePart));
+            return out;
+        }
+        out.kind = SelectorKind::TYPE_CLASS;
+        out.type = typeIt->second;
+        out.classToken = Style::classToken(name);
+        out.className = name;
+        return out;
+    }
+
+    auto typeIt = typeNames.find(std::string(sel));
+    if (typeIt == typeNames.end()) {
+        AM_LOG_WARN("Unknown component type in selector: {}", std::string(sel));
+        return out;
+    }
+    out.kind = SelectorKind::TYPE;
+    out.type = typeIt->second;
+    return out;
+}
+
+static void s_applySelector(const Selector &sel, const std::vector<Decl> &decls, Style &style, uint32_t &order)
+{
+    if (!sel.pseudo.empty()) {
+        AM_LOG_DEBUG("Pseudo-state '{}' is not yet supported; skipping rule", std::string(sel.pseudo));
+        return;
+    }
+
+    switch (sel.kind) {
+    case SelectorKind::TYPE:
+        for (const auto &[prop, value] : decls) {
+            style.addTypeValue(sel.type, prop, value);
+        }
+        break;
+    case SelectorKind::CLASS:
+    case SelectorKind::PART: {
+        style.registerClassName(sel.classToken, sel.className);
+        uint32_t o = order++;
+        for (const auto &[prop, value] : decls) {
+            style.addClassValue(sel.classToken, o, prop, value);
+        }
+        break;
+    }
+    case SelectorKind::TYPE_CLASS: {
+        style.registerClassName(sel.classToken, sel.className);
+        uint32_t o = order++;
+        for (const auto &[prop, value] : decls) {
+            style.addTypeClassValue(sel.type, sel.classToken, o, prop, value);
+        }
+        break;
+    }
+    case SelectorKind::INVALID:
+        break;
+    }
+}
+
+static std::string s_stripComments(std::string_view src)
+{
+    std::string out;
+    out.reserve(src.size());
+    for (size_t i = 0; i < src.size();) {
+        if (i + 1 < src.size() && src[i] == '/' && src[i + 1] == '*') {
+            i += 2;
+            while (i + 1 < src.size() && !(src[i] == '*' && src[i + 1] == '/')) {
+                ++i;
+            }
+            i += 2;
+            out.push_back(' ');
+        } else {
+            out.push_back(src[i]);
+            ++i;
+        }
+    }
+    return out;
+}
+
+static Style s_parseSource(std::string_view rawSource)
+{
+    std::string source = s_stripComments(rawSource);
+    std::string_view src = source;
+
+    Style style;
+    uint32_t order = 0;
+    size_t pos = 0;
+
+    while (true) {
+        while (pos < src.size() && std::isspace(static_cast<unsigned char>(src[pos]))) {
+            ++pos;
+        }
+        if (pos >= src.size()) {
+            break;
         }
 
-        for (const auto &[k2, v2] : *section) {
-            PropSink typeSink = [&](StyleProperty p, StyleValue v) { style.addTypeValue(type, p, v); };
-            if (s_handlePropEntry(k2.str(), v2, typeSink, style)) {
+        size_t braceOpen = src.find('{', pos);
+        if (braceOpen == std::string_view::npos) {
+            AM_LOG_WARN("Trailing content with no rule body");
+            break;
+        }
+        size_t braceClose = src.find('}', braceOpen + 1);
+        if (braceClose == std::string_view::npos) {
+            AM_LOG_WARN("Unterminated rule body");
+            break;
+        }
+
+        std::string_view selectorList = src.substr(pos, braceOpen - pos);
+        std::string_view block = src.substr(braceOpen + 1, braceClose - braceOpen - 1);
+        pos = braceClose + 1;
+
+        std::vector<Decl> decls = s_parseBlock(block, style);
+        for (std::string_view selText : s_split(selectorList, ',')) {
+            if (selText.empty()) {
                 continue;
             }
-            if (auto clsTbl = v2.as_table()) {
-                StyleKey tok = Style::classToken(k2.str());
-                style.registerClassName(tok, k2.str());
-                uint32_t o = order++;
-                s_parseClassBlock(
-                    *clsTbl, [&](StyleProperty p, StyleValue v) { style.addTypeClassValue(type, tok, o, p, v); }, style);
-            } else {
-                AM_LOG_WARN("Unknown style property: {}", k2.str());
-            }
+            Selector sel = s_parseSelector(selText);
+            s_applySelector(sel, decls, style, order);
         }
     }
 
@@ -301,46 +568,23 @@ static std::optional<Style> s_parseToml(const toml::table &tbl)
 
 std::optional<Style> AmThemeParser::parseFile(const std::filesystem::path &path)
 {
-    toml::parse_result parseResult = toml::parse_file(path.string());
-    if (!parseResult) {
-        AM_LOG_ERROR("Failed to parse theme file {}", path.string());
+    std::ifstream file(path);
+    if (!file) {
+        AM_LOG_ERROR("Failed to open theme file {}", path.string());
         return std::nullopt;
     }
-
-    toml::table &tbl = parseResult.table();
-    auto result = s_parseToml(tbl);
-    if (result) {
-        std::string themeName = "unknown";
-        if (auto meta = tbl["metadata"].as_table()) {
-            if (auto name = (*meta)["name"].as_string()) {
-                themeName = **name;
-            }
-        }
-        AM_LOG_INFO("Loaded theme '{}' from {}", themeName, path.string());
-    }
-    return result;
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    Style style = s_parseSource(buffer.str());
+    AM_LOG_INFO("Loaded theme from {}", path.string());
+    return style;
 }
 
-std::optional<Style> AmThemeParser::parseString(const std::string &tomlContent)
+std::optional<Style> AmThemeParser::parseString(const std::string &source)
 {
-    toml::parse_result parseResult = toml::parse(tomlContent);
-    if (!parseResult) {
-        AM_LOG_ERROR("Failed to parse theme string");
-        return std::nullopt;
-    }
-
-    toml::table &tbl = parseResult.table();
-    auto result = s_parseToml(tbl);
-    if (result) {
-        std::string themeName = "unknown";
-        if (auto meta = tbl["metadata"].as_table()) {
-            if (auto name = (*meta)["name"].as_string()) {
-                themeName = **name;
-            }
-        }
-        AM_LOG_INFO("Loaded theme '{}'", themeName);
-    }
-    return result;
+    Style style = s_parseSource(source);
+    AM_LOG_INFO("Loaded theme from string");
+    return style;
 }
 
 } // namespace Amethyst

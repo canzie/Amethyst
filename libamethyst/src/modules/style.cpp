@@ -42,7 +42,7 @@ bool Style::load(const std::filesystem::path &path)
 
 void Style::buildDefaults()
 {
-#define X(PROP, key, Type, dflt) m_defaults[static_cast<size_t>(StyleProperty::PROP)] = StyleValue(dflt);
+#define X(PROP, key, Type, tag, dflt) m_defaults[static_cast<size_t>(StyleProperty::PROP)] = StyleValue(dflt);
     AM_STYLE_PROPS(X)
 #undef X
 }
@@ -380,24 +380,24 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
 const std::unordered_map<std::string, ComponentType> &Style::getComponentTypeNames()
 {
     static const std::unordered_map<std::string, ComponentType> names = {
-        {"general", ComponentType::UI_OBJECT},
-        {"buttons", ComponentType::UI_BUTTON},
-        {"labels", ComponentType::UI_LABEL},
-        {"frames", ComponentType::FRAME},
-        {"scrollingFrames", ComponentType::SCROLLING_FRAME},
-        {"tables", ComponentType::TABLE},
-        {"treeViews", ComponentType::TREE_VIEW},
-        {"textButtons", ComponentType::TEXT_BUTTON},
-        {"imageButtons", ComponentType::IMAGE_BUTTON},
-        {"textLabels", ComponentType::TEXT_LABEL},
-        {"imageLabels", ComponentType::IMAGE_LABEL},
-        {"canvases", ComponentType::CANVAS},
-        {"checkboxes", ComponentType::CHECKBOX},
-        {"dropdowns", ComponentType::DROPDOWN},
-        {"tabBars", ComponentType::TAB_BAR},
-        {"sliders", ComponentType::SLIDER},
-        {"radioButtons", ComponentType::RADIO_BUTTON},
-        {"collapsibleHeaders", ComponentType::COLLAPSIBLE_HEADER},
+        {"ui-object", ComponentType::UI_OBJECT},
+        {"ui-button", ComponentType::UI_BUTTON},
+        {"ui-label", ComponentType::UI_LABEL},
+        {"frame", ComponentType::FRAME},
+        {"scrolling-frame", ComponentType::SCROLLING_FRAME},
+        {"table", ComponentType::TABLE},
+        {"tree-view", ComponentType::TREE_VIEW},
+        {"text-button", ComponentType::TEXT_BUTTON},
+        {"image-button", ComponentType::IMAGE_BUTTON},
+        {"text-label", ComponentType::TEXT_LABEL},
+        {"image-label", ComponentType::IMAGE_LABEL},
+        {"canvas", ComponentType::CANVAS},
+        {"checkbox", ComponentType::CHECKBOX},
+        {"dropdown", ComponentType::DROPDOWN},
+        {"tab-bar", ComponentType::TAB_BAR},
+        {"slider", ComponentType::SLIDER},
+        {"radio-button", ComponentType::RADIO_BUTTON},
+        {"collapsible-header", ComponentType::COLLAPSIBLE_HEADER},
     };
     return names;
 }

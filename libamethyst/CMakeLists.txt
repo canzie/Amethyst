@@ -27,12 +27,6 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
-    tomlplusplus
-    GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
-    GIT_TAG v3.4.0
-)
-
-FetchContent_Declare(
     lunasvg
     GIT_REPOSITORY https://github.com/sammycage/lunasvg.git
     GIT_TAG v3.2.1
@@ -48,7 +42,7 @@ else()
     set(TRACY_ENABLE OFF CACHE BOOL "Enable Tracy profiling" FORCE)
 endif()
 
-FetchContent_MakeAvailable(glm spdlog freetype tracy tomlplusplus lunasvg)
+FetchContent_MakeAvailable(glm spdlog freetype tracy lunasvg)
 
 file(GLOB_RECURSE AMETHYST_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
@@ -60,9 +54,7 @@ target_include_directories(amethyst
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(amethyst PUBLIC glm::glm spdlog::spdlog freetype TracyClient tomlplusplus::tomlplusplus lunasvg)
-
-target_compile_definitions(amethyst PRIVATE TOML_EXCEPTIONS=0)
+target_link_libraries(amethyst PUBLIC glm::glm spdlog::spdlog freetype TracyClient lunasvg)
 
 target_compile_options(amethyst PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic -Werror>

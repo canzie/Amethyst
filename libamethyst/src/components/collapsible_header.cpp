@@ -35,7 +35,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_headerBackground = std::make_unique<Frame>();
     m_headerBackground->parent = this;
     m_headerBackground->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
-    m_headerBackground->addClass("collapsible-header__header");
+    m_headerBackground->addClass("collapsible-header#header");
 
     m_headerButton = std::make_unique<InvisibleButton>();
     m_headerButton->parent = this;

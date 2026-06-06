@@ -19,27 +19,33 @@ struct ConfigEntry {
         TabBarConfig tabBar;
     };
 
-    explicit ConfigEntry(DockLayoutConfig cfg)
-        : type(ConfigType::DOCK_LAYOUT), dockLayout(std::move(cfg)) {}
+    explicit ConfigEntry(DockLayoutConfig cfg) : type(ConfigType::DOCK_LAYOUT), dockLayout(std::move(cfg)) {}
 
-    explicit ConfigEntry(TabBarConfig cfg)
-        : type(ConfigType::TAB_BAR), tabBar(std::move(cfg)) {}
+    explicit ConfigEntry(TabBarConfig cfg) : type(ConfigType::TAB_BAR), tabBar(std::move(cfg)) {}
 
     ~ConfigEntry() { destroy(); }
 
     ConfigEntry(const ConfigEntry &other) : type(other.type)
     {
         switch (type) {
-        case ConfigType::DOCK_LAYOUT: std::construct_at(&dockLayout, other.dockLayout); break;
-        case ConfigType::TAB_BAR: std::construct_at(&tabBar, other.tabBar); break;
+        case ConfigType::DOCK_LAYOUT:
+            std::construct_at(&dockLayout, other.dockLayout);
+            break;
+        case ConfigType::TAB_BAR:
+            std::construct_at(&tabBar, other.tabBar);
+            break;
         }
     }
 
     ConfigEntry(ConfigEntry &&other) noexcept : type(other.type)
     {
         switch (type) {
-        case ConfigType::DOCK_LAYOUT: std::construct_at(&dockLayout, std::move(other.dockLayout)); break;
-        case ConfigType::TAB_BAR: std::construct_at(&tabBar, std::move(other.tabBar)); break;
+        case ConfigType::DOCK_LAYOUT:
+            std::construct_at(&dockLayout, std::move(other.dockLayout));
+            break;
+        case ConfigType::TAB_BAR:
+            std::construct_at(&tabBar, std::move(other.tabBar));
+            break;
         }
     }
 
@@ -49,8 +55,12 @@ struct ConfigEntry {
         destroy();
         type = other.type;
         switch (type) {
-        case ConfigType::DOCK_LAYOUT: std::construct_at(&dockLayout, other.dockLayout); break;
-        case ConfigType::TAB_BAR: std::construct_at(&tabBar, other.tabBar); break;
+        case ConfigType::DOCK_LAYOUT:
+            std::construct_at(&dockLayout, other.dockLayout);
+            break;
+        case ConfigType::TAB_BAR:
+            std::construct_at(&tabBar, other.tabBar);
+            break;
         }
         return *this;
     }
@@ -61,8 +71,12 @@ struct ConfigEntry {
         destroy();
         type = other.type;
         switch (type) {
-        case ConfigType::DOCK_LAYOUT: std::construct_at(&dockLayout, std::move(other.dockLayout)); break;
-        case ConfigType::TAB_BAR: std::construct_at(&tabBar, std::move(other.tabBar)); break;
+        case ConfigType::DOCK_LAYOUT:
+            std::construct_at(&dockLayout, std::move(other.dockLayout));
+            break;
+        case ConfigType::TAB_BAR:
+            std::construct_at(&tabBar, std::move(other.tabBar));
+            break;
         }
         return *this;
     }
@@ -71,8 +85,12 @@ struct ConfigEntry {
     void destroy()
     {
         switch (type) {
-        case ConfigType::DOCK_LAYOUT: std::destroy_at(&dockLayout); break;
-        case ConfigType::TAB_BAR: std::destroy_at(&tabBar); break;
+        case ConfigType::DOCK_LAYOUT:
+            std::destroy_at(&dockLayout);
+            break;
+        case ConfigType::TAB_BAR:
+            std::destroy_at(&tabBar);
+            break;
         }
     }
 };

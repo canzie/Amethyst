@@ -9,12 +9,16 @@
 #include "utils/profiling.h"
 #include "vk_context.h"
 
+#include <string>
+#include <utility>
+#include <vector>
+
 int main()
 {
     Amethyst::Log::Init();
     AM_LOG_INFO("Amethyst Test App");
 
-    Amethyst::Style::load(AMETHYST_ASSETS_DIR "/theme.toml");
+    Amethyst::Style::load(AMETHYST_ASSETS_DIR "/theme.ams");
 
     VkContext ctx;
     if (!contextInit(ctx, 1000, 1000, "Amethyst Test")) {
@@ -383,6 +387,39 @@ int main()
                 c.component.drawCircleStroke({415, 55}, 30.0f, {1.0f, 1.0f, 1.0f, 1.0f}, 2.0f);
                 c.component.drawText("Canvas", {10, 95}, 16.0f, {1.0f, 1.0f, 1.0f, 1.0f}, 16);
             });
+
+    // --- Class styling showcase (.ams classes + precedence) ---
+    Amethyst::UIScope(window).frame(
+        {
+            .classes = {"card"},
+            .base = {
+                .position = Amethyst::UDim2::fromOffset(800, 100),
+                .size = Amethyst::UDim2::fromOffset(180, 244),
+            },
+        },
+        [](Amethyst::FrameScope &card) {
+            card.component.name = "Class Card";
+
+            auto styledButton = [&card](float y, std::vector<std::string> classes, const char *label) {
+                card.textButton({
+                    .classes = std::move(classes),
+                    .base = {
+                        .position = Amethyst::UDim2(0.0f, 12.0f, 0.0f, y),
+                        .size = Amethyst::UDim2(1.0f, -24.0f, 0.0f, 44.0f),
+                    },
+                    .text = {
+                        .textXAlignment = Amethyst::TextXAlignment::CENTER,
+                        .textYAlignment = Amethyst::TextYAlignment::CENTER,
+                    },
+                    .label = label,
+                });
+            };
+
+            styledButton(12.0f, {}, "Default");
+            styledButton(68.0f, {"primary"}, "Primary");
+            styledButton(124.0f, {"danger"}, "Danger");
+            styledButton(180.0f, {"danger", "primary"}, "Both");
+        });
 
     // --- Standalone tab bar test ---
     Amethyst::UIScope(window).tabBar(

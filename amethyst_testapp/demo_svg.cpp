@@ -46,7 +46,7 @@ int main()
 {
     Log::Init();
 
-    Style::load(AMETHYST_ASSETS_DIR "/theme.toml");
+    Style::load(AMETHYST_ASSETS_DIR "/theme.ams");
 
     VkContext ctx;
     if (!contextInit(ctx, 900, 600, "Amethyst - SVG Demo")) {
