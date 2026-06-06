@@ -25,3 +25,7 @@
     - to support the above, maybe move to something non-toml? not sure if toml can do this, if not, most likely write our own -> -1 dependency
     - allow multiple files to be provided, makes it easier for the user to split up their work, internally it will all be appended and parsed as 1 big string anyay.
 
+- read in all stuff, get style key (component(optional) + class(optional)) define small map with enum(something like bg color) -> value(can be a variant or little type struct)
+-> we can now fetch all set stuff per style key
+-> create some sort of get func for each styleprop struct, e.g. get basestyleproperties(component type, classes) (internally calculates the style key), we have some little static array with each type enum in that the basestyleproperties has and check if the map has it, if so set it.
+-> return a nice fresh struct, even better, cache this...

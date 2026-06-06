@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "properties_split_plan.md",
+                "file": "styling_system_plan.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "properties_split_plan"
+              "title": "styling_system_plan"
             }
           }
         ]
@@ -185,6 +185,8 @@
   },
   "active": "158d6e3fd352897f",
   "lastOpenFiles": [
+    "styling_system_plan.md.tmp.1702.3f3d34090eeb",
+    "properties_split_plan.md",
     "properties_split_plan.md.tmp.1491.03c5fc538563",
     "properties_split_plan.md.tmp.1491.c9dce8b41319",
     "properties_split_plan.md.tmp.1491.4070c2563f5c",
@@ -198,7 +200,6 @@
     "components/TreeView.md",
     "components/TreeView.md.tmp.32827.f3410dc2f83b",
     "Architecture.md",
-    "Architecture.md.tmp.31113.3ab1ded49614",
     "Backend.md",
     "SVG Support Plan.md",
     "Welcome.md"
