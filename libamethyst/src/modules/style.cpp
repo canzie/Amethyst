@@ -1,4 +1,5 @@
 #include "modules/style.h"
+#include "modules/style_properties.def"
 #include "parsers/am_theme/am_theme_parser.h"
 #include "utils/am_assert.h"
 
@@ -10,7 +11,7 @@ namespace Amethyst {
 
 static Style s_instance;
 
-static void applySparse(DenseSet &d, const SparseSet &s)
+static void s_applySparse(DenseSet &d, const SparseSet &s)
 {
     for (auto &[p, v] : s) {
         d[static_cast<size_t>(p)] = v;
@@ -126,7 +127,7 @@ const DenseSet &Style::bakedFor(ComponentType type)
     for (auto it = hierarchy.rbegin(); it != hierarchy.rend(); ++it) {
         auto raw = m_rawType.find(*it);
         if (raw != m_rawType.end()) {
-            applySparse(d, raw->second);
+            s_applySparse(d, raw->second);
         }
     }
 
@@ -191,7 +192,7 @@ const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> 
     });
 
     for (const Contributor &c : contributors) {
-        applySparse(d, *c.set);
+        s_applySparse(d, *c.set);
     }
 
     m_lru.push_front({key, std::move(d)});

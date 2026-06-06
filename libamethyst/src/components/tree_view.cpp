@@ -39,8 +39,9 @@ TreeView::TreeView()
 
 void TreeView::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::TREE_VIEW, getClasses()));
-    setTreeViewProperties(Style::instance().getTreeViewStyle(ComponentType::TREE_VIEW, getClasses()));
+    auto &style = Style::instance();
+    setBaseStyleProperties(style.getBaseStyle(ComponentType::TREE_VIEW, getClasses()));
+    setTreeViewProperties(style.getTreeViewStyle(ComponentType::TREE_VIEW, getClasses()));
 }
 
 TreeView::~TreeView()

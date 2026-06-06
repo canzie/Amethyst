@@ -30,8 +30,9 @@ TextLabel::TextLabel()
 
 void TextLabel::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::TEXT_LABEL, getClasses()));
-    setTextStyleProperties(Style::instance().getTextStyle(ComponentType::TEXT_LABEL, getClasses()));
+    auto &style = Style::instance();
+    setBaseStyleProperties(style.getBaseStyle(ComponentType::TEXT_LABEL, getClasses()));
+    setTextStyleProperties(style.getTextStyle(ComponentType::TEXT_LABEL, getClasses()));
 }
 
 TextLabel::~TextLabel()

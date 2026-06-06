@@ -28,8 +28,9 @@ ScrollingFrame::ScrollingFrame()
 
 void ScrollingFrame::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::SCROLLING_FRAME, getClasses()));
-    setScrollingFrameProperties(Style::instance().getScrollingFrameStyle(ComponentType::SCROLLING_FRAME, getClasses()));
+    auto &style = Style::instance();
+    setBaseStyleProperties(style.getBaseStyle(ComponentType::SCROLLING_FRAME, getClasses()));
+    setScrollingFrameProperties(style.getScrollingFrameStyle(ComponentType::SCROLLING_FRAME, getClasses()));
 }
 
 bool ScrollingFrame::setScrollingFrameProperties(const ScrollingFrameStyleProperties &props)

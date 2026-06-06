@@ -25,8 +25,9 @@ TextButton::TextButton()
 
 void TextButton::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::TEXT_BUTTON, getClasses()));
-    setTextStyleProperties(Style::instance().getTextStyle(ComponentType::TEXT_BUTTON, getClasses()));
+    auto &style = Style::instance();
+    setBaseStyleProperties(style.getBaseStyle(ComponentType::TEXT_BUTTON, getClasses()));
+    setTextStyleProperties(style.getTextStyle(ComponentType::TEXT_BUTTON, getClasses()));
 }
 
 TextButton::~TextButton()

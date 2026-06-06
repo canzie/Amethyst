@@ -1,6 +1,7 @@
 #include "parsers/am_theme/am_theme_parser.h"
 #include "logging/log.h"
 #include "modules/style.h"
+#include "modules/style_properties.def"
 
 #include <functional>
 #include <optional>
@@ -11,9 +12,7 @@
 
 namespace Amethyst {
 
-namespace {
-
-Color3 parseColor3(const toml::node &node)
+static Color3 s_parseColor3(const toml::node &node)
 {
     if (auto str = node.as_string()) {
         std::string_view hex = **str;
@@ -33,7 +32,7 @@ Color3 parseColor3(const toml::node &node)
     return Color3(1.0f, 1.0f, 1.0f);
 }
 
-Color4 parseColor4(const toml::node &node)
+static Color4 s_parseColor4(const toml::node &node)
 {
     if (auto str = node.as_string()) {
         std::string_view hex = **str;
@@ -60,7 +59,7 @@ Color4 parseColor4(const toml::node &node)
     return Color4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-BorderMode parseBorderMode(std::string_view str)
+static BorderMode s_parseBorderMode(std::string_view str)
 {
     if (str == "outline") return BorderMode::OUTLINE;
     if (str == "middle") return BorderMode::MIDDLE;
@@ -68,7 +67,7 @@ BorderMode parseBorderMode(std::string_view str)
     return BorderMode::OUTLINE;
 }
 
-TextXAlignment parseTextXAlignment(std::string_view str)
+static TextXAlignment s_parseTextXAlignment(std::string_view str)
 {
     if (str == "left") return TextXAlignment::LEFT;
     if (str == "center") return TextXAlignment::CENTER;
@@ -76,7 +75,7 @@ TextXAlignment parseTextXAlignment(std::string_view str)
     return TextXAlignment::LEFT;
 }
 
-TextYAlignment parseTextYAlignment(std::string_view str)
+static TextYAlignment s_parseTextYAlignment(std::string_view str)
 {
     if (str == "top") return TextYAlignment::TOP;
     if (str == "center") return TextYAlignment::CENTER;
@@ -84,7 +83,7 @@ TextYAlignment parseTextYAlignment(std::string_view str)
     return TextYAlignment::TOP;
 }
 
-UDim parseUDim(const toml::node &node)
+static UDim s_parseUDim(const toml::node &node)
 {
     if (auto val = node.as_floating_point()) {
         return UDim::fromOffset(static_cast<float>(**val));
@@ -101,22 +100,22 @@ UDim parseUDim(const toml::node &node)
 }
 
 template <class T>
-StyleValue parseValue(const toml::node &n, Style &style);
+static StyleValue s_parseValue(const toml::node &n, Style &style);
 
 template <>
-StyleValue parseValue<Color3>(const toml::node &n, Style &)
+StyleValue s_parseValue<Color3>(const toml::node &n, Style &)
 {
-    return StyleValue(parseColor3(n));
+    return StyleValue(s_parseColor3(n));
 }
 
 template <>
-StyleValue parseValue<Color4>(const toml::node &n, Style &)
+StyleValue s_parseValue<Color4>(const toml::node &n, Style &)
 {
-    return StyleValue(parseColor4(n));
+    return StyleValue(s_parseColor4(n));
 }
 
 template <>
-StyleValue parseValue<float>(const toml::node &n, Style &)
+StyleValue s_parseValue<float>(const toml::node &n, Style &)
 {
     if (auto val = n.as_floating_point()) {
         return StyleValue(static_cast<float>(**val));
@@ -128,40 +127,40 @@ StyleValue parseValue<float>(const toml::node &n, Style &)
 }
 
 template <>
-StyleValue parseValue<UDim>(const toml::node &n, Style &)
+StyleValue s_parseValue<UDim>(const toml::node &n, Style &)
 {
-    return StyleValue(parseUDim(n));
+    return StyleValue(s_parseUDim(n));
 }
 
 template <>
-StyleValue parseValue<BorderMode>(const toml::node &n, Style &)
+StyleValue s_parseValue<BorderMode>(const toml::node &n, Style &)
 {
     if (auto str = n.as_string()) {
-        return StyleValue(parseBorderMode(**str));
+        return StyleValue(s_parseBorderMode(**str));
     }
     return StyleValue(BorderMode::OUTLINE);
 }
 
 template <>
-StyleValue parseValue<TextXAlignment>(const toml::node &n, Style &)
+StyleValue s_parseValue<TextXAlignment>(const toml::node &n, Style &)
 {
     if (auto str = n.as_string()) {
-        return StyleValue(parseTextXAlignment(**str));
+        return StyleValue(s_parseTextXAlignment(**str));
     }
     return StyleValue(TextXAlignment::LEFT);
 }
 
 template <>
-StyleValue parseValue<TextYAlignment>(const toml::node &n, Style &)
+StyleValue s_parseValue<TextYAlignment>(const toml::node &n, Style &)
 {
     if (auto str = n.as_string()) {
-        return StyleValue(parseTextYAlignment(**str));
+        return StyleValue(s_parseTextYAlignment(**str));
     }
     return StyleValue(TextYAlignment::TOP);
 }
 
 template <>
-StyleValue parseValue<FontHandle>(const toml::node &n, Style &style)
+StyleValue s_parseValue<FontHandle>(const toml::node &n, Style &style)
 {
     return StyleValue(FontHandle{style.internFont(n.value_or<std::string>("default"))});
 }
@@ -171,10 +170,10 @@ struct PropParser {
     StyleValue (*parse)(const toml::node &, Style &);
 };
 
-const std::unordered_map<std::string, PropParser> &propParsers()
+static const std::unordered_map<std::string, PropParser> &s_propParsers()
 {
     static const std::unordered_map<std::string, PropParser> m = {
-#define X(PROP, key, Type, dflt) {#key, {StyleProperty::PROP, &parseValue<Type>}},
+#define X(PROP, key, Type, dflt) {#key, {StyleProperty::PROP, &s_parseValue<Type>}},
         AM_STYLE_PROPS(X)
 #undef X
     };
@@ -183,46 +182,46 @@ const std::unordered_map<std::string, PropParser> &propParsers()
 
 using PropSink = std::function<void(StyleProperty, StyleValue)>;
 
-void parseSpacing(const toml::node &n, const PropSink &sink, StyleProperty top, StyleProperty right, StyleProperty bottom,
-                  StyleProperty left)
+static void s_parseSpacing(const toml::node &n, const PropSink &sink, StyleProperty top, StyleProperty right, StyleProperty bottom,
+                           StyleProperty left)
 {
     if (n.as_floating_point() || n.as_integer() || n.as_table()) {
-        UDim v = parseUDim(n);
+        UDim v = s_parseUDim(n);
         sink(top, StyleValue(v));
         sink(right, StyleValue(v));
         sink(bottom, StyleValue(v));
         sink(left, StyleValue(v));
     } else if (auto arr = n.as_array()) {
         if (arr->size() == 2) {
-            UDim vertical = parseUDim((*arr)[0]);
-            UDim horizontal = parseUDim((*arr)[1]);
+            UDim vertical = s_parseUDim((*arr)[0]);
+            UDim horizontal = s_parseUDim((*arr)[1]);
             sink(top, StyleValue(vertical));
             sink(bottom, StyleValue(vertical));
             sink(left, StyleValue(horizontal));
             sink(right, StyleValue(horizontal));
         } else if (arr->size() == 4) {
-            sink(top, StyleValue(parseUDim((*arr)[0])));
-            sink(right, StyleValue(parseUDim((*arr)[1])));
-            sink(bottom, StyleValue(parseUDim((*arr)[2])));
-            sink(left, StyleValue(parseUDim((*arr)[3])));
+            sink(top, StyleValue(s_parseUDim((*arr)[0])));
+            sink(right, StyleValue(s_parseUDim((*arr)[1])));
+            sink(bottom, StyleValue(s_parseUDim((*arr)[2])));
+            sink(left, StyleValue(s_parseUDim((*arr)[3])));
         }
     }
 }
 
-bool handlePropEntry(std::string_view key, const toml::node &val, const PropSink &sink, Style &style)
+static bool s_handlePropEntry(std::string_view key, const toml::node &val, const PropSink &sink, Style &style)
 {
     if (key == "padding") {
-        parseSpacing(val, sink, StyleProperty::PADDING_TOP, StyleProperty::PADDING_RIGHT, StyleProperty::PADDING_BOTTOM,
-                     StyleProperty::PADDING_LEFT);
+        s_parseSpacing(val, sink, StyleProperty::PADDING_TOP, StyleProperty::PADDING_RIGHT, StyleProperty::PADDING_BOTTOM,
+                       StyleProperty::PADDING_LEFT);
         return true;
     }
     if (key == "cellPadding") {
-        parseSpacing(val, sink, StyleProperty::CELL_PADDING_TOP, StyleProperty::CELL_PADDING_RIGHT,
-                     StyleProperty::CELL_PADDING_BOTTOM, StyleProperty::CELL_PADDING_LEFT);
+        s_parseSpacing(val, sink, StyleProperty::CELL_PADDING_TOP, StyleProperty::CELL_PADDING_RIGHT,
+                       StyleProperty::CELL_PADDING_BOTTOM, StyleProperty::CELL_PADDING_LEFT);
         return true;
     }
 
-    const auto &parsers = propParsers();
+    const auto &parsers = s_propParsers();
     auto it = parsers.find(std::string(key));
     if (it != parsers.end()) {
         sink(it->second.prop, it->second.parse(val, style));
@@ -231,16 +230,16 @@ bool handlePropEntry(std::string_view key, const toml::node &val, const PropSink
     return false;
 }
 
-void parseClassBlock(const toml::table &t, const PropSink &sink, Style &style)
+static void s_parseClassBlock(const toml::table &t, const PropSink &sink, Style &style)
 {
     for (const auto &[k, v] : t) {
-        if (!handlePropEntry(k.str(), v, sink, style)) {
+        if (!s_handlePropEntry(k.str(), v, sink, style)) {
             AM_LOG_WARN("Unknown style property: {}", k.str());
         }
     }
 }
 
-std::optional<Style> parseToml(const toml::table &tbl)
+static std::optional<Style> s_parseToml(const toml::table &tbl)
 {
     Style style;
     uint32_t order = 0;
@@ -260,7 +259,7 @@ std::optional<Style> parseToml(const toml::table &tbl)
                         StyleKey tok = Style::classToken(clsName.str());
                         style.registerClassName(tok, clsName.str());
                         uint32_t o = order++;
-                        parseClassBlock(
+                        s_parseClassBlock(
                             *clsTbl, [&](StyleProperty p, StyleValue v) { style.addClassValue(tok, o, p, v); }, style);
                     }
                 }
@@ -282,14 +281,14 @@ std::optional<Style> parseToml(const toml::table &tbl)
 
         for (const auto &[k2, v2] : *section) {
             PropSink typeSink = [&](StyleProperty p, StyleValue v) { style.addTypeValue(type, p, v); };
-            if (handlePropEntry(k2.str(), v2, typeSink, style)) {
+            if (s_handlePropEntry(k2.str(), v2, typeSink, style)) {
                 continue;
             }
             if (auto clsTbl = v2.as_table()) {
                 StyleKey tok = Style::classToken(k2.str());
                 style.registerClassName(tok, k2.str());
                 uint32_t o = order++;
-                parseClassBlock(
+                s_parseClassBlock(
                     *clsTbl, [&](StyleProperty p, StyleValue v) { style.addTypeClassValue(type, tok, o, p, v); }, style);
             } else {
                 AM_LOG_WARN("Unknown style property: {}", k2.str());
@@ -300,8 +299,6 @@ std::optional<Style> parseToml(const toml::table &tbl)
     return style;
 }
 
-} // anonymous namespace
-
 std::optional<Style> AmThemeParser::parseFile(const std::filesystem::path &path)
 {
     toml::parse_result parseResult = toml::parse_file(path.string());
@@ -311,7 +308,7 @@ std::optional<Style> AmThemeParser::parseFile(const std::filesystem::path &path)
     }
 
     toml::table &tbl = parseResult.table();
-    auto result = parseToml(tbl);
+    auto result = s_parseToml(tbl);
     if (result) {
         std::string themeName = "unknown";
         if (auto meta = tbl["metadata"].as_table()) {
@@ -333,7 +330,7 @@ std::optional<Style> AmThemeParser::parseString(const std::string &tomlContent)
     }
 
     toml::table &tbl = parseResult.table();
-    auto result = parseToml(tbl);
+    auto result = s_parseToml(tbl);
     if (result) {
         std::string themeName = "unknown";
         if (auto meta = tbl["metadata"].as_table()) {

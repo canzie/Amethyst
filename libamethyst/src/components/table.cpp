@@ -29,8 +29,9 @@ Table::Table()
 
 void Table::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::TABLE, getClasses()));
-    setTableProperties(Style::instance().getTableStyle(ComponentType::TABLE, getClasses()));
+    auto &style = Style::instance();
+    setBaseStyleProperties(style.getBaseStyle(ComponentType::TABLE, getClasses()));
+    setTableProperties(style.getTableStyle(ComponentType::TABLE, getClasses()));
 }
 
 bool Table::setTableProperties(const TableStyleProperties &props)

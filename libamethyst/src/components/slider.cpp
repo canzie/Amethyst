@@ -129,8 +129,9 @@ Slider::Slider()
 
 void Slider::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::SLIDER, getClasses()));
-    setSliderProperties(Style::instance().getSliderStyle(ComponentType::SLIDER, getClasses()));
+    auto &style = Style::instance();
+    setBaseStyleProperties(style.getBaseStyle(ComponentType::SLIDER, getClasses()));
+    setSliderProperties(style.getSliderStyle(ComponentType::SLIDER, getClasses()));
 }
 
 bool Slider::setSliderProperties(const SliderStyleProperties &props)

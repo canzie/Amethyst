@@ -1,8 +1,27 @@
 # Styling System Plan (struct getters + classes, cached)
 
-Status: FINALISED design, NOT STARTED. Ground-up **replacement** of the legacy `Style` system
-(the `get<T>` flat-variant layer), full feature set in one go (standalone classes + type-qualified
-classes), performance-first.
+Status: **IMPLEMENTED** on branch `style_system_refactor` (builds clean, demo runs, theme parses with
+no warnings). Ground-up **replacement** of the legacy `Style` system (the `get<T>` flat-variant layer),
+full feature set in one go (standalone classes + type-qualified classes), performance-first.
+
+### As built (deltas from the design below)
+- **Value is `std::variant<Color3, Color4, float, UDim, BorderMode, TextXAlignment, TextYAlignment,
+  FontHandle>`**, not a hand-rolled tagged union. A variant of trivially-copyable alternatives is itself
+  trivially copyable, so the dense-set goal holds; `FONT_FAMILY` still interns to a `FontHandle`. The
+  getters use `std::get<T>` rather than a custom `.as<T>()`.
+- **X-macro tables live in `modules/style_properties.def`** (included by `style.cpp` + the parser), not
+  inline in `style.h`.
+- **Class-change re-resolution is construction-order, not subtraction.** `addClass`/`setClasses` call the
+  virtual `UIObject::resolveStyle()` which re-applies the full themed structs via the per-struct getters;
+  the scope sets classes before the instance style DTO, so the declarative path is correct. The
+  `diff()`-based subtraction (to preserve inline overrides on a *dynamic* `addClass` after instance
+  overrides) is NOT wired yet -- `diff()` exists on every struct, ready to use when needed. Known
+  limitation: a dynamic `addClass` after instance overrides re-applies theme and drops those overrides.
+- **Built-in sub-element class** landed only on `CollapsibleHeader`'s header bar (`collapsible-header__header`,
+  with `headerColor` left sentinel so the class drives it). `Slider` thumb was skipped (it is drawn from
+  `SliderStyleProperties`, not a child `UIObject`, so it has no class target).
+- The TOML parser is the **interim** front-end; replacing it with a custom CSS parser is the next task
+  (see "Next: drop TOML, write our own CSS parser").
 
 ## Premise: replace, don't extend
 

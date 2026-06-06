@@ -46,8 +46,9 @@ TabBar::TabBar()
 
 void TabBar::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::TAB_BAR, getClasses()));
-    setTabBarProperties(Style::instance().getTabBarStyle(ComponentType::TAB_BAR, getClasses()));
+    auto &style = Style::instance();
+    setBaseStyleProperties(style.getBaseStyle(ComponentType::TAB_BAR, getClasses()));
+    setTabBarProperties(style.getTabBarStyle(ComponentType::TAB_BAR, getClasses()));
 }
 
 bool TabBar::setTabBarProperties(const TabBarStyleProperties &props)
