@@ -540,11 +540,13 @@ void DockingLayer::initDockHints()
     for (auto &hint : m_dockHintComponents) {
         hint = std::make_unique<Frame>();
         hint->parent = this;
-        hint->setBaseProperties({
+        hint->setBaseStyleProperties({
             .backgroundColor = hintColor,
             .backgroundTransparency = hintTransparency,
             .borderPixelSize = 0.0f,
             .cornerRadius = 0.0f,
+        });
+        hint->setBaseProperties({
             .interactable = false,
             .visible = false,
         });

@@ -60,6 +60,9 @@ class UIObject : public UIBase2D {
     bool setBaseProperties(BaseProperties props);
     const BaseProperties &getBaseProperties() const { return m_uiObjProps; }
 
+    bool setBaseStyleProperties(BaseStyleProperties style);
+    const BaseStyleProperties &getBaseStyleProperties() const { return m_baseStyle; }
+
   protected:
     friend class Window;
     virtual EventResult onMouseEnter(void);
@@ -80,6 +83,7 @@ class UIObject : public UIBase2D {
 
   protected:
     BaseProperties m_uiObjProps;
+    BaseStyleProperties m_baseStyle;
 
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;

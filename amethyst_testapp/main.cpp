@@ -73,43 +73,55 @@ int main()
         // --- Draggable frames ---
         .frame(
             {
-                .backgroundColor = {0.9f, 0.2f, 0.2f},
-                .borderMode = Amethyst::BorderMode::INSET,
-                .borderPixelSize = 10.0f,
-                .borderColor = {1.0f, 1.0f, 1.0f},
-                .cornerRadius = 10.0f,
-                .position = Amethyst::UDim2::fromOffset(200, 200),
-                .size = Amethyst::UDim2::fromOffset(300, 200),
+                .base = {
+                    .position = Amethyst::UDim2::fromOffset(200, 200),
+                    .size = Amethyst::UDim2::fromOffset(300, 200),
+                },
+                .style = {
+                    .backgroundColor = {0.9f, 0.2f, 0.2f},
+                    .borderMode = Amethyst::BorderMode::INSET,
+                    .borderPixelSize = 10.0f,
+                    .borderColor = {1.0f, 1.0f, 1.0f},
+                    .cornerRadius = 10.0f,
+                },
             },
             [&](Amethyst::FrameScope &f) {
                 f.component.name = "Frame 1";
                 f.component.addExtension<Amethyst::UIDragDetector>();
                 f.frame(
                     {
-                        .anchorPoint = {0.5f, 0.5f},
-                        .backgroundColor = {0.2f, 0.9f, 0.2f},
-                        .cornerRadius = 0.0f,
-                        .position = Amethyst::UDim2::fromOffset(0, 0),
-                        .size = Amethyst::UDim2::fromScale(0.5f, 0.5f),
+                        .base = {
+                            .anchorPoint = {0.5f, 0.5f},
+                            .position = Amethyst::UDim2::fromOffset(0, 0),
+                            .size = Amethyst::UDim2::fromScale(0.5f, 0.5f),
+                        },
+                        .style = {
+                            .backgroundColor = {0.2f, 0.9f, 0.2f},
+                            .cornerRadius = 0.0f,
+                        },
                     },
                     [&](Amethyst::FrameScope &child) {
                         child.component.name = "Child of frame 1";
                         child.component.addExtension<Amethyst::UIDragDetector>();
                         child.textButton(
                             {
-                                .anchorPoint = {0.5f, 0.5f},
-                                .backgroundColor = {0.5f, 0.0f, 0.5f},
-                                .cornerRadius = 5.0f,
-                                .position = Amethyst::UDim2::fromScale(0.5f, 0.5f),
-                                .size = Amethyst::UDim2::fromScale(0.9f, 0.9f),
+                                .base = {
+                                    .anchorPoint = {0.5f, 0.5f},
+                                    .position = Amethyst::UDim2::fromScale(0.5f, 0.5f),
+                                    .size = Amethyst::UDim2::fromScale(0.9f, 0.9f),
+                                },
+                                .style = {
+                                    .backgroundColor = {0.5f, 0.0f, 0.5f},
+                                    .cornerRadius = 5.0f,
+                                },
+                                .text = {
+                                    .textXAlignment = Amethyst::TextXAlignment::CENTER,
+                                    .textYAlignment = Amethyst::TextYAlignment::CENTER,
+                                    .textScaled = true,
+                                },
+                                .label = "Exit",
                             },
-                            {
-                                .textXAlignment = Amethyst::TextXAlignment::CENTER,
-                                .textYAlignment = Amethyst::TextYAlignment::CENTER,
-                                .textScaled = true,
-                                .text = "Exit",
-                            },
-                            {}, [&](Amethyst::TextButtonScope &btn) {
+                            [&](Amethyst::TextButtonScope &btn) {
                                 btn.component.name = "button";
                                 auto *c = &btn.component;
                                 btn.component.onMouseEnterCb = [c]() {
@@ -130,19 +142,23 @@ int main()
         // --- Text label ---
         .textLabel(
             {
-                .backgroundColor = {0.0f, 0.0f, 0.0f},
-                .backgroundTransparency = 1.0f,
-                .position = Amethyst::UDim2::fromOffset(10, 20),
-                .size = Amethyst::UDim2(0.98f, 0.0f, 0.0f, 60.0f),
-            },
-            {
-                .fontSize = 24.0f,
-                .textColor = {0.9f, 0.9f, 1.0f, 1.0f},
-                .textXAlignment = Amethyst::TextXAlignment::CENTER,
-                .textYAlignment = Amethyst::TextYAlignment::CENTER,
-                .strokeThickness = 0.0f,
-                .strokeColor = {0.0f, 0.0f, 0.0f, 1.0f},
-                .text = "The quick brown fox jumps over the lazy dog",
+                .base = {
+                    .position = Amethyst::UDim2::fromOffset(10, 20),
+                    .size = Amethyst::UDim2(0.98f, 0.0f, 0.0f, 60.0f),
+                },
+                .style = {
+                    .backgroundColor = {0.0f, 0.0f, 0.0f},
+                    .backgroundTransparency = 1.0f,
+                },
+                .text = {
+                    .fontSize = 24.0f,
+                    .textColor = {0.9f, 0.9f, 1.0f, 1.0f},
+                    .textXAlignment = Amethyst::TextXAlignment::CENTER,
+                    .textYAlignment = Amethyst::TextYAlignment::CENTER,
+                    .strokeThickness = 0.0f,
+                    .strokeColor = {0.0f, 0.0f, 0.0f, 1.0f},
+                },
+                .label = "The quick brown fox jumps over the lazy dog",
             },
             [](Amethyst::TextLabelScope &lbl) {
                 lbl.component.name = "pangram fixed size";
@@ -151,24 +167,28 @@ int main()
         // --- Text input ---
         .textInput(
             {
-                .backgroundColor = {0.15f, 0.15f, 0.15f},
-                .borderPixelSize = 2.0f,
-                .borderColor = {0.3f, 0.5f, 0.8f},
-                .cornerRadius = 5.0f,
-                .position = Amethyst::UDim2::fromOffset(10, 100),
-                .size = Amethyst::UDim2::fromOffset(400, 40),
-            },
-            {
-                .text =
-                    {
-                        .fontSize = 18.0f,
-                        .textColor = {1.0f, 1.0f, 1.0f, 1.0f},
-                        .textXAlignment = Amethyst::TextXAlignment::LEFT,
-                    },
-                .placeholderColor = {0.5f, 0.5f, 0.5f, 1.0f},
-                .selectionColor = {0.3f, 0.5f, 0.9f, 0.5f},
-                .cursorColor = {1.0f, 1.0f, 1.0f, 1.0f},
-                .placeholderText = "Type something here...",
+                .base = {
+                    .position = Amethyst::UDim2::fromOffset(10, 100),
+                    .size = Amethyst::UDim2::fromOffset(400, 40),
+                },
+                .style = {
+                    .backgroundColor = {0.15f, 0.15f, 0.15f},
+                    .borderPixelSize = 2.0f,
+                    .borderColor = {0.3f, 0.5f, 0.8f},
+                    .cornerRadius = 5.0f,
+                },
+                .textInput = {
+                    .text =
+                        {
+                            .fontSize = 18.0f,
+                            .textColor = {1.0f, 1.0f, 1.0f, 1.0f},
+                            .textXAlignment = Amethyst::TextXAlignment::LEFT,
+                        },
+                    .placeholderColor = {0.5f, 0.5f, 0.5f, 1.0f},
+                    .selectionColor = {0.3f, 0.5f, 0.9f, 0.5f},
+                    .cursorColor = {1.0f, 1.0f, 1.0f, 1.0f},
+                },
+                .placeholder = "Type something here...",
             },
             [&](Amethyst::TextInputScope &ti) {
                 ti.component.name = "text input example";
@@ -179,11 +199,15 @@ int main()
         // --- Sliders ---
         .sliderFloat(
             {
-                .backgroundColor = {0.9f, 0.9f, 0.9f},
-                .position = Amethyst::UDim2::fromOffset(10, 150),
-                .size = Amethyst::UDim2::fromOffset(300, 40),
+                .base = {
+                    .position = Amethyst::UDim2::fromOffset(10, 150),
+                    .size = Amethyst::UDim2::fromOffset(300, 40),
+                },
+                .style = {.backgroundColor = {0.9f, 0.9f, 0.9f}},
+                .slider = {.labelSide = Amethyst::LabelSide::LEFT},
+                .label = "Volume",
+                .valueSuffix = "%",
             },
-            {.labelSide = Amethyst::LabelSide::LEFT, .label = "Volume", .valueSuffix = "%"},
             [&](Amethyst::SliderFloatScope &s) {
                 s.component.name = "float slider";
                 s.component.min = 0.0f;
@@ -193,11 +217,14 @@ int main()
             })
         .sliderInt(
             {
-                .backgroundColor = {0.1f, 0.1f, 0.1f},
-                .position = Amethyst::UDim2::fromOffset(10, 200),
-                .size = Amethyst::UDim2::fromOffset(300, 40),
+                .base = {
+                    .position = Amethyst::UDim2::fromOffset(10, 200),
+                    .size = Amethyst::UDim2::fromOffset(300, 40),
+                },
+                .style = {.backgroundColor = {0.1f, 0.1f, 0.1f}},
+                .slider = {.labelSide = Amethyst::LabelSide::LEFT},
+                .label = "Count",
             },
-            {.labelSide = Amethyst::LabelSide::LEFT, .label = "Count"},
             [&](Amethyst::SliderIntScope &s) {
                 s.component.name = "int slider";
                 s.component.min = 0;
@@ -207,11 +234,14 @@ int main()
             })
         .sliderVec2(
             {
-                .backgroundColor = {0.1f, 0.1f, 0.1f},
-                .position = Amethyst::UDim2::fromOffset(10, 250),
-                .size = Amethyst::UDim2::fromOffset(300, 80),
+                .base = {
+                    .position = Amethyst::UDim2::fromOffset(10, 250),
+                    .size = Amethyst::UDim2::fromOffset(300, 80),
+                },
+                .style = {.backgroundColor = {0.1f, 0.1f, 0.1f}},
+                .slider = {.labelSide = Amethyst::LabelSide::LEFT, .layout = Amethyst::ValueControlLayout::STACKED},
+                .label = "Position",
             },
-            {.labelSide = Amethyst::LabelSide::LEFT, .layout = Amethyst::ValueControlLayout::STACKED, .label = "Position"},
             [&](Amethyst::SliderVec2Scope &s) {
                 s.component.name = "vec2 slider";
                 s.component.min = glm::vec2(0.0f);
@@ -221,11 +251,14 @@ int main()
             })
         .sliderVec3(
             {
-                .backgroundColor = {0.1f, 0.1f, 0.1f},
-                .position = Amethyst::UDim2::fromOffset(10, 340),
-                .size = Amethyst::UDim2::fromOffset(400, 40),
+                .base = {
+                    .position = Amethyst::UDim2::fromOffset(10, 340),
+                    .size = Amethyst::UDim2::fromOffset(400, 40),
+                },
+                .style = {.backgroundColor = {0.1f, 0.1f, 0.1f}},
+                .slider = {.labelSide = Amethyst::LabelSide::LEFT, .layout = Amethyst::ValueControlLayout::SIDE_BY_SIDE},
+                .label = "Color",
             },
-            {.labelSide = Amethyst::LabelSide::LEFT, .layout = Amethyst::ValueControlLayout::SIDE_BY_SIDE, .label = "Color"},
             [&](Amethyst::SliderVec3Scope &s) {
                 s.component.name = "vec3 slider";
                 s.component.min = glm::vec3(0.0f);
@@ -236,16 +269,20 @@ int main()
         // --- Scrolling frame with grid ---
         .scrollingFrame(
             {
-                .backgroundColor = {0.12f, 0.12f, 0.15f},
-                .clipsDescendants = true,
-                .cornerRadius = 5.0f,
-                .position = Amethyst::UDim2::fromOffset(530, 100),
-                .size = Amethyst::UDim2::fromOffset(250, 200),
-            },
-            {
-                .canvasSize = Amethyst::UDim2::fromOffset(250, 350),
-                .scrollBarColor = {0.25f, 0.25f, 0.3f},
-                .scrollBarThumbColor = {0.5f, 0.5f, 0.6f},
+                .base = {
+                    .clipsDescendants = true,
+                    .position = Amethyst::UDim2::fromOffset(530, 100),
+                    .size = Amethyst::UDim2::fromOffset(250, 200),
+                },
+                .style = {
+                    .backgroundColor = {0.12f, 0.12f, 0.15f},
+                    .cornerRadius = 5.0f,
+                },
+                .scroll = {
+                    .canvasSize = Amethyst::UDim2::fromOffset(250, 350),
+                    .scrollBarColor = {0.25f, 0.25f, 0.3f},
+                    .scrollBarThumbColor = {0.5f, 0.5f, 0.6f},
+                },
             },
             [](Amethyst::ScrollingFrameScope &sf) {
                 sf.component.name = "Scroll Test";
@@ -261,17 +298,17 @@ int main()
                     {0.2f, 0.6f, 0.4f}, {0.5f, 0.5f, 0.5f}, {0.9f, 0.6f, 0.3f}, {0.3f, 0.6f, 0.9f},
                 };
                 for (auto &color : colors) {
-                    sf.frame({.backgroundColor = color, .cornerRadius = 8.0f});
+                    sf.frame({.style = {.backgroundColor = color, .cornerRadius = 8.0f}});
                 }
             })
         // --- Table ---
         .table(
             {
-                .backgroundColor = {0.15f, 0.15f, 0.15f},
-                .position = Amethyst::UDim2::fromOffset(10, 400),
-                .size = Amethyst::UDim2::fromOffset(500, 160),
+                .base = {
+                    .position = Amethyst::UDim2::fromOffset(10, 400),
+                    .size = Amethyst::UDim2::fromOffset(500, 160),
+                },
             },
-            {},
             [](Amethyst::TableScope &t) {
                 t.component.name = "Test Table";
                 t.column("Label", 0.3f).column("Color", 0.2f).column("Slider", 0.5f);
@@ -291,24 +328,34 @@ int main()
                 for (int i = 0; i < 4; ++i) {
                     t.row([i](Amethyst::TableRowScope &r) {
                         r.cell([i](Amethyst::UIScope &cell) {
-                            cell.textLabel({.backgroundColor = {0.2f, 0.2f, 0.2f}, .size = Amethyst::UDim2::fromScale(1.0f, 1.0f)},
-                                           {.fontSize = 16.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .text = rows[i].label});
+                            cell.textLabel({
+                                .base = {.size = Amethyst::UDim2::fromScale(1.0f, 1.0f)},
+                                .style = {.backgroundColor = {0.2f, 0.2f, 0.2f}},
+                                .text = {.fontSize = 16.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
+                                .label = rows[i].label,
+                            });
                         });
                         r.cell([i](Amethyst::UIScope &cell) {
                             cell.frame({
-                                .backgroundColor = rows[i].color,
-                                .cornerRadius = 4.0f,
-                                .position = Amethyst::UDim2::fromOffset(5, 5),
-                                .size = Amethyst::UDim2::fromOffset(30, 30),
+                                .base = {
+                                    .position = Amethyst::UDim2::fromOffset(5, 5),
+                                    .size = Amethyst::UDim2::fromOffset(30, 30),
+                                },
+                                .style = {
+                                    .backgroundColor = rows[i].color,
+                                    .cornerRadius = 4.0f,
+                                },
                             });
                         });
                         r.cell([i](Amethyst::UIScope &cell) {
                             cell.sliderFloat(
                                 {
-                                    .position = Amethyst::UDim2::fromScale(0.025f, 0.1f),
-                                    .size = Amethyst::UDim2::fromScale(0.95f, 0.8f),
+                                    .base = {
+                                        .position = Amethyst::UDim2::fromScale(0.025f, 0.1f),
+                                        .size = Amethyst::UDim2::fromScale(0.95f, 0.8f),
+                                    },
                                 },
-                                {}, [i](Amethyst::SliderFloatScope &s) {
+                                [i](Amethyst::SliderFloatScope &s) {
                                     s.component.min = 0.0f;
                                     s.component.max = 100.0f;
                                     s.component.valueRef = &sliderVals[i];
@@ -320,11 +367,10 @@ int main()
         // --- Canvas ---
         .canvas(
             {
-                .backgroundColor = {0.1f, 0.1f, 0.12f},
-                .backgroundTransparency = 0.0f,
-                .cornerRadius = 5.0f,
-                .position = Amethyst::UDim2::fromOffset(530, 310),
-                .size = Amethyst::UDim2::fromOffset(460, 120),
+                .base = {
+                    .position = Amethyst::UDim2::fromOffset(530, 310),
+                    .size = Amethyst::UDim2::fromOffset(460, 120),
+                },
             },
             [](Amethyst::CanvasScope &c) {
                 c.component.name = "Canvas Demo";
@@ -339,22 +385,25 @@ int main()
             });
 
     // --- Standalone tab bar test ---
-    Amethyst::UIScope(window)
-        .tabBar(
-            {
-                .backgroundColor = {0.15f, 0.15f, 0.2f},
-                .position = Amethyst::UDim2::fromOffset(10, 570),
-                .size = Amethyst::UDim2::fromOffset(460, 200),
-            },
-            {},
-            [](Amethyst::TabBarScope &tabs) {
-                tabs.tab("Tab A", [](Amethyst::FrameScope &f) {
-                    f.frame({.backgroundColor = {0.8f, 0.2f, 0.2f}, .size = Amethyst::UDim2::fromScale(1.0f, 1.0f)});
-                });
-                tabs.tab("Tab B", [](Amethyst::FrameScope &f) {
-                    f.frame({.backgroundColor = {0.2f, 0.8f, 0.2f}, .size = Amethyst::UDim2::fromScale(1.0f, 1.0f)});
-                });
+    Amethyst::UIScope(window).tabBar(
+        {
+            .base =
+                {
+                    .position = Amethyst::UDim2::fromOffset(10, 570),
+                    .size = Amethyst::UDim2::fromOffset(460, 200),
+                },
+            .style = {.backgroundColor = {0.15f, 0.15f, 0.2f}},
+        },
+        [](Amethyst::TabBarScope &tabs) {
+            tabs.tab("Tab A", [](Amethyst::FrameScope &f) {
+                f.frame(
+                    {.base = {.size = Amethyst::UDim2::fromScale(1.0f, 1.0f)}, .style = {.backgroundColor = {0.8f, 0.2f, 0.2f}}});
             });
+            tabs.tab("Tab B", [](Amethyst::FrameScope &f) {
+                f.frame(
+                    {.base = {.size = Amethyst::UDim2::fromScale(1.0f, 1.0f)}, .style = {.backgroundColor = {0.2f, 0.8f, 0.2f}}});
+            });
+        });
 
     // --- Docking layout ---
     dockingLayer = window.add<Amethyst::DockingLayer>();
@@ -378,14 +427,18 @@ int main()
                         tabs.tab("Tree", [&](Amethyst::FrameScope &content) {
                             content.scrollingFrame(
                                 {
-                                    .backgroundColor = Amethyst::Color3::fromHex(0x282828),
-                                    .clipsDescendants = true,
-                                    .size = Amethyst::UDim2::fromScale(1.0f, 1.0f),
-                                },
-                                {
-                                    .canvasSize = Amethyst::UDim2::fromOffset(250, 500),
-                                    .scrollBarColor = {0.2f, 0.2f, 0.25f},
-                                    .scrollBarThumbColor = {0.4f, 0.4f, 0.5f},
+                                    .base =
+                                        {
+                                            .clipsDescendants = true,
+                                            .size = Amethyst::UDim2::fromScale(1.0f, 1.0f),
+                                        },
+                                    .style = {.backgroundColor = Amethyst::Color3::fromHex(0x282828)},
+                                    .scroll =
+                                        {
+                                            .canvasSize = Amethyst::UDim2::fromOffset(250, 500),
+                                            .scrollBarColor = {0.2f, 0.2f, 0.25f},
+                                            .scrollBarThumbColor = {0.4f, 0.4f, 0.5f},
+                                        },
                                 },
                                 [](Amethyst::ScrollingFrameScope &sf) {
                                     auto *tv = sf.get().add<Amethyst::TreeView>();
@@ -405,16 +458,14 @@ int main()
                                     auto addRow = [tv](uint16_t depth, const char *text, Amethyst::Color4 color) {
                                         tv->addRow(depth);
                                         auto lbl = std::make_unique<Amethyst::TextLabel>();
-                                        lbl->setBaseProperties({
-                                            .backgroundTransparency = 1.0f,
-                                            .size = Amethyst::UDim2::fromScale(1.0f, 1.0f),
-                                        });
-                                        lbl->setTextProperties({
+                                        lbl->setBaseProperties({.size = Amethyst::UDim2::fromScale(1.0f, 1.0f)});
+                                        lbl->setBaseStyleProperties({.backgroundTransparency = 1.0f});
+                                        lbl->setTextStyleProperties({
                                             .fontSize = 14.0f,
                                             .textColor = color,
                                             .textYAlignment = Amethyst::TextYAlignment::CENTER,
-                                            .text = text,
                                         });
+                                        lbl->setText(text);
                                         tv->nextCell(std::move(lbl));
                                     };
 
@@ -436,20 +487,20 @@ int main()
                         [&](Amethyst::DockScope &top) {
                             top.panel([&](Amethyst::TabBarScope &tabs) {
                                 tabs.tab("Panel A", [](Amethyst::FrameScope &f) {
-                                    f.frame(
-                                        {.backgroundColor = {0.6f, 0.2f, 0.2f}, .size = Amethyst::UDim2::fromScale(1.0f, 1.0f)});
+                                    f.frame({.base = {.size = Amethyst::UDim2::fromScale(1.0f, 1.0f)},
+                                             .style = {.backgroundColor = {0.6f, 0.2f, 0.2f}}});
                                 });
                                 tabs.tab("Checkerboard", [&](Amethyst::FrameScope &f) {
-                                    f.imageLabel({.size = Amethyst::UDim2::fromScale(1.0f, 1.0f)},
-                                                 {.image = backend.getAtlasTextureId()});
+                                    f.imageLabel({.base = {.size = Amethyst::UDim2::fromScale(1.0f, 1.0f)},
+                                                  .texture = backend.getAtlasTextureId()});
                                 });
                             });
                         },
                         [](Amethyst::DockScope &bottom) {
                             bottom.panel([](Amethyst::TabBarScope &tabs) {
                                 tabs.tab("Panel B", [](Amethyst::FrameScope &f) {
-                                    f.frame(
-                                        {.backgroundColor = {0.2f, 0.6f, 0.2f}, .size = Amethyst::UDim2::fromScale(1.0f, 1.0f)});
+                                    f.frame({.base = {.size = Amethyst::UDim2::fromScale(1.0f, 1.0f)},
+                                             .style = {.backgroundColor = {0.2f, 0.6f, 0.2f}}});
                                 });
                             });
                         });

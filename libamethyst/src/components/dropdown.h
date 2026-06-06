@@ -42,15 +42,15 @@ class Dropdown : public TextButton {
     void closeImmediate();
     bool isOpen() const { return m_state == State::OPEN; }
 
-    bool setDropdownProperties(const DropdownProperties &props);
-    const DropdownProperties &getDropdownProperties() const { return m_ddProps; }
+    bool setDropdownProperties(const DropdownStyleProperties &props);
+    const DropdownStyleProperties &getDropdownProperties() const { return m_ddProps; }
 
     std::function<void(std::string_view)> onItemSelected;
     std::function<void()> onOpenedCb;
     std::function<void()> onClosedCb;
 
   protected:
-    DropdownProperties m_ddProps;
+    DropdownStyleProperties m_ddProps;
 
     EventResult onMouseButton1Down(uint32_t x, uint32_t y) override;
 

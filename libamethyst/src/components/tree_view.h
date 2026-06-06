@@ -188,8 +188,8 @@ class TreeView : public UIObject {
      */
     std::vector<Instance *> getHittableInstances() override;
 
-    bool setTreeViewProperties(const TreeViewProperties &props);
-    const TreeViewProperties &getTreeViewProperties() const { return m_tvProps; }
+    bool setTreeViewProperties(const TreeViewStyleProperties &props);
+    const TreeViewStyleProperties &getTreeViewProperties() const { return m_tvProps; }
 
   public:
     int32_t hoveredRow = -1;
@@ -199,7 +199,7 @@ class TreeView : public UIObject {
     std::function<void(uint32_t, bool)> onRowToggled;
 
   protected:
-    TreeViewProperties m_tvProps;
+    TreeViewStyleProperties m_tvProps;
 
   private:
     static constexpr uint32_t INVALID_ROW = UINT32_MAX;

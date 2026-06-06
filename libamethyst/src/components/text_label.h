@@ -23,13 +23,17 @@ class TextLabel : public UILabel {
 
     void draw(DrawContext &ctx) override;
 
-    bool setTextProperties(const TextProperties &props);
-    const TextProperties &getTextProperties() const { return m_textProps; }
+    bool setTextStyleProperties(const TextStyleProperties &props);
+    const TextStyleProperties &getTextStyleProperties() const { return m_textStyle; }
+
+    void setText(std::string text);
+    const std::string &getText() const { return m_text; }
 
     glm::vec2 getTextSize() const { return m_textSize; }
 
   protected:
-    TextProperties m_textProps;
+    TextStyleProperties m_textStyle;
+    std::string m_text;
 
   private:
     std::vector<GeometryAllocation *> m_textAllocations;

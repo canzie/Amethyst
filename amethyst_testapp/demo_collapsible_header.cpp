@@ -73,262 +73,239 @@ int main()
     TextLabel *statusLabel = nullptr;
 
     UIScope(window)
-        .textLabel({.backgroundColor = {0.12f, 0.12f, 0.14f},
-                    .backgroundTransparency = 0.0f,
-                    .position = {0.0f, 0.0f, 0.0f, 0.0f},
-                    .size = {1.0f, 0.0f, 0.0f, 24.0f}},
-                   {.fontSize = 13.0f,
-                    .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
-                    .textXAlignment = TextXAlignment::LEFT,
-                    .textYAlignment = TextYAlignment::CENTER,
-                    .text = "Click any header to toggle"},
+        .textLabel({.base = {.position = {0.0f, 0.0f, 0.0f, 0.0f}, .size = {1.0f, 0.0f, 0.0f, 24.0f}},
+                    .style = {.backgroundColor = {0.12f, 0.12f, 0.14f}, .backgroundTransparency = 0.0f},
+                    .text = {.fontSize = 13.0f,
+                             .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
+                             .textXAlignment = TextXAlignment::LEFT,
+                             .textYAlignment = TextYAlignment::CENTER},
+                    .label = "Click any header to toggle"},
                    [&statusLabel](TextLabelScope &t) { statusLabel = &t.component; })
         .scrollingFrame(
-            {.backgroundColor = Color3::fromHex(0x1A1A1E),
-             .clipsDescendants = true,
-             .position = UDim2::fromOffset(10.0f, 29.0f),
-             .size = {1.0f, -20.0f, 1.0f, -34.0f}},
-            {.canvasSize = UDim2::fromOffset(880, 1200),
-             .scrollBarColor = {0.2f, 0.2f, 0.25f},
-             .scrollBarThumbColor = {0.45f, 0.45f, 0.55f}},
+            {.base = {.clipsDescendants = true, .position = UDim2::fromOffset(10.0f, 29.0f), .size = {1.0f, -20.0f, 1.0f, -34.0f}},
+             .style = {.backgroundColor = Color3::fromHex(0x1A1A1E)},
+             .scroll = {.canvasSize = UDim2::fromOffset(880, 1200),
+                        .scrollBarColor = {0.2f, 0.2f, 0.25f},
+                        .scrollBarThumbColor = {0.45f, 0.45f, 0.55f}}},
             [statusLabel](ScrollingFrameScope &sf) {
                 // --- Section 1: General Settings ---
                 sf.collapsibleHeader(
-                      {.backgroundColor = {0.16f, 0.16f, 0.18f},
-                       .backgroundTransparency = 0.0f,
-                       .cornerRadius = 4.0f,
-                       .position = {0.0f, 0.0f, 0.0f, 0.0f},
-                       .size = {1.0f, 0.0f, 0.0f, 180.0f}},
-                      {.expanded = true,
-                       .title = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .text = "General Settings"},
-                       .headerHeight = 32.0f,
-                       .headerColor = {0.22f, 0.28f, 0.38f},
-                       .headerCornerRadius = 4.0f,
-                       .indicatorColor = {0.8f, 0.85f, 1.0f, 1.0f}},
+                      {.base = {.position = {0.0f, 0.0f, 0.0f, 0.0f}, .size = {1.0f, 0.0f, 0.0f, 180.0f}},
+                       .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
+                       .header = {.expanded = true,
+                                  .titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
+                                  .headerHeight = 32.0f,
+                                  .headerColor = {0.22f, 0.28f, 0.38f},
+                                  .headerCornerRadius = 4.0f,
+                                  .indicatorColor = {0.8f, 0.85f, 1.0f, 1.0f}},
+                       .title = "General Settings"},
                       [statusLabel](CollapsibleHeaderScope &ch) {
                           ch.component.onToggled = [statusLabel](bool exp) {
-                              statusLabel->setTextProperties(
-                                  {.text = std::string("General Settings: ") + (exp ? "expanded" : "collapsed")});
+                              statusLabel->setText(std::string("General Settings: ") + (exp ? "expanded" : "collapsed"));
                           };
-                          ch.textLabel({.backgroundTransparency = 1.0f,
-                                        .position = UDim2::fromOffset(10.0f, 10.0f),
-                                        .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                       {.fontSize = 13.0f,
-                                        .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                                        .textYAlignment = TextYAlignment::CENTER,
-                                        .text = "Resolution: 1920x1080"});
-                          ch.textLabel({.backgroundTransparency = 1.0f,
-                                        .position = UDim2::fromOffset(10.0f, 38.0f),
-                                        .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                       {.fontSize = 13.0f,
-                                        .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                                        .textYAlignment = TextYAlignment::CENTER,
-                                        .text = "Fullscreen: Off"});
-                          ch.textLabel({.backgroundTransparency = 1.0f,
-                                        .position = UDim2::fromOffset(10.0f, 66.0f),
-                                        .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                       {.fontSize = 13.0f,
-                                        .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                                        .textYAlignment = TextYAlignment::CENTER,
-                                        .text = "VSync: Enabled"});
+                          ch.textLabel({.base = {.position = UDim2::fromOffset(10.0f, 10.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                        .style = {.backgroundTransparency = 1.0f},
+                                        .text = {.fontSize = 13.0f,
+                                                 .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                                 .textYAlignment = TextYAlignment::CENTER},
+                                        .label = "Resolution: 1920x1080"});
+                          ch.textLabel({.base = {.position = UDim2::fromOffset(10.0f, 38.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                        .style = {.backgroundTransparency = 1.0f},
+                                        .text = {.fontSize = 13.0f,
+                                                 .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                                 .textYAlignment = TextYAlignment::CENTER},
+                                        .label = "Fullscreen: Off"});
+                          ch.textLabel({.base = {.position = UDim2::fromOffset(10.0f, 66.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                        .style = {.backgroundTransparency = 1.0f},
+                                        .text = {.fontSize = 13.0f,
+                                                 .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                                 .textYAlignment = TextYAlignment::CENTER},
+                                        .label = "VSync: Enabled"});
                       })
                     // --- Section 2: Audio (starts collapsed) ---
-                    .collapsibleHeader({.backgroundColor = {0.16f, 0.16f, 0.18f},
-                                        .backgroundTransparency = 0.0f,
-                                        .cornerRadius = 4.0f,
-                                        .position = {0.0f, 0.0f, 0.0f, 190.0f},
-                                        .size = {1.0f, 0.0f, 0.0f, 150.0f}},
-                                       {.expanded = false,
-                                        .title = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .text = "Audio"},
-                                        .headerHeight = 32.0f,
-                                        .headerColor = {0.28f, 0.22f, 0.32f},
-                                        .headerCornerRadius = 4.0f,
-                                        .indicatorColor = {0.9f, 0.75f, 1.0f, 1.0f}},
-                                       [statusLabel](CollapsibleHeaderScope &ch) {
-                                           ch.component.onToggled = [statusLabel](bool exp) {
-                                               statusLabel->setTextProperties(
-                                                   {.text = std::string("Audio: ") + (exp ? "expanded" : "collapsed")});
-                                           };
-                                           ch.textLabel({.backgroundTransparency = 1.0f,
-                                                         .position = UDim2::fromOffset(10.0f, 10.0f),
-                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                                        {.fontSize = 13.0f,
-                                                         .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                                                         .textYAlignment = TextYAlignment::CENTER,
-                                                         .text = "Master Volume: 80%"});
-                                           ch.textLabel({.backgroundTransparency = 1.0f,
-                                                         .position = UDim2::fromOffset(10.0f, 38.0f),
-                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                                        {.fontSize = 13.0f,
-                                                         .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                                                         .textYAlignment = TextYAlignment::CENTER,
-                                                         .text = "Music: 60%"});
-                                           ch.textLabel({.backgroundTransparency = 1.0f,
-                                                         .position = UDim2::fromOffset(10.0f, 66.0f),
-                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                                        {.fontSize = 13.0f,
-                                                         .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                                                         .textYAlignment = TextYAlignment::CENTER,
-                                                         .text = "SFX: 100%"});
-                                       })
-                    // --- Section 3: Graphics (table inside) ---
-                    .collapsibleHeader({.backgroundColor = {0.16f, 0.16f, 0.18f},
-                                        .backgroundTransparency = 0.0f,
-                                        .cornerRadius = 4.0f,
-                                        .position = {0.0f, 0.0f, 0.0f, 350.0f},
-                                        .size = {1.0f, 0.0f, 0.0f, 210.0f}},
-                                       {.title = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .text = "Graphics"},
-                                        .headerHeight = 32.0f,
-                                        .headerColor = {0.2f, 0.32f, 0.25f},
-                                        .headerCornerRadius = 4.0f,
-                                        .indicatorSize = 12.0f,
-                                        .indicatorColor = {0.6f, 1.0f, 0.7f, 1.0f}},
-                                       [statusLabel](CollapsibleHeaderScope &ch) {
-                                           ch.component.onToggled = [statusLabel](bool exp) {
-                                               statusLabel->setTextProperties(
-                                                   {.text = std::string("Graphics: ") + (exp ? "expanded" : "collapsed")});
-                                           };
-                                           ch.table({.backgroundColor = {0.14f, 0.14f, 0.16f},
-                                                     .backgroundTransparency = 0.0f,
-                                                     .position = UDim2::fromOffset(5.0f, 5.0f),
-                                                     .size = {1.0f, -10.0f, 0.0f, 168.0f}},
-                                                    {.rowHeight = 28.0f,
-                                                     .cellPadding = {{2.0f, 0.0f}, {8.0f, 0.0f}, {2.0f, 0.0f}, {8.0f, 0.0f}},
-                                                     .showColumnSeparators = true,
-                                                     .columnSeparatorColor = {0.3f, 0.3f, 0.35f, 0.5f},
-                                                     .showHeader = true},
-                                                    [](TableScope &t) {
-                                                        t.column("Setting", 0.55f).column("Value", 0.45f);
-
-                                                        struct SettingRow {
-                                                            const char *setting;
-                                                            const char *value;
-                                                        };
-                                                        SettingRow graphicsRows[] = {
-                                                            {"Shadow Quality", "Ultra"},    {"Anti-Aliasing", "TAA"},
-                                                            {"Texture Quality", "High"},    {"Draw Distance", "Far"},
-                                                            {"Ambient Occlusion", "HBAO+"}, {"Anisotropic", "16x"},
-                                                        };
-
-                                                        for (auto &row : graphicsRows) {
-                                                            t.row([&row](TableRowScope &r) {
-                                                                r.cell([&row](UIScope &cell) {
-                                                                    cell.textLabel({.backgroundTransparency = 1.0f,
-                                                                                    .size = UDim2::fromScale(1.0f, 1.0f)},
-                                                                                   {.fontSize = 13.0f,
-                                                                                    .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
-                                                                                    .textYAlignment = TextYAlignment::CENTER,
-                                                                                    .text = row.setting});
-                                                                });
-                                                                r.cell([&row](UIScope &cell) {
-                                                                    cell.textLabel({.backgroundTransparency = 1.0f,
-                                                                                    .size = UDim2::fromScale(1.0f, 1.0f)},
-                                                                                   {.fontSize = 13.0f,
-                                                                                    .textColor = {0.5f, 0.9f, 0.6f, 1.0f},
-                                                                                    .textYAlignment = TextYAlignment::CENTER,
-                                                                                    .text = row.value});
-                                                                });
-                                                            });
-                                                        }
-                                                    });
-                                       })
-                    // --- Section 4: No indicator ---
                     .collapsibleHeader(
-                        {.backgroundColor = {0.16f, 0.16f, 0.18f},
-                         .backgroundTransparency = 0.0f,
-                         .cornerRadius = 4.0f,
-                         .position = {0.0f, 0.0f, 0.0f, 560.0f},
-                         .size = {1.0f, 0.0f, 0.0f, 120.0f}},
-                        {.title = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .text = "Controls (no indicator)"},
-                         .headerHeight = 32.0f,
-                         .headerColor = {0.32f, 0.22f, 0.2f},
-                         .headerCornerRadius = 4.0f,
-                         .showIndicator = false},
+                        {.base = {.position = {0.0f, 0.0f, 0.0f, 190.0f}, .size = {1.0f, 0.0f, 0.0f, 150.0f}},
+                         .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
+                         .header = {.expanded = false,
+                                    .titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
+                                    .headerHeight = 32.0f,
+                                    .headerColor = {0.28f, 0.22f, 0.32f},
+                                    .headerCornerRadius = 4.0f,
+                                    .indicatorColor = {0.9f, 0.75f, 1.0f, 1.0f}},
+                         .title = "Audio"},
                         [statusLabel](CollapsibleHeaderScope &ch) {
                             ch.component.onToggled = [statusLabel](bool exp) {
-                                statusLabel->setTextProperties(
-                                    {.text = std::string("Controls: ") + (exp ? "expanded" : "collapsed")});
+                                statusLabel->setText(std::string("Audio: ") + (exp ? "expanded" : "collapsed"));
                             };
-                            ch.textLabel({.backgroundTransparency = 1.0f,
-                                          .position = UDim2::fromOffset(10.0f, 10.0f),
-                                          .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                         {.fontSize = 13.0f,
+                            ch.textLabel(
+                                {.base = {.position = UDim2::fromOffset(10.0f, 10.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                 .style = {.backgroundTransparency = 1.0f},
+                                 .text = {.fontSize = 13.0f,
                                           .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                                          .textYAlignment = TextYAlignment::CENTER,
-                                          .text = "Mouse Sensitivity: 2.5"});
-                            ch.textLabel({.backgroundTransparency = 1.0f,
-                                          .position = UDim2::fromOffset(10.0f, 38.0f),
-                                          .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                         {.fontSize = 13.0f,
+                                          .textYAlignment = TextYAlignment::CENTER},
+                                 .label = "Master Volume: 80%"});
+                            ch.textLabel(
+                                {.base = {.position = UDim2::fromOffset(10.0f, 38.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                 .style = {.backgroundTransparency = 1.0f},
+                                 .text = {.fontSize = 13.0f,
                                           .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                                          .textYAlignment = TextYAlignment::CENTER,
-                                          .text = "Invert Y: No"});
+                                          .textYAlignment = TextYAlignment::CENTER},
+                                 .label = "Music: 60%"});
+                            ch.textLabel(
+                                {.base = {.position = UDim2::fromOffset(10.0f, 66.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                 .style = {.backgroundTransparency = 1.0f},
+                                 .text = {.fontSize = 13.0f,
+                                          .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                          .textYAlignment = TextYAlignment::CENTER},
+                                 .label = "SFX: 100%"});
+                        })
+                    // --- Section 3: Graphics (table inside) ---
+                    .collapsibleHeader(
+                        {.base = {.position = {0.0f, 0.0f, 0.0f, 350.0f}, .size = {1.0f, 0.0f, 0.0f, 210.0f}},
+                         .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
+                         .header = {.titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
+                                    .headerHeight = 32.0f,
+                                    .headerColor = {0.2f, 0.32f, 0.25f},
+                                    .headerCornerRadius = 4.0f,
+                                    .indicatorSize = 12.0f,
+                                    .indicatorColor = {0.6f, 1.0f, 0.7f, 1.0f}},
+                         .title = "Graphics"},
+                        [statusLabel](CollapsibleHeaderScope &ch) {
+                            ch.component.onToggled = [statusLabel](bool exp) {
+                                statusLabel->setText(std::string("Graphics: ") + (exp ? "expanded" : "collapsed"));
+                            };
+                            ch.table({.base = {.position = UDim2::fromOffset(5.0f, 5.0f), .size = {1.0f, -10.0f, 0.0f, 168.0f}},
+                                      .table = {.rowHeight = 28.0f,
+                                                .cellPadding = {{2.0f, 0.0f}, {8.0f, 0.0f}, {2.0f, 0.0f}, {8.0f, 0.0f}},
+                                                .showColumnSeparators = true,
+                                                .columnSeparatorColor = {0.3f, 0.3f, 0.35f, 0.5f},
+                                                .showHeader = true}},
+                                     [](TableScope &t) {
+                                         t.column("Setting", 0.55f).column("Value", 0.45f);
+
+                                         struct SettingRow {
+                                             const char *setting;
+                                             const char *value;
+                                         };
+                                         SettingRow graphicsRows[] = {
+                                             {"Shadow Quality", "Ultra"},    {"Anti-Aliasing", "TAA"},
+                                             {"Texture Quality", "High"},    {"Draw Distance", "Far"},
+                                             {"Ambient Occlusion", "HBAO+"}, {"Anisotropic", "16x"},
+                                         };
+
+                                         for (auto &row : graphicsRows) {
+                                             t.row([&row](TableRowScope &r) {
+                                                 r.cell([&row](UIScope &cell) {
+                                                     cell.textLabel({.base = {.size = UDim2::fromScale(1.0f, 1.0f)},
+                                                                     .style = {.backgroundTransparency = 1.0f},
+                                                                     .text = {.fontSize = 13.0f,
+                                                                              .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
+                                                                              .textYAlignment = TextYAlignment::CENTER},
+                                                                     .label = row.setting});
+                                                 });
+                                                 r.cell([&row](UIScope &cell) {
+                                                     cell.textLabel({.base = {.size = UDim2::fromScale(1.0f, 1.0f)},
+                                                                     .style = {.backgroundTransparency = 1.0f},
+                                                                     .text = {.fontSize = 13.0f,
+                                                                              .textColor = {0.5f, 0.9f, 0.6f, 1.0f},
+                                                                              .textYAlignment = TextYAlignment::CENTER},
+                                                                     .label = row.value});
+                                                 });
+                                             });
+                                         }
+                                     });
+                        })
+                    // --- Section 4: No indicator ---
+                    .collapsibleHeader(
+                        {.base = {.position = {0.0f, 0.0f, 0.0f, 560.0f}, .size = {1.0f, 0.0f, 0.0f, 120.0f}},
+                         .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
+                         .header = {.titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
+                                    .headerHeight = 32.0f,
+                                    .headerColor = {0.32f, 0.22f, 0.2f},
+                                    .headerCornerRadius = 4.0f,
+                                    .showIndicator = false},
+                         .title = "Controls (no indicator)"},
+                        [statusLabel](CollapsibleHeaderScope &ch) {
+                            ch.component.onToggled = [statusLabel](bool exp) {
+                                statusLabel->setText(std::string("Controls: ") + (exp ? "expanded" : "collapsed"));
+                            };
+                            ch.textLabel(
+                                {.base = {.position = UDim2::fromOffset(10.0f, 10.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                 .style = {.backgroundTransparency = 1.0f},
+                                 .text = {.fontSize = 13.0f,
+                                          .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                          .textYAlignment = TextYAlignment::CENTER},
+                                 .label = "Mouse Sensitivity: 2.5"});
+                            ch.textLabel(
+                                {.base = {.position = UDim2::fromOffset(10.0f, 38.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                 .style = {.backgroundTransparency = 1.0f},
+                                 .text = {.fontSize = 13.0f,
+                                          .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                          .textYAlignment = TextYAlignment::CENTER},
+                                 .label = "Invert Y: No"});
                         })
                     // --- Section 5: custom SVG indicator + custom header ---
-                    .collapsibleHeader({.backgroundColor = {0.16f, 0.16f, 0.18f},
-                                        .backgroundTransparency = 0.0f,
-                                        .cornerRadius = 4.0f,
-                                        .position = {0.0f, 0.0f, 0.0f, 690.0f},
-                                        .size = {1.0f, 0.0f, 0.0f, 160.0f}},
-                                       {.headerHeight = 36.0f, .headerCornerRadius = 4.0f, .indicatorSize = 18.0f},
-                                       [statusLabel](CollapsibleHeaderScope &ch) {
-                                           ch.component.onToggled = [statusLabel](bool exp) {
-                                               statusLabel->setTextProperties(
-                                                   {.text = std::string("Shader Pipeline: ") + (exp ? "expanded" : "collapsed")});
-                                           };
+                    .collapsibleHeader(
+                        {.base = {.position = {0.0f, 0.0f, 0.0f, 690.0f}, .size = {1.0f, 0.0f, 0.0f, 160.0f}},
+                         .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
+                         .header = {.headerHeight = 36.0f, .headerCornerRadius = 4.0f, .indicatorSize = 18.0f}},
+                        [statusLabel](CollapsibleHeaderScope &ch) {
+                            ch.component.onToggled = [statusLabel](bool exp) {
+                                statusLabel->setText(std::string("Shader Pipeline: ") + (exp ? "expanded" : "collapsed"));
+                            };
 
-                                           ch.indicator([](UIScope &indicator) {
-                                               indicator.imageLabel({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f},
-                                                                    {.imageColor = {0.75f, 0.85f, 1.0f, 1.0f}, .svg = SVG_ARROW});
-                                           });
+                            ch.indicator([](UIScope &indicator) {
+                                indicator.imageLabel({.style = {.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f},
+                                                      .image = {.imageColor = {0.75f, 0.85f, 1.0f, 1.0f}},
+                                                      .svg = SVG_ARROW});
+                            });
 
-                                           ch.header([statusLabel](FrameScope &header) {
-                                               header.textLabel({.backgroundTransparency = 1.0f,
-                                                                 .position = {0.0f, 0.0f, 0.0f, 0.0f},
-                                                                 .size = {1.0f, -36.0f, 1.0f, 0.0f}},
-                                                                {.fontSize = 15.0f,
-                                                                 .textColor = {1.0f, 1.0f, 1.0f, 1.0f},
-                                                                 .textXAlignment = TextXAlignment::LEFT,
-                                                                 .textYAlignment = TextYAlignment::CENTER,
-                                                                 .text = "Shader Pipeline"});
-                                               header.imageButton({.anchorPoint = {1.0f, 0.5f},
-                                                                   .backgroundColor = {0.28f, 0.28f, 0.38f},
-                                                                   .cornerRadius = 4.0f,
-                                                                   .position = {1.0f, -4.0f, 0.5f, 0.0f},
-                                                                   .size = UDim2::fromOffset(22.0f, 22.0f),
-                                                                   .zIndex = 101},
-                                                                  {.imageColor = {0.7f, 0.7f, 0.85f, 1.0f}, .svg = SVG_GEAR}, {},
-                                                                  [statusLabel](ImageButtonScope &btn) {
-                                                                      btn.component.onMouseButton1ClickCb = [statusLabel]() {
-                                                                          statusLabel->setTextProperties(
-                                                                              {.text = "Shader Pipeline: options clicked"});
-                                                                          return EventResult::CONSUMED;
-                                                                      };
-                                                                  });
-                                           });
+                            ch.header([statusLabel](FrameScope &header) {
+                                header.textLabel(
+                                    {.base = {.position = {0.0f, 0.0f, 0.0f, 0.0f}, .size = {1.0f, -36.0f, 1.0f, 0.0f}},
+                                     .style = {.backgroundTransparency = 1.0f},
+                                     .text = {.fontSize = 15.0f,
+                                              .textColor = {1.0f, 1.0f, 1.0f, 1.0f},
+                                              .textXAlignment = TextXAlignment::LEFT,
+                                              .textYAlignment = TextYAlignment::CENTER},
+                                     .label = "Shader Pipeline"});
+                                header.imageButton({.base = {.anchorPoint = {1.0f, 0.5f},
+                                                             .position = {1.0f, -4.0f, 0.5f, 0.0f},
+                                                             .size = UDim2::fromOffset(22.0f, 22.0f),
+                                                             .zIndex = 101},
+                                                    .style = {.backgroundColor = {0.28f, 0.28f, 0.38f}, .cornerRadius = 4.0f},
+                                                    .image = {.imageColor = {0.7f, 0.7f, 0.85f, 1.0f}},
+                                                    .svg = SVG_GEAR},
+                                                   [statusLabel](ImageButtonScope &btn) {
+                                                       btn.component.onMouseButton1ClickCb = [statusLabel]() {
+                                                           statusLabel->setText("Shader Pipeline: options clicked");
+                                                           return EventResult::CONSUMED;
+                                                       };
+                                                   });
+                            });
 
-                                           ch.textLabel({.backgroundTransparency = 1.0f,
-                                                         .position = UDim2::fromOffset(10.0f, 10.0f),
-                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                                        {.fontSize = 13.0f,
-                                                         .textColor = {0.75f, 0.85f, 1.0f, 1.0f},
-                                                         .textYAlignment = TextYAlignment::CENTER,
-                                                         .text = "Vertex:   mesh.vert.spv"});
-                                           ch.textLabel({.backgroundTransparency = 1.0f,
-                                                         .position = UDim2::fromOffset(10.0f, 38.0f),
-                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                                        {.fontSize = 13.0f,
-                                                         .textColor = {0.75f, 0.85f, 1.0f, 1.0f},
-                                                         .textYAlignment = TextYAlignment::CENTER,
-                                                         .text = "Fragment: mesh.frag.spv"});
-                                           ch.textLabel({.backgroundTransparency = 1.0f,
-                                                         .position = UDim2::fromOffset(10.0f, 66.0f),
-                                                         .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                                        {.fontSize = 13.0f,
-                                                         .textColor = {0.6f, 0.6f, 0.65f, 1.0f},
-                                                         .textYAlignment = TextYAlignment::CENTER,
-                                                         .text = "Specialisation: SKINNING=1, SHADOWS=1"});
-                                       });
+                            ch.textLabel(
+                                {.base = {.position = UDim2::fromOffset(10.0f, 10.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                 .style = {.backgroundTransparency = 1.0f},
+                                 .text = {.fontSize = 13.0f,
+                                          .textColor = {0.75f, 0.85f, 1.0f, 1.0f},
+                                          .textYAlignment = TextYAlignment::CENTER},
+                                 .label = "Vertex:   mesh.vert.spv"});
+                            ch.textLabel(
+                                {.base = {.position = UDim2::fromOffset(10.0f, 38.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                 .style = {.backgroundTransparency = 1.0f},
+                                 .text = {.fontSize = 13.0f,
+                                          .textColor = {0.75f, 0.85f, 1.0f, 1.0f},
+                                          .textYAlignment = TextYAlignment::CENTER},
+                                 .label = "Fragment: mesh.frag.spv"});
+                            ch.textLabel(
+                                {.base = {.position = UDim2::fromOffset(10.0f, 66.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                 .style = {.backgroundTransparency = 1.0f},
+                                 .text = {.fontSize = 13.0f,
+                                          .textColor = {0.6f, 0.6f, 0.65f, 1.0f},
+                                          .textYAlignment = TextYAlignment::CENTER},
+                                 .label = "Specialisation: SKINNING=1, SHADOWS=1"});
+                        });
             });
 
     amCtx.draw(window);

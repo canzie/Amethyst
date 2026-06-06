@@ -64,38 +64,31 @@ int main()
     TextLabel *statusLabel = nullptr;
 
     UIScope(window)
-        .textLabel({.backgroundColor = {0.12f, 0.12f, 0.14f},
-                    .backgroundTransparency = 0.0f,
-                    .position = {0.0f, 0.0f, 0.0f, 0.0f},
-                    .size = {1.0f, 0.0f, 0.0f, 24.0f}},
-                   {.fontSize = 13.0f,
-                    .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
-                    .textXAlignment = TextXAlignment::LEFT,
-                    .textYAlignment = TextYAlignment::CENTER,
-                    .text = "Selected row: (none)"},
+        .textLabel({.base = {.position = {0.0f, 0.0f, 0.0f, 0.0f}, .size = {1.0f, 0.0f, 0.0f, 24.0f}},
+                    .style = {.backgroundColor = {0.12f, 0.12f, 0.14f}, .backgroundTransparency = 0.0f},
+                    .text = {.fontSize = 13.0f,
+                             .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
+                             .textXAlignment = TextXAlignment::LEFT,
+                             .textYAlignment = TextYAlignment::CENTER},
+                    .label = "Selected row: (none)"},
                    [&statusLabel](TextLabelScope &t) { statusLabel = &t.component; })
         .scrollingFrame(
-            {.backgroundColor = Color3::fromHex(0x1E1E1E),
-             .clipsDescendants = true,
-             .position = {0.0f, 0.0f, 0.0f, 24.0f},
-             .size = {1.0f, 0.0f, 1.0f, -24.0f}},
-            {.canvasSize = UDim2::fromOffset(800, 3200),
-             .scrollBarColor = {0.2f, 0.2f, 0.25f},
-             .scrollBarThumbColor = {0.45f, 0.45f, 0.55f}},
+            {.base = {.clipsDescendants = true, .position = {0.0f, 0.0f, 0.0f, 24.0f}, .size = {1.0f, 0.0f, 1.0f, -24.0f}},
+             .style = {.backgroundColor = Color3::fromHex(0x1E1E1E)},
+             .scroll = {.canvasSize = UDim2::fromOffset(800, 3200),
+                        .scrollBarColor = {0.2f, 0.2f, 0.25f},
+                        .scrollBarThumbColor = {0.45f, 0.45f, 0.55f}}},
             [statusLabel](ScrollingFrameScope &sf) {
                 sf.treeView(
-                    {.backgroundColor = Color3::fromHex(0x1E1E1E),
-                     .backgroundTransparency = 0.0f,
-                     .clipsDescendants = true,
-                     .size = UDim2::fromScale(1.0f, 1.0f)},
-                    {.rowHeight = 22.0f,
-                     .showColumnSeparators = true,
-                     .indentPerLevel = 18.0f,
-                     .rowBackgroundColor = Color4::fromHex(0x1E1E1E),
-                     .rowAlternateColor = Color4::fromHex(0x252527),
-                     .rowHoverColor = {0.2f, 0.3f, 0.45f, 1.0f},
-                     .rowSelectedColor = {0.18f, 0.38f, 0.62f, 1.0f},
-                     .fillRows = true},
+                    {.base = {.clipsDescendants = true, .size = UDim2::fromScale(1.0f, 1.0f)},
+                     .treeView = {.rowHeight = 22.0f,
+                                  .showColumnSeparators = true,
+                                  .indentPerLevel = 18.0f,
+                                  .rowBackgroundColor = Color4::fromHex(0x1E1E1E),
+                                  .rowAlternateColor = Color4::fromHex(0x252527),
+                                  .rowHoverColor = {0.2f, 0.3f, 0.45f, 1.0f},
+                                  .rowSelectedColor = {0.18f, 0.38f, 0.62f, 1.0f},
+                                  .fillRows = true}},
                     [statusLabel](TreeViewScope &tv) {
                         const Color4 COL_DIM = {0.55f, 0.55f, 0.58f, 1.0f};
                         const Color4 COL_ROOT = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -105,18 +98,18 @@ int main()
                         const Color4 COL_SPEC = {0.55f, 0.75f, 1.0f, 1.0f};
 
                         tv.component.onRowClicked = [statusLabel](uint32_t row) {
-                            statusLabel->setTextProperties({.text = "Selected row: " + std::to_string(row)});
+                            statusLabel->setText("Selected row: " + std::to_string(row));
                         };
 
                         tv.column("Name", 0.5f).column("Type", 0.3f).column("", 0.2f);
 
                         auto cellLabel = [](Color4 color, std::string text) {
                             return [color, text](UIScope &c) {
-                                c.textLabel({.backgroundTransparency = 1.0f, .size = UDim2::fromScale(1.0f, 1.0f)},
-                                            {.fontSize = 13.0f,
-                                             .textColor = color,
-                                             .textYAlignment = TextYAlignment::CENTER,
-                                             .text = text});
+                                c.textLabel(
+                                    {.base = {.size = UDim2::fromScale(1.0f, 1.0f)},
+                                     .style = {.backgroundTransparency = 1.0f},
+                                     .text = {.fontSize = 13.0f, .textColor = color, .textYAlignment = TextYAlignment::CENTER},
+                                     .label = text});
                             };
                         };
 
@@ -130,9 +123,8 @@ int main()
                             scene.row([&](TreeRowScope &entities) {
                                 labeled(entities, "Entities", COL_GROUP, "Group");
                                 for (int i = 0; i < 50; i++) {
-                                    entities.row([&, i](TreeRowScope &e) {
-                                        labeled(e, "entity_" + std::to_string(i), COL_LEAF, "Entity");
-                                    });
+                                    entities.row(
+                                        [&, i](TreeRowScope &e) { labeled(e, "entity_" + std::to_string(i), COL_LEAF, "Entity"); });
                                 }
                             });
 

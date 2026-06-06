@@ -12,47 +12,37 @@ namespace Amethyst {
 
 ImageButton::ImageButton(const std::string &svgData) : m_svgData(svgData)
 {
-    m_imgProps.imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    m_imgProps.imageTransparency = 0.0f;
-    m_imgProps.scaleType = ImageScaleType::STRETCH;
-    m_imgProps.tileSize = {1.0f, 1.0f};
+    m_imgStyle.imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    m_imgStyle.imageTransparency = 0.0f;
+    m_imgStyle.scaleType = ImageScaleType::STRETCH;
+    m_imgStyle.tileSize = {1.0f, 1.0f};
 }
 
-bool ImageButton::setImageProperties(const ImageProperties &props)
+bool ImageButton::setImageStyleProperties(const ImageStyleProperties &props)
 {
-    bool changed = false;
-#define AM_APPLY(field) \
-    if (propIsSet(props.field) && m_imgProps.field != props.field) { \
-        m_imgProps.field = props.field; \
-        changed = true; \
-    }
-    AM_APPLY(imageColor)
-    AM_APPLY(imageTransparency)
-    AM_APPLY(scaleType)
-    AM_APPLY(tileSize)
-#undef AM_APPLY
-    if (!props.svg.empty() && m_imgProps.svg != props.svg) {
-        m_imgProps.svg = props.svg;
-        m_svgData = props.svg;
-        m_svgResolved = false;
-        changed = true;
-    }
-    if (props.image.isValid() && m_imgProps.image.id != props.image.id) {
-        m_imgProps.image = props.image;
-        changed = true;
-    }
+    bool changed = m_imgStyle.apply(props);
     if (changed) {
         markDirty();
     }
     return changed;
 }
 
-void ImageButton::setSvg(const std::string &svgData)
+void ImageButton::setSvg(std::string svgData)
 {
-    m_svgData = svgData;
+    if (m_svgData == svgData) {
+        return;
+    }
+    m_svgData = std::move(svgData);
     m_svgResolved = false;
-    m_imgProps.svg = svgData;
     markDirty();
+}
+
+void ImageButton::setImage(AmTextureId image)
+{
+    if (m_image.id != image.id) {
+        m_image = image;
+        markDirty();
+    }
 }
 
 void ImageButton::resolveSvg(DrawContext &ctx)
@@ -77,7 +67,7 @@ void ImageButton::resolveSvg(DrawContext &ctx)
             (entry->atlasX + entry->width) / aw,
             (entry->atlasY + entry->height) / ah
         };
-        m_imgProps.image = ctx.svgAtlas->getTextureId();
+        m_image = ctx.svgAtlas->getTextureId();
     }
 
     m_svgResolved = true;
@@ -100,11 +90,11 @@ void ImageButton::draw(DrawContext &ctx)
         } else if (m_svgResolved && !m_svgData.empty()) {
             data.setPrimitiveType(PRIMITIVE_SVG);
             data.setUvRect(m_svgUvRect);
-            data.setFillColor(m_imgProps.imageColor);
-            data.textureId = m_imgProps.image.id;
+            data.setFillColor(m_imgStyle.imageColor);
+            data.textureId = m_image.id;
         } else {
             data.setPrimitiveType(PRIMITIVE_RECT);
-            data.textureId = m_imgProps.image.id;
+            data.textureId = m_image.id;
         }
 
         if (m_geometryAlloc == nullptr) {

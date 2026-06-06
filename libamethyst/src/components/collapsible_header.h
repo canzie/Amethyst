@@ -24,8 +24,11 @@ class CollapsibleHeader : public UIObject {
     void expand();
     void collapse();
 
-    bool setCollapsibleHeaderProperties(const CollapsibleHeaderProperties &props);
-    const CollapsibleHeaderProperties &getCollapsibleHeaderProperties() const { return m_chProps; }
+    bool setCollapsibleHeaderProperties(const CollapsibleHeaderStyleProperties &props);
+    const CollapsibleHeaderStyleProperties &getCollapsibleHeaderProperties() const { return m_chProps; }
+
+    void setTitle(std::string title);
+    const std::string &getTitle() const { return m_title; }
 
     CollapsibleHeader &header(std::function<void(Frame &)> fn);
     CollapsibleHeader &indicator(std::function<void(UIObject &)> fn);
@@ -34,7 +37,8 @@ class CollapsibleHeader : public UIObject {
     std::function<void(bool)> onToggled;
 
   protected:
-    CollapsibleHeaderProperties m_chProps;
+    CollapsibleHeaderStyleProperties m_chProps;
+    std::string m_title;
 
   private:
     std::unique_ptr<Frame> m_headerBackground;

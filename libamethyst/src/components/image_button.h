@@ -21,16 +21,21 @@ class ImageButton : public UIButton {
 
     void draw(DrawContext &ctx) override;
 
-    void setSvg(const std::string &svgData);
+    void setSvg(std::string svgData);
+    const std::string &getSvg() const { return m_svgData; }
 
-    bool setImageProperties(const ImageProperties &props);
-    const ImageProperties &getImageProperties() const { return m_imgProps; }
+    void setImage(AmTextureId image);
+    AmTextureId getImage() const { return m_image; }
+
+    bool setImageStyleProperties(const ImageStyleProperties &props);
+    const ImageStyleProperties &getImageStyleProperties() const { return m_imgStyle; }
 
   public:
     AmTextureId hoverImage;
 
   protected:
-    ImageProperties m_imgProps;
+    ImageStyleProperties m_imgStyle;
+    AmTextureId m_image;
 
   private:
     void resolveSvg(DrawContext &ctx);

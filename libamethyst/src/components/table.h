@@ -139,8 +139,8 @@ class Table : public UIObject {
      */
     std::vector<Instance *> getHittableInstances() override;
 
-    bool setTableProperties(const TableProperties &props);
-    const TableProperties &getTableProperties() const { return m_tProps; }
+    bool setTableProperties(const TableStyleProperties &props);
+    const TableStyleProperties &getTableProperties() const { return m_tProps; }
 
   public:
     int32_t hoveredRow = -1;
@@ -149,7 +149,7 @@ class Table : public UIObject {
     std::function<void(uint32_t row)> onRowClicked;
 
   protected:
-    TableProperties m_tProps;
+    TableStyleProperties m_tProps;
 
   private:
     void rebuildColumnPositions();

@@ -29,6 +29,9 @@ class TextInput : public UIObject {
     void setText(const std::string &text);
     void clearText();
 
+    void setPlaceholder(std::string placeholder);
+    const std::string &getPlaceholder() const { return m_placeholder; }
+
   protected:
     EventResult onInputBegan(const InputObject &input) override;
     EventResult onInputEnded(const InputObject &input) override;
@@ -55,8 +58,8 @@ class TextInput : public UIObject {
     void drawCursor(DrawContext &ctx);
 
   public:
-    bool setTextInputProperties(const TextInputProperties &props);
-    const TextInputProperties &getTextInputProperties() const { return m_tiProps; }
+    bool setTextInputProperties(const TextInputStyleProperties &props);
+    const TextInputStyleProperties &getTextInputProperties() const { return m_tiProps; }
 
     std::function<void(const std::string &)> onTextChanged;
     std::function<void()> onEnterPressed;
@@ -64,10 +67,11 @@ class TextInput : public UIObject {
     std::function<void()> onFocusLost;
 
   protected:
-    TextInputProperties m_tiProps;
+    TextInputStyleProperties m_tiProps;
 
   private:
     std::string m_text;
+    std::string m_placeholder;
     size_t m_cursorPosition = 0;
     std::optional<size_t> m_selectionStart;
     bool m_focused = false;

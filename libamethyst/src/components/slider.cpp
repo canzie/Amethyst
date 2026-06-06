@@ -21,7 +21,7 @@ namespace Amethyst {
 static void s_applyStyle(Slider &slider)
 {
     const auto &style = Style::instance();
-    slider.setBaseProperties({
+    slider.setBaseStyleProperties({
         .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SLIDER),
         .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SLIDER),
     });
@@ -42,31 +42,32 @@ static void s_applyStyle(Slider &slider)
 static void s_setupSideLabel(TextLabel &label, const Slider *slider, float &outLabelWidth, float &outLabelHeight)
 {
     const auto &sp = slider->getSliderProperties();
+    const std::string &labelText = slider->getLabel();
     outLabelWidth = 0.0f;
     outLabelHeight = 0.0f;
 
-    if (sp.label.empty()) {
-        label.setBaseProperties({.visible = 0});
+    if (labelText.empty()) {
+        label.setBaseProperties({.visible = false});
         return;
     }
 
-    label.setTextProperties({
+    label.setTextStyleProperties({
         .fontSize = sp.fontSize,
         .textColor = sp.labelColor,
         .textYAlignment = TextYAlignment::CENTER,
-        .text = sp.label,
     });
-    label.setBaseProperties({
-        .backgroundColor = slider->getBaseProperties().backgroundColor,
-        .backgroundTransparency = slider->getBaseProperties().backgroundTransparency,
-        .visible = 1,
+    label.setText(labelText);
+    label.setBaseStyleProperties({
+        .backgroundColor = slider->getBaseStyleProperties().backgroundColor,
+        .backgroundTransparency = slider->getBaseStyleProperties().backgroundTransparency,
     });
+    label.setBaseProperties({.visible = true});
 
     float padding = sp.labelPadding.resolve(
         sp.labelSide == LabelSide::LEFT || sp.labelSide == LabelSide::RIGHT ? slider->absoluteSize.x : slider->absoluteSize.y);
 
     if (sp.labelSide == LabelSide::LEFT || sp.labelSide == LabelSide::RIGHT) {
-        outLabelWidth = sp.fontSize * sp.label.length() * 0.6f + padding;
+        outLabelWidth = sp.fontSize * labelText.length() * 0.6f + padding;
         label.setBaseProperties({.size = UDim2::fromOffset(outLabelWidth, slider->absoluteSize.y)});
     } else {
         outLabelHeight = sp.fontSize * 1.5f + padding;
@@ -81,10 +82,12 @@ static void s_setupSideLabel(TextLabel &label, const Slider *slider, float &outL
 static void s_setupTrack(Frame &track, float x, float y, float width, float height, const Slider *slider)
 {
     const auto &sp = slider->getSliderProperties();
-    track.setBaseProperties({
+    track.setBaseStyleProperties({
         .backgroundColor = sp.sliderColor,
         .backgroundTransparency = sp.sliderTransparency,
         .cornerRadius = sp.trackCornerRadius,
+    });
+    track.setBaseProperties({
         .position = UDim2::fromOffset(x, y),
         .size = UDim2::fromOffset(width, height),
     });
@@ -93,10 +96,12 @@ static void s_setupTrack(Frame &track, float x, float y, float width, float heig
 static void s_setupThumb(Frame &thumb, float x, float y, float width, float height, const Slider *slider)
 {
     const auto &sp = slider->getSliderProperties();
-    thumb.setBaseProperties({
+    thumb.setBaseStyleProperties({
         .backgroundColor = sp.thumbColor,
         .backgroundTransparency = sp.thumbTransparency,
         .cornerRadius = sp.thumbCornerRadius,
+    });
+    thumb.setBaseProperties({
         .position = UDim2::fromOffset(x, y),
         .size = UDim2::fromOffset(width, height),
     });
@@ -106,17 +111,19 @@ static void s_setupValueLabel(TextLabel &label, float x, float y, float width, f
                               const std::string &text)
 {
     const auto &sp = slider->getSliderProperties();
-    label.setTextProperties({
+    label.setTextStyleProperties({
         .fontSize = sp.fontSize * 0.8f,
         .textColor = sp.valueColor,
         .textXAlignment = TextXAlignment::CENTER,
         .textYAlignment = TextYAlignment::CENTER,
-        .text = text,
     });
-    label.setBaseProperties({
+    label.setText(text);
+    label.setBaseStyleProperties({
         .backgroundColor = Color3(0.0f),
         .backgroundTransparency = 1.0f,
-        .interactable = 0,
+    });
+    label.setBaseProperties({
+        .interactable = false,
         .position = UDim2::fromOffset(x, y),
         .size = UDim2::fromOffset(width, height),
     });
@@ -141,39 +148,29 @@ Slider::Slider()
     s_applyStyle(*this);
 }
 
-bool Slider::setSliderProperties(const SliderProperties &props)
+bool Slider::setSliderProperties(const SliderStyleProperties &props)
 {
-    bool changed = false;
-#define AM_APPLY(field)                                            \
-    if (propIsSet(props.field) && m_sProps.field != props.field) { \
-        m_sProps.field = props.field;                              \
-        changed = true;                                            \
-    }
-    AM_APPLY(sliderColor)
-    AM_APPLY(sliderTransparency)
-    AM_APPLY(thumbColor)
-    AM_APPLY(thumbTransparency)
-    AM_APPLY(trackCornerRadius)
-    AM_APPLY(thumbCornerRadius)
-    AM_APPLY(labelColor)
-    AM_APPLY(labelSide)
-    AM_APPLY(labelPadding)
-    AM_APPLY(valueColor)
-    AM_APPLY(fontSize)
-    AM_APPLY(layout)
-#undef AM_APPLY
-    if (!props.label.empty() && m_sProps.label != props.label) {
-        m_sProps.label = props.label;
-        changed = true;
-    }
-    if (!props.valueSuffix.empty() && m_sProps.valueSuffix != props.valueSuffix) {
-        m_sProps.valueSuffix = props.valueSuffix;
-        changed = true;
-    }
+    bool changed = m_sProps.apply(props);
     if (changed) {
         markDirty();
     }
     return changed;
+}
+
+void Slider::setLabel(std::string label)
+{
+    if (m_label != label) {
+        m_label = std::move(label);
+        markDirty();
+    }
+}
+
+void Slider::setValueSuffix(std::string valueSuffix)
+{
+    if (m_valueSuffix != valueSuffix) {
+        m_valueSuffix = std::move(valueSuffix);
+        markDirty();
+    }
 }
 
 SliderFloat::SliderFloat()
@@ -260,10 +257,10 @@ void SliderFloat::updateComponents()
 
 std::string SliderFloat::formatValue() const
 {
-    if (!valueRef) return "0" + m_sProps.valueSuffix;
+    if (!valueRef) return "0" + m_valueSuffix;
 
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2) << *valueRef << m_sProps.valueSuffix;
+    oss << std::fixed << std::setprecision(2) << *valueRef << m_valueSuffix;
     return oss.str();
 }
 
@@ -360,9 +357,9 @@ void SliderInt::updateComponents()
 
 std::string SliderInt::formatValue() const
 {
-    if (!valueRef) return "0" + m_sProps.valueSuffix;
+    if (!valueRef) return "0" + m_valueSuffix;
 
-    return std::to_string(*valueRef) + m_sProps.valueSuffix;
+    return std::to_string(*valueRef) + m_valueSuffix;
 }
 
 std::vector<Instance *> SliderInt::getHittableInstances()
@@ -478,10 +475,10 @@ void SliderVec2::updateComponents()
 
 std::string SliderVec2::formatValue(int component) const
 {
-    if (!valueRef) return "0" + m_sProps.valueSuffix;
+    if (!valueRef) return "0" + m_valueSuffix;
 
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2) << (*valueRef)[component] << m_sProps.valueSuffix;
+    oss << std::fixed << std::setprecision(2) << (*valueRef)[component] << m_valueSuffix;
     return oss.str();
 }
 
@@ -600,10 +597,10 @@ void SliderVec3::updateComponents()
 
 std::string SliderVec3::formatValue(int component) const
 {
-    if (!valueRef) return "0" + m_sProps.valueSuffix;
+    if (!valueRef) return "0" + m_valueSuffix;
 
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(2) << (*valueRef)[component] << m_sProps.valueSuffix;
+    oss << std::fixed << std::setprecision(2) << (*valueRef)[component] << m_valueSuffix;
     return oss.str();
 }
 

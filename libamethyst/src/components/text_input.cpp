@@ -31,42 +31,21 @@ TextInput::TextInput()
     m_tiProps.cursorBlinkRate = 0.5f;
 }
 
-bool TextInput::setTextInputProperties(const TextInputProperties &props)
+bool TextInput::setTextInputProperties(const TextInputStyleProperties &props)
 {
-    bool changed = false;
-#define AM_APPLY(field) \
-    if (propIsSet(props.field) && m_tiProps.field != props.field) { \
-        m_tiProps.field = props.field; \
-        changed = true; \
-    }
-    AM_APPLY(multiline)
-    AM_APPLY(maxLength)
-    AM_APPLY(readOnly)
-    AM_APPLY(cursorBlinkRate)
-#undef AM_APPLY
-    if (!props.placeholderText.empty() && m_tiProps.placeholderText != props.placeholderText) {
-        m_tiProps.placeholderText = props.placeholderText;
-        changed = true;
-    }
-    if (propIsSet(props.placeholderColor) && m_tiProps.placeholderColor != props.placeholderColor) {
-        m_tiProps.placeholderColor = props.placeholderColor;
-        changed = true;
-    }
-    if (propIsSet(props.selectionColor) && m_tiProps.selectionColor != props.selectionColor) {
-        m_tiProps.selectionColor = props.selectionColor;
-        changed = true;
-    }
-    if (propIsSet(props.cursorColor) && m_tiProps.cursorColor != props.cursorColor) {
-        m_tiProps.cursorColor = props.cursorColor;
-        changed = true;
-    }
-    if (applyTextProperties(m_tiProps.text, props.text)) {
-        changed = true;
-    }
+    bool changed = m_tiProps.apply(props);
     if (changed) {
         markDirty();
     }
     return changed;
+}
+
+void TextInput::setPlaceholder(std::string placeholder)
+{
+    if (m_placeholder != placeholder) {
+        m_placeholder = std::move(placeholder);
+        markDirty();
+    }
 }
 
 TextInput::~TextInput()
@@ -478,11 +457,11 @@ void TextInput::drawText(DrawContext &ctx)
         break;
     }
 
-    bool shouldShowPlaceholder = m_text.empty() && !m_tiProps.placeholderText.empty();
+    bool shouldShowPlaceholder = m_text.empty() && !m_placeholder.empty();
     bool modeChanged = (shouldShowPlaceholder != m_showingPlaceholder);
     m_showingPlaceholder = shouldShowPlaceholder;
 
-    const std::string &textToRender = m_showingPlaceholder ? m_tiProps.placeholderText : m_text;
+    const std::string &textToRender = m_showingPlaceholder ? m_placeholder : m_text;
     const Color4 &colorToUse = m_showingPlaceholder ? m_tiProps.placeholderColor : m_tiProps.text.textColor;
 
     if (textToRender.empty()) {

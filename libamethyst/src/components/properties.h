@@ -134,14 +134,7 @@ struct BaseProperties {
     am_bool active = PROP_UNSET_BOOL;
     glm::vec2 anchorPoint = glm::vec2(PROP_UNSET_FLOAT);
     AutomaticSize automaticSize = AutomaticSize::NONE;
-    Color3 backgroundColor = Color3(PROP_UNSET_FLOAT);
-    float backgroundTransparency = PROP_UNSET_FLOAT;
-    BorderMode borderMode = BorderMode::NONE;
-    float borderPixelSize = PROP_UNSET_FLOAT;
-    Color3 borderColor = Color3(PROP_UNSET_FLOAT);
-    float borderTransparency = PROP_UNSET_FLOAT;
     am_bool clipsDescendants = PROP_UNSET_BOOL;
-    float cornerRadius = PROP_UNSET_FLOAT;
     GuiState guiState = GuiState::NONE;
     am_bool interactable = PROP_UNSET_BOOL;
     LayoutOrder layoutOrder = PROP_UNSET_UINT32;
@@ -153,9 +146,23 @@ struct BaseProperties {
     am_bool visible = PROP_UNSET_BOOL;
     int32_t zIndex = PROP_UNSET_INT32;
     ZIndexBehavior zindexBehavior = ZIndexBehavior::NONE;
+
+    bool apply(const BaseProperties &src);
 };
 
-struct TextProperties {
+struct BaseStyleProperties {
+    Color3 backgroundColor = Color3(PROP_UNSET_FLOAT);
+    float backgroundTransparency = PROP_UNSET_FLOAT;
+    BorderMode borderMode = BorderMode::NONE;
+    float borderPixelSize = PROP_UNSET_FLOAT;
+    Color3 borderColor = Color3(PROP_UNSET_FLOAT);
+    float borderTransparency = PROP_UNSET_FLOAT;
+    float cornerRadius = PROP_UNSET_FLOAT;
+
+    bool apply(const BaseStyleProperties &src);
+};
+
+struct TextStyleProperties {
     float fontSize = PROP_UNSET_FLOAT;
     Color4 textColor = Color4(PROP_UNSET_FLOAT);
     TextXAlignment textXAlignment = TextXAlignment::NONE;
@@ -167,25 +174,28 @@ struct TextProperties {
     float lineHeight = PROP_UNSET_FLOAT;
     float strokeThickness = PROP_UNSET_FLOAT;
     Color4 strokeColor = Color4(PROP_UNSET_FLOAT);
-    std::string text{};
     std::optional<std::string> fontFamily{};
+
+    bool apply(const TextStyleProperties &src);
 };
 
-struct ImageProperties {
-    AmTextureId image{};
+struct ImageStyleProperties {
     Color4 imageColor = Color4(PROP_UNSET_FLOAT);
     float imageTransparency = PROP_UNSET_FLOAT;
     ImageScaleType scaleType = ImageScaleType::NONE;
     glm::vec2 tileSize = glm::vec2(PROP_UNSET_FLOAT);
-    std::string svg{};
+
+    bool apply(const ImageStyleProperties &src);
 };
 
 struct ButtonProperties {
     am_bool autoButtonColor = PROP_UNSET_BOOL;
     am_bool modal = PROP_UNSET_BOOL;
+
+    bool apply(const ButtonProperties &src);
 };
 
-struct ScrollingFrameProperties {
+struct ScrollingFrameStyleProperties {
     ScrollAxis scrollAxis = ScrollAxis::NONE;
     ScrollBarVisibility scrollBarVisibility = ScrollBarVisibility::NONE;
     UDim2 canvasSize = UDim2(glm::vec2(PROP_UNSET_FLOAT), glm::vec2(0));
@@ -197,23 +207,21 @@ struct ScrollingFrameProperties {
     float scrollBarThumbTransparency = PROP_UNSET_FLOAT;
     float scrollSpeed = PROP_UNSET_FLOAT;
     am_bool elasticScrolling = PROP_UNSET_BOOL;
+
+    bool apply(const ScrollingFrameStyleProperties &src);
 };
 
-struct CheckboxProperties {
-    LabelSide labelSide = LabelSide::NONE;
-    Color4 labelColor = Color4(PROP_UNSET_FLOAT);
-    TextXAlignment labelXAlignment = TextXAlignment::NONE;
-    TextYAlignment labelYAlignment = TextYAlignment::NONE;
+struct CheckboxStyleProperties {
     Color3 checkColor = Color3(PROP_UNSET_FLOAT);
     float checkTransparency = PROP_UNSET_FLOAT;
     float checkboxSize = PROP_UNSET_FLOAT;
-    UDim labelPadding = {PROP_UNSET_FLOAT, 0};
-    std::string label{};
+
+    bool apply(const CheckboxStyleProperties &src);
 };
 
-struct CollapsibleHeaderProperties {
+struct CollapsibleHeaderStyleProperties {
     am_bool expanded = PROP_UNSET_BOOL;
-    TextProperties title{};
+    TextStyleProperties titleStyle{};
     float headerHeight = PROP_UNSET_FLOAT;
     Color3 headerColor = Color3(PROP_UNSET_FLOAT);
     float headerTransparency = PROP_UNSET_FLOAT;
@@ -222,9 +230,11 @@ struct CollapsibleHeaderProperties {
     float indicatorSize = PROP_UNSET_FLOAT;
     float indicatorPadding = PROP_UNSET_FLOAT;
     Color4 indicatorColor = Color4(PROP_UNSET_FLOAT);
+
+    bool apply(const CollapsibleHeaderStyleProperties &src);
 };
 
-struct DropdownProperties {
+struct DropdownStyleProperties {
     DropdownDirection popupDirection = DropdownDirection::NONE;
     int32_t maxVisibleItems = PROP_UNSET_INT32;
     float itemHeight = PROP_UNSET_FLOAT;
@@ -235,9 +245,11 @@ struct DropdownProperties {
     Color4 itemDisabledColor = Color4(PROP_UNSET_FLOAT);
     Color3 itemHoverBackground = Color3(PROP_UNSET_FLOAT);
     Color3 separatorColor = Color3(PROP_UNSET_FLOAT);
+
+    bool apply(const DropdownStyleProperties &src);
 };
 
-struct TabBarProperties {
+struct TabBarStyleProperties {
     am_bool closeable = PROP_UNSET_BOOL;
     am_bool persistLayout = PROP_UNSET_BOOL;
     TabBarMode mode = TabBarMode::NONE;
@@ -253,18 +265,22 @@ struct TabBarProperties {
     Color3 pressedTabColor = Color3(PROP_UNSET_FLOAT);
     TabCloseButtonVisibility closeButtonVisibility = TabCloseButtonVisibility::NONE;
     am_bool tabTearOffEnabled = PROP_UNSET_BOOL;
+
+    bool apply(const TabBarStyleProperties &src);
 };
 
-struct MenuBarProperties {
+struct MenuBarStyleProperties {
     float entryPaddingX = PROP_UNSET_FLOAT;
     float entryPaddingY = PROP_UNSET_FLOAT;
     float entryFontSize = PROP_UNSET_FLOAT;
     Color3 entryHoverBackground = Color3(PROP_UNSET_FLOAT);
     Color3 entryActiveBackground = Color3(PROP_UNSET_FLOAT);
+
+    bool apply(const MenuBarStyleProperties &src);
 };
 
-struct TextInputProperties {
-    TextProperties text{};
+struct TextInputStyleProperties {
+    TextStyleProperties text{};
     Color4 placeholderColor = Color4(PROP_UNSET_FLOAT);
     Color4 selectionColor = Color4(PROP_UNSET_FLOAT);
     Color4 cursorColor = Color4(PROP_UNSET_FLOAT);
@@ -272,10 +288,11 @@ struct TextInputProperties {
     int32_t maxLength = PROP_UNSET_INT32;
     am_bool readOnly = PROP_UNSET_BOOL;
     float cursorBlinkRate = PROP_UNSET_FLOAT;
-    std::string placeholderText;
+
+    bool apply(const TextInputStyleProperties &src);
 };
 
-struct TableProperties {
+struct TableStyleProperties {
     float rowHeight = PROP_UNSET_FLOAT;
     UDim4 cellPadding = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
     am_bool showColumnSeparators = PROP_UNSET_BOOL;
@@ -284,14 +301,16 @@ struct TableProperties {
     am_bool showHeader = PROP_UNSET_BOOL;
     float headerHeight = PROP_UNSET_FLOAT;
     Color3 headerColor = Color3(PROP_UNSET_FLOAT);
-    TextProperties headerText{};
+    TextStyleProperties header{};
     Color4 rowBackgroundColor = Color4(PROP_UNSET_FLOAT);
     Color4 rowAlternateColor = Color4(PROP_UNSET_FLOAT);
     Color4 rowHoverColor = Color4(PROP_UNSET_FLOAT);
     Color4 rowSelectedColor = Color4(PROP_UNSET_FLOAT);
+
+    bool apply(const TableStyleProperties &src);
 };
 
-struct SliderProperties {
+struct SliderStyleProperties {
     Color3 sliderColor = Color3(PROP_UNSET_FLOAT);
     float sliderTransparency = PROP_UNSET_FLOAT;
     Color3 thumbColor = Color3(PROP_UNSET_FLOAT);
@@ -304,11 +323,11 @@ struct SliderProperties {
     Color4 valueColor = Color4(PROP_UNSET_FLOAT);
     float fontSize = PROP_UNSET_FLOAT;
     ValueControlLayout layout = ValueControlLayout::NONE;
-    std::string label{};
-    std::string valueSuffix{};
+
+    bool apply(const SliderStyleProperties &src);
 };
 
-struct TreeViewProperties {
+struct TreeViewStyleProperties {
     float rowHeight = PROP_UNSET_FLOAT;
     UDim4 cellPadding = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
     am_bool showColumnSeparators = PROP_UNSET_BOOL;
@@ -327,42 +346,121 @@ struct TreeViewProperties {
     am_bool showHeader = PROP_UNSET_BOOL;
     float headerHeight = PROP_UNSET_FLOAT;
     Color3 headerColor = Color3(PROP_UNSET_FLOAT);
-    TextProperties headerText{};
+    TextStyleProperties header{};
+
+    bool apply(const TreeViewStyleProperties &src);
 };
 
-inline bool applyTextProperties(TextProperties &dest, const TextProperties &src)
-{
-    bool changed = false;
-#define AM_APPLY(field)                                    \
-    if (propIsSet(src.field) && dest.field != src.field) { \
-        dest.field = src.field;                            \
-        changed = true;                                    \
-    }
-#define AM_APPLY_STR(field)                              \
-    if (!src.field.empty() && dest.field != src.field) { \
-        dest.field = src.field;                          \
-        changed = true;                                  \
-    }
-    AM_APPLY_STR(text)
-    if (src.fontFamily.has_value() && dest.fontFamily != src.fontFamily) {
-        dest.fontFamily = src.fontFamily;
-        changed = true;
-    }
-    AM_APPLY(fontSize)
-    AM_APPLY(textColor)
-    AM_APPLY(textXAlignment)
-    AM_APPLY(textYAlignment)
-    AM_APPLY(textTruncate)
-    AM_APPLY(richText)
-    AM_APPLY(textWrapped)
-    AM_APPLY(textScaled)
-    AM_APPLY(lineHeight)
-    AM_APPLY(strokeThickness)
-    AM_APPLY(strokeColor)
-#undef AM_APPLY
-#undef AM_APPLY_STR
-    return changed;
-}
+// Scope-input DTOs: bundle the layout/style/content/config a builder needs into one struct
+// per component, so scope methods take a single brace-initialized argument.
+
+struct CanvasProperties {
+    BaseProperties base{};
+};
+
+struct FrameProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+};
+
+struct ScrollingFrameProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    ScrollingFrameStyleProperties scroll{};
+};
+
+struct TextLabelProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    TextStyleProperties text{};
+    std::string label{};
+};
+
+struct TextButtonProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    TextStyleProperties text{};
+    std::string label{};
+    ButtonProperties button{};
+};
+
+struct ImageLabelProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    ImageStyleProperties image{};
+    AmTextureId texture{};
+    std::string svg{};
+};
+
+struct ImageButtonProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    ImageStyleProperties image{};
+    AmTextureId texture{};
+    std::string svg{};
+    ButtonProperties button{};
+};
+
+struct InvisibleButtonProperties {
+    BaseProperties base{};
+};
+
+struct CheckboxProperties {
+    BaseProperties base{};
+    CheckboxStyleProperties checkbox{};
+};
+
+struct CollapsibleHeaderProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    CollapsibleHeaderStyleProperties header{};
+    std::string title{};
+};
+
+struct TabBarProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    TabBarStyleProperties tabBar{};
+};
+
+struct TableProperties {
+    BaseProperties base{};
+    TableStyleProperties table{};
+};
+
+struct TextInputProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    TextInputStyleProperties textInput{};
+    std::string placeholder{};
+};
+
+struct SliderProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    SliderStyleProperties slider{};
+    std::string label{};
+    std::string valueSuffix{};
+};
+
+struct TreeViewProperties {
+    BaseProperties base{};
+    TreeViewStyleProperties treeView{};
+};
+
+struct DropdownProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    TextStyleProperties text{};
+    std::string label{};
+    DropdownStyleProperties dropdown{};
+};
+
+struct MenuBarProperties {
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    MenuBarStyleProperties menuBar{};
+};
 
 } // namespace Amethyst
 

@@ -23,15 +23,15 @@ class ScrollingFrame : public UIObject {
     Instance *addChild(std::unique_ptr<Instance> child) override;
     std::unique_ptr<Instance> removeChild(Instance *child) override;
 
-    const ScrollingFrameProperties &getScrollingFrameProperties() { return m_sfProps; }
-    bool setScrollingFrameProperties(const ScrollingFrameProperties &props);
+    const ScrollingFrameStyleProperties &getScrollingFrameProperties() { return m_sfProps; }
+    bool setScrollingFrameProperties(const ScrollingFrameStyleProperties &props);
 
   protected:
     EventResult onMouseScrollUp() override;
     EventResult onMouseScrollDown() override;
 
   protected:
-    ScrollingFrameProperties m_sfProps;
+    ScrollingFrameStyleProperties m_sfProps;
 
   private:
     void drawScrollbars(DrawContext &ctx);

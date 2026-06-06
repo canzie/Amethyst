@@ -61,31 +61,26 @@ class UIScope {
   public:
     explicit UIScope(Instance &parent) : m_parent(&parent) {}
 
-    UIScope &canvas(BaseProperties base = {}, std::function<void(CanvasScope &)> fn = {});
-    UIScope &dropdown(BaseProperties base = {}, TextProperties text = {}, DropdownProperties ddProps = {},
-                      std::function<void(DropdownScope &)> fn = {});
-    UIScope &menuBar(BaseProperties base = {}, MenuBarProperties props = {}, std::function<void(MenuBarScope &)> fn = {});
-    UIScope &frame(BaseProperties props = {}, std::function<void(FrameScope &)> fn = {});
-    UIScope &scrollingFrame(BaseProperties base = {}, ScrollingFrameProperties scroll = {},
-                            std::function<void(ScrollingFrameScope &)> fn = {});
-    UIScope &textLabel(BaseProperties base = {}, TextProperties text = {}, std::function<void(TextLabelScope &)> fn = {});
-    UIScope &textButton(BaseProperties base = {}, TextProperties text = {}, ButtonProperties button = {},
-                        std::function<void(TextButtonScope &)> fn = {});
-    UIScope &imageLabel(BaseProperties base = {}, ImageProperties image = {}, std::function<void(ImageLabelScope &)> fn = {});
-    UIScope &imageButton(BaseProperties base = {}, ImageProperties image = {}, ButtonProperties button = {},
-                         std::function<void(ImageButtonScope &)> fn = {});
-    UIScope &invisibleButton(BaseProperties props = {}, std::function<void(InvisibleButtonScope &)> fn = {});
-    UIScope &checkbox(BaseProperties base = {}, CheckboxProperties props = {}, std::function<void(CheckboxScope &)> fn = {});
-    UIScope &collapsibleHeader(BaseProperties base = {}, CollapsibleHeaderProperties props = {},
-                               std::function<void(CollapsibleHeaderScope &)> fn = {});
-    UIScope &tabBar(BaseProperties base = {}, TabBarProperties props = {}, std::function<void(TabBarScope &)> fn = {});
-    UIScope &table(BaseProperties base = {}, TableProperties props = {}, std::function<void(TableScope &)> fn = {});
-    UIScope &textInput(BaseProperties base = {}, TextInputProperties props = {}, std::function<void(TextInputScope &)> fn = {});
-    UIScope &sliderFloat(BaseProperties base = {}, SliderProperties props = {}, std::function<void(SliderFloatScope &)> fn = {});
-    UIScope &sliderInt(BaseProperties base = {}, SliderProperties props = {}, std::function<void(SliderIntScope &)> fn = {});
-    UIScope &sliderVec2(BaseProperties base = {}, SliderProperties props = {}, std::function<void(SliderVec2Scope &)> fn = {});
-    UIScope &sliderVec3(BaseProperties base = {}, SliderProperties props = {}, std::function<void(SliderVec3Scope &)> fn = {});
-    UIScope &treeView(BaseProperties base = {}, TreeViewProperties props = {}, std::function<void(TreeViewScope &)> fn = {});
+    UIScope &canvas(CanvasProperties props = {}, std::function<void(CanvasScope &)> fn = {});
+    UIScope &dropdown(DropdownProperties props = {}, std::function<void(DropdownScope &)> fn = {});
+    UIScope &menuBar(MenuBarProperties props = {}, std::function<void(MenuBarScope &)> fn = {});
+    UIScope &frame(FrameProperties props = {}, std::function<void(FrameScope &)> fn = {});
+    UIScope &scrollingFrame(ScrollingFrameProperties props = {}, std::function<void(ScrollingFrameScope &)> fn = {});
+    UIScope &textLabel(TextLabelProperties props = {}, std::function<void(TextLabelScope &)> fn = {});
+    UIScope &textButton(TextButtonProperties props = {}, std::function<void(TextButtonScope &)> fn = {});
+    UIScope &imageLabel(ImageLabelProperties props = {}, std::function<void(ImageLabelScope &)> fn = {});
+    UIScope &imageButton(ImageButtonProperties props = {}, std::function<void(ImageButtonScope &)> fn = {});
+    UIScope &invisibleButton(InvisibleButtonProperties props = {}, std::function<void(InvisibleButtonScope &)> fn = {});
+    UIScope &checkbox(CheckboxProperties props = {}, std::function<void(CheckboxScope &)> fn = {});
+    UIScope &collapsibleHeader(CollapsibleHeaderProperties props = {}, std::function<void(CollapsibleHeaderScope &)> fn = {});
+    UIScope &tabBar(TabBarProperties props = {}, std::function<void(TabBarScope &)> fn = {});
+    UIScope &table(TableProperties props = {}, std::function<void(TableScope &)> fn = {});
+    UIScope &textInput(TextInputProperties props = {}, std::function<void(TextInputScope &)> fn = {});
+    UIScope &sliderFloat(SliderProperties props = {}, std::function<void(SliderFloatScope &)> fn = {});
+    UIScope &sliderInt(SliderProperties props = {}, std::function<void(SliderIntScope &)> fn = {});
+    UIScope &sliderVec2(SliderProperties props = {}, std::function<void(SliderVec2Scope &)> fn = {});
+    UIScope &sliderVec3(SliderProperties props = {}, std::function<void(SliderVec3Scope &)> fn = {});
+    UIScope &treeView(TreeViewProperties props = {}, std::function<void(TreeViewScope &)> fn = {});
 
     Instance &get() const { return *m_parent; }
 

@@ -22,13 +22,18 @@ class ImageLabel : public UILabel {
     void draw(DrawContext &ctx) override;
     EventResult onMouseMoved(uint32_t, uint32_t) override { return EventResult::PROPAGATE; }
 
-    void setSvg(const std::string &svgData);
+    void setSvg(std::string svgData);
+    const std::string &getSvg() const { return m_svgData; }
 
-    bool setImageProperties(const ImageProperties &props);
-    const ImageProperties &getImageProperties() const { return m_imgProps; }
+    void setImage(AmTextureId image);
+    AmTextureId getImage() const { return m_image; }
+
+    bool setImageStyleProperties(const ImageStyleProperties &props);
+    const ImageStyleProperties &getImageStyleProperties() const { return m_imgStyle; }
 
   protected:
-    ImageProperties m_imgProps;
+    ImageStyleProperties m_imgStyle;
+    AmTextureId m_image;
 
   private:
     void resolveSvg(DrawContext &ctx);

@@ -29,18 +29,20 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<DropdownItem> items)
         .popupDirection = DropdownDirection::DOWN,
         .maxVisibleItems = INT_MAX,
     });
-    entry->setTextProperties({
+    entry->setTextStyleProperties({
         .fontSize = m_mbProps.entryFontSize,
         .textXAlignment = TextXAlignment::CENTER,
         .textYAlignment = TextYAlignment::CENTER,
-        .text = label,
     });
-    entry->setButtonProperties({.autoButtonColor = 0});
+    entry->setText(label);
+    entry->setButtonProperties({.autoButtonColor = false});
     float estWidth = static_cast<float>(label.size()) * m_mbProps.entryFontSize * 0.6f + 2.0f * m_mbProps.entryPaddingX;
-    entry->setBaseProperties({
-        .backgroundColor = getBaseProperties().backgroundColor,
-        .backgroundTransparency = getBaseProperties().backgroundTransparency,
+    entry->setBaseStyleProperties({
+        .backgroundColor = getBaseStyleProperties().backgroundColor,
+        .backgroundTransparency = getBaseStyleProperties().backgroundTransparency,
         .borderPixelSize = 0.0f,
+    });
+    entry->setBaseProperties({
         .layoutOrder = static_cast<LayoutOrder>(m_entries.size()),
         .padding = {
             UDim::fromOffset(m_mbProps.entryPaddingY), UDim::fromOffset(m_mbProps.entryPaddingX),
@@ -51,29 +53,29 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<DropdownItem> items)
 
     entry->onMouseEnterCb = [this, entry]() {
         Color3 newBg = entry->isOpen() ? m_mbProps.entryActiveBackground : m_mbProps.entryHoverBackground;
-        if (entry->getBaseProperties().backgroundColor != newBg) {
-            entry->setBaseProperties({.backgroundColor = newBg});
+        if (entry->getBaseStyleProperties().backgroundColor != newBg) {
+            entry->setBaseStyleProperties({.backgroundColor = newBg});
         }
         onEntryHovered(entry);
         return EventResult::CONSUMED;
     };
     entry->onMouseLeaveCb = [this, entry]() {
-        Color3 newBg = entry->isOpen() ? m_mbProps.entryActiveBackground : getBaseProperties().backgroundColor;
-        if (entry->getBaseProperties().backgroundColor != newBg) {
-            entry->setBaseProperties({.backgroundColor = newBg});
+        Color3 newBg = entry->isOpen() ? m_mbProps.entryActiveBackground : getBaseStyleProperties().backgroundColor;
+        if (entry->getBaseStyleProperties().backgroundColor != newBg) {
+            entry->setBaseStyleProperties({.backgroundColor = newBg});
         }
         return EventResult::CONSUMED;
     };
     entry->onOpenedCb = [this, entry]() {
         m_openEntry = entry;
-        if (entry->getBaseProperties().backgroundColor != m_mbProps.entryActiveBackground) {
-            entry->setBaseProperties({.backgroundColor = m_mbProps.entryActiveBackground});
+        if (entry->getBaseStyleProperties().backgroundColor != m_mbProps.entryActiveBackground) {
+            entry->setBaseStyleProperties({.backgroundColor = m_mbProps.entryActiveBackground});
         }
     };
     entry->onClosedCb = [this, entry]() {
         onEntryClosed(entry);
-        if (entry->getBaseProperties().backgroundColor != getBaseProperties().backgroundColor) {
-            entry->setBaseProperties({.backgroundColor = getBaseProperties().backgroundColor});
+        if (entry->getBaseStyleProperties().backgroundColor != getBaseStyleProperties().backgroundColor) {
+            entry->setBaseStyleProperties({.backgroundColor = getBaseStyleProperties().backgroundColor});
         }
     };
 
@@ -108,20 +110,9 @@ void MenuBar::onEntryClosed(Dropdown *entry)
     }
 }
 
-bool MenuBar::setMenuBarProperties(const MenuBarProperties &props)
+bool MenuBar::setMenuBarProperties(const MenuBarStyleProperties &props)
 {
-    bool changed = false;
-#define AM_APPLY(field) \
-    if (propIsSet(props.field) && m_mbProps.field != props.field) { \
-        m_mbProps.field = props.field; \
-        changed = true; \
-    }
-    AM_APPLY(entryPaddingX)
-    AM_APPLY(entryPaddingY)
-    AM_APPLY(entryFontSize)
-    AM_APPLY(entryHoverBackground)
-    AM_APPLY(entryActiveBackground)
-#undef AM_APPLY
+    bool changed = m_mbProps.apply(props);
     if (changed) {
         markDirty();
     }

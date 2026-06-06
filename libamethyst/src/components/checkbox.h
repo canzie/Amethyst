@@ -1,5 +1,5 @@
 /*
- * Checkbox UI element with optional label
+ * Checkbox UI element
  */
 
 #ifndef AMETHYST__CHECKBOX_H
@@ -21,8 +21,8 @@ class Checkbox : public UIButton {
 
     void draw(DrawContext &ctx) override;
 
-    bool setCheckboxProperties(const CheckboxProperties &props);
-    const CheckboxProperties &getCheckboxProperties() const { return m_cbProps; }
+    bool setCheckboxProperties(const CheckboxStyleProperties &props);
+    const CheckboxStyleProperties &getCheckboxProperties() const { return m_cbProps; }
 
   protected:
     EventResult onMouseButton1Click() override;
@@ -32,7 +32,7 @@ class Checkbox : public UIButton {
     std::function<void(bool)> onValueChanged;
 
   protected:
-    CheckboxProperties m_cbProps;
+    CheckboxStyleProperties m_cbProps;
 };
 
 } // namespace Amethyst

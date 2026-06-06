@@ -108,61 +108,60 @@ int main()
 
     UIScope ui(window);
 
-    ui.textLabel({.backgroundTransparency = 1.0f, .position = {0.0f, 0.0f, 0.0f, 10.0f}, .size = {1.0f, 0.0f, 0.0f, 40.0f}},
-                 {.fontSize = 20.0f,
-                  .textColor = {1.0f, 1.0f, 1.0f, 1.0f},
-                  .textXAlignment = TextXAlignment::CENTER,
-                  .textYAlignment = TextYAlignment::CENTER,
-                  .text = "SVG Icons"});
+    ui.textLabel({.base = {.position = {0.0f, 0.0f, 0.0f, 10.0f}, .size = {1.0f, 0.0f, 0.0f, 40.0f}},
+                  .style = {.backgroundTransparency = 1.0f},
+                  .text = {.fontSize = 20.0f,
+                           .textColor = {1.0f, 1.0f, 1.0f, 1.0f},
+                           .textXAlignment = TextXAlignment::CENTER,
+                           .textYAlignment = TextYAlignment::CENTER},
+                  .label = "SVG Icons"});
 
     float xOffset = 40.0f;
     for (auto &icon : icons) {
-        ui.frame({.backgroundColor = {0.18f, 0.18f, 0.22f},
-                  .cornerRadius = 8.0f,
-                  .position = UDim2::fromOffset(xOffset, 70.0f),
-                  .size = UDim2::fromOffset(120.0f, 160.0f)},
+        ui.frame({.base = {.position = UDim2::fromOffset(xOffset, 70.0f), .size = UDim2::fromOffset(120.0f, 160.0f)},
+                  .style = {.backgroundColor = {0.18f, 0.18f, 0.22f}, .cornerRadius = 8.0f}},
                  [&icon](FrameScope &f) {
-                     f.imageLabel({.backgroundTransparency = 1.0f,
-                                   .position = UDim2::fromOffset(28.0f, 20.0f),
-                                   .size = UDim2::fromOffset(64.0f, 64.0f)},
-                                  {.imageColor = {icon.tint.r, icon.tint.g, icon.tint.b, 1.0f}, .svg = icon.svg});
-                     f.textLabel({.backgroundTransparency = 1.0f,
-                                  .position = {0.0f, 0.0f, 0.0f, 100.0f},
-                                  .size = {1.0f, 0.0f, 0.0f, 24.0f}},
-                                 {.fontSize = 14.0f,
-                                  .textColor = {0.85f, 0.85f, 0.85f, 1.0f},
-                                  .textXAlignment = TextXAlignment::CENTER,
-                                  .textYAlignment = TextYAlignment::CENTER,
-                                  .text = icon.label});
+                     f.imageLabel({.base = {.position = UDim2::fromOffset(28.0f, 20.0f), .size = UDim2::fromOffset(64.0f, 64.0f)},
+                                   .style = {.backgroundTransparency = 1.0f},
+                                   .image = {.imageColor = {icon.tint.r, icon.tint.g, icon.tint.b, 1.0f}},
+                                   .svg = icon.svg});
+                     f.textLabel({.base = {.position = {0.0f, 0.0f, 0.0f, 100.0f}, .size = {1.0f, 0.0f, 0.0f, 24.0f}},
+                                  .style = {.backgroundTransparency = 1.0f},
+                                  .text = {.fontSize = 14.0f,
+                                           .textColor = {0.85f, 0.85f, 0.85f, 1.0f},
+                                           .textXAlignment = TextXAlignment::CENTER,
+                                           .textYAlignment = TextYAlignment::CENTER},
+                                  .label = icon.label});
                  });
         xOffset += 135.0f;
     }
 
-    ui.textLabel({.backgroundTransparency = 1.0f, .position = {0.0f, 0.0f, 0.0f, 260.0f}, .size = {1.0f, 0.0f, 0.0f, 30.0f}},
-                 {.fontSize = 16.0f,
-                  .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                  .textXAlignment = TextXAlignment::CENTER,
-                  .textYAlignment = TextYAlignment::CENTER,
-                  .text = "SVG Buttons (hover to see effect)"});
+    ui.textLabel({.base = {.position = {0.0f, 0.0f, 0.0f, 260.0f}, .size = {1.0f, 0.0f, 0.0f, 30.0f}},
+                  .style = {.backgroundTransparency = 1.0f},
+                  .text = {.fontSize = 16.0f,
+                           .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                           .textXAlignment = TextXAlignment::CENTER,
+                           .textYAlignment = TextYAlignment::CENTER},
+                  .label = "SVG Buttons (hover to see effect)"});
 
-    ui.textLabel({.backgroundTransparency = 1.0f, .position = {0.0f, 0.0f, 0.0f, 540.0f}, .size = {1.0f, 0.0f, 0.0f, 24.0f}},
-                 {.fontSize = 13.0f,
-                  .textColor = {0.6f, 0.6f, 0.6f, 1.0f},
-                  .textXAlignment = TextXAlignment::CENTER,
-                  .textYAlignment = TextYAlignment::CENTER,
-                  .text = "Click a button..."},
+    ui.textLabel({.base = {.position = {0.0f, 0.0f, 0.0f, 540.0f}, .size = {1.0f, 0.0f, 0.0f, 24.0f}},
+                  .style = {.backgroundTransparency = 1.0f},
+                  .text = {.fontSize = 13.0f,
+                           .textColor = {0.6f, 0.6f, 0.6f, 1.0f},
+                           .textXAlignment = TextXAlignment::CENTER,
+                           .textYAlignment = TextYAlignment::CENTER},
+                  .label = "Click a button..."},
                  [&statusLabel](TextLabelScope &t) { statusLabel = &t.component; });
 
     float btnX = 100.0f;
     for (int i = 0; i < 6; i++) {
-        ui.imageButton({.backgroundColor = {0.22f, 0.22f, 0.28f},
-                        .cornerRadius = 12.0f,
-                        .position = UDim2::fromOffset(btnX, 310.0f),
-                        .size = UDim2::fromOffset(80.0f, 80.0f)},
-                       {.imageColor = {icons[i].tint.r, icons[i].tint.g, icons[i].tint.b, 1.0f}, .svg = icons[i].svg}, {},
+        ui.imageButton({.base = {.position = UDim2::fromOffset(btnX, 310.0f), .size = UDim2::fromOffset(80.0f, 80.0f)},
+                        .style = {.backgroundColor = {0.22f, 0.22f, 0.28f}, .cornerRadius = 12.0f},
+                        .image = {.imageColor = {icons[i].tint.r, icons[i].tint.g, icons[i].tint.b, 1.0f}},
+                        .svg = icons[i].svg},
                        [statusLabel, name = icons[i].label](ImageButtonScope &btn) {
                            btn.component.onMouseButton1ClickCb = [statusLabel, name]() {
-                                 statusLabel->setTextProperties({.text = "Clicked: " + std::string(name)});
+                               statusLabel->setText("Clicked: " + std::string(name));
                                return EventResult::CONSUMED;
                            };
                        });

@@ -82,12 +82,11 @@ void Window::draw(DrawContext &ctx)
     m_overlayLayer->draw(layerCtx);
 }
 
-static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point,
-                                    UIObject **stack, uint8_t &count, uint8_t capacity)
+static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point, UIObject **stack,
+                                      uint8_t &count, uint8_t capacity)
 {
     std::vector<Instance *> sorted(instances.begin(), instances.end());
-    std::stable_sort(sorted.begin(), sorted.end(),
-                     [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
+    std::stable_sort(sorted.begin(), sorted.end(), [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
 
     for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) {
         Instance *inst = *it;
@@ -121,12 +120,10 @@ static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, 
     return false;
 }
 
-template<typename Fn>
-static bool s_dispatchRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point, Fn &&fn)
+template <typename Fn> static bool s_dispatchRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point, Fn &&fn)
 {
     std::vector<Instance *> sorted(instances.begin(), instances.end());
-    std::stable_sort(sorted.begin(), sorted.end(),
-                     [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
+    std::stable_sort(sorted.begin(), sorted.end(), [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
 
     for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) {
         Instance *inst = *it;
@@ -226,8 +223,7 @@ void Window::onMouseMove(uint32_t x, uint32_t y)
     std::swap(m_hoverCurrent, m_hoverPrevious);
     m_hoverCurrent.count = 0;
 
-    s_fillHoverStackRecursive(getHittableInstances(), point,
-                            m_hoverCurrent.items.data(), m_hoverCurrent.count, MAX_HOVER_DEPTH);
+    s_fillHoverStackRecursive(getHittableInstances(), point, m_hoverCurrent.items.data(), m_hoverCurrent.count, MAX_HOVER_DEPTH);
     std::reverse(m_hoverCurrent.items.data(), m_hoverCurrent.items.data() + m_hoverCurrent.count);
 
     uint8_t common = 0;
@@ -248,9 +244,7 @@ void Window::onMouseMove(uint32_t x, uint32_t y)
         UIObject *obj = m_hoverCurrent.items[i];
         if (obj != m_mouseCapturedBy) {
             // TODO: replace with signal connection when signal/event system is implemented
-            obj->onDestroy = [this](Instance *dead) {
-                this->purgeFromHoverStacks(dead);
-            };
+            obj->onDestroy = [this](Instance *dead) { this->purgeFromHoverStacks(dead); };
         }
         obj->onMouseEnter();
     }
@@ -289,9 +283,7 @@ void Window::releaseMouse(UIObject *object)
             for (uint8_t i = 0; i < m_hoverCurrent.count; ++i) {
                 if (m_hoverCurrent.items[i] == object) {
                     // TODO: replace with signal connection when signal/event system is implemented
-                    object->onDestroy = [this](Instance *dead) {
-                        this->purgeFromHoverStacks(dead);
-                    };
+                    object->onDestroy = [this](Instance *dead) { this->purgeFromHoverStacks(dead); };
                     break;
                 }
             }

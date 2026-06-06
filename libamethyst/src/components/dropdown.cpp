@@ -29,25 +29,9 @@ Dropdown::Dropdown()
     m_ddProps.separatorColor = Color3{0.32f, 0.32f, 0.32f};
 }
 
-bool Dropdown::setDropdownProperties(const DropdownProperties &props)
+bool Dropdown::setDropdownProperties(const DropdownStyleProperties &props)
 {
-    bool changed = false;
-#define AM_APPLY(field) \
-    if (propIsSet(props.field) && m_ddProps.field != props.field) { \
-        m_ddProps.field = props.field; \
-        changed = true; \
-    }
-    AM_APPLY(popupDirection)
-    AM_APPLY(maxVisibleItems)
-    AM_APPLY(itemHeight)
-    AM_APPLY(popupWidth)
-    AM_APPLY(itemFontSize)
-    AM_APPLY(popupBackground)
-    AM_APPLY(itemTextColor)
-    AM_APPLY(itemDisabledColor)
-    AM_APPLY(itemHoverBackground)
-    AM_APPLY(separatorColor)
-#undef AM_APPLY
+    bool changed = m_ddProps.apply(props);
     if (changed) {
         markDirty();
     }
@@ -157,7 +141,7 @@ void Dropdown::closeSubmenuFrom(size_t depth)
 {
     for (size_t i = depth; i < m_submenuSourceRows.size(); i++) {
         if (m_submenuSourceRows[i]) {
-            m_submenuSourceRows[i]->setBaseProperties({.backgroundColor = m_ddProps.popupBackground});
+            m_submenuSourceRows[i]->setBaseStyleProperties({.backgroundColor = m_ddProps.popupBackground});
         }
     }
     m_submenuSourceRows.resize(depth);
@@ -183,8 +167,8 @@ void Dropdown::buildMainPopup(OverlayLayer *overlay)
 {
     float totalHeight = computeTotalHeight(m_items);
     float visibleHeight = (m_ddProps.maxVisibleItems == INT_MAX)
-        ? totalHeight
-        : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
+                              ? totalHeight
+                              : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
 
     glm::vec2 pos;
     switch (m_ddProps.popupDirection) {
@@ -217,14 +201,13 @@ void Dropdown::buildSubmenuAtPath(OverlayLayer *overlay, const std::vector<size_
     auto &subItems = itemsAtPath(path);
     float totalHeight = computeTotalHeight(subItems);
     float visibleHeight = (m_ddProps.maxVisibleItems == INT_MAX)
-        ? totalHeight
-        : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
+                              ? totalHeight
+                              : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
 
     glm::vec2 viewport = overlay->absoluteSize;
     pos.y = std::min(pos.y, std::max(0.0f, viewport.y - visibleHeight));
 
-    UIObject *panel = buildPopupPanel(overlay, pos, totalHeight, visibleHeight,
-                                      2 + static_cast<int>(depth), path);
+    UIObject *panel = buildPopupPanel(overlay, pos, totalHeight, visibleHeight, 2 + static_cast<int>(depth), path);
     m_submenuStack.push_back(panel);
 }
 
@@ -237,18 +220,20 @@ std::vector<DropdownItem> &Dropdown::itemsAtPath(const std::vector<size_t> &path
     return *items;
 }
 
-UIObject *Dropdown::buildPopupPanel(OverlayLayer *overlay, glm::vec2 pos, float totalHeight,
-                                     float visibleHeight, int zIdx, const std::vector<size_t> &path)
+UIObject *Dropdown::buildPopupPanel(OverlayLayer *overlay, glm::vec2 pos, float totalHeight, float visibleHeight, int zIdx,
+                                    const std::vector<size_t> &path)
 {
     UIObject *panel;
 
     if (totalHeight > visibleHeight + 0.5f) {
         auto sf = std::make_unique<ScrollingFrame>();
-        sf->setBaseProperties({
+        sf->setBaseStyleProperties({
             .backgroundColor = m_ddProps.popupBackground,
             .backgroundTransparency = 0.0f,
             .borderPixelSize = 0.0f,
-            .clipsDescendants = 1,
+        });
+        sf->setBaseProperties({
+            .clipsDescendants = true,
             .position = UDim2::fromOffset(pos.x, pos.y),
             .size = UDim2::fromOffset(m_ddProps.popupWidth, visibleHeight),
             .zIndex = zIdx,
@@ -261,11 +246,13 @@ UIObject *Dropdown::buildPopupPanel(OverlayLayer *overlay, glm::vec2 pos, float 
         panel = static_cast<UIObject *>(overlay->addChild(std::move(sf)));
     } else {
         auto fr = std::make_unique<Frame>();
-        fr->setBaseProperties({
+        fr->setBaseStyleProperties({
             .backgroundColor = m_ddProps.popupBackground,
             .backgroundTransparency = 0.0f,
             .borderPixelSize = 0.0f,
-            .clipsDescendants = 1,
+        });
+        fr->setBaseProperties({
+            .clipsDescendants = true,
             .position = UDim2::fromOffset(pos.x, pos.y),
             .size = UDim2::fromOffset(m_ddProps.popupWidth, visibleHeight),
             .zIndex = zIdx,
@@ -294,11 +281,13 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
 
         if (item.kind() == DropdownItem::Kind::SEPARATOR) {
             auto *sep = container->add<Frame>();
-            sep->setBaseProperties({
+            sep->setBaseStyleProperties({
                 .backgroundColor = m_ddProps.separatorColor,
                 .backgroundTransparency = 0.5f,
                 .borderPixelSize = 0.0f,
-                .interactable = 0,
+            });
+            sep->setBaseProperties({
+                .interactable = false,
                 .layoutOrder = static_cast<LayoutOrder>(idx * 100),
                 .size = UDim2::fromOffset(m_ddProps.popupWidth, 8.0f),
                 .zIndex = zIdx,
@@ -307,30 +296,29 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
         }
 
         auto *row = container->add<TextButton>();
-        row->setBaseProperties({
+        row->setBaseStyleProperties({
             .backgroundColor = m_ddProps.popupBackground,
             .backgroundTransparency = 0.0f,
             .borderPixelSize = 0.0f,
+        });
+        row->setBaseProperties({
             .layoutOrder = static_cast<LayoutOrder>(idx * 100),
-            .padding = {
-                UDim::fromOffset(0.0f), UDim::fromOffset(8.0f),
-                UDim::fromOffset(0.0f), UDim::fromOffset(8.0f)
-            },
+            .padding = {UDim::fromOffset(0.0f), UDim::fromOffset(8.0f), UDim::fromOffset(0.0f), UDim::fromOffset(8.0f)},
             .size = UDim2::fromOffset(m_ddProps.popupWidth, m_ddProps.itemHeight),
             .zIndex = zIdx,
         });
-        row->setButtonProperties({.autoButtonColor = 0});
-        row->setTextProperties({
+        row->setButtonProperties({.autoButtonColor = false});
+        row->setTextStyleProperties({
             .fontSize = m_ddProps.itemFontSize,
             .textColor = item.enabled ? m_ddProps.itemTextColor : m_ddProps.itemDisabledColor,
             .textXAlignment = TextXAlignment::LEFT,
             .textYAlignment = TextYAlignment::CENTER,
-            .textWrapped = 0,
-            .text = buildItemText(item),
+            .textWrapped = false,
         });
+        row->setText(buildItemText(item));
 
         if (!item.enabled) {
-            row->setBaseProperties({.interactable = 0});
+            row->setBaseProperties({.interactable = false});
             continue;
         }
 
@@ -338,11 +326,10 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
         Color3 normalBg = m_ddProps.popupBackground;
 
         row->onMouseLeaveCb = [this, row, normalBg, hoverBg, depth]() {
-            bool isSubmenuSource = depth < m_submenuSourceRows.size() &&
-                                   m_submenuSourceRows[depth] == row;
+            bool isSubmenuSource = depth < m_submenuSourceRows.size() && m_submenuSourceRows[depth] == row;
             Color3 newBg = isSubmenuSource ? hoverBg : normalBg;
-            if (row->getBaseProperties().backgroundColor != newBg) {
-                row->setBaseProperties({.backgroundColor = newBg});
+            if (row->getBaseStyleProperties().backgroundColor != newBg) {
+                row->setBaseStyleProperties({.backgroundColor = newBg});
             }
             return EventResult::CONSUMED;
         };
@@ -352,16 +339,16 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
             fullPath.push_back(idx);
             size_t parentDepth = path.size();
             row->onMouseEnterCb = [this, row, hoverBg, fullPath = std::move(fullPath), parentDepth]() {
-                if (row->getBaseProperties().backgroundColor != hoverBg) {
-                    row->setBaseProperties({.backgroundColor = hoverBg});
+                if (row->getBaseStyleProperties().backgroundColor != hoverBg) {
+                    row->setBaseStyleProperties({.backgroundColor = hoverBg});
                 }
                 UIObject *parentPanel = parentDepth == 0 ? m_popup : m_submenuStack[parentDepth - 1];
                 float preferredX = parentPanel->absolutePosition.x + parentPanel->absoluteSize.x;
                 float altX = parentPanel->absolutePosition.x - m_ddProps.popupWidth;
                 float viewportW = m_overlayPtr->absoluteSize.x;
                 float subX = (preferredX + m_ddProps.popupWidth <= viewportW) ? preferredX
-                           : (altX >= 0.0f)                         ? altX
-                           : std::max(0.0f, viewportW - m_ddProps.popupWidth);
+                             : (altX >= 0.0f)                                 ? altX
+                                                                              : std::max(0.0f, viewportW - m_ddProps.popupWidth);
                 float subY = row->absolutePosition.y;
                 buildSubmenuAtPath(m_overlayPtr, fullPath, {subX, subY});
                 m_submenuSourceRows.push_back(row);
@@ -370,8 +357,8 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
             row->onMouseButton1ClickCb = []() { return EventResult::CONSUMED; };
         } else {
             row->onMouseEnterCb = [this, row, hoverBg, depth]() {
-                if (row->getBaseProperties().backgroundColor != hoverBg) {
-                    row->setBaseProperties({.backgroundColor = hoverBg});
+                if (row->getBaseStyleProperties().backgroundColor != hoverBg) {
+                    row->setBaseStyleProperties({.backgroundColor = hoverBg});
                 }
                 closeSubmenuFrom(depth);
                 return EventResult::CONSUMED;
@@ -400,7 +387,7 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
             DropdownItem *itemPtr = &items[idx];
             row->onMouseButton1ClickCb = [this, row, itemPtr]() {
                 std::get<DropdownToggle>(itemPtr->payload).toggle();
-                row->setTextProperties({.text = buildItemText(*itemPtr)});
+                row->setText(buildItemText(*itemPtr));
                 return EventResult::CONSUMED;
             };
         }

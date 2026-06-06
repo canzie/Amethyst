@@ -79,8 +79,8 @@ class TabBar : public UIObject {
     TabBarConfig saveConfig() const;
     void applyConfig(const TabBarConfig &config);
 
-    bool setTabBarProperties(const TabBarProperties &props);
-    const TabBarProperties &getTabBarProperties() const { return m_tbProps; }
+    bool setTabBarProperties(const TabBarStyleProperties &props);
+    const TabBarStyleProperties &getTabBarProperties() const { return m_tbProps; }
 
     std::function<void(Instance *content)> onTabClosed;
     std::function<void(Instance *content)> onTabTornOff;
@@ -89,7 +89,7 @@ class TabBar : public UIObject {
     std::function<void(int32_t index)> onSelectionChanged;
 
   protected:
-    TabBarProperties m_tbProps;
+    TabBarStyleProperties m_tbProps;
 
   private:
     void setupTabButton(Tab &tab, int32_t index);

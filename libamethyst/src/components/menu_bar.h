@@ -26,11 +26,11 @@ class MenuBar : public Frame {
     Dropdown *addMenu(std::string label, std::vector<DropdownItem> items);
     void clear();
 
-    bool setMenuBarProperties(const MenuBarProperties &props);
-    const MenuBarProperties &getMenuBarProperties() const { return m_mbProps; }
+    bool setMenuBarProperties(const MenuBarStyleProperties &props);
+    const MenuBarStyleProperties &getMenuBarProperties() const { return m_mbProps; }
 
   protected:
-    MenuBarProperties m_mbProps;
+    MenuBarStyleProperties m_mbProps;
 
   private:
     void onEntryHovered(Dropdown *entry);

@@ -66,12 +66,8 @@ int main()
     Dropdown *toolDropdown = nullptr;
 
     UIScope(window)
-        .menuBar({.backgroundColor = {0.15f, 0.15f, 0.15f},
-                  .backgroundTransparency = 0.0f,
-                  .borderPixelSize = 0.0f,
-                  .position = {0.0f, 0.0f, 0.0f, 0.0f},
-                  .size = {1.0f, 0.0f, 0.0f, 28.0f}},
-                 {},
+        .menuBar({.base = {.position = {0.0f, 0.0f, 0.0f, 0.0f}, .size = {1.0f, 0.0f, 0.0f, 28.0f}},
+                  .style = {.backgroundColor = {0.15f, 0.15f, 0.15f}, .backgroundTransparency = 0.0f, .borderPixelSize = 0.0f}},
                  [&running](MenuBarScope &mb) {
                      mb.menuItem("File", [&running](DropdownScope &d) {
                          d.action("New", [] { g_lastAction = "New"; });
@@ -98,70 +94,67 @@ int main()
                          d.toggle("Show Ruler", [](bool v) { g_lastAction = v ? "Ruler on" : "Ruler off"; });
                      });
                  })
-        .textLabel({.position = UDim2::fromOffset(40.0f, 60.0f), .size = UDim2::fromOffset(120.0f, 28.0f)},
-                   {.fontSize = 14.0f,
-                    .textColor = {0.85f, 0.85f, 0.85f, 1.0f},
-                    .textXAlignment = TextXAlignment::LEFT,
-                    .textYAlignment = TextYAlignment::CENTER,
-                    .text = "Active tool:"})
-        .dropdown({.position = UDim2::fromOffset(160.0f, 60.0f), .size = UDim2::fromOffset(140.0f, 28.0f)},
-                  {.text = "Pencil \xe2\x96\xbe"}, {.popupWidth = 140.0f},
+        .textLabel({.base = {.position = UDim2::fromOffset(40.0f, 60.0f), .size = UDim2::fromOffset(120.0f, 28.0f)},
+                    .text = {.fontSize = 14.0f,
+                             .textColor = {0.85f, 0.85f, 0.85f, 1.0f},
+                             .textXAlignment = TextXAlignment::LEFT,
+                             .textYAlignment = TextYAlignment::CENTER},
+                    .label = "Active tool:"})
+        .dropdown({.base = {.position = UDim2::fromOffset(160.0f, 60.0f), .size = UDim2::fromOffset(140.0f, 28.0f)},
+                   .label = "Pencil \xe2\x96\xbe",
+                   .dropdown = {.popupWidth = 140.0f}},
                   [&toolDropdown](DropdownScope &d) {
                       toolDropdown = &d.component;
                       d.action("Pencil", [&toolDropdown] {
-                          toolDropdown->setTextProperties({.text = "Pencil \xe2\x96\xbe"});
+                          toolDropdown->setText("Pencil \xe2\x96\xbe");
                           g_lastAction = "Tool: Pencil";
                       });
                       d.action("Brush", [&toolDropdown] {
-                          toolDropdown->setTextProperties({.text = "Brush \xe2\x96\xbe"});
+                          toolDropdown->setText("Brush \xe2\x96\xbe");
                           g_lastAction = "Tool: Brush";
                       });
                       d.action("Eraser", [&toolDropdown] {
-                          toolDropdown->setTextProperties({.text = "Eraser \xe2\x96\xbe"});
+                          toolDropdown->setText("Eraser \xe2\x96\xbe");
                           g_lastAction = "Tool: Eraser";
                       });
                       d.action("Select", [&toolDropdown] {
-                          toolDropdown->setTextProperties({.text = "Select \xe2\x96\xbe"});
+                          toolDropdown->setText("Select \xe2\x96\xbe");
                           g_lastAction = "Tool: Select";
                       });
                   })
-        .textLabel({.position = UDim2::fromOffset(40.0f, 110.0f), .size = UDim2::fromOffset(400.0f, 28.0f)},
-                   {.fontSize = 13.0f,
-                    .textColor = {0.6f, 0.6f, 0.6f, 1.0f},
-                    .textXAlignment = TextXAlignment::LEFT,
-                    .textYAlignment = TextYAlignment::CENTER},
+        .textLabel({.base = {.position = UDim2::fromOffset(40.0f, 110.0f), .size = UDim2::fromOffset(400.0f, 28.0f)},
+                    .text = {.fontSize = 13.0f,
+                             .textColor = {0.6f, 0.6f, 0.6f, 1.0f},
+                             .textXAlignment = TextXAlignment::LEFT,
+                             .textYAlignment = TextYAlignment::CENTER}},
                    [&statusLabel](TextLabelScope &t) { statusLabel = &t.component; })
-        .tabBar({.backgroundColor = {0.14f, 0.14f, 0.17f},
-                 .backgroundTransparency = 0.0f,
-                 .position = UDim2::fromOffset(40.0f, 160.0f),
-                 .size = UDim2::fromOffset(700.0f, 220.0f)},
-                {.tabWidth = 110.0f, .tabOffset = 10.0f}, [](TabBarScope &tabs) {
+        .tabBar({.base = {.position = UDim2::fromOffset(40.0f, 160.0f), .size = UDim2::fromOffset(700.0f, 220.0f)},
+                 .style = {.backgroundColor = {0.14f, 0.14f, 0.17f}, .backgroundTransparency = 0.0f},
+                 .tabBar = {.tabWidth = 110.0f, .tabOffset = 10.0f}},
+                [](TabBarScope &tabs) {
                     tabs.tab("Scene", [](FrameScope &f) {
-                        f.textLabel({.backgroundTransparency = 1.0f,
-                                     .position = UDim2::fromOffset(10.0f, 10.0f),
-                                     .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                    {.fontSize = 13.0f,
-                                     .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                                     .textYAlignment = TextYAlignment::CENTER,
-                                     .text = "Scene graph \xe2\x80\x94 312 nodes, 18 lights"});
+                        f.textLabel({.base = {.position = UDim2::fromOffset(10.0f, 10.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                     .style = {.backgroundTransparency = 1.0f},
+                                     .text = {.fontSize = 13.0f,
+                                              .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                              .textYAlignment = TextYAlignment::CENTER},
+                                     .label = "Scene graph \xe2\x80\x94 312 nodes, 18 lights"});
                     });
                     tabs.tab("Assets", [](FrameScope &f) {
-                        f.textLabel({.backgroundTransparency = 1.0f,
-                                     .position = UDim2::fromOffset(10.0f, 10.0f),
-                                     .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                    {.fontSize = 13.0f,
-                                     .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
-                                     .textYAlignment = TextYAlignment::CENTER,
-                                     .text = "Assets \xe2\x80\x94 84 meshes, 210 textures, 12 materials"});
+                        f.textLabel({.base = {.position = UDim2::fromOffset(10.0f, 10.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                     .style = {.backgroundTransparency = 1.0f},
+                                     .text = {.fontSize = 13.0f,
+                                              .textColor = {0.8f, 0.8f, 0.8f, 1.0f},
+                                              .textYAlignment = TextYAlignment::CENTER},
+                                     .label = "Assets \xe2\x80\x94 84 meshes, 210 textures, 12 materials"});
                     });
                     tabs.tab("Console", [](FrameScope &f) {
-                        f.textLabel({.backgroundTransparency = 1.0f,
-                                     .position = UDim2::fromOffset(10.0f, 10.0f),
-                                     .size = {1.0f, -20.0f, 0.0f, 24.0f}},
-                                    {.fontSize = 13.0f,
-                                     .textColor = {0.5f, 0.9f, 0.5f, 1.0f},
-                                     .textYAlignment = TextYAlignment::CENTER,
-                                     .text = "> Engine initialised in 142ms"});
+                        f.textLabel({.base = {.position = UDim2::fromOffset(10.0f, 10.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
+                                     .style = {.backgroundTransparency = 1.0f},
+                                     .text = {.fontSize = 13.0f,
+                                              .textColor = {0.5f, 0.9f, 0.5f, 1.0f},
+                                              .textYAlignment = TextYAlignment::CENTER},
+                                     .label = "> Engine initialised in 142ms"});
                     });
                 });
 
@@ -176,7 +169,7 @@ int main()
 
         if (g_lastAction != lastStatus) {
             lastStatus = g_lastAction;
-            statusLabel->setTextProperties({.text = "Last action: " + g_lastAction});
+            statusLabel->setText("Last action: " + g_lastAction);
         }
 
         uint32_t imageIndex;

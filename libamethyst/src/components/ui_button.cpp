@@ -4,15 +4,7 @@ namespace Amethyst {
 
 bool UIButton::setButtonProperties(const ButtonProperties &props)
 {
-    bool changed = false;
-#define AM_APPLY(field)                                              \
-    if (propIsSet(props.field) && m_btnProps.field != props.field) { \
-        m_btnProps.field = props.field;                              \
-        changed = true;                                              \
-    }
-    AM_APPLY(autoButtonColor)
-    AM_APPLY(modal)
-#undef AM_APPLY
+    bool changed = m_btnProps.apply(props);
     if (changed) {
         markDirty();
     }
@@ -54,8 +46,7 @@ EventResult UIButton::onInputEnded(const InputObject &input)
             return up;
         }
         EventResult click = onMouseButton1Click();
-        return (up == EventResult::CONSUMED && click == EventResult::CONSUMED) ? EventResult::CONSUMED
-                                                                               : EventResult::PROPAGATE;
+        return (up == EventResult::CONSUMED && click == EventResult::CONSUMED) ? EventResult::CONSUMED : EventResult::PROPAGATE;
     }
     case InputType::MOUSE_BUTTON_2: {
         EventResult up = onMouseButton2Up(x, y);
@@ -63,8 +54,7 @@ EventResult UIButton::onInputEnded(const InputObject &input)
             return up;
         }
         EventResult click = onMouseButton2Click();
-        return (up == EventResult::CONSUMED && click == EventResult::CONSUMED) ? EventResult::CONSUMED
-                                                                               : EventResult::PROPAGATE;
+        return (up == EventResult::CONSUMED && click == EventResult::CONSUMED) ? EventResult::CONSUMED : EventResult::PROPAGATE;
     }
     default:
         return EventResult::CONSUMED;

@@ -21,14 +21,7 @@ UIObject::UIObject()
     m_uiObjProps.active = false;
     m_uiObjProps.anchorPoint = glm::vec2(0.0f);
     m_uiObjProps.automaticSize = AutomaticSize::OFF;
-    m_uiObjProps.backgroundColor = Color3{1.0f, 1.0f, 1.0f};
-    m_uiObjProps.backgroundTransparency = 0.0f;
-    m_uiObjProps.borderMode = BorderMode::OUTLINE;
-    m_uiObjProps.borderPixelSize = 0.0f;
-    m_uiObjProps.borderColor = Color3{0.0f, 0.0f, 0.0f};
-    m_uiObjProps.borderTransparency = 0.0f;
     m_uiObjProps.clipsDescendants = true;
-    m_uiObjProps.cornerRadius = 0.0f;
     m_uiObjProps.guiState = GuiState::IDLE;
     m_uiObjProps.interactable = true;
     m_uiObjProps.layoutOrder = 0;
@@ -40,45 +33,30 @@ UIObject::UIObject()
     m_uiObjProps.visible = true;
     m_uiObjProps.zIndex = 1;
     m_uiObjProps.zindexBehavior = ZIndexBehavior::SIBLING;
+
+    m_baseStyle.backgroundColor = Color3{1.0f, 1.0f, 1.0f};
+    m_baseStyle.backgroundTransparency = 0.0f;
+    m_baseStyle.borderMode = BorderMode::OUTLINE;
+    m_baseStyle.borderPixelSize = 0.0f;
+    m_baseStyle.borderColor = Color3{0.0f, 0.0f, 0.0f};
+    m_baseStyle.borderTransparency = 0.0f;
+    m_baseStyle.cornerRadius = 0.0f;
 }
 
 UIObject::~UIObject() {}
 
 bool UIObject::setBaseProperties(BaseProperties props)
 {
-    bool changed = false;
-
-#define AM_APPLY(field)                                                \
-    if (propIsSet(props.field) && m_uiObjProps.field != props.field) { \
-        m_uiObjProps.field = props.field;                              \
-        changed = true;                                                \
+    bool changed = m_uiObjProps.apply(props);
+    if (changed) {
+        markDirty();
     }
+    return changed;
+}
 
-    AM_APPLY(active)
-    AM_APPLY(anchorPoint)
-    AM_APPLY(automaticSize)
-    AM_APPLY(backgroundColor)
-    AM_APPLY(backgroundTransparency)
-    AM_APPLY(borderMode)
-    AM_APPLY(borderPixelSize)
-    AM_APPLY(borderColor)
-    AM_APPLY(borderTransparency)
-    AM_APPLY(clipsDescendants)
-    AM_APPLY(cornerRadius)
-    AM_APPLY(guiState)
-    AM_APPLY(interactable)
-    AM_APPLY(layoutOrder)
-    AM_APPLY(padding)
-    AM_APPLY(margin)
-    AM_APPLY(position)
-    AM_APPLY(size)
-    AM_APPLY(rotation)
-    AM_APPLY(visible)
-    AM_APPLY(zIndex)
-    AM_APPLY(zindexBehavior)
-
-#undef AM_APPLY
-
+bool UIObject::setBaseStyleProperties(BaseStyleProperties style)
+{
+    bool changed = m_baseStyle.apply(style);
     if (changed) {
         markDirty();
     }
@@ -117,13 +95,13 @@ InstanceData UIObject::createInstanceData() const
     data.translation = centerPos;
     data.scale = absoluteSize;
     data.clipRect = clipRect;
-    data.setFillColor(Color4(m_uiObjProps.backgroundColor, 1.0f - m_uiObjProps.backgroundTransparency));
-    data.setBorderColor(Color4(m_uiObjProps.borderColor, 1.0f - m_uiObjProps.borderTransparency));
+    data.setFillColor(Color4(m_baseStyle.backgroundColor, 1.0f - m_baseStyle.backgroundTransparency));
+    data.setBorderColor(Color4(m_baseStyle.borderColor, 1.0f - m_baseStyle.borderTransparency));
     data.setRotation(glm::radians(absoluteRotation));
-    data.setBorderThickness(m_uiObjProps.borderPixelSize);
-    data.setCornerRadius(m_uiObjProps.cornerRadius);
+    data.setBorderThickness(m_baseStyle.borderPixelSize);
+    data.setCornerRadius(m_baseStyle.cornerRadius);
     data.setPrimitiveType(PRIMITIVE_TRIANGLE);
-    data.setBorderMode(m_uiObjProps.borderMode);
+    data.setBorderMode(m_baseStyle.borderMode);
     data.zIndex = getZIndex();
     data.setVisible(isVisible());
     return data;

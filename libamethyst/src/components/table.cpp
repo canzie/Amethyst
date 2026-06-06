@@ -11,7 +11,7 @@ namespace Amethyst {
 static void s_applyStyle(Table &table)
 {
     const auto &style = Style::instance();
-    table.setBaseProperties({
+    table.setBaseStyleProperties({
         .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TABLE),
         .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TABLE),
         .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TABLE),
@@ -41,8 +41,8 @@ Table::Table()
     m_tProps.showHeader = 1;
     m_tProps.headerHeight = 28.0f;
     m_tProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
-    m_tProps.headerText.fontSize = 14.0f;
-    m_tProps.headerText.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
+    m_tProps.header.fontSize = 14.0f;
+    m_tProps.header.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
     m_tProps.rowBackgroundColor = Color4{0.18f, 0.18f, 0.2f, 1.0f};
     m_tProps.rowAlternateColor = Color4{0.22f, 0.22f, 0.24f, 1.0f};
     m_tProps.rowHoverColor = Color4{0.3f, 0.3f, 0.35f, 1.0f};
@@ -51,30 +51,9 @@ Table::Table()
     s_applyStyle(*this);
 }
 
-bool Table::setTableProperties(const TableProperties &props)
+bool Table::setTableProperties(const TableStyleProperties &props)
 {
-    bool changed = false;
-#define AM_APPLY(field) \
-    if (propIsSet(props.field) && m_tProps.field != props.field) { \
-        m_tProps.field = props.field; \
-        changed = true; \
-    }
-    AM_APPLY(rowHeight)
-    AM_APPLY(cellPadding)
-    AM_APPLY(showColumnSeparators)
-    AM_APPLY(columnSeparatorWidth)
-    AM_APPLY(columnSeparatorColor)
-    AM_APPLY(showHeader)
-    AM_APPLY(headerHeight)
-    AM_APPLY(headerColor)
-    AM_APPLY(rowBackgroundColor)
-    AM_APPLY(rowAlternateColor)
-    AM_APPLY(rowHoverColor)
-    AM_APPLY(rowSelectedColor)
-#undef AM_APPLY
-    if (applyTextProperties(m_tProps.headerText, props.headerText)) {
-        changed = true;
-    }
+    bool changed = m_tProps.apply(props);
     if (changed) {
         markDirty();
     }
@@ -296,9 +275,11 @@ void Table::updateSeparators()
         float xPos = m_columnPositions[i + 1];
 
         auto sep = std::make_unique<Frame>();
-        sep->setBaseProperties({
+        sep->setBaseStyleProperties({
             .backgroundColor = Color3(m_tProps.columnSeparatorColor),
             .backgroundTransparency = 1.0f - m_tProps.columnSeparatorColor.a,
+        });
+        sep->setBaseProperties({
             .position = UDim2(0.0f, xPos - m_tProps.columnSeparatorWidth / 2.0f, 0.0f, 0.0f),
             .size = UDim2(0.0f, m_tProps.columnSeparatorWidth, 1.0f, 0.0f),
             .zIndex = getZIndex() + 1,
@@ -338,11 +319,11 @@ void Table::drawHeader(DrawContext &ctx, const glm::vec4 &childClip)
     uint32_t cols = columnCount();
     ensureHeaderCapacity();
 
-    m_headerBackground->setBaseProperties({
+    m_headerBackground->setBaseStyleProperties({
         .backgroundColor = m_tProps.headerColor,
         .backgroundTransparency = 0.0f,
-        .zIndex = getZIndex(),
     });
+    m_headerBackground->setBaseProperties({.zIndex = getZIndex()});
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_tProps.headerHeight}, absolutePosition, absoluteRotation);
@@ -350,18 +331,18 @@ void Table::drawHeader(DrawContext &ctx, const glm::vec4 &childClip)
 
     for (uint32_t col = 0; col < cols; col++) {
         TextLabel *lbl = m_headerLabels[col].get();
+        lbl->setBaseStyleProperties({.backgroundTransparency = 1.0f});
         lbl->setBaseProperties({
-            .backgroundTransparency = 1.0f,
             .size = UDim2::fromScale(1.0f, 1.0f),
             .zIndex = getZIndex() + 1,
         });
-        lbl->setTextProperties({
-            .fontSize = m_tProps.headerText.fontSize,
-            .textColor = m_tProps.headerText.textColor,
+        lbl->setTextStyleProperties({
+            .fontSize = m_tProps.header.fontSize,
+            .textColor = m_tProps.header.textColor,
             .textXAlignment = TextXAlignment::LEFT,
             .textYAlignment = TextYAlignment::CENTER,
-            .text = m_columns[col].header,
         });
+        lbl->setText(m_columns[col].header);
         lbl->clipRect = childClip;
         lbl->markDirty();
 
@@ -396,9 +377,11 @@ void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex,
         bgColor = m_tProps.rowAlternateColor;
     }
 
-    bg->setBaseProperties({
+    bg->setBaseStyleProperties({
         .backgroundColor = Color3(bgColor),
         .backgroundTransparency = 1.0f - bgColor.a,
+    });
+    bg->setBaseProperties({
         .size = UDim2::fromScale(1.0f, 1.0f),
         .zIndex = getZIndex(),
     });

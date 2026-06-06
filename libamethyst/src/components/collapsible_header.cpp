@@ -17,16 +17,16 @@ CollapsibleHeader::CollapsibleHeader() : CollapsibleHeader(nullptr, nullptr) {}
 
 CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, std::unique_ptr<UIObject> customHeader)
 {
-    m_chProps.expanded = 1;
-    m_chProps.title.fontSize = 14.0f;
-    m_chProps.title.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
-    m_chProps.title.textXAlignment = TextXAlignment::LEFT;
-    m_chProps.title.textYAlignment = TextYAlignment::CENTER;
+    m_chProps.expanded = true;
+    m_chProps.titleStyle.fontSize = 14.0f;
+    m_chProps.titleStyle.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
+    m_chProps.titleStyle.textXAlignment = TextXAlignment::LEFT;
+    m_chProps.titleStyle.textYAlignment = TextYAlignment::CENTER;
     m_chProps.headerHeight = 30.0f;
     m_chProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
     m_chProps.headerTransparency = 0.0f;
     m_chProps.headerCornerRadius = 0.0f;
-    m_chProps.showIndicator = 1;
+    m_chProps.showIndicator = true;
     m_chProps.indicatorSize = 10.0f;
     m_chProps.indicatorPadding = 6.0f;
     m_chProps.indicatorColor = Color4{0.7f, 0.7f, 0.7f, 1.0f};
@@ -72,7 +72,7 @@ CollapsibleHeader::~CollapsibleHeader()
 
 void CollapsibleHeader::toggle()
 {
-    m_chProps.expanded ^= 1;
+    m_chProps.expanded = !static_cast<bool>(m_chProps.expanded);
     markDirty();
     if (onToggled) {
         onToggled(static_cast<bool>(m_chProps.expanded));
@@ -82,7 +82,7 @@ void CollapsibleHeader::toggle()
 void CollapsibleHeader::expand()
 {
     if (!static_cast<bool>(m_chProps.expanded)) {
-        m_chProps.expanded = 1;
+        m_chProps.expanded = true;
         markDirty();
         if (onToggled) {
             onToggled(true);
@@ -93,7 +93,7 @@ void CollapsibleHeader::expand()
 void CollapsibleHeader::collapse()
 {
     if (static_cast<bool>(m_chProps.expanded)) {
-        m_chProps.expanded = 0;
+        m_chProps.expanded = false;
         markDirty();
         if (onToggled) {
             onToggled(false);
@@ -101,62 +101,21 @@ void CollapsibleHeader::collapse()
     }
 }
 
-bool CollapsibleHeader::setCollapsibleHeaderProperties(const CollapsibleHeaderProperties &props)
+bool CollapsibleHeader::setCollapsibleHeaderProperties(const CollapsibleHeaderStyleProperties &props)
 {
-    bool changed = false;
-
-#define AM_APPLY(field)                                             \
-    if (propIsSet(props.field) && m_chProps.field != props.field) { \
-        m_chProps.field = props.field;                              \
-        changed = true;                                             \
-    }
-
-    AM_APPLY(expanded)
-    AM_APPLY(headerHeight)
-    AM_APPLY(headerColor)
-    AM_APPLY(headerTransparency)
-    AM_APPLY(headerCornerRadius)
-    AM_APPLY(showIndicator)
-    AM_APPLY(indicatorSize)
-    AM_APPLY(indicatorPadding)
-    AM_APPLY(indicatorColor)
-
-#undef AM_APPLY
-#define AM_APPLY(field)                                                               \
-    if (propIsSet(props.title.field) && m_chProps.title.field != props.title.field) { \
-        m_chProps.title.field = props.title.field;                                    \
-        changed = true;                                                               \
-    }
-#define AM_APPLY_STR(field)                                                         \
-    if (!props.title.field.empty() && m_chProps.title.field != props.title.field) { \
-        m_chProps.title.field = props.title.field;                                  \
-        changed = true;                                                             \
-    }
-
-    AM_APPLY_STR(text)
-    if (props.title.fontFamily.has_value() && m_chProps.title.fontFamily != props.title.fontFamily) {
-        m_chProps.title.fontFamily = props.title.fontFamily;
-        changed = true;
-    }
-    AM_APPLY(fontSize)
-    AM_APPLY(textColor)
-    AM_APPLY(textXAlignment)
-    AM_APPLY(textYAlignment)
-    AM_APPLY(textTruncate)
-    AM_APPLY(richText)
-    AM_APPLY(textWrapped)
-    AM_APPLY(textScaled)
-    AM_APPLY(lineHeight)
-    AM_APPLY(strokeThickness)
-    AM_APPLY(strokeColor)
-
-#undef AM_APPLY
-#undef AM_APPLY_STR
-
+    bool changed = m_chProps.apply(props);
     if (changed) {
         markDirty();
     }
     return changed;
+}
+
+void CollapsibleHeader::setTitle(std::string title)
+{
+    if (m_title != title) {
+        m_title = std::move(title);
+        markDirty();
+    }
 }
 
 CollapsibleHeader &CollapsibleHeader::header(std::function<void(Frame &)> fn)
@@ -199,11 +158,13 @@ void CollapsibleHeader::draw(DrawContext &ctx)
     float contentOffset =
         m_chProps.indicatorPadding + (showIndicator ? m_chProps.indicatorSize + m_chProps.indicatorPadding : 0.0f);
 
-    m_indicator->setBaseProperties({
-        .anchorPoint = {0.5f, 0.5f},
+    m_indicator->setBaseStyleProperties({
         .backgroundColor = Color3(m_chProps.indicatorColor),
         .backgroundTransparency = 1.0f - m_chProps.indicatorColor.a,
         .borderPixelSize = 0.0f,
+    });
+    m_indicator->setBaseProperties({
+        .anchorPoint = {0.5f, 0.5f},
         .position = UDim2{{0.0f, m_chProps.indicatorPadding + m_chProps.indicatorSize * 0.5f}, {0.5f, 0.0f}},
         .size = UDim2::fromOffset(m_chProps.indicatorSize, m_chProps.indicatorSize),
         .rotation = expanded ? 90.0f : 0.0f,
@@ -214,29 +175,29 @@ void CollapsibleHeader::draw(DrawContext &ctx)
     m_headerContent->setBaseProperties({
         .position = UDim2{{0.0f, contentOffset}, {0.0f, 0.0f}},
         .size = UDim2{{1.0f, -(contentOffset + m_chProps.indicatorPadding)}, {1.0f, 0.0f}},
-        .visible = 1,
+        .visible = true,
         .zIndex = getZIndex() + 2,
     });
 
     if (auto *label = m_headerContent->as<TextLabel>()) {
-        label->setTextProperties({
-            .fontSize = m_chProps.title.fontSize,
-            .textColor = m_chProps.title.textColor,
-            .textXAlignment = m_chProps.title.textXAlignment,
-            .textYAlignment = m_chProps.title.textYAlignment,
-            .text = m_chProps.title.text,
-            .fontFamily = m_chProps.title.fontFamily,
+        label->setTextStyleProperties({
+            .fontSize = m_chProps.titleStyle.fontSize,
+            .textColor = m_chProps.titleStyle.textColor,
+            .textXAlignment = m_chProps.titleStyle.textXAlignment,
+            .textYAlignment = m_chProps.titleStyle.textYAlignment,
+            .fontFamily = m_chProps.titleStyle.fontFamily,
         });
-        label->setBaseProperties({.backgroundTransparency = 1.0f});
+        label->setText(m_title);
+        label->setBaseStyleProperties({.backgroundTransparency = 1.0f});
     }
 
-    m_headerBackground->setBaseProperties({
+    m_headerBackground->setBaseStyleProperties({
         .backgroundColor = m_chProps.headerColor,
         .backgroundTransparency = m_chProps.headerTransparency,
         .borderPixelSize = 0.0f,
         .cornerRadius = m_chProps.headerCornerRadius,
-        .zIndex = getZIndex() + 1,
     });
+    m_headerBackground->setBaseProperties({.zIndex = getZIndex() + 1});
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_chProps.headerHeight}, absolutePosition, absoluteRotation);

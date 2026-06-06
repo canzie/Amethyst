@@ -12,47 +12,37 @@ namespace Amethyst {
 
 ImageLabel::ImageLabel(const std::string &svgData) : m_svgData(svgData)
 {
-    m_imgProps.imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    m_imgProps.imageTransparency = 0.0f;
-    m_imgProps.scaleType = ImageScaleType::STRETCH;
-    m_imgProps.tileSize = {1.0f, 1.0f};
+    m_imgStyle.imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
+    m_imgStyle.imageTransparency = 0.0f;
+    m_imgStyle.scaleType = ImageScaleType::STRETCH;
+    m_imgStyle.tileSize = {1.0f, 1.0f};
 }
 
-bool ImageLabel::setImageProperties(const ImageProperties &props)
+bool ImageLabel::setImageStyleProperties(const ImageStyleProperties &props)
 {
-    bool changed = false;
-#define AM_APPLY(field) \
-    if (propIsSet(props.field) && m_imgProps.field != props.field) { \
-        m_imgProps.field = props.field; \
-        changed = true; \
-    }
-    AM_APPLY(imageColor)
-    AM_APPLY(imageTransparency)
-    AM_APPLY(scaleType)
-    AM_APPLY(tileSize)
-#undef AM_APPLY
-    if (!props.svg.empty() && m_imgProps.svg != props.svg) {
-        m_imgProps.svg = props.svg;
-        m_svgData = props.svg;
-        m_svgResolved = false;
-        changed = true;
-    }
-    if (props.image.isValid() && m_imgProps.image.id != props.image.id) {
-        m_imgProps.image = props.image;
-        changed = true;
-    }
+    bool changed = m_imgStyle.apply(props);
     if (changed) {
         markDirty();
     }
     return changed;
 }
 
-void ImageLabel::setSvg(const std::string &svgData)
+void ImageLabel::setSvg(std::string svgData)
 {
-    m_svgData = svgData;
+    if (m_svgData == svgData) {
+        return;
+    }
+    m_svgData = std::move(svgData);
     m_svgResolved = false;
-    m_imgProps.svg = svgData;
     markDirty();
+}
+
+void ImageLabel::setImage(AmTextureId image)
+{
+    if (m_image.id != image.id) {
+        m_image = image;
+        markDirty();
+    }
 }
 
 void ImageLabel::resolveSvg(DrawContext &ctx)
@@ -73,7 +63,7 @@ void ImageLabel::resolveSvg(DrawContext &ctx)
         float ah = static_cast<float>(ctx.svgAtlas->getHeight());
         m_svgUvRect = {entry->atlasX / aw, entry->atlasY / ah, (entry->atlasX + entry->width) / aw,
                        (entry->atlasY + entry->height) / ah};
-        m_imgProps.image = ctx.svgAtlas->getTextureId();
+        m_image = ctx.svgAtlas->getTextureId();
     }
 
     m_svgResolved = true;
@@ -89,12 +79,12 @@ void ImageLabel::draw(DrawContext &ctx)
         resolveSvg(ctx);
 
         InstanceData data = createInstanceData();
-        data.textureId = m_imgProps.image.id;
+        data.textureId = m_image.id;
 
         if (m_svgResolved && !m_svgData.empty()) {
             data.setPrimitiveType(PRIMITIVE_SVG);
             data.setUvRect(m_svgUvRect);
-            data.setFillColor(m_imgProps.imageColor);
+            data.setFillColor(m_imgStyle.imageColor);
         } else {
             data.setPrimitiveType(PRIMITIVE_RECT);
         }

@@ -1,15 +1,15 @@
 #include "components/ui_scope.h"
 
 #include "components/canvas.h"
-#include "components/dropdown.h"
-#include "components/menu_bar.h"
 #include "components/checkbox.h"
 #include "components/collapsible_header.h"
 #include "components/container.h"
+#include "components/dropdown.h"
 #include "components/frame.h"
 #include "components/image_button.h"
 #include "components/image_label.h"
 #include "components/invisible_button.h"
+#include "components/menu_bar.h"
 #include "components/scrolling_frame.h"
 #include "components/slider.h"
 #include "components/tab_bar.h"
@@ -42,10 +42,10 @@ SliderVec3Scope::SliderVec3Scope(SliderVec3 &s) : UIScope(s), component(s) {}
 TreeViewScope::TreeViewScope(TreeView &tv) : UIScope(tv), component(tv) {}
 TreeRowScope::TreeRowScope(TreeView &tv, uint16_t depth) : component(tv), depth(depth) {}
 
-UIScope &UIScope::canvas(BaseProperties base, std::function<void(CanvasScope &)> fn)
+UIScope &UIScope::canvas(CanvasProperties props, std::function<void(CanvasScope &)> fn)
 {
     auto *c = m_parent->add<Canvas>();
-    c->setBaseProperties(base);
+    c->setBaseProperties(props.base);
     if (fn) {
         CanvasScope scope(*c);
         fn(scope);
@@ -53,13 +53,14 @@ UIScope &UIScope::canvas(BaseProperties base, std::function<void(CanvasScope &)>
     return *this;
 }
 
-UIScope &UIScope::dropdown(BaseProperties base, TextProperties text, DropdownProperties ddProps,
-                           std::function<void(DropdownScope &)> fn)
+UIScope &UIScope::dropdown(DropdownProperties props, std::function<void(DropdownScope &)> fn)
 {
     auto *d = m_parent->add<Dropdown>();
-    d->setBaseProperties(base);
-    d->setTextProperties(text);
-    d->setDropdownProperties(ddProps);
+    d->setBaseProperties(props.base);
+    d->setBaseStyleProperties(props.style);
+    d->setTextStyleProperties(props.text);
+    d->setText(std::move(props.label));
+    d->setDropdownProperties(props.dropdown);
     if (fn) {
         DropdownScope scope(*d);
         fn(scope);
@@ -68,11 +69,12 @@ UIScope &UIScope::dropdown(BaseProperties base, TextProperties text, DropdownPro
     return *this;
 }
 
-UIScope &UIScope::menuBar(BaseProperties base, MenuBarProperties props, std::function<void(MenuBarScope &)> fn)
+UIScope &UIScope::menuBar(MenuBarProperties props, std::function<void(MenuBarScope &)> fn)
 {
     auto *mb = m_parent->add<MenuBar>();
-    mb->setBaseProperties(base);
-    mb->setMenuBarProperties(props);
+    mb->setBaseProperties(props.base);
+    mb->setBaseStyleProperties(props.style);
+    mb->setMenuBarProperties(props.menuBar);
     if (fn) {
         MenuBarScope scope(*mb);
         fn(scope);
@@ -80,10 +82,11 @@ UIScope &UIScope::menuBar(BaseProperties base, MenuBarProperties props, std::fun
     return *this;
 }
 
-UIScope &UIScope::frame(BaseProperties props, std::function<void(FrameScope &)> fn)
+UIScope &UIScope::frame(FrameProperties props, std::function<void(FrameScope &)> fn)
 {
     auto *f = m_parent->add<Frame>();
-    f->setBaseProperties(props);
+    f->setBaseProperties(props.base);
+    f->setBaseStyleProperties(props.style);
     if (fn) {
         FrameScope scope(*f);
         fn(scope);
@@ -91,12 +94,12 @@ UIScope &UIScope::frame(BaseProperties props, std::function<void(FrameScope &)> 
     return *this;
 }
 
-UIScope &UIScope::scrollingFrame(BaseProperties base, ScrollingFrameProperties scroll,
-                                 std::function<void(ScrollingFrameScope &)> fn)
+UIScope &UIScope::scrollingFrame(ScrollingFrameProperties props, std::function<void(ScrollingFrameScope &)> fn)
 {
     auto *sf = m_parent->add<ScrollingFrame>();
-    sf->setBaseProperties(base);
-    sf->setScrollingFrameProperties(scroll);
+    sf->setBaseProperties(props.base);
+    sf->setBaseStyleProperties(props.style);
+    sf->setScrollingFrameProperties(props.scroll);
     if (fn) {
         ScrollingFrameScope scope(*sf);
         fn(scope);
@@ -104,11 +107,13 @@ UIScope &UIScope::scrollingFrame(BaseProperties base, ScrollingFrameProperties s
     return *this;
 }
 
-UIScope &UIScope::textLabel(BaseProperties base, TextProperties text, std::function<void(TextLabelScope &)> fn)
+UIScope &UIScope::textLabel(TextLabelProperties props, std::function<void(TextLabelScope &)> fn)
 {
     auto *tl = m_parent->add<TextLabel>();
-    tl->setBaseProperties(base);
-    tl->setTextProperties(text);
+    tl->setBaseProperties(props.base);
+    tl->setBaseStyleProperties(props.style);
+    tl->setTextStyleProperties(props.text);
+    tl->setText(std::move(props.label));
     if (fn) {
         TextLabelScope scope(*tl);
         fn(scope);
@@ -116,13 +121,14 @@ UIScope &UIScope::textLabel(BaseProperties base, TextProperties text, std::funct
     return *this;
 }
 
-UIScope &UIScope::textButton(BaseProperties base, TextProperties text, ButtonProperties button,
-                             std::function<void(TextButtonScope &)> fn)
+UIScope &UIScope::textButton(TextButtonProperties props, std::function<void(TextButtonScope &)> fn)
 {
     auto *tb = m_parent->add<TextButton>();
-    tb->setBaseProperties(base);
-    tb->setTextProperties(text);
-    tb->setButtonProperties(button);
+    tb->setBaseProperties(props.base);
+    tb->setBaseStyleProperties(props.style);
+    tb->setTextStyleProperties(props.text);
+    tb->setText(std::move(props.label));
+    tb->setButtonProperties(props.button);
     if (fn) {
         TextButtonScope scope(*tb);
         fn(scope);
@@ -130,11 +136,18 @@ UIScope &UIScope::textButton(BaseProperties base, TextProperties text, ButtonPro
     return *this;
 }
 
-UIScope &UIScope::imageLabel(BaseProperties base, ImageProperties image, std::function<void(ImageLabelScope &)> fn)
+UIScope &UIScope::imageLabel(ImageLabelProperties props, std::function<void(ImageLabelScope &)> fn)
 {
     auto *il = m_parent->add<ImageLabel>();
-    il->setBaseProperties(base);
-    il->setImageProperties(image);
+    il->setBaseProperties(props.base);
+    il->setBaseStyleProperties(props.style);
+    il->setImageStyleProperties(props.image);
+    if (props.texture.isValid()) {
+        il->setImage(props.texture);
+    }
+    if (!props.svg.empty()) {
+        il->setSvg(std::move(props.svg));
+    }
     if (fn) {
         ImageLabelScope scope(*il);
         fn(scope);
@@ -142,13 +155,19 @@ UIScope &UIScope::imageLabel(BaseProperties base, ImageProperties image, std::fu
     return *this;
 }
 
-UIScope &UIScope::imageButton(BaseProperties base, ImageProperties image, ButtonProperties button,
-                              std::function<void(ImageButtonScope &)> fn)
+UIScope &UIScope::imageButton(ImageButtonProperties props, std::function<void(ImageButtonScope &)> fn)
 {
     auto *ib = m_parent->add<ImageButton>();
-    ib->setBaseProperties(base);
-    ib->setImageProperties(image);
-    ib->setButtonProperties(button);
+    ib->setBaseProperties(props.base);
+    ib->setBaseStyleProperties(props.style);
+    ib->setImageStyleProperties(props.image);
+    if (props.texture.isValid()) {
+        ib->setImage(props.texture);
+    }
+    if (!props.svg.empty()) {
+        ib->setSvg(std::move(props.svg));
+    }
+    ib->setButtonProperties(props.button);
     if (fn) {
         ImageButtonScope scope(*ib);
         fn(scope);
@@ -156,10 +175,10 @@ UIScope &UIScope::imageButton(BaseProperties base, ImageProperties image, Button
     return *this;
 }
 
-UIScope &UIScope::invisibleButton(BaseProperties props, std::function<void(InvisibleButtonScope &)> fn)
+UIScope &UIScope::invisibleButton(InvisibleButtonProperties props, std::function<void(InvisibleButtonScope &)> fn)
 {
     auto *ib = m_parent->add<InvisibleButton>();
-    ib->setBaseProperties(props);
+    ib->setBaseProperties(props.base);
     if (fn) {
         InvisibleButtonScope scope(*ib);
         fn(scope);
@@ -167,11 +186,11 @@ UIScope &UIScope::invisibleButton(BaseProperties props, std::function<void(Invis
     return *this;
 }
 
-UIScope &UIScope::checkbox(BaseProperties base, CheckboxProperties props, std::function<void(CheckboxScope &)> fn)
+UIScope &UIScope::checkbox(CheckboxProperties props, std::function<void(CheckboxScope &)> fn)
 {
     auto *cb = m_parent->add<Checkbox>();
-    cb->setBaseProperties(base);
-    cb->setCheckboxProperties(props);
+    cb->setBaseProperties(props.base);
+    cb->setCheckboxProperties(props.checkbox);
     if (fn) {
         CheckboxScope scope(*cb);
         fn(scope);
@@ -179,12 +198,13 @@ UIScope &UIScope::checkbox(BaseProperties base, CheckboxProperties props, std::f
     return *this;
 }
 
-UIScope &UIScope::collapsibleHeader(BaseProperties base, CollapsibleHeaderProperties props,
-                                    std::function<void(CollapsibleHeaderScope &)> fn)
+UIScope &UIScope::collapsibleHeader(CollapsibleHeaderProperties props, std::function<void(CollapsibleHeaderScope &)> fn)
 {
     auto *ch = m_parent->add<CollapsibleHeader>();
-    ch->setBaseProperties(base);
-    ch->setCollapsibleHeaderProperties(props);
+    ch->setBaseProperties(props.base);
+    ch->setBaseStyleProperties(props.style);
+    ch->setCollapsibleHeaderProperties(props.header);
+    ch->setTitle(std::move(props.title));
     if (fn) {
         CollapsibleHeaderScope scope(*ch);
         fn(scope);
@@ -192,11 +212,12 @@ UIScope &UIScope::collapsibleHeader(BaseProperties base, CollapsibleHeaderProper
     return *this;
 }
 
-UIScope &UIScope::tabBar(BaseProperties base, TabBarProperties props, std::function<void(TabBarScope &)> fn)
+UIScope &UIScope::tabBar(TabBarProperties props, std::function<void(TabBarScope &)> fn)
 {
     auto *tb = m_parent->add<TabBar>();
-    tb->setBaseProperties(base);
-    tb->setTabBarProperties(props);
+    tb->setBaseProperties(props.base);
+    tb->setBaseStyleProperties(props.style);
+    tb->setTabBarProperties(props.tabBar);
     if (fn) {
         TabBarScope scope(*tb);
         fn(scope);
@@ -204,11 +225,11 @@ UIScope &UIScope::tabBar(BaseProperties base, TabBarProperties props, std::funct
     return *this;
 }
 
-UIScope &UIScope::table(BaseProperties base, TableProperties props, std::function<void(TableScope &)> fn)
+UIScope &UIScope::table(TableProperties props, std::function<void(TableScope &)> fn)
 {
     auto *t = m_parent->add<Table>();
-    t->setBaseProperties(base);
-    t->setTableProperties(props);
+    t->setBaseProperties(props.base);
+    t->setTableProperties(props.table);
     if (fn) {
         TableScope scope(*t);
         fn(scope);
@@ -216,11 +237,13 @@ UIScope &UIScope::table(BaseProperties base, TableProperties props, std::functio
     return *this;
 }
 
-UIScope &UIScope::textInput(BaseProperties base, TextInputProperties props, std::function<void(TextInputScope &)> fn)
+UIScope &UIScope::textInput(TextInputProperties props, std::function<void(TextInputScope &)> fn)
 {
     auto *ti = m_parent->add<TextInput>();
-    ti->setBaseProperties(base);
-    ti->setTextInputProperties(props);
+    ti->setBaseProperties(props.base);
+    ti->setBaseStyleProperties(props.style);
+    ti->setTextInputProperties(props.textInput);
+    ti->setPlaceholder(std::move(props.placeholder));
     if (fn) {
         TextInputScope scope(*ti);
         fn(scope);
@@ -228,11 +251,14 @@ UIScope &UIScope::textInput(BaseProperties base, TextInputProperties props, std:
     return *this;
 }
 
-UIScope &UIScope::sliderFloat(BaseProperties base, SliderProperties props, std::function<void(SliderFloatScope &)> fn)
+UIScope &UIScope::sliderFloat(SliderProperties props, std::function<void(SliderFloatScope &)> fn)
 {
     auto *s = m_parent->add<SliderFloat>();
-    s->setBaseProperties(base);
-    s->setSliderProperties(props);
+    s->setBaseProperties(props.base);
+    s->setBaseStyleProperties(props.style);
+    s->setSliderProperties(props.slider);
+    s->setLabel(std::move(props.label));
+    s->setValueSuffix(std::move(props.valueSuffix));
     if (fn) {
         SliderFloatScope scope(*s);
         fn(scope);
@@ -240,11 +266,14 @@ UIScope &UIScope::sliderFloat(BaseProperties base, SliderProperties props, std::
     return *this;
 }
 
-UIScope &UIScope::sliderInt(BaseProperties base, SliderProperties props, std::function<void(SliderIntScope &)> fn)
+UIScope &UIScope::sliderInt(SliderProperties props, std::function<void(SliderIntScope &)> fn)
 {
     auto *s = m_parent->add<SliderInt>();
-    s->setBaseProperties(base);
-    s->setSliderProperties(props);
+    s->setBaseProperties(props.base);
+    s->setBaseStyleProperties(props.style);
+    s->setSliderProperties(props.slider);
+    s->setLabel(std::move(props.label));
+    s->setValueSuffix(std::move(props.valueSuffix));
     if (fn) {
         SliderIntScope scope(*s);
         fn(scope);
@@ -252,11 +281,14 @@ UIScope &UIScope::sliderInt(BaseProperties base, SliderProperties props, std::fu
     return *this;
 }
 
-UIScope &UIScope::sliderVec2(BaseProperties base, SliderProperties props, std::function<void(SliderVec2Scope &)> fn)
+UIScope &UIScope::sliderVec2(SliderProperties props, std::function<void(SliderVec2Scope &)> fn)
 {
     auto *s = m_parent->add<SliderVec2>();
-    s->setBaseProperties(base);
-    s->setSliderProperties(props);
+    s->setBaseProperties(props.base);
+    s->setBaseStyleProperties(props.style);
+    s->setSliderProperties(props.slider);
+    s->setLabel(std::move(props.label));
+    s->setValueSuffix(std::move(props.valueSuffix));
     if (fn) {
         SliderVec2Scope scope(*s);
         fn(scope);
@@ -264,11 +296,14 @@ UIScope &UIScope::sliderVec2(BaseProperties base, SliderProperties props, std::f
     return *this;
 }
 
-UIScope &UIScope::sliderVec3(BaseProperties base, SliderProperties props, std::function<void(SliderVec3Scope &)> fn)
+UIScope &UIScope::sliderVec3(SliderProperties props, std::function<void(SliderVec3Scope &)> fn)
 {
     auto *s = m_parent->add<SliderVec3>();
-    s->setBaseProperties(base);
-    s->setSliderProperties(props);
+    s->setBaseProperties(props.base);
+    s->setBaseStyleProperties(props.style);
+    s->setSliderProperties(props.slider);
+    s->setLabel(std::move(props.label));
+    s->setValueSuffix(std::move(props.valueSuffix));
     if (fn) {
         SliderVec3Scope scope(*s);
         fn(scope);
@@ -276,11 +311,11 @@ UIScope &UIScope::sliderVec3(BaseProperties base, SliderProperties props, std::f
     return *this;
 }
 
-UIScope &UIScope::treeView(BaseProperties base, TreeViewProperties props, std::function<void(TreeViewScope &)> fn)
+UIScope &UIScope::treeView(TreeViewProperties props, std::function<void(TreeViewScope &)> fn)
 {
     auto *tv = m_parent->add<TreeView>();
-    tv->setBaseProperties(base);
-    tv->setTreeViewProperties(props);
+    tv->setBaseProperties(props.base);
+    tv->setTreeViewProperties(props.treeView);
     if (fn) {
         TreeViewScope scope(*tv);
         fn(scope);

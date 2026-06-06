@@ -14,7 +14,7 @@ namespace Amethyst {
 static void s_applyStyle(TreeView &tree)
 {
     const auto &style = Style::instance();
-    tree.setBaseProperties({
+    tree.setBaseStyleProperties({
         .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TREE_VIEW),
         .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TREE_VIEW),
         .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TREE_VIEW),
@@ -55,8 +55,8 @@ TreeView::TreeView()
     m_tvProps.showHeader = 0;
     m_tvProps.headerHeight = 28.0f;
     m_tvProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
-    m_tvProps.headerText.fontSize = 14.0f;
-    m_tvProps.headerText.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
+    m_tvProps.header.fontSize = 14.0f;
+    m_tvProps.header.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
 
     s_applyStyle(*this);
 }
@@ -74,36 +74,9 @@ TreeView::~TreeView()
     }
 }
 
-bool TreeView::setTreeViewProperties(const TreeViewProperties &props)
+bool TreeView::setTreeViewProperties(const TreeViewStyleProperties &props)
 {
-    bool changed = false;
-#define AM_APPLY(field)                                             \
-    if (propIsSet(props.field) && m_tvProps.field != props.field) { \
-        m_tvProps.field = props.field;                              \
-        changed = true;                                             \
-    }
-    AM_APPLY(rowHeight)
-    AM_APPLY(cellPadding)
-    AM_APPLY(showColumnSeparators)
-    AM_APPLY(columnSeparatorWidth)
-    AM_APPLY(columnSeparatorColor)
-    AM_APPLY(showDisclosureTriangles)
-    AM_APPLY(disclosureTriangleSize)
-    AM_APPLY(disclosureTrianglePadding)
-    AM_APPLY(disclosureTriangleColor)
-    AM_APPLY(indentPerLevel)
-    AM_APPLY(rowBackgroundColor)
-    AM_APPLY(rowAlternateColor)
-    AM_APPLY(rowHoverColor)
-    AM_APPLY(rowSelectedColor)
-    AM_APPLY(fillRows)
-    AM_APPLY(showHeader)
-    AM_APPLY(headerHeight)
-    AM_APPLY(headerColor)
-#undef AM_APPLY
-    if (applyTextProperties(m_tvProps.headerText, props.headerText)) {
-        changed = true;
-    }
+    bool changed = m_tvProps.apply(props);
     if (changed) {
         markDirty();
     }
@@ -382,9 +355,11 @@ void TreeView::updateSeparators()
         float xPos = m_columnPositions[i + 1];
 
         auto sep = std::make_unique<Frame>();
-        sep->setBaseProperties({
+        sep->setBaseStyleProperties({
             .backgroundColor = Color3(m_tvProps.columnSeparatorColor),
             .backgroundTransparency = 1.0f - m_tvProps.columnSeparatorColor.a,
+        });
+        sep->setBaseProperties({
             .position = UDim2(0.0f, xPos - m_tvProps.columnSeparatorWidth / 2.0f, 0.0f, 0.0f),
             .size = UDim2(0.0f, m_tvProps.columnSeparatorWidth, 1.0f, 0.0f),
             .zIndex = getZIndex() + 1,
@@ -432,11 +407,11 @@ void TreeView::drawHeader(DrawContext &ctx, const glm::vec4 &childClip)
     uint32_t cols = columnCount();
     ensureHeaderCapacity();
 
-    m_headerBackground->setBaseProperties({
+    m_headerBackground->setBaseStyleProperties({
         .backgroundColor = m_tvProps.headerColor,
         .backgroundTransparency = 0.0f,
-        .zIndex = getZIndex(),
     });
+    m_headerBackground->setBaseProperties({.zIndex = getZIndex()});
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_tvProps.headerHeight}, absolutePosition, absoluteRotation);
@@ -444,18 +419,18 @@ void TreeView::drawHeader(DrawContext &ctx, const glm::vec4 &childClip)
 
     for (uint32_t col = 0; col < cols; col++) {
         TextLabel *lbl = m_headerLabels[col].get();
+        lbl->setBaseStyleProperties({.backgroundTransparency = 1.0f});
         lbl->setBaseProperties({
-            .backgroundTransparency = 1.0f,
             .size = UDim2::fromScale(1.0f, 1.0f),
             .zIndex = getZIndex() + 1,
         });
-        lbl->setTextProperties({
-            .fontSize = m_tvProps.headerText.fontSize,
-            .textColor = m_tvProps.headerText.textColor,
+        lbl->setTextStyleProperties({
+            .fontSize = m_tvProps.header.fontSize,
+            .textColor = m_tvProps.header.textColor,
             .textXAlignment = TextXAlignment::LEFT,
             .textYAlignment = TextYAlignment::CENTER,
-            .text = m_columns[col].header,
         });
+        lbl->setText(m_columns[col].header);
         lbl->clipRect = childClip;
         lbl->markDirty();
 
@@ -493,9 +468,11 @@ void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot,
         bgColor = m_tvProps.rowAlternateColor;
     }
 
-    bg->setBaseProperties({
+    bg->setBaseStyleProperties({
         .backgroundColor = Color3(bgColor),
         .backgroundTransparency = 1.0f - bgColor.a,
+    });
+    bg->setBaseProperties({
         .interactable = true,
         .position = UDim2(0.0f, 0.0f, 0.0f, y),
         .size = UDim2(1.0f, 0.0f, 0.0f, m_rowHeightPx),
@@ -542,7 +519,7 @@ void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot,
             .visible = true,
             .zIndex = getZIndex() + 2,
         });
-        disc->setImageProperties({.imageColor = m_tvProps.disclosureTriangleColor});
+        disc->setImageStyleProperties({.imageColor = m_tvProps.disclosureTriangleColor});
         disc->onMouseButton1ClickCb = [this, logicalRow]() {
             toggle(logicalRow);
             return EventResult::CONSUMED;

@@ -22,11 +22,19 @@ class Slider : public UIObject {
     Slider();
     virtual ~Slider() = default;
 
-    bool setSliderProperties(const SliderProperties &props);
-    const SliderProperties &getSliderProperties() const { return m_sProps; }
+    bool setSliderProperties(const SliderStyleProperties &props);
+    const SliderStyleProperties &getSliderProperties() const { return m_sProps; }
+
+    void setLabel(std::string label);
+    const std::string &getLabel() const { return m_label; }
+
+    void setValueSuffix(std::string valueSuffix);
+    const std::string &getValueSuffix() const { return m_valueSuffix; }
 
   protected:
-    SliderProperties m_sProps;
+    SliderStyleProperties m_sProps;
+    std::string m_label;
+    std::string m_valueSuffix;
     TextLabel m_sideLabel;
 };
 
