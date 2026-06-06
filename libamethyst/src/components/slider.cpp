@@ -18,27 +18,6 @@
 
 namespace Amethyst {
 
-static void s_applyStyle(Slider &slider)
-{
-    const auto &style = Style::instance();
-    slider.setBaseStyleProperties({
-        .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SLIDER),
-        .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SLIDER),
-    });
-    slider.setSliderProperties({
-        .sliderColor = style.get<Color3>(StyleProperty::SLIDER_COLOR, ComponentType::SLIDER),
-        .sliderTransparency = style.get<float>(StyleProperty::SLIDER_TRANSPARENCY, ComponentType::SLIDER),
-        .thumbColor = style.get<Color3>(StyleProperty::THUMB_COLOR, ComponentType::SLIDER),
-        .thumbTransparency = style.get<float>(StyleProperty::THUMB_TRANSPARENCY, ComponentType::SLIDER),
-        .trackCornerRadius = style.get<float>(StyleProperty::TRACK_CORNER_RADIUS, ComponentType::SLIDER),
-        .thumbCornerRadius = style.get<float>(StyleProperty::THUMB_CORNER_RADIUS, ComponentType::SLIDER),
-        .labelColor = style.get<Color4>(StyleProperty::LABEL_COLOR, ComponentType::SLIDER),
-        .labelPadding = style.get<UDim>(StyleProperty::LABEL_PADDING, ComponentType::SLIDER),
-        .valueColor = style.get<Color4>(StyleProperty::VALUE_COLOR, ComponentType::SLIDER),
-        .fontSize = style.get<float>(StyleProperty::FONT_SIZE, ComponentType::SLIDER),
-    });
-}
-
 static void s_setupSideLabel(TextLabel &label, const Slider *slider, float &outLabelWidth, float &outLabelHeight)
 {
     const auto &sp = slider->getSliderProperties();
@@ -145,7 +124,13 @@ Slider::Slider()
     m_sProps.layout = ValueControlLayout::SIDE_BY_SIDE;
 
     m_sideLabel.parent = this;
-    s_applyStyle(*this);
+    resolveStyle();
+}
+
+void Slider::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::SLIDER, getClasses()));
+    setSliderProperties(Style::instance().getSliderStyle(ComponentType::SLIDER, getClasses()));
 }
 
 bool Slider::setSliderProperties(const SliderStyleProperties &props)

@@ -9,6 +9,7 @@
 #include <limits>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace Amethyst {
 
@@ -148,6 +149,7 @@ struct BaseProperties {
     ZIndexBehavior zindexBehavior = ZIndexBehavior::NONE;
 
     bool apply(const BaseProperties &src);
+    BaseProperties diff(const BaseProperties &base) const;
 };
 
 struct BaseStyleProperties {
@@ -160,6 +162,7 @@ struct BaseStyleProperties {
     float cornerRadius = PROP_UNSET_FLOAT;
 
     bool apply(const BaseStyleProperties &src);
+    BaseStyleProperties diff(const BaseStyleProperties &base) const;
 };
 
 struct TextStyleProperties {
@@ -177,6 +180,7 @@ struct TextStyleProperties {
     std::optional<std::string> fontFamily{};
 
     bool apply(const TextStyleProperties &src);
+    TextStyleProperties diff(const TextStyleProperties &base) const;
 };
 
 struct ImageStyleProperties {
@@ -186,6 +190,7 @@ struct ImageStyleProperties {
     glm::vec2 tileSize = glm::vec2(PROP_UNSET_FLOAT);
 
     bool apply(const ImageStyleProperties &src);
+    ImageStyleProperties diff(const ImageStyleProperties &base) const;
 };
 
 struct ButtonProperties {
@@ -193,6 +198,7 @@ struct ButtonProperties {
     am_bool modal = PROP_UNSET_BOOL;
 
     bool apply(const ButtonProperties &src);
+    ButtonProperties diff(const ButtonProperties &base) const;
 };
 
 struct ScrollingFrameStyleProperties {
@@ -209,6 +215,7 @@ struct ScrollingFrameStyleProperties {
     am_bool elasticScrolling = PROP_UNSET_BOOL;
 
     bool apply(const ScrollingFrameStyleProperties &src);
+    ScrollingFrameStyleProperties diff(const ScrollingFrameStyleProperties &base) const;
 };
 
 struct CheckboxStyleProperties {
@@ -217,6 +224,7 @@ struct CheckboxStyleProperties {
     float checkboxSize = PROP_UNSET_FLOAT;
 
     bool apply(const CheckboxStyleProperties &src);
+    CheckboxStyleProperties diff(const CheckboxStyleProperties &base) const;
 };
 
 struct CollapsibleHeaderStyleProperties {
@@ -232,6 +240,7 @@ struct CollapsibleHeaderStyleProperties {
     Color4 indicatorColor = Color4(PROP_UNSET_FLOAT);
 
     bool apply(const CollapsibleHeaderStyleProperties &src);
+    CollapsibleHeaderStyleProperties diff(const CollapsibleHeaderStyleProperties &base) const;
 };
 
 struct DropdownStyleProperties {
@@ -247,6 +256,7 @@ struct DropdownStyleProperties {
     Color3 separatorColor = Color3(PROP_UNSET_FLOAT);
 
     bool apply(const DropdownStyleProperties &src);
+    DropdownStyleProperties diff(const DropdownStyleProperties &base) const;
 };
 
 struct TabBarStyleProperties {
@@ -267,6 +277,7 @@ struct TabBarStyleProperties {
     am_bool tabTearOffEnabled = PROP_UNSET_BOOL;
 
     bool apply(const TabBarStyleProperties &src);
+    TabBarStyleProperties diff(const TabBarStyleProperties &base) const;
 };
 
 struct MenuBarStyleProperties {
@@ -277,6 +288,7 @@ struct MenuBarStyleProperties {
     Color3 entryActiveBackground = Color3(PROP_UNSET_FLOAT);
 
     bool apply(const MenuBarStyleProperties &src);
+    MenuBarStyleProperties diff(const MenuBarStyleProperties &base) const;
 };
 
 struct TextInputStyleProperties {
@@ -290,6 +302,7 @@ struct TextInputStyleProperties {
     float cursorBlinkRate = PROP_UNSET_FLOAT;
 
     bool apply(const TextInputStyleProperties &src);
+    TextInputStyleProperties diff(const TextInputStyleProperties &base) const;
 };
 
 struct TableStyleProperties {
@@ -308,6 +321,7 @@ struct TableStyleProperties {
     Color4 rowSelectedColor = Color4(PROP_UNSET_FLOAT);
 
     bool apply(const TableStyleProperties &src);
+    TableStyleProperties diff(const TableStyleProperties &base) const;
 };
 
 struct SliderStyleProperties {
@@ -325,6 +339,7 @@ struct SliderStyleProperties {
     ValueControlLayout layout = ValueControlLayout::NONE;
 
     bool apply(const SliderStyleProperties &src);
+    SliderStyleProperties diff(const SliderStyleProperties &base) const;
 };
 
 struct TreeViewStyleProperties {
@@ -349,27 +364,32 @@ struct TreeViewStyleProperties {
     TextStyleProperties header{};
 
     bool apply(const TreeViewStyleProperties &src);
+    TreeViewStyleProperties diff(const TreeViewStyleProperties &base) const;
 };
 
 // Scope-input DTOs: bundle the layout/style/content/config a builder needs into one struct
 // per component, so scope methods take a single brace-initialized argument.
 
 struct CanvasProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
 };
 
 struct FrameProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
 };
 
 struct ScrollingFrameProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     ScrollingFrameStyleProperties scroll{};
 };
 
 struct TextLabelProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     TextStyleProperties text{};
@@ -377,6 +397,7 @@ struct TextLabelProperties {
 };
 
 struct TextButtonProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     TextStyleProperties text{};
@@ -385,6 +406,7 @@ struct TextButtonProperties {
 };
 
 struct ImageLabelProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     ImageStyleProperties image{};
@@ -393,6 +415,7 @@ struct ImageLabelProperties {
 };
 
 struct ImageButtonProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     ImageStyleProperties image{};
@@ -402,15 +425,18 @@ struct ImageButtonProperties {
 };
 
 struct InvisibleButtonProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
 };
 
 struct CheckboxProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     CheckboxStyleProperties checkbox{};
 };
 
 struct CollapsibleHeaderProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     CollapsibleHeaderStyleProperties header{};
@@ -418,17 +444,20 @@ struct CollapsibleHeaderProperties {
 };
 
 struct TabBarProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     TabBarStyleProperties tabBar{};
 };
 
 struct TableProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     TableStyleProperties table{};
 };
 
 struct TextInputProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     TextInputStyleProperties textInput{};
@@ -436,6 +465,7 @@ struct TextInputProperties {
 };
 
 struct SliderProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     SliderStyleProperties slider{};
@@ -444,11 +474,13 @@ struct SliderProperties {
 };
 
 struct TreeViewProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     TreeViewStyleProperties treeView{};
 };
 
 struct DropdownProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     TextStyleProperties text{};
@@ -457,6 +489,7 @@ struct DropdownProperties {
 };
 
 struct MenuBarProperties {
+    std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     MenuBarStyleProperties menuBar{};

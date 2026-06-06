@@ -8,30 +8,6 @@
 
 namespace Amethyst {
 
-static void s_applyStyle(Table &table)
-{
-    const auto &style = Style::instance();
-    table.setBaseStyleProperties({
-        .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TABLE),
-        .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TABLE),
-        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TABLE),
-        .borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TABLE),
-        .borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TABLE),
-        .cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TABLE),
-    });
-    table.setTableProperties({
-        .rowHeight = style.get<float>(StyleProperty::ROW_HEIGHT, ComponentType::TABLE),
-        .columnSeparatorWidth = style.get<float>(StyleProperty::COLUMN_SEPARATOR_WIDTH, ComponentType::TABLE),
-        .columnSeparatorColor = style.get<Color4>(StyleProperty::COLUMN_SEPARATOR_COLOR, ComponentType::TABLE),
-        .headerHeight = style.get<float>(StyleProperty::HEADER_HEIGHT, ComponentType::TABLE),
-        .headerColor = style.get<Color3>(StyleProperty::HEADER_COLOR, ComponentType::TABLE),
-        .rowBackgroundColor = style.get<Color4>(StyleProperty::ROW_BACKGROUND_COLOR, ComponentType::TABLE),
-        .rowAlternateColor = style.get<Color4>(StyleProperty::ROW_ALTERNATE_COLOR, ComponentType::TABLE),
-        .rowHoverColor = style.get<Color4>(StyleProperty::ROW_HOVER_COLOR, ComponentType::TABLE),
-        .rowSelectedColor = style.get<Color4>(StyleProperty::ROW_SELECTED_COLOR, ComponentType::TABLE),
-    });
-}
-
 Table::Table()
 {
     m_tProps.cellPadding = UDim4{};
@@ -48,7 +24,13 @@ Table::Table()
     m_tProps.rowHoverColor = Color4{0.3f, 0.3f, 0.35f, 1.0f};
     m_tProps.rowSelectedColor = Color4{0.25f, 0.4f, 0.65f, 1.0f};
 
-    s_applyStyle(*this);
+    resolveStyle();
+}
+
+void Table::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::TABLE, getClasses()));
+    setTableProperties(Style::instance().getTableStyle(ComponentType::TABLE, getClasses()));
 }
 
 bool Table::setTableProperties(const TableStyleProperties &props)

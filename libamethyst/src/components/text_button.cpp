@@ -7,24 +7,6 @@
 
 namespace Amethyst {
 
-static void applyStyle(TextButton &button)
-{
-    const auto &style = Style::instance();
-    BaseStyleProperties bs;
-    bs.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TEXT_BUTTON);
-    bs.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TEXT_BUTTON);
-    bs.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TEXT_BUTTON);
-    bs.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TEXT_BUTTON);
-    bs.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TEXT_BUTTON);
-    bs.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TEXT_BUTTON);
-    button.setBaseStyleProperties(bs);
-
-    TextStyleProperties tp;
-    tp.textColor = style.get<Color4>(StyleProperty::TEXT_COLOR, ComponentType::TEXT_BUTTON);
-    tp.fontSize = style.get<float>(StyleProperty::FONT_SIZE, ComponentType::TEXT_BUTTON);
-    button.setTextStyleProperties(tp);
-}
-
 TextButton::TextButton()
 {
     m_textStyle.textColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
@@ -38,7 +20,13 @@ TextButton::TextButton()
     m_textStyle.strokeThickness = 0.0f;
     m_textStyle.strokeColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
 
-    applyStyle(*this);
+    resolveStyle();
+}
+
+void TextButton::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::TEXT_BUTTON, getClasses()));
+    setTextStyleProperties(Style::instance().getTextStyle(ComponentType::TEXT_BUTTON, getClasses()));
 }
 
 TextButton::~TextButton()

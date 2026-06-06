@@ -1,11 +1,28 @@
 #include "modules/style.h"
 #include "parsers/am_theme/am_theme_parser.h"
+#include "utils/am_assert.h"
 
+#include <algorithm>
 #include <array>
+#include <utility>
 
 namespace Amethyst {
 
 static Style s_instance;
+
+static void applySparse(DenseSet &d, const SparseSet &s)
+{
+    for (auto &[p, v] : s) {
+        d[static_cast<size_t>(p)] = v;
+    }
+}
+
+Style::Style()
+{
+    m_fontNames.push_back("default");
+    m_fontIndex["default"] = 0;
+    buildDefaults();
+}
 
 Style &Style::instance()
 {
@@ -20,6 +37,270 @@ bool Style::load(const std::filesystem::path &path)
         return true;
     }
     return false;
+}
+
+void Style::buildDefaults()
+{
+#define X(PROP, key, Type, dflt) m_defaults[static_cast<size_t>(StyleProperty::PROP)] = StyleValue(dflt);
+    AM_STYLE_PROPS(X)
+#undef X
+}
+
+uint32_t Style::internFont(std::string_view name)
+{
+    auto it = m_fontIndex.find(std::string(name));
+    if (it != m_fontIndex.end()) {
+        return it->second;
+    }
+    uint32_t id = static_cast<uint32_t>(m_fontNames.size());
+    m_fontNames.emplace_back(name);
+    m_fontIndex[std::string(name)] = id;
+    return id;
+}
+
+const std::string &Style::fontName(FontHandle handle) const
+{
+    if (handle.id < m_fontNames.size()) {
+        return m_fontNames[handle.id];
+    }
+    return m_fontNames[0];
+}
+
+StyleKey Style::classToken(std::string_view name)
+{
+    StyleKey h = 2166136261u;
+    for (char c : name) {
+        h ^= static_cast<uint8_t>(c);
+        h *= 16777619u;
+    }
+    return h;
+}
+
+void Style::registerClassName(StyleKey token, std::string_view name)
+{
+    auto [it, inserted] = m_classNames.try_emplace(token, name);
+    if (!inserted) {
+        AM_ASSERT(it->second == name, "style class hash collision");
+    }
+}
+
+uint64_t Style::typeClassKey(ComponentType type, StyleKey classToken)
+{
+    return (static_cast<uint64_t>(type) << 32) | classToken;
+}
+
+void Style::addTypeValue(ComponentType type, StyleProperty prop, const StyleValue &value)
+{
+    m_rawType[type].push_back({prop, value});
+}
+
+void Style::addClassValue(StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value)
+{
+    m_classSets[classToken].push_back({prop, value});
+    m_classOrder[classToken] = order;
+}
+
+void Style::addTypeClassValue(ComponentType type, StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value)
+{
+    uint64_t key = typeClassKey(type, classToken);
+    m_typeClassSets[key].push_back({prop, value});
+    m_typeClassOrder[key] = order;
+}
+
+void Style::clearResolved()
+{
+    m_typeResolved.clear();
+    m_lru.clear();
+    m_cacheIndex.clear();
+}
+
+const DenseSet &Style::bakedFor(ComponentType type)
+{
+    auto found = m_typeResolved.find(type);
+    if (found != m_typeResolved.end()) {
+        return found->second;
+    }
+
+    DenseSet d = m_defaults;
+    std::span<const ComponentType> hierarchy = getTypeHierarchy(type);
+    for (auto it = hierarchy.rbegin(); it != hierarchy.rend(); ++it) {
+        auto raw = m_rawType.find(*it);
+        if (raw != m_rawType.end()) {
+            applySparse(d, raw->second);
+        }
+    }
+
+    auto [inserted, _] = m_typeResolved.emplace(type, std::move(d));
+    return inserted->second;
+}
+
+const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> classes)
+{
+    if (classes.empty()) {
+        return bakedFor(type);
+    }
+
+    CacheKey key;
+    key.type = type;
+    key.classes.assign(classes.begin(), classes.end());
+    std::sort(key.classes.begin(), key.classes.end());
+
+    auto cached = m_cacheIndex.find(key);
+    if (cached != m_cacheIndex.end()) {
+        m_lru.splice(m_lru.begin(), m_lru, cached->second);
+        return m_lru.front().second;
+    }
+
+    DenseSet d = bakedFor(type);
+
+    struct Contributor {
+        int tier;
+        int depth;
+        uint32_t order;
+        const SparseSet *set;
+    };
+    std::vector<Contributor> contributors;
+
+    for (StyleKey c : classes) {
+        auto it = m_classSets.find(c);
+        if (it != m_classSets.end()) {
+            contributors.push_back({1, 0, m_classOrder[c], &it->second});
+        }
+    }
+
+    std::span<const ComponentType> hierarchy = getTypeHierarchy(type);
+    for (StyleKey c : classes) {
+        for (size_t i = 0; i < hierarchy.size(); ++i) {
+            uint64_t tcKey = typeClassKey(hierarchy[i], c);
+            auto it = m_typeClassSets.find(tcKey);
+            if (it != m_typeClassSets.end()) {
+                int depth = static_cast<int>(hierarchy.size() - 1 - i);
+                contributors.push_back({2, depth, m_typeClassOrder[tcKey], &it->second});
+            }
+        }
+    }
+
+    std::sort(contributors.begin(), contributors.end(), [](const Contributor &a, const Contributor &b) {
+        if (a.tier != b.tier) {
+            return a.tier < b.tier;
+        }
+        if (a.depth != b.depth) {
+            return a.depth < b.depth;
+        }
+        return a.order < b.order;
+    });
+
+    for (const Contributor &c : contributors) {
+        applySparse(d, *c.set);
+    }
+
+    m_lru.push_front({key, std::move(d)});
+    m_cacheIndex[key] = m_lru.begin();
+    if (m_lru.size() > CACHE_CAP) {
+        m_cacheIndex.erase(m_lru.back().first);
+        m_lru.pop_back();
+    }
+    return m_lru.front().second;
+}
+
+size_t Style::CacheKeyHash::operator()(const CacheKey &k) const
+{
+    size_t h = std::hash<size_t>{}(static_cast<size_t>(k.type));
+    for (StyleKey c : k.classes) {
+        h = h * 1099511628211ull ^ c;
+    }
+    return h;
+}
+
+BaseStyleProperties Style::getBaseStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    BaseStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_BASE_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+TextStyleProperties Style::getTextStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    TextStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_TEXT_STYLE_FIELDS(X)
+#undef X
+    r.fontFamily = fontName(std::get<FontHandle>(d[static_cast<size_t>(StyleProperty::FONT_FAMILY)]));
+    return r;
+}
+
+ScrollingFrameStyleProperties Style::getScrollingFrameStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    ScrollingFrameStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_SCROLLING_FRAME_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+SliderStyleProperties Style::getSliderStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    SliderStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_SLIDER_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+TabBarStyleProperties Style::getTabBarStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    TabBarStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_TAB_BAR_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+TableStyleProperties Style::getTableStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    TableStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_TABLE_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+TreeViewStyleProperties Style::getTreeViewStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    TreeViewStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_TREE_VIEW_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+CheckboxStyleProperties Style::getCheckboxStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    CheckboxStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_CHECKBOX_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+CollapsibleHeaderStyleProperties Style::getCollapsibleHeaderStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    CollapsibleHeaderStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_COLLAPSIBLE_HEADER_STYLE_FIELDS(X)
+#undef X
+    return r;
 }
 
 std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
@@ -52,8 +333,7 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
     static const std::array<ComponentType, 2> slider = {ComponentType::SLIDER, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 3> radioButton = {ComponentType::RADIO_BUTTON, ComponentType::UI_BUTTON,
                                                              ComponentType::UI_OBJECT};
-    static const std::array<ComponentType, 2> collapsibleHeader = {ComponentType::COLLAPSIBLE_HEADER,
-                                                                    ComponentType::UI_OBJECT};
+    static const std::array<ComponentType, 2> collapsibleHeader = {ComponentType::COLLAPSIBLE_HEADER, ComponentType::UI_OBJECT};
 
     switch (type) {
     case ComponentType::UI_OBJECT:
@@ -94,231 +374,6 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
         return collapsibleHeader;
     }
     return uiObject;
-}
-
-StyleValue Style::getDefault(StyleProperty property)
-{
-    switch (property) {
-    case StyleProperty::BACKGROUND_COLOR:
-        return Color3(1.0f, 1.0f, 1.0f);
-    case StyleProperty::BACKGROUND_TRANSPARENCY:
-        return 0.0f;
-    case StyleProperty::BORDER_COLOR:
-        return Color3(0.0f, 0.0f, 0.0f);
-    case StyleProperty::BORDER_TRANSPARENCY:
-        return 0.0f;
-    case StyleProperty::BORDER_PIXEL_SIZE:
-        return 0.0f;
-    case StyleProperty::BORDER_MODE:
-        return BorderMode::OUTLINE;
-    case StyleProperty::CORNER_RADIUS:
-        return 0.0f;
-
-    case StyleProperty::PADDING_TOP:
-        return UDim{};
-    case StyleProperty::PADDING_RIGHT:
-        return UDim{};
-    case StyleProperty::PADDING_BOTTOM:
-        return UDim{};
-    case StyleProperty::PADDING_LEFT:
-        return UDim{};
-
-    case StyleProperty::FONT_FAMILY:
-        return std::string("default");
-    case StyleProperty::FONT_SIZE:
-        return 14.0f;
-    case StyleProperty::TEXT_COLOR:
-        return Color4(0.0f, 0.0f, 0.0f, 1.0f);
-    case StyleProperty::TEXT_X_ALIGNMENT:
-        return TextXAlignment::LEFT;
-    case StyleProperty::TEXT_Y_ALIGNMENT:
-        return TextYAlignment::TOP;
-    case StyleProperty::LINE_HEIGHT:
-        return 1.0f;
-    case StyleProperty::STROKE_THICKNESS:
-        return 0.0f;
-    case StyleProperty::STROKE_COLOR:
-        return Color4(0.0f, 0.0f, 0.0f, 1.0f);
-
-    case StyleProperty::SCROLLBAR_COLOR:
-        return Color3(0.7f, 0.7f, 0.7f);
-    case StyleProperty::SCROLLBAR_TRANSPARENCY:
-        return 0.0f;
-    case StyleProperty::SCROLLBAR_THICKNESS:
-        return 8.0f;
-    case StyleProperty::SCROLLBAR_THUMB_COLOR:
-        return Color3(0.5f, 0.5f, 0.5f);
-    case StyleProperty::SCROLLBAR_THUMB_TRANSPARENCY:
-        return 0.0f;
-
-    case StyleProperty::ROW_HEIGHT:
-        return 0.0f;
-    case StyleProperty::CELL_PADDING_TOP:
-        return UDim{};
-    case StyleProperty::CELL_PADDING_RIGHT:
-        return UDim{};
-    case StyleProperty::CELL_PADDING_BOTTOM:
-        return UDim{};
-    case StyleProperty::CELL_PADDING_LEFT:
-        return UDim{};
-    case StyleProperty::COLUMN_SEPARATOR_WIDTH:
-        return 1.0f;
-    case StyleProperty::COLUMN_SEPARATOR_COLOR:
-        return Color4(0.3f, 0.3f, 0.3f, 1.0f);
-
-    case StyleProperty::ROW_BACKGROUND_COLOR:
-        return Color4(0.18f, 0.18f, 0.2f, 1.0f);
-    case StyleProperty::ROW_ALTERNATE_COLOR:
-        return Color4(0.22f, 0.22f, 0.24f, 1.0f);
-    case StyleProperty::ROW_HOVER_COLOR:
-        return Color4(0.3f, 0.3f, 0.35f, 1.0f);
-    case StyleProperty::ROW_SELECTED_COLOR:
-        return Color4(0.25f, 0.4f, 0.65f, 1.0f);
-    case StyleProperty::INDENT_PER_LEVEL:
-        return 16.0f;
-    case StyleProperty::DISCLOSURE_TRIANGLE_SIZE:
-        return 10.0f;
-    case StyleProperty::DISCLOSURE_TRIANGLE_PADDING:
-        return 4.0f;
-    case StyleProperty::DISCLOSURE_TRIANGLE_COLOR:
-        return Color4(0.7f, 0.7f, 0.7f, 1.0f);
-
-    case StyleProperty::SLIDER_COLOR:
-        return Color3(0.5f, 0.5f, 0.5f);
-    case StyleProperty::SLIDER_TRANSPARENCY:
-        return 0.0f;
-    case StyleProperty::THUMB_COLOR:
-        return Color3(0.8f, 0.8f, 0.8f);
-    case StyleProperty::THUMB_TRANSPARENCY:
-        return 0.0f;
-    case StyleProperty::TRACK_CORNER_RADIUS:
-        return 0.0f;
-    case StyleProperty::THUMB_CORNER_RADIUS:
-        return 0.0f;
-
-    case StyleProperty::CHECK_COLOR:
-        return Color3(0.0f, 0.0f, 0.0f);
-    case StyleProperty::CHECK_TRANSPARENCY:
-        return 0.0f;
-    case StyleProperty::CHECKBOX_SIZE:
-        return 20.0f;
-
-    case StyleProperty::LABEL_COLOR:
-        return Color4(0.0f, 0.0f, 0.0f, 1.0f);
-    case StyleProperty::LABEL_PADDING:
-        return UDim::fromOffset(5.0f);
-    case StyleProperty::VALUE_COLOR:
-        return Color4(0.0f, 0.0f, 0.0f, 1.0f);
-
-    case StyleProperty::HIGHLIGHT_COLOR:
-        return Color3(0.7f, 0.7f, 0.9f);
-    case StyleProperty::HIGHLIGHT_TRANSPARENCY:
-        return 0.0f;
-
-    case StyleProperty::TAB_WIDTH:
-        return 100.0f;
-    case StyleProperty::TAB_SPACING:
-        return 0.0f;
-    case StyleProperty::BAR_THICKNESS:
-        return 30.0f;
-    case StyleProperty::TAB_COLOR:
-        return Color3(0.22f, 0.22f, 0.22f);
-    case StyleProperty::TAB_ACTIVE_COLOR:
-        return Color3(0.32f, 0.32f, 0.32f);
-    case StyleProperty::TAB_HOVERED_COLOR:
-        return Color3(0.28f, 0.28f, 0.28f);
-    case StyleProperty::TAB_PRESSED_COLOR:
-        return Color3(0.18f, 0.18f, 0.18f);
-
-    case StyleProperty::HEADER_COLOR:
-        return Color3(0.25f, 0.25f, 0.28f);
-    case StyleProperty::HEADER_TRANSPARENCY:
-        return 0.0f;
-    case StyleProperty::HEADER_HEIGHT:
-        return 30.0f;
-    }
-    return 0.0f;
-}
-
-const std::unordered_map<std::string, StyleProperty> &Style::getPropertyNames()
-{
-    static const std::unordered_map<std::string, StyleProperty> names = {
-        {"backgroundColor", StyleProperty::BACKGROUND_COLOR},
-        {"backgroundTransparency", StyleProperty::BACKGROUND_TRANSPARENCY},
-        {"borderColor", StyleProperty::BORDER_COLOR},
-        {"borderTransparency", StyleProperty::BORDER_TRANSPARENCY},
-        {"borderPixelSize", StyleProperty::BORDER_PIXEL_SIZE},
-        {"borderMode", StyleProperty::BORDER_MODE},
-        {"cornerRadius", StyleProperty::CORNER_RADIUS},
-
-        {"paddingTop", StyleProperty::PADDING_TOP},
-        {"paddingRight", StyleProperty::PADDING_RIGHT},
-        {"paddingBottom", StyleProperty::PADDING_BOTTOM},
-        {"paddingLeft", StyleProperty::PADDING_LEFT},
-
-        {"fontFamily", StyleProperty::FONT_FAMILY},
-        {"fontSize", StyleProperty::FONT_SIZE},
-        {"textColor", StyleProperty::TEXT_COLOR},
-        {"textXAlignment", StyleProperty::TEXT_X_ALIGNMENT},
-        {"textYAlignment", StyleProperty::TEXT_Y_ALIGNMENT},
-        {"lineHeight", StyleProperty::LINE_HEIGHT},
-        {"strokeThickness", StyleProperty::STROKE_THICKNESS},
-        {"strokeColor", StyleProperty::STROKE_COLOR},
-
-        {"scrollbarColor", StyleProperty::SCROLLBAR_COLOR},
-        {"scrollbarTransparency", StyleProperty::SCROLLBAR_TRANSPARENCY},
-        {"scrollbarThickness", StyleProperty::SCROLLBAR_THICKNESS},
-        {"scrollbarThumbColor", StyleProperty::SCROLLBAR_THUMB_COLOR},
-        {"scrollbarThumbTransparency", StyleProperty::SCROLLBAR_THUMB_TRANSPARENCY},
-
-        {"rowHeight", StyleProperty::ROW_HEIGHT},
-        {"cellPaddingTop", StyleProperty::CELL_PADDING_TOP},
-        {"cellPaddingRight", StyleProperty::CELL_PADDING_RIGHT},
-        {"cellPaddingBottom", StyleProperty::CELL_PADDING_BOTTOM},
-        {"cellPaddingLeft", StyleProperty::CELL_PADDING_LEFT},
-        {"columnSeparatorWidth", StyleProperty::COLUMN_SEPARATOR_WIDTH},
-        {"columnSeparatorColor", StyleProperty::COLUMN_SEPARATOR_COLOR},
-
-        {"rowBackgroundColor", StyleProperty::ROW_BACKGROUND_COLOR},
-        {"rowAlternateColor", StyleProperty::ROW_ALTERNATE_COLOR},
-        {"rowHoverColor", StyleProperty::ROW_HOVER_COLOR},
-        {"rowSelectedColor", StyleProperty::ROW_SELECTED_COLOR},
-        {"indentPerLevel", StyleProperty::INDENT_PER_LEVEL},
-        {"disclosureTriangleSize", StyleProperty::DISCLOSURE_TRIANGLE_SIZE},
-        {"disclosureTrianglePadding", StyleProperty::DISCLOSURE_TRIANGLE_PADDING},
-        {"disclosureTriangleColor", StyleProperty::DISCLOSURE_TRIANGLE_COLOR},
-
-        {"sliderColor", StyleProperty::SLIDER_COLOR},
-        {"sliderTransparency", StyleProperty::SLIDER_TRANSPARENCY},
-        {"thumbColor", StyleProperty::THUMB_COLOR},
-        {"thumbTransparency", StyleProperty::THUMB_TRANSPARENCY},
-        {"trackCornerRadius", StyleProperty::TRACK_CORNER_RADIUS},
-        {"thumbCornerRadius", StyleProperty::THUMB_CORNER_RADIUS},
-
-        {"checkColor", StyleProperty::CHECK_COLOR},
-        {"checkTransparency", StyleProperty::CHECK_TRANSPARENCY},
-        {"checkboxSize", StyleProperty::CHECKBOX_SIZE},
-
-        {"labelColor", StyleProperty::LABEL_COLOR},
-        {"labelPadding", StyleProperty::LABEL_PADDING},
-        {"valueColor", StyleProperty::VALUE_COLOR},
-
-        {"highlightColor", StyleProperty::HIGHLIGHT_COLOR},
-        {"highlightTransparency", StyleProperty::HIGHLIGHT_TRANSPARENCY},
-
-        {"tabWidth", StyleProperty::TAB_WIDTH},
-        {"tabSpacing", StyleProperty::TAB_SPACING},
-        {"barThickness", StyleProperty::BAR_THICKNESS},
-        {"tabColor", StyleProperty::TAB_COLOR},
-        {"tabActiveColor", StyleProperty::TAB_ACTIVE_COLOR},
-        {"tabHoveredColor", StyleProperty::TAB_HOVERED_COLOR},
-        {"tabPressedColor", StyleProperty::TAB_PRESSED_COLOR},
-
-        {"headerColor", StyleProperty::HEADER_COLOR},
-        {"headerTransparency", StyleProperty::HEADER_TRANSPARENCY},
-        {"headerHeight", StyleProperty::HEADER_HEIGHT},
-    };
-    return names;
 }
 
 const std::unordered_map<std::string, ComponentType> &Style::getComponentTypeNames()

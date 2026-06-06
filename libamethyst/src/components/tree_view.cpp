@@ -11,30 +11,6 @@
 
 namespace Amethyst {
 
-static void s_applyStyle(TreeView &tree)
-{
-    const auto &style = Style::instance();
-    tree.setBaseStyleProperties({
-        .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TREE_VIEW),
-        .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TREE_VIEW),
-        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TREE_VIEW),
-        .borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TREE_VIEW),
-        .borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TREE_VIEW),
-        .cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TREE_VIEW),
-    });
-    tree.setTreeViewProperties({
-        .rowHeight = style.get<float>(StyleProperty::ROW_HEIGHT, ComponentType::TREE_VIEW),
-        .disclosureTriangleSize = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_SIZE, ComponentType::TREE_VIEW),
-        .disclosureTrianglePadding = style.get<float>(StyleProperty::DISCLOSURE_TRIANGLE_PADDING, ComponentType::TREE_VIEW),
-        .disclosureTriangleColor = style.get<Color4>(StyleProperty::DISCLOSURE_TRIANGLE_COLOR, ComponentType::TREE_VIEW),
-        .indentPerLevel = style.get<float>(StyleProperty::INDENT_PER_LEVEL, ComponentType::TREE_VIEW),
-        .rowBackgroundColor = style.get<Color4>(StyleProperty::ROW_BACKGROUND_COLOR, ComponentType::TREE_VIEW),
-        .rowAlternateColor = style.get<Color4>(StyleProperty::ROW_ALTERNATE_COLOR, ComponentType::TREE_VIEW),
-        .rowHoverColor = style.get<Color4>(StyleProperty::ROW_HOVER_COLOR, ComponentType::TREE_VIEW),
-        .rowSelectedColor = style.get<Color4>(StyleProperty::ROW_SELECTED_COLOR, ComponentType::TREE_VIEW),
-    });
-}
-
 TreeView::TreeView()
 {
     m_tvProps.rowHeight = 0.0f;
@@ -58,7 +34,13 @@ TreeView::TreeView()
     m_tvProps.header.fontSize = 14.0f;
     m_tvProps.header.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
 
-    s_applyStyle(*this);
+    resolveStyle();
+}
+
+void TreeView::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::TREE_VIEW, getClasses()));
+    setTreeViewProperties(Style::instance().getTreeViewStyle(ComponentType::TREE_VIEW, getClasses()));
 }
 
 TreeView::~TreeView()

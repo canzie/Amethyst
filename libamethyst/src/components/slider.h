@@ -22,6 +22,8 @@ class Slider : public UIObject {
     Slider();
     virtual ~Slider() = default;
 
+    void resolveStyle() override;
+
     bool setSliderProperties(const SliderStyleProperties &props);
     const SliderStyleProperties &getSliderProperties() const { return m_sProps; }
 

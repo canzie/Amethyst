@@ -22,6 +22,7 @@ class TextLabel : public UILabel {
     virtual ~TextLabel();
 
     void draw(DrawContext &ctx) override;
+    void resolveStyle() override;
 
     bool setTextStyleProperties(const TextStyleProperties &props);
     const TextStyleProperties &getTextStyleProperties() const { return m_textStyle; }

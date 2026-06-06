@@ -43,6 +43,7 @@ class Table : public UIObject {
     virtual ~Table();
 
     void draw(DrawContext &ctx) override;
+    void resolveStyle() override;
 
     /**
      * @brief Append a column definition. Must be called before adding rows

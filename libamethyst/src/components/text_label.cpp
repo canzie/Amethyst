@@ -4,7 +4,6 @@
 
 #include "components/text_label.h"
 
-#include "logging/log.h"
 #include "modules/style.h"
 #include "modules/text_processor.h"
 #include "rendering/draw_context.h"
@@ -12,24 +11,6 @@
 #include "utils/profiling.h"
 
 namespace Amethyst {
-
-static void applyStyle(TextLabel &label)
-{
-    const auto &style = Style::instance();
-    BaseStyleProperties bs;
-    bs.backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TEXT_LABEL);
-    bs.backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TEXT_LABEL);
-    bs.borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TEXT_LABEL);
-    bs.borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TEXT_LABEL);
-    bs.borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TEXT_LABEL);
-    bs.cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TEXT_LABEL);
-    label.setBaseStyleProperties(bs);
-
-    TextStyleProperties tp;
-    tp.textColor = style.get<Color4>(StyleProperty::TEXT_COLOR, ComponentType::TEXT_LABEL);
-    tp.fontSize = style.get<float>(StyleProperty::FONT_SIZE, ComponentType::TEXT_LABEL);
-    label.setTextStyleProperties(tp);
-}
 
 TextLabel::TextLabel()
 {
@@ -44,7 +25,13 @@ TextLabel::TextLabel()
     m_textStyle.strokeThickness = 0.0f;
     m_textStyle.strokeColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
 
-    applyStyle(*this);
+    resolveStyle();
+}
+
+void TextLabel::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::TEXT_LABEL, getClasses()));
+    setTextStyleProperties(Style::instance().getTextStyle(ComponentType::TEXT_LABEL, getClasses()));
 }
 
 TextLabel::~TextLabel()

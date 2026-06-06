@@ -28,28 +28,6 @@ static bool s_closeButtonVisible(TabCloseButtonVisibility vis, bool isSelected, 
     return false;
 }
 
-static void applyStyle(TabBar &tabBar)
-{
-    const auto &style = Style::instance();
-    tabBar.setBaseStyleProperties({
-        .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::TAB_BAR),
-        .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::TAB_BAR),
-        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::TAB_BAR),
-        .borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::TAB_BAR),
-        .borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::TAB_BAR),
-        .cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::TAB_BAR),
-    });
-    tabBar.setTabBarProperties({
-        .barThickness = style.get<float>(StyleProperty::BAR_THICKNESS, ComponentType::TAB_BAR),
-        .tabWidth = style.get<float>(StyleProperty::TAB_WIDTH, ComponentType::TAB_BAR),
-        .tabSpacing = style.get<float>(StyleProperty::TAB_SPACING, ComponentType::TAB_BAR),
-        .tabColor = style.get<Color3>(StyleProperty::TAB_COLOR, ComponentType::TAB_BAR),
-        .focussedTabColor = style.get<Color3>(StyleProperty::TAB_ACTIVE_COLOR, ComponentType::TAB_BAR),
-        .hoveredTabColor = style.get<Color3>(StyleProperty::TAB_HOVERED_COLOR, ComponentType::TAB_BAR),
-        .pressedTabColor = style.get<Color3>(StyleProperty::TAB_PRESSED_COLOR, ComponentType::TAB_BAR),
-    });
-}
-
 TabBar::TabBar()
 {
     m_tbProps.mode = TabBarMode::INSIDE;
@@ -63,7 +41,13 @@ TabBar::TabBar()
     m_tbProps.closeButtonVisibility = TabCloseButtonVisibility::HOVERED_OR_ACTIVE;
     m_tbProps.tabTearOffEnabled = false;
 
-    applyStyle(*this);
+    resolveStyle();
+}
+
+void TabBar::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::TAB_BAR, getClasses()));
+    setTabBarProperties(Style::instance().getTabBarStyle(ComponentType::TAB_BAR, getClasses()));
 }
 
 bool TabBar::setTabBarProperties(const TabBarStyleProperties &props)

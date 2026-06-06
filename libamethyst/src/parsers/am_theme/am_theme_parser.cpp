@@ -1,8 +1,13 @@
 #include "parsers/am_theme/am_theme_parser.h"
 #include "logging/log.h"
+#include "modules/style.h"
 
+#include <functional>
+#include <optional>
+#include <string>
 #include <string_view>
 #include <toml++/toml.hpp>
+#include <unordered_map>
 
 namespace Amethyst {
 
@@ -95,130 +100,142 @@ UDim parseUDim(const toml::node &node)
     return UDim{};
 }
 
-void parseSpacingShorthand(const toml::node &node, Style &style, ComponentType type, StyleProperty top, StyleProperty right,
-                           StyleProperty bottom, StyleProperty left)
+template <class T>
+StyleValue parseValue(const toml::node &n, Style &style);
+
+template <>
+StyleValue parseValue<Color3>(const toml::node &n, Style &)
 {
-    if (node.as_floating_point() || node.as_integer() || node.as_table()) {
-        UDim v = parseUDim(node);
-        style.set(top, type, v);
-        style.set(right, type, v);
-        style.set(bottom, type, v);
-        style.set(left, type, v);
-    } else if (auto arr = node.as_array()) {
+    return StyleValue(parseColor3(n));
+}
+
+template <>
+StyleValue parseValue<Color4>(const toml::node &n, Style &)
+{
+    return StyleValue(parseColor4(n));
+}
+
+template <>
+StyleValue parseValue<float>(const toml::node &n, Style &)
+{
+    if (auto val = n.as_floating_point()) {
+        return StyleValue(static_cast<float>(**val));
+    }
+    if (auto val = n.as_integer()) {
+        return StyleValue(static_cast<float>(**val));
+    }
+    return StyleValue(0.0f);
+}
+
+template <>
+StyleValue parseValue<UDim>(const toml::node &n, Style &)
+{
+    return StyleValue(parseUDim(n));
+}
+
+template <>
+StyleValue parseValue<BorderMode>(const toml::node &n, Style &)
+{
+    if (auto str = n.as_string()) {
+        return StyleValue(parseBorderMode(**str));
+    }
+    return StyleValue(BorderMode::OUTLINE);
+}
+
+template <>
+StyleValue parseValue<TextXAlignment>(const toml::node &n, Style &)
+{
+    if (auto str = n.as_string()) {
+        return StyleValue(parseTextXAlignment(**str));
+    }
+    return StyleValue(TextXAlignment::LEFT);
+}
+
+template <>
+StyleValue parseValue<TextYAlignment>(const toml::node &n, Style &)
+{
+    if (auto str = n.as_string()) {
+        return StyleValue(parseTextYAlignment(**str));
+    }
+    return StyleValue(TextYAlignment::TOP);
+}
+
+template <>
+StyleValue parseValue<FontHandle>(const toml::node &n, Style &style)
+{
+    return StyleValue(FontHandle{style.internFont(n.value_or<std::string>("default"))});
+}
+
+struct PropParser {
+    StyleProperty prop;
+    StyleValue (*parse)(const toml::node &, Style &);
+};
+
+const std::unordered_map<std::string, PropParser> &propParsers()
+{
+    static const std::unordered_map<std::string, PropParser> m = {
+#define X(PROP, key, Type, dflt) {#key, {StyleProperty::PROP, &parseValue<Type>}},
+        AM_STYLE_PROPS(X)
+#undef X
+    };
+    return m;
+}
+
+using PropSink = std::function<void(StyleProperty, StyleValue)>;
+
+void parseSpacing(const toml::node &n, const PropSink &sink, StyleProperty top, StyleProperty right, StyleProperty bottom,
+                  StyleProperty left)
+{
+    if (n.as_floating_point() || n.as_integer() || n.as_table()) {
+        UDim v = parseUDim(n);
+        sink(top, StyleValue(v));
+        sink(right, StyleValue(v));
+        sink(bottom, StyleValue(v));
+        sink(left, StyleValue(v));
+    } else if (auto arr = n.as_array()) {
         if (arr->size() == 2) {
             UDim vertical = parseUDim((*arr)[0]);
             UDim horizontal = parseUDim((*arr)[1]);
-            style.set(top, type, vertical);
-            style.set(bottom, type, vertical);
-            style.set(left, type, horizontal);
-            style.set(right, type, horizontal);
+            sink(top, StyleValue(vertical));
+            sink(bottom, StyleValue(vertical));
+            sink(left, StyleValue(horizontal));
+            sink(right, StyleValue(horizontal));
         } else if (arr->size() == 4) {
-            style.set(top, type, parseUDim((*arr)[0]));
-            style.set(right, type, parseUDim((*arr)[1]));
-            style.set(bottom, type, parseUDim((*arr)[2]));
-            style.set(left, type, parseUDim((*arr)[3]));
+            sink(top, StyleValue(parseUDim((*arr)[0])));
+            sink(right, StyleValue(parseUDim((*arr)[1])));
+            sink(bottom, StyleValue(parseUDim((*arr)[2])));
+            sink(left, StyleValue(parseUDim((*arr)[3])));
         }
     }
 }
 
-void parseSection(const toml::table &section, Style &style, ComponentType type)
+bool handlePropEntry(std::string_view key, const toml::node &val, const PropSink &sink, Style &style)
 {
-    const auto &propNames = Style::getPropertyNames();
+    if (key == "padding") {
+        parseSpacing(val, sink, StyleProperty::PADDING_TOP, StyleProperty::PADDING_RIGHT, StyleProperty::PADDING_BOTTOM,
+                     StyleProperty::PADDING_LEFT);
+        return true;
+    }
+    if (key == "cellPadding") {
+        parseSpacing(val, sink, StyleProperty::CELL_PADDING_TOP, StyleProperty::CELL_PADDING_RIGHT,
+                     StyleProperty::CELL_PADDING_BOTTOM, StyleProperty::CELL_PADDING_LEFT);
+        return true;
+    }
 
-    for (const auto &[key, value] : section) {
-        std::string_view keyStr = key.str();
+    const auto &parsers = propParsers();
+    auto it = parsers.find(std::string(key));
+    if (it != parsers.end()) {
+        sink(it->second.prop, it->second.parse(val, style));
+        return true;
+    }
+    return false;
+}
 
-        if (keyStr == "padding") {
-            parseSpacingShorthand(value, style, type, StyleProperty::PADDING_TOP, StyleProperty::PADDING_RIGHT,
-                                  StyleProperty::PADDING_BOTTOM, StyleProperty::PADDING_LEFT);
-            continue;
-        }
-        if (keyStr == "cellPadding") {
-            parseSpacingShorthand(value, style, type, StyleProperty::CELL_PADDING_TOP, StyleProperty::CELL_PADDING_RIGHT,
-                                  StyleProperty::CELL_PADDING_BOTTOM, StyleProperty::CELL_PADDING_LEFT);
-            continue;
-        }
-
-        auto propIt = propNames.find(std::string(keyStr));
-        if (propIt == propNames.end()) {
-            AM_LOG_WARN("Unknown style property: {}", std::string(keyStr));
-            continue;
-        }
-
-        StyleProperty prop = propIt->second;
-
-        switch (prop) {
-        case StyleProperty::BACKGROUND_COLOR:
-        case StyleProperty::BORDER_COLOR:
-        case StyleProperty::SCROLLBAR_COLOR:
-        case StyleProperty::SCROLLBAR_THUMB_COLOR:
-        case StyleProperty::SLIDER_COLOR:
-        case StyleProperty::THUMB_COLOR:
-        case StyleProperty::CHECK_COLOR:
-        case StyleProperty::HIGHLIGHT_COLOR:
-        case StyleProperty::TAB_COLOR:
-        case StyleProperty::TAB_ACTIVE_COLOR:
-        case StyleProperty::TAB_HOVERED_COLOR:
-        case StyleProperty::TAB_PRESSED_COLOR:
-            style.set(prop, type, parseColor3(value));
-            break;
-
-        case StyleProperty::TEXT_COLOR:
-        case StyleProperty::STROKE_COLOR:
-        case StyleProperty::COLUMN_SEPARATOR_COLOR:
-        case StyleProperty::ROW_BACKGROUND_COLOR:
-        case StyleProperty::ROW_ALTERNATE_COLOR:
-        case StyleProperty::ROW_HOVER_COLOR:
-        case StyleProperty::ROW_SELECTED_COLOR:
-        case StyleProperty::DISCLOSURE_TRIANGLE_COLOR:
-        case StyleProperty::LABEL_COLOR:
-        case StyleProperty::VALUE_COLOR:
-            style.set(prop, type, parseColor4(value));
-            break;
-
-        case StyleProperty::BORDER_MODE:
-            if (auto str = value.as_string()) {
-                style.set(prop, type, parseBorderMode(**str));
-            }
-            break;
-
-        case StyleProperty::TEXT_X_ALIGNMENT:
-            if (auto str = value.as_string()) {
-                style.set(prop, type, parseTextXAlignment(**str));
-            }
-            break;
-
-        case StyleProperty::TEXT_Y_ALIGNMENT:
-            if (auto str = value.as_string()) {
-                style.set(prop, type, parseTextYAlignment(**str));
-            }
-            break;
-
-        case StyleProperty::FONT_FAMILY:
-            if (auto str = value.as_string()) {
-                style.set(prop, type, std::string(**str));
-            }
-            break;
-
-        case StyleProperty::PADDING_TOP:
-        case StyleProperty::PADDING_RIGHT:
-        case StyleProperty::PADDING_BOTTOM:
-        case StyleProperty::PADDING_LEFT:
-        case StyleProperty::CELL_PADDING_TOP:
-        case StyleProperty::CELL_PADDING_RIGHT:
-        case StyleProperty::CELL_PADDING_BOTTOM:
-        case StyleProperty::CELL_PADDING_LEFT:
-        case StyleProperty::LABEL_PADDING:
-            style.set(prop, type, parseUDim(value));
-            break;
-
-        default:
-            if (auto val = value.as_floating_point()) {
-                style.set(prop, type, static_cast<float>(**val));
-            } else if (auto val = value.as_integer()) {
-                style.set(prop, type, static_cast<float>(**val));
-            }
-            break;
+void parseClassBlock(const toml::table &t, const PropSink &sink, Style &style)
+{
+    for (const auto &[k, v] : t) {
+        if (!handlePropEntry(k.str(), v, sink, style)) {
+            AM_LOG_WARN("Unknown style property: {}", k.str());
         }
     }
 }
@@ -226,21 +243,57 @@ void parseSection(const toml::table &section, Style &style, ComponentType type)
 std::optional<Style> parseToml(const toml::table &tbl)
 {
     Style style;
+    uint32_t order = 0;
     const auto &typeNames = Style::getComponentTypeNames();
 
     for (const auto &[key, value] : tbl) {
-        std::string_view keyStr = key.str();
+        std::string_view k = key.str();
 
-        if (keyStr == "metadata") continue;
-
-        auto typeIt = typeNames.find(std::string(keyStr));
-        if (typeIt == typeNames.end()) {
-            AM_LOG_WARN("Unknown section in theme: {}", std::string(keyStr));
+        if (k == "metadata") {
             continue;
         }
 
-        if (auto section = value.as_table()) {
-            parseSection(*section, style, typeIt->second);
+        if (k == "class") {
+            if (auto classes = value.as_table()) {
+                for (const auto &[clsName, clsVal] : *classes) {
+                    if (auto clsTbl = clsVal.as_table()) {
+                        StyleKey tok = Style::classToken(clsName.str());
+                        style.registerClassName(tok, clsName.str());
+                        uint32_t o = order++;
+                        parseClassBlock(
+                            *clsTbl, [&](StyleProperty p, StyleValue v) { style.addClassValue(tok, o, p, v); }, style);
+                    }
+                }
+            }
+            continue;
+        }
+
+        auto typeIt = typeNames.find(std::string(k));
+        if (typeIt == typeNames.end()) {
+            AM_LOG_WARN("Unknown section in theme: {}", std::string(k));
+            continue;
+        }
+        ComponentType type = typeIt->second;
+
+        auto section = value.as_table();
+        if (section == nullptr) {
+            continue;
+        }
+
+        for (const auto &[k2, v2] : *section) {
+            PropSink typeSink = [&](StyleProperty p, StyleValue v) { style.addTypeValue(type, p, v); };
+            if (handlePropEntry(k2.str(), v2, typeSink, style)) {
+                continue;
+            }
+            if (auto clsTbl = v2.as_table()) {
+                StyleKey tok = Style::classToken(k2.str());
+                style.registerClassName(tok, k2.str());
+                uint32_t o = order++;
+                parseClassBlock(
+                    *clsTbl, [&](StyleProperty p, StyleValue v) { style.addTypeClassValue(type, tok, o, p, v); }, style);
+            } else {
+                AM_LOG_WARN("Unknown style property: {}", k2.str());
+            }
         }
     }
 

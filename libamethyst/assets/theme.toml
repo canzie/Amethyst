@@ -87,3 +87,18 @@ tabColor = "#393939"
 tabActiveColor = "#4a4a4a"
 tabHoveredColor = "#424242"
 tabPressedColor = "#353535"
+
+[class.collapsible-header__header]
+backgroundColor = "#404047"
+
+[class.danger]
+backgroundColor = "#cc3333"
+textColor = "#ffffff"
+
+[class.card]
+backgroundColor = "#3a3a3a"
+cornerRadius = 8.0
+
+[textButtons.primary]
+backgroundColor = "#4772b3"
+textColor = "#ffffff"

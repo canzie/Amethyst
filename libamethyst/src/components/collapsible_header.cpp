@@ -23,7 +23,6 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_chProps.titleStyle.textXAlignment = TextXAlignment::LEFT;
     m_chProps.titleStyle.textYAlignment = TextYAlignment::CENTER;
     m_chProps.headerHeight = 30.0f;
-    m_chProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
     m_chProps.headerTransparency = 0.0f;
     m_chProps.headerCornerRadius = 0.0f;
     m_chProps.showIndicator = true;
@@ -36,6 +35,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_headerBackground = std::make_unique<Frame>();
     m_headerBackground->parent = this;
     m_headerBackground->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
+    m_headerBackground->addClass("collapsible-header__header");
 
     m_headerButton = std::make_unique<InvisibleButton>();
     m_headerButton->parent = this;

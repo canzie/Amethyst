@@ -185,15 +185,17 @@ handle), and nested sub-structs (`TableStyleProperties::header` is a `TextStyleP
   // scope DTOs gain: std::vector<std::string> classes;  ui_scope.cpp applies classes BEFORE the
   // style DTO so instance overrides (tier 3) win.
   ```
-- First pass scope of *selectors*: standalone `.class` and type-qualified `type.class`. `:` pseudo-
-  states, `#` ids, `@` at-rules are reserved punctuation, deferred. No descendant/child combinators.
+- First pass scope of *selectors*: standalone `.class` and type-qualified `type.class`. Future
+  punctuation (see the custom-parser section): `#` = built-in sub-component part, `@` = id, `:` =
+  pseudo-state. All deferred. No descendant/child combinators.
 
 ### Built-in / default classes
 
 Internal sub-elements get an implicit documented class at construction (`addClass` on the sub-element)
-so themes can target parts (`CollapsibleHeader` header bar, `Slider` thumb/track). Naming: BEM
-`block__element` (`collapsible-header__header`, `slider__thumb`) -- bare-legal, no reserved-punct
-collision, `block` mirrors the theme section name.
+so themes can target parts (`CollapsibleHeader` header bar, `Slider` thumb/track). Interim spelling
+(TOML era) is BEM `block__element` as a plain class name (`collapsible-header__header`) -- bare-legal,
+no quoting. Under the custom parser this becomes the `type#part` form (`collapsible_header#header`); the
+component attaches it the same way internally either way.
 
 ## Class changes / re-resolution
 
@@ -222,6 +224,41 @@ section header maps to a Scope:
 
 For each `key = value`, the generated parser entry parses `value` by tag and inserts into the current
 scope's sparse set. All three scope kinds share the same entries -- zero new property mapping.
+
+### Next: drop TOML, write our own CSS parser
+
+The TOML shape is a poor fit -- classes have to hide under `[class.x]` / `[type.class]` tables because
+TOML has no selector sigils, so `.danger` becomes `[class.danger]` and `button.primary` becomes
+`[textButtons.primary]`, and built-in sub-element classes need the interim BEM `block__element` spelling
+(`collapsible-header__header`). Replace it with a small hand-written CSS-ish parser using our own
+selector punctuation:
+
+| sigil | meaning | example |
+|-------|---------|---------|
+| (bare) | component type | `text-button { ... }` |
+| `.` | class | `.danger { ... }` |
+| `#` | **built-in sub-component part** (replaces BEM `__`) | `collapsible_header#header { ... }` |
+| `@` | id, only if we ever allow ids in the stylesheet | `@my-id { ... }` |
+| `:` | pseudo-state (later) | `.danger:hover { ... }` |
+
+Note the deliberate reassignment: `#` is NOT id here -- it selects a component's named internal part
+(so `collapsible_header#header` targets the header bar), and `@` is the id sigil if ids land. The BEM
+`__` convention goes away entirely; a built-in part is authored as `type#part` and the component still
+attaches it the same way internally.
+
+```css
+text-button              { background-color: #545454; corner-radius: 4; }
+.danger                  { background-color: #cc3333; color: #fff; }
+text-button.primary      { background-color: #4772b3; }
+collapsible_header#header { background-color: #404047; }
+```
+Parsing this is trivial and removes the toml++ dependency for themes: tokenize a selector up to `{`
+(a type name, `.class`, `type.class`, or `type#part`), then `prop: value;` declarations up to `}`. The
+selector parse maps onto the existing scopes (`addTypeValue` / `addClassValue` / `addTypeClassValue`,
+plus a part scope for `#`), and the declaration side reuses the SAME generated property table + value
+parsers -- only the surrounding syntax changes. Keep the `StyleValue`/scope storage and the getters
+exactly as-is; this is a front-end-only swap. (The CURRENT TOML parser + BEM `__` class names stay until
+this lands -- they work as is.)
 
 ### Deleted vs kept
 

@@ -8,7 +8,6 @@
 #include "components/extensions/ui_list_layout.h"
 #include "components/ui_layer.h"
 #include "components/ui_object.h"
-#include "logging/log.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
@@ -16,14 +15,14 @@
 
 namespace Amethyst {
 
-static void applyStyle(Frame &frame)
-{
-    (void)frame;
-}
-
 Frame::Frame()
 {
-    applyStyle(*this);
+    resolveStyle();
+}
+
+void Frame::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::FRAME, getClasses()));
 }
 
 void Frame::draw(DrawContext &ctx)

@@ -9,26 +9,6 @@
 
 namespace Amethyst {
 
-static void applyStyle(ScrollingFrame &frame)
-{
-    const auto &style = Style::instance();
-    frame.setBaseStyleProperties({
-        .backgroundColor = style.get<Color3>(StyleProperty::BACKGROUND_COLOR, ComponentType::SCROLLING_FRAME),
-        .backgroundTransparency = style.get<float>(StyleProperty::BACKGROUND_TRANSPARENCY, ComponentType::SCROLLING_FRAME),
-        .borderPixelSize = style.get<float>(StyleProperty::BORDER_PIXEL_SIZE, ComponentType::SCROLLING_FRAME),
-        .borderColor = style.get<Color3>(StyleProperty::BORDER_COLOR, ComponentType::SCROLLING_FRAME),
-        .borderTransparency = style.get<float>(StyleProperty::BORDER_TRANSPARENCY, ComponentType::SCROLLING_FRAME),
-        .cornerRadius = style.get<float>(StyleProperty::CORNER_RADIUS, ComponentType::SCROLLING_FRAME),
-    });
-    ScrollingFrameStyleProperties sfp;
-    sfp.scrollBarColor = style.get<Color3>(StyleProperty::SCROLLBAR_COLOR, ComponentType::SCROLLING_FRAME);
-    sfp.scrollBarTransparency = style.get<float>(StyleProperty::SCROLLBAR_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
-    sfp.scrollBarThickness = style.get<float>(StyleProperty::SCROLLBAR_THICKNESS, ComponentType::SCROLLING_FRAME);
-    sfp.scrollBarThumbColor = style.get<Color3>(StyleProperty::SCROLLBAR_THUMB_COLOR, ComponentType::SCROLLING_FRAME);
-    sfp.scrollBarThumbTransparency = style.get<float>(StyleProperty::SCROLLBAR_THUMB_TRANSPARENCY, ComponentType::SCROLLING_FRAME);
-    frame.setScrollingFrameProperties(sfp);
-}
-
 ScrollingFrame::ScrollingFrame()
 {
     m_sfProps.scrollAxis = ScrollAxis::Y;
@@ -43,7 +23,13 @@ ScrollingFrame::ScrollingFrame()
     m_sfProps.scrollSpeed = 30.0f;
     m_sfProps.elasticScrolling = 0;
 
-    applyStyle(*this);
+    resolveStyle();
+}
+
+void ScrollingFrame::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::SCROLLING_FRAME, getClasses()));
+    setScrollingFrameProperties(Style::instance().getScrollingFrameStyle(ComponentType::SCROLLING_FRAME, getClasses()));
 }
 
 bool ScrollingFrame::setScrollingFrameProperties(const ScrollingFrameStyleProperties &props)

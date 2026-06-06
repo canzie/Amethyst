@@ -16,6 +16,7 @@ class Frame : public UIObject {
     virtual ~Frame() = default;
 
     void draw(DrawContext &ctx) override;
+    void resolveStyle() override;
 };
 
 } // namespace Amethyst

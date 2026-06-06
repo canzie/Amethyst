@@ -257,4 +257,249 @@ bool TreeViewStyleProperties::apply(const TreeViewStyleProperties &src)
 
 #undef AM_APPLY
 
+#define AM_DIFF(field) \
+    if (field != base.field) { \
+        out.field = field; \
+    }
+
+BaseProperties BaseProperties::diff(const BaseProperties &base) const
+{
+    BaseProperties out;
+    AM_DIFF(active)
+    AM_DIFF(anchorPoint)
+    AM_DIFF(automaticSize)
+    AM_DIFF(clipsDescendants)
+    AM_DIFF(guiState)
+    AM_DIFF(interactable)
+    AM_DIFF(layoutOrder)
+    AM_DIFF(padding)
+    AM_DIFF(margin)
+    AM_DIFF(position)
+    AM_DIFF(size)
+    AM_DIFF(rotation)
+    AM_DIFF(visible)
+    AM_DIFF(zIndex)
+    AM_DIFF(zindexBehavior)
+    return out;
+}
+
+BaseStyleProperties BaseStyleProperties::diff(const BaseStyleProperties &base) const
+{
+    BaseStyleProperties out;
+    AM_DIFF(backgroundColor)
+    AM_DIFF(backgroundTransparency)
+    AM_DIFF(borderMode)
+    AM_DIFF(borderPixelSize)
+    AM_DIFF(borderColor)
+    AM_DIFF(borderTransparency)
+    AM_DIFF(cornerRadius)
+    return out;
+}
+
+TextStyleProperties TextStyleProperties::diff(const TextStyleProperties &base) const
+{
+    TextStyleProperties out;
+    if (fontFamily != base.fontFamily) {
+        out.fontFamily = fontFamily;
+    }
+    AM_DIFF(fontSize)
+    AM_DIFF(textColor)
+    AM_DIFF(textXAlignment)
+    AM_DIFF(textYAlignment)
+    AM_DIFF(textTruncate)
+    AM_DIFF(richText)
+    AM_DIFF(textWrapped)
+    AM_DIFF(textScaled)
+    AM_DIFF(lineHeight)
+    AM_DIFF(strokeThickness)
+    AM_DIFF(strokeColor)
+    return out;
+}
+
+ImageStyleProperties ImageStyleProperties::diff(const ImageStyleProperties &base) const
+{
+    ImageStyleProperties out;
+    AM_DIFF(imageColor)
+    AM_DIFF(imageTransparency)
+    AM_DIFF(scaleType)
+    AM_DIFF(tileSize)
+    return out;
+}
+
+ButtonProperties ButtonProperties::diff(const ButtonProperties &base) const
+{
+    ButtonProperties out;
+    AM_DIFF(autoButtonColor)
+    AM_DIFF(modal)
+    return out;
+}
+
+ScrollingFrameStyleProperties ScrollingFrameStyleProperties::diff(const ScrollingFrameStyleProperties &base) const
+{
+    ScrollingFrameStyleProperties out;
+    AM_DIFF(scrollAxis)
+    AM_DIFF(scrollBarVisibility)
+    AM_DIFF(canvasSize)
+    AM_DIFF(canvasPosition)
+    AM_DIFF(scrollBarColor)
+    AM_DIFF(scrollBarTransparency)
+    AM_DIFF(scrollBarThickness)
+    AM_DIFF(scrollBarThumbColor)
+    AM_DIFF(scrollBarThumbTransparency)
+    AM_DIFF(scrollSpeed)
+    AM_DIFF(elasticScrolling)
+    return out;
+}
+
+CheckboxStyleProperties CheckboxStyleProperties::diff(const CheckboxStyleProperties &base) const
+{
+    CheckboxStyleProperties out;
+    AM_DIFF(checkColor)
+    AM_DIFF(checkTransparency)
+    AM_DIFF(checkboxSize)
+    return out;
+}
+
+CollapsibleHeaderStyleProperties CollapsibleHeaderStyleProperties::diff(const CollapsibleHeaderStyleProperties &base) const
+{
+    CollapsibleHeaderStyleProperties out;
+    AM_DIFF(expanded)
+    AM_DIFF(headerHeight)
+    AM_DIFF(headerColor)
+    AM_DIFF(headerTransparency)
+    AM_DIFF(headerCornerRadius)
+    AM_DIFF(showIndicator)
+    AM_DIFF(indicatorSize)
+    AM_DIFF(indicatorPadding)
+    AM_DIFF(indicatorColor)
+    out.titleStyle = titleStyle.diff(base.titleStyle);
+    return out;
+}
+
+DropdownStyleProperties DropdownStyleProperties::diff(const DropdownStyleProperties &base) const
+{
+    DropdownStyleProperties out;
+    AM_DIFF(popupDirection)
+    AM_DIFF(maxVisibleItems)
+    AM_DIFF(itemHeight)
+    AM_DIFF(popupWidth)
+    AM_DIFF(itemFontSize)
+    AM_DIFF(popupBackground)
+    AM_DIFF(itemTextColor)
+    AM_DIFF(itemDisabledColor)
+    AM_DIFF(itemHoverBackground)
+    AM_DIFF(separatorColor)
+    return out;
+}
+
+TabBarStyleProperties TabBarStyleProperties::diff(const TabBarStyleProperties &base) const
+{
+    TabBarStyleProperties out;
+    AM_DIFF(closeable)
+    AM_DIFF(persistLayout)
+    AM_DIFF(mode)
+    AM_DIFF(tabPosition)
+    AM_DIFF(visibility)
+    AM_DIFF(barThickness)
+    AM_DIFF(tabWidth)
+    AM_DIFF(tabSpacing)
+    AM_DIFF(tabOffset)
+    AM_DIFF(tabColor)
+    AM_DIFF(focussedTabColor)
+    AM_DIFF(hoveredTabColor)
+    AM_DIFF(pressedTabColor)
+    AM_DIFF(closeButtonVisibility)
+    AM_DIFF(tabTearOffEnabled)
+    return out;
+}
+
+MenuBarStyleProperties MenuBarStyleProperties::diff(const MenuBarStyleProperties &base) const
+{
+    MenuBarStyleProperties out;
+    AM_DIFF(entryPaddingX)
+    AM_DIFF(entryPaddingY)
+    AM_DIFF(entryFontSize)
+    AM_DIFF(entryHoverBackground)
+    AM_DIFF(entryActiveBackground)
+    return out;
+}
+
+TextInputStyleProperties TextInputStyleProperties::diff(const TextInputStyleProperties &base) const
+{
+    TextInputStyleProperties out;
+    AM_DIFF(placeholderColor)
+    AM_DIFF(selectionColor)
+    AM_DIFF(cursorColor)
+    AM_DIFF(multiline)
+    AM_DIFF(maxLength)
+    AM_DIFF(readOnly)
+    AM_DIFF(cursorBlinkRate)
+    out.text = text.diff(base.text);
+    return out;
+}
+
+TableStyleProperties TableStyleProperties::diff(const TableStyleProperties &base) const
+{
+    TableStyleProperties out;
+    AM_DIFF(rowHeight)
+    AM_DIFF(cellPadding)
+    AM_DIFF(showColumnSeparators)
+    AM_DIFF(columnSeparatorWidth)
+    AM_DIFF(columnSeparatorColor)
+    AM_DIFF(showHeader)
+    AM_DIFF(headerHeight)
+    AM_DIFF(headerColor)
+    AM_DIFF(rowBackgroundColor)
+    AM_DIFF(rowAlternateColor)
+    AM_DIFF(rowHoverColor)
+    AM_DIFF(rowSelectedColor)
+    out.header = header.diff(base.header);
+    return out;
+}
+
+SliderStyleProperties SliderStyleProperties::diff(const SliderStyleProperties &base) const
+{
+    SliderStyleProperties out;
+    AM_DIFF(sliderColor)
+    AM_DIFF(sliderTransparency)
+    AM_DIFF(thumbColor)
+    AM_DIFF(thumbTransparency)
+    AM_DIFF(trackCornerRadius)
+    AM_DIFF(thumbCornerRadius)
+    AM_DIFF(labelColor)
+    AM_DIFF(labelSide)
+    AM_DIFF(labelPadding)
+    AM_DIFF(valueColor)
+    AM_DIFF(fontSize)
+    AM_DIFF(layout)
+    return out;
+}
+
+TreeViewStyleProperties TreeViewStyleProperties::diff(const TreeViewStyleProperties &base) const
+{
+    TreeViewStyleProperties out;
+    AM_DIFF(rowHeight)
+    AM_DIFF(cellPadding)
+    AM_DIFF(showColumnSeparators)
+    AM_DIFF(columnSeparatorWidth)
+    AM_DIFF(columnSeparatorColor)
+    AM_DIFF(showDisclosureTriangles)
+    AM_DIFF(disclosureTriangleSize)
+    AM_DIFF(disclosureTrianglePadding)
+    AM_DIFF(disclosureTriangleColor)
+    AM_DIFF(indentPerLevel)
+    AM_DIFF(rowBackgroundColor)
+    AM_DIFF(rowAlternateColor)
+    AM_DIFF(rowHoverColor)
+    AM_DIFF(rowSelectedColor)
+    AM_DIFF(fillRows)
+    AM_DIFF(showHeader)
+    AM_DIFF(headerHeight)
+    AM_DIFF(headerColor)
+    out.header = header.diff(base.header);
+    return out;
+}
+
+#undef AM_DIFF
+
 } // namespace Amethyst

@@ -1,4 +1,5 @@
 #include "components/ui_object.h"
+#include <algorithm>
 #include "components/common.h"
 #include "components/extensions/ui_aspect_ratio_constraint.h"
 #include "components/extensions/ui_drag_detector.h"
@@ -6,7 +7,6 @@
 #include "components/input_interface.h"
 #include "components/ui_layer.h"
 #include "components/window.h"
-#include "logging/log.h"
 #include "rendering/instance_data.h"
 #include "utils/profiling.h"
 
@@ -61,6 +61,64 @@ bool UIObject::setBaseStyleProperties(BaseStyleProperties style)
         markDirty();
     }
     return changed;
+}
+
+void UIObject::resolveStyle() {}
+
+void UIObject::addClass(std::string_view name)
+{
+    StyleKey token = Style::classToken(name);
+    if (std::ranges::find(m_classes, token) == m_classes.end()) {
+        m_classes.push_back(token);
+        Style::instance().registerClassName(token, name);
+    }
+    resolveStyle();
+    markDirty();
+}
+
+void UIObject::removeClass(std::string_view name)
+{
+    StyleKey token = Style::classToken(name);
+    auto it = std::ranges::find(m_classes, token);
+    if (it != m_classes.end()) {
+        m_classes.erase(it);
+    }
+    resolveStyle();
+    markDirty();
+}
+
+bool UIObject::hasClass(std::string_view name) const
+{
+    StyleKey token = Style::classToken(name);
+    return std::ranges::find(m_classes, token) != m_classes.end();
+}
+
+void UIObject::setClasses(std::span<const std::string> names)
+{
+    m_classes.clear();
+    for (const auto &name : names) {
+        StyleKey token = Style::classToken(name);
+        if (std::ranges::find(m_classes, token) == m_classes.end()) {
+            m_classes.push_back(token);
+            Style::instance().registerClassName(token, name);
+        }
+    }
+    resolveStyle();
+    markDirty();
+}
+
+void UIObject::setClasses(std::initializer_list<std::string_view> names)
+{
+    m_classes.clear();
+    for (std::string_view name : names) {
+        StyleKey token = Style::classToken(name);
+        if (std::ranges::find(m_classes, token) == m_classes.end()) {
+            m_classes.push_back(token);
+            Style::instance().registerClassName(token, name);
+        }
+    }
+    resolveStyle();
+    markDirty();
 }
 
 void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation)

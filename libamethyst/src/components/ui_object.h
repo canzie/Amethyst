@@ -10,11 +10,17 @@
 #include "components/input_events.h"
 #include "components/properties.h"
 #include "components/ui_base_2d.h"
+#include "modules/style.h"
 #include "rendering/instance_data.h"
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
+#include <span>
+#include <string>
+#include <string_view>
 #include <typeindex>
 #include <unordered_map>
+#include <vector>
 
 namespace Amethyst {
 
@@ -63,6 +69,52 @@ class UIObject : public UIBase2D {
     bool setBaseStyleProperties(BaseStyleProperties style);
     const BaseStyleProperties &getBaseStyleProperties() const { return m_baseStyle; }
 
+    /**
+     * @brief Re-resolve this node's styling from the global theme and its class set.
+     *
+     * Called from each component constructor and again whenever the class set changes.
+     * The default implementation does nothing; concrete components override it to pull
+     * their resolved style structs from Style::instance().
+     */
+    virtual void resolveStyle();
+
+    /**
+     * @brief Add a style class to this node and re-resolve.
+     * @param name Class name; interned to a token and recorded for diagnostics
+     */
+    void addClass(std::string_view name);
+
+    /**
+     * @brief Remove a style class from this node and re-resolve.
+     * @param name Class name to remove; a no-op if not present
+     */
+    void removeClass(std::string_view name);
+
+    /**
+     * @brief Test whether this node carries a style class.
+     * @param name Class name to query
+     * @return True if the class is present
+     */
+    bool hasClass(std::string_view name) const;
+
+    /**
+     * @brief Replace this node's class set and re-resolve once.
+     * @param names Class names to apply
+     */
+    void setClasses(std::span<const std::string> names);
+
+    /**
+     * @brief Replace this node's class set and re-resolve once.
+     * @param names Class names to apply
+     */
+    void setClasses(std::initializer_list<std::string_view> names);
+
+    /**
+     * @brief Access this node's class tokens.
+     * @return Span over the interned class tokens
+     */
+    std::span<const StyleKey> getClasses() const { return m_classes; }
+
   protected:
     friend class Window;
     virtual EventResult onMouseEnter(void);
@@ -84,6 +136,7 @@ class UIObject : public UIBase2D {
   protected:
     BaseProperties m_uiObjProps;
     BaseStyleProperties m_baseStyle;
+    std::vector<StyleKey> m_classes;
 
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;
