@@ -520,9 +520,9 @@ void TextInput::drawSelection(DrawContext &ctx)
         size_t selEnd = std::max(m_cursorPosition, *m_selectionStart);
 
         if (selEnd > selStart && selStart < m_charPositions.size() && selEnd < m_charPositions.size()) {
-            glm::vec2 selPos = {absoluteContentPosition.x + m_charPositions[selStart], m_textBaselineY};
-            glm::vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], m_tiProps.text.fontSize * 1.2f};
-            glm::vec2 centerPos = selPos + selSize * 0.5f;
+            vec2 selPos = {absoluteContentPosition.x + m_charPositions[selStart], m_textBaselineY};
+            vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], m_tiProps.text.fontSize * 1.2f};
+            vec2 centerPos = selPos + selSize * 0.5f;
 
             InstanceData data{};
             data.translation = centerPos;
@@ -554,9 +554,9 @@ void TextInput::drawCursor(DrawContext &ctx)
             cursorX = (m_cursorPosition < m_charPositions.size()) ? m_charPositions[m_cursorPosition] : m_charPositions.back();
         }
 
-        glm::vec2 cursorPos = {absoluteContentPosition.x + cursorX, m_textBaselineY};
-        glm::vec2 cursorSize = {1.0f, m_tiProps.text.fontSize * 1.2f};
-        glm::vec2 centerPos = cursorPos + cursorSize * 0.5f;
+        vec2 cursorPos = {absoluteContentPosition.x + cursorX, m_textBaselineY};
+        vec2 cursorSize = {1.0f, m_tiProps.text.fontSize * 1.2f};
+        vec2 centerPos = cursorPos + cursorSize * 0.5f;
 
         InstanceData data{};
         data.translation = centerPos;
@@ -599,7 +599,7 @@ void TextInput::draw(DrawContext &ctx)
         drawCursor(ctx);
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
 
     for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {

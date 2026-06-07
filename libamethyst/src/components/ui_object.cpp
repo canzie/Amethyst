@@ -19,7 +19,7 @@ UIObject::UIObject()
     // sane defaults so we can compare to the default struct
     // otherwise we need to force the user to copy the current struct all the time, or use optionals everywhere?
     m_uiObjProps.active = false;
-    m_uiObjProps.anchorPoint = glm::vec2(0.0f);
+    m_uiObjProps.anchorPoint = vec2(0.0f);
     m_uiObjProps.automaticSize = AutomaticSize::OFF;
     m_uiObjProps.clipsDescendants = true;
     m_uiObjProps.guiState = GuiState::IDLE;
@@ -121,20 +121,20 @@ void UIObject::setClasses(std::initializer_list<std::string_view> names)
     markDirty();
 }
 
-void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation)
+void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation)
 {
     AM_PROFILE_FUNCTION();
     absoluteSize = m_uiObjProps.size.resolve(parentSize);
     absolutePosition = parentPos + m_uiObjProps.position.resolve(parentSize) - m_uiObjProps.anchorPoint * absoluteSize;
     absoluteRotation = m_uiObjProps.rotation + parentRotation;
 
-    glm::vec4 m = m_uiObjProps.margin.resolve(parentSize);
-    absolutePosition += glm::vec2(m.w, m.x);
-    absoluteSize -= glm::vec2(m.w + m.y, m.x + m.z);
+    vec4 m = m_uiObjProps.margin.resolve(parentSize);
+    absolutePosition += vec2(m.w, m.x);
+    absoluteSize -= vec2(m.w + m.y, m.x + m.z);
 
-    glm::vec4 p = m_uiObjProps.padding.resolve(absoluteSize);
-    absoluteContentPosition = absolutePosition + glm::vec2(p.w, p.x);
-    absoluteContentSize = absoluteSize - glm::vec2(p.w + p.y, p.x + p.z);
+    vec4 p = m_uiObjProps.padding.resolve(absoluteSize);
+    absoluteContentPosition = absolutePosition + vec2(p.w, p.x);
+    absoluteContentSize = absoluteSize - vec2(p.w + p.y, p.x + p.z);
 
     if (auto *sizeConstraint = getExtension<UISizeConstraint>()) {
         sizeConstraint->apply();
@@ -147,7 +147,7 @@ void UIObject::computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degre
 InstanceData UIObject::createInstanceData() const
 {
     AM_PROFILE_FUNCTION();
-    glm::vec2 centerPos = absolutePosition + absoluteSize * 0.5f;
+    vec2 centerPos = absolutePosition + absoluteSize * 0.5f;
 
     InstanceData data{};
     data.translation = centerPos;
@@ -155,7 +155,7 @@ InstanceData UIObject::createInstanceData() const
     data.clipRect = clipRect;
     data.setFillColor(Color4(m_baseStyle.backgroundColor, 1.0f - m_baseStyle.backgroundTransparency));
     data.setBorderColor(Color4(m_baseStyle.borderColor, 1.0f - m_baseStyle.borderTransparency));
-    data.setRotation(glm::radians(absoluteRotation));
+    data.setRotation(radians(absoluteRotation));
     data.setBorderThickness(m_baseStyle.borderPixelSize);
     data.setCornerRadius(m_baseStyle.cornerRadius);
     data.setPrimitiveType(PRIMITIVE_TRIANGLE);
@@ -165,18 +165,18 @@ InstanceData UIObject::createInstanceData() const
     return data;
 }
 
-glm::vec4 UIObject::computeChildClipRect() const
+vec4 UIObject::computeChildClipRect() const
 {
     if (!m_uiObjProps.clipsDescendants) {
         return clipRect;
     }
-    glm::vec4 myBounds = {absolutePosition.x, absolutePosition.y, absolutePosition.x + absoluteSize.x,
+    vec4 myBounds = {absolutePosition.x, absolutePosition.y, absolutePosition.x + absoluteSize.x,
                           absolutePosition.y + absoluteSize.y};
-    if (clipRect == glm::vec4(0.0f)) {
+    if (clipRect == vec4(0.0f)) {
         return myBounds;
     }
-    return {glm::max(clipRect.x, myBounds.x), glm::max(clipRect.y, myBounds.y), glm::min(clipRect.z, myBounds.z),
-            glm::min(clipRect.w, myBounds.w)};
+    return {max(clipRect.x, myBounds.x), max(clipRect.y, myBounds.y), min(clipRect.z, myBounds.z),
+            min(clipRect.w, myBounds.w)};
 }
 
 Window *UIObject::getWindow()

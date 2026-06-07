@@ -10,7 +10,7 @@
 #include "components/ui_object.h"
 #include <cstdint>
 #include <functional>
-#include <glm/glm.hpp>
+#include "math/math.h"
 
 namespace Amethyst {
 
@@ -32,15 +32,15 @@ class UIDragDetector : public UIExtension {
     UIObject *dragZone = nullptr;
     float softLockDistance = 30.0f;
 
-    std::function<void(glm::vec2 startPos)> onDragStart;
-    std::function<void(glm::vec2 delta, glm::vec2 position)> onDragUpdate;
-    std::function<void(glm::vec2 endPos)> onDragEnd;
+    std::function<void(vec2 startPos)> onDragStart;
+    std::function<void(vec2 delta, vec2 position)> onDragUpdate;
+    std::function<void(vec2 endPos)> onDragEnd;
 
   private:
     bool m_isDragging = false;
     bool m_softLockBroken = false;
-    glm::vec2 m_dragStartMouse = glm::vec2(0.0f);
-    glm::vec2 m_dragStartOffset = glm::vec2(0.0f);
+    vec2 m_dragStartMouse = vec2(0.0f);
+    vec2 m_dragStartOffset = vec2(0.0f);
 };
 
 } // namespace Amethyst

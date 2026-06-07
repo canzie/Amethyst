@@ -45,19 +45,19 @@ class Canvas : public UIObject {
      * @param color Line color
      * @param thickness Line thickness in pixels
      */
-    void drawLine(glm::vec2 start, glm::vec2 end, Color4 color, float thickness = 1.0f);
+    void drawLine(vec2 start, vec2 end, Color4 color, float thickness = 1.0f);
 
-    void drawTriangleFilled(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, Color4 color);
-    void drawTriangleStroke(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, Color4 color, float thickness = 1.0f);
+    void drawTriangleFilled(vec2 p0, vec2 p1, vec2 p2, Color4 color);
+    void drawTriangleStroke(vec2 p0, vec2 p1, vec2 p2, Color4 color, float thickness = 1.0f);
 
     /**
      * @brief Draw an arbitrary quadrilateral (4 arbitrary points, wound counter-clockwise)
      */
-    void drawQuadFilled(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, Color4 color);
-    void drawQuadStroke(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, Color4 color, float thickness = 1.0f);
+    void drawQuadFilled(vec2 p0, vec2 p1, vec2 p2, vec2 p3, Color4 color);
+    void drawQuadStroke(vec2 p0, vec2 p1, vec2 p2, vec2 p3, Color4 color, float thickness = 1.0f);
 
-    void drawCircleFilled(glm::vec2 center, float radius, Color4 color);
-    void drawCircleStroke(glm::vec2 center, float radius, Color4 color, float thickness = 1.0f);
+    void drawCircleFilled(vec2 center, float radius, Color4 color);
+    void drawCircleStroke(vec2 center, float radius, Color4 color, float thickness = 1.0f);
 
     /**
      * @brief Draw an ellipse outline (ring). The ellipse is axis-aligned in canvas space;
@@ -69,7 +69,7 @@ class Canvas : public UIObject {
      * @param color Stroke color
      * @param thickness Stroke width in pixels
      */
-    void drawEllipseStroke(glm::vec2 center, float semiMajor, float semiMinor, float rotationDeg, Color4 color,
+    void drawEllipseStroke(vec2 center, float semiMajor, float semiMinor, float rotationDeg, Color4 color,
                            float thickness = 1.0f);
 
     /**
@@ -82,14 +82,14 @@ class Canvas : public UIObject {
      *        Text is truncated if it exceeds this. Slots are pre-allocated
      *        so changing the text content doesn't cause reallocation.
      */
-    void drawText(const std::string &text, glm::vec2 position, float fontSize, Color4 color, uint32_t maxChars);
+    void drawText(const std::string &text, vec2 position, float fontSize, Color4 color, uint32_t maxChars);
 
     bool isEmpty() const { return m_commands.empty() && m_textCommands.empty(); }
 
   private:
     struct DrawCmd {
         PrimitiveType primitive;
-        glm::vec2 points[4];
+        vec2 points[4];
         float radius;
         float semiMajor;
         float semiMinor;
@@ -101,7 +101,7 @@ class Canvas : public UIObject {
 
     struct TextCmd {
         std::string text;
-        glm::vec2 position;
+        vec2 position;
         float fontSize;
         Color4 color;
         uint32_t maxChars;

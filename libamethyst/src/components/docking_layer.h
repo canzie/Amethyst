@@ -43,8 +43,8 @@ struct DockNode {
 
     std::unique_ptr<InvisibleButton> resizeHandle;
 
-    glm::vec2 nodePosition = glm::vec2(0.0f);
-    glm::vec2 nodeSize = glm::vec2(0.0f);
+    vec2 nodePosition = vec2(0.0f);
+    vec2 nodeSize = vec2(0.0f);
 
     bool isLeaf() const { return axis == SplitAxis::NONE; }
 };
@@ -93,18 +93,18 @@ class DockingLayer : public UILayer {
     int32_t createNode();
     void swapAndRemoveNode(int32_t nodeIndex);
     void collapseNode(int32_t nodeIndex);
-    void computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition);
+    void computeLayout(int32_t nodeIndex, vec2 nodeSize, vec2 nodePosition);
     void setupTabBarCallbacks(TabBar *tabBar);
-    void setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition);
+    void setupResizeHandle(int32_t nodeIndex, vec2 nodeSize, vec2 nodePosition);
     void processPendingDeletions();
     void initDockHints();
-    void updateDockHints(glm::vec2 mousePos);
+    void updateDockHints(vec2 mousePos);
     void hideDockHints();
-    DockZone hitTestZone(int32_t nodeIndex, glm::vec2 position);
-    int32_t findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
-    int32_t findNodeByResizeHandlePosition(glm::vec2 pos, int32_t nodeIndex);
+    DockZone hitTestZone(int32_t nodeIndex, vec2 position);
+    int32_t findNodeByPosition(vec2 pos, int32_t nodeIndex, vec2 parentSize, vec2 parentPosition);
+    int32_t findNodeByResizeHandlePosition(vec2 pos, int32_t nodeIndex);
     int32_t splitNode(int32_t nodeIndex, DockZone targetZone, std::unique_ptr<TabBar::Tab> tab);
-    void recalculateChildren(int32_t parentIndex, glm::vec2 parentSize, glm::vec2 parentPosition);
+    void recalculateChildren(int32_t parentIndex, vec2 parentSize, vec2 parentPosition);
 
   public:
     float outerSpacing = 0.0f;

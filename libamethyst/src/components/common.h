@@ -8,7 +8,7 @@
 #include "modules/color.h"
 
 #include <cstdint>
-#include <glm/glm.hpp>
+#include "math/math.h"
 
 namespace Amethyst {
 
@@ -43,15 +43,15 @@ struct UnifiedDimension {
 using UDim = UnifiedDimension;
 
 struct UnifiedDimension2 {
-    glm::vec2 scale = {0.0f, 0.0f};
-    glm::vec2 offset = {0.0f, 0.0f};
+    vec2 scale = {0.0f, 0.0f};
+    vec2 offset = {0.0f, 0.0f};
 
     UnifiedDimension2() = default;
-    UnifiedDimension2(glm::vec2 _scale, glm::vec2 _offset) : scale(_scale), offset(_offset) {};
+    UnifiedDimension2(vec2 _scale, vec2 _offset) : scale(_scale), offset(_offset) {};
     UnifiedDimension2(float scaleX, float offsetX, float scaleY, float offsetY)
     {
-        scale = glm::vec2(scaleX, scaleY);
-        offset = glm::vec2(offsetX, offsetY);
+        scale = vec2(scaleX, scaleY);
+        offset = vec2(offsetX, offsetY);
     }
 
     static UnifiedDimension2 fromScale(float scaleX, float scaleY) { return {{scaleX, scaleY}, {0.0f, 0.0f}}; }
@@ -59,7 +59,7 @@ struct UnifiedDimension2 {
     static UnifiedDimension2 fromOffset(float offsetX, float offsetY) { return {{0.0f, 0.0f}, {offsetX, offsetY}}; }
     static UnifiedDimension2 fromOffset(float _offset) { return {{0.0f, 0.0f}, {_offset, _offset}}; }
 
-    glm::vec2 resolve(const glm::vec2 &parentSize) const { return scale * parentSize + offset; }
+    vec2 resolve(const vec2 &parentSize) const { return scale * parentSize + offset; }
 
     bool operator==(const UnifiedDimension2 &) const = default;
 };
@@ -71,9 +71,9 @@ struct UnifiedDimension4 {
     UDim bottom;
     UDim left;
 
-    glm::vec4 resolve(glm::vec2 parentSize) const
+    vec4 resolve(vec2 parentSize) const
     {
-        return glm::vec4(top.resolve(parentSize.y), right.resolve(parentSize.x), bottom.resolve(parentSize.y),
+        return vec4(top.resolve(parentSize.y), right.resolve(parentSize.x), bottom.resolve(parentSize.y),
                          left.resolve(parentSize.x));
     }
 
@@ -288,8 +288,8 @@ enum class DragMode {
  * @brief Per-character render data for text (GPU-aligned, 40 bytes)
  */
 struct CharacterInstance {
-    alignas(8) glm::vec2 position;
-    alignas(8) glm::vec2 size;
+    alignas(8) vec2 position;
+    alignas(8) vec2 size;
     uint32_t glyphIndex;
     uint32_t color;
     uint32_t strokeColor;

@@ -41,7 +41,7 @@ static std::pair<uint32_t, size_t> s_decodeUtf8(const std::string &text, size_t 
     return {UTF8_REPLACEMENT, 1};
 }
 
-glm::vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing) const
+vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing) const
 {
     if (!m_glyphAtlas || text.empty()) {
         return {0.0f, 0.0f};
@@ -219,10 +219,10 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
             float centerY = posY + glyphInfo->height * 0.5f;
 
             InstanceData inst{};
-            inst.translation = glm::vec2(centerX, centerY);
-            inst.scale = glm::vec2(glyphInfo->width, glyphInfo->height);
+            inst.translation = vec2(centerX, centerY);
+            inst.scale = vec2(glyphInfo->width, glyphInfo->height);
             inst.setFillColor(params.color);
-            inst.setUvRect(glm::vec4(uvMinX, uvMinY, uvMaxX, uvMaxY));
+            inst.setUvRect(vec4(uvMinX, uvMinY, uvMaxX, uvMaxY));
             inst.setPrimitiveType(PRIMITIVE_TEXT);
             inst.textureId = m_glyphAtlas->getTextureId().id;
 

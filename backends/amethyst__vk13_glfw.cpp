@@ -11,7 +11,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
-#include <glm/glm.hpp>
+#include "math/math.h"
 #include <iterator>
 #include <vector>
 #include <vulkan/vulkan_core.h>
@@ -143,7 +143,7 @@ constexpr size_t INITIAL_INSTANCE_CAPACITY = 256 * 32; // 8192 instances, ~32 la
 constexpr size_t INDEX_COUNT_RECT = 6;
 
 struct PushConstants {
-    glm::vec2 screenSize;
+    vec2 screenSize;
 };
 
 void VkBackend::init(const VulkanInitInfo &config, const GLFWInitInfo &info)
@@ -266,7 +266,7 @@ void VkBackend::beginFrame() {}
 
 void VkBackend::endFrame() {}
 
-void VkBackend::onResize(glm::vec2 extent)
+void VkBackend::onResize(vec2 extent)
 {
     m_info.extent = VkExtent2D(extent.x, extent.y);
 }

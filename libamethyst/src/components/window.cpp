@@ -82,7 +82,7 @@ void Window::draw(DrawContext &ctx)
     m_overlayLayer->draw(layerCtx);
 }
 
-static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point, UIObject **stack,
+static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, const vec2 &point, UIObject **stack,
                                       uint8_t &count, uint8_t capacity)
 {
     std::vector<Instance *> sorted(instances.begin(), instances.end());
@@ -120,7 +120,7 @@ static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, 
     return false;
 }
 
-template <typename Fn> static bool s_dispatchRecursive(const std::vector<Instance *> &instances, const glm::vec2 &point, Fn &&fn)
+template <typename Fn> static bool s_dispatchRecursive(const std::vector<Instance *> &instances, const vec2 &point, Fn &&fn)
 {
     std::vector<Instance *> sorted(instances.begin(), instances.end());
     std::stable_sort(sorted.begin(), sorted.end(), [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
@@ -159,7 +159,7 @@ template <typename Fn> static bool s_dispatchRecursive(const std::vector<Instanc
 Instance *Window::findClickedObject(uint32_t x, uint32_t y)
 {
     AM_PROFILE_FUNCTION();
-    glm::vec2 point(x, y);
+    vec2 point(x, y);
     Instance *result = nullptr;
     s_dispatchRecursive(getHittableInstances(), point, [&result](UIObject *obj) {
         result = obj;
@@ -201,7 +201,7 @@ void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_
         return;
     }
 
-    glm::vec2 point(x, y);
+    vec2 point(x, y);
     s_dispatchRecursive(getHittableInstances(), point, [&](UIObject *obj) -> EventResult {
         if (input.state == InputState::BEGIN) {
             return obj->onInputBegan(input);
@@ -218,7 +218,7 @@ void Window::onMouseMove(uint32_t x, uint32_t y)
         return;
     }
 
-    glm::vec2 point(x, y);
+    vec2 point(x, y);
 
     std::swap(m_hoverCurrent, m_hoverPrevious);
     m_hoverCurrent.count = 0;
@@ -297,7 +297,7 @@ void Window::onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y)
     AM_PROFILE_FUNCTION();
     (void)xoffset;
     Instance *target = findClickedObject(x, y);
-    glm::vec2 point(x, y);
+    vec2 point(x, y);
 
     while (target) {
         auto *uiObject = target->as<UIObject>();

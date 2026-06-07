@@ -13,6 +13,8 @@
 #include <utility>
 #include <vector>
 
+using namespace Amethyst;
+
 int main()
 {
     Amethyst::Log::Init();
@@ -54,7 +56,7 @@ int main()
 
     amCtx.init(backend);
 
-    glm::vec2 screenSize = {static_cast<float>(ctx.swapchainExtent.width), static_cast<float>(ctx.swapchainExtent.height)};
+    vec2 screenSize = {static_cast<float>(ctx.swapchainExtent.width), static_cast<float>(ctx.swapchainExtent.height)};
 
     Amethyst::Window window;
     window.absoluteSize = screenSize;
@@ -70,8 +72,8 @@ int main()
 
     float sliderFloatValue = 50.0f;
     int sliderIntValue = 25;
-    glm::vec2 sliderVec2Value = glm::vec2(50.0f, 75.0f);
-    glm::vec3 sliderVec3Value = glm::vec3(0.5f, 0.3f, 0.8f);
+    vec2 sliderVec2Value = vec2(50.0f, 75.0f);
+    vec3 sliderVec3Value = vec3(0.5f, 0.3f, 0.8f);
 
     Amethyst::UIScope(window)
         // --- Draggable frames ---
@@ -248,8 +250,8 @@ int main()
             },
             [&](Amethyst::SliderVec2Scope &s) {
                 s.component.name = "vec2 slider";
-                s.component.min = glm::vec2(0.0f);
-                s.component.max = glm::vec2(100.0f);
+                s.component.min = vec2(0.0f);
+                s.component.max = vec2(100.0f);
                 s.component.speed = 1.0f;
                 s.component.valueRef = &sliderVec2Value;
             })
@@ -265,8 +267,8 @@ int main()
             },
             [&](Amethyst::SliderVec3Scope &s) {
                 s.component.name = "vec3 slider";
-                s.component.min = glm::vec3(0.0f);
-                s.component.max = glm::vec3(1.0f);
+                s.component.min = vec3(0.0f);
+                s.component.max = vec3(1.0f);
                 s.component.speed = 0.01f;
                 s.component.valueRef = &sliderVec3Value;
             })

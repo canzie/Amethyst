@@ -32,7 +32,7 @@ class UIGridLayout : public UIExtension {
     uint32_t fillDirectionMaxCells = 0; // 0=auto,
 
   private:
-    glm::vec2 m_absoluteCellSize;
+    vec2 m_absoluteCellSize;
 };
 
 } // namespace Amethyst

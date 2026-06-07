@@ -7,7 +7,7 @@
 #define AMETHYST_TTF_TYPES_H
 
 #include <cstdint>
-#include <glm/glm.hpp>
+#include "math/math.h"
 #include <unordered_map>
 #include <vector>
 
@@ -56,7 +56,7 @@ namespace TTF {
  * @brief Single point in a glyph contour (GPU-aligned, 12 bytes)
  */
 struct Point {
-    glm::vec2 pos;
+    vec2 pos;
     uint32_t flags;
 };
 static_assert(sizeof(Point) == 12, "Point must be 12 bytes for GPU alignment");
@@ -79,8 +79,8 @@ struct Glyph {
     uint32_t flags;
     uint32_t _pad0;
 
-    glm::vec2 bboxMin;
-    glm::vec2 bboxMax;
+    vec2 bboxMin;
+    vec2 bboxMax;
 
     float advanceWidth;
     float leftSideBearing;

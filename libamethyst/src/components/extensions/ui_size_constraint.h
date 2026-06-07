@@ -3,7 +3,7 @@
 
 #include "components/extensions/ui_extension.h"
 
-#include <glm/glm.hpp>
+#include "math/math.h"
 
 namespace Amethyst {
 
@@ -17,8 +17,8 @@ class UISizeConstraint : public UIExtension {
     void apply();
 
   public:
-    glm::vec2 maxSize;
-    glm::vec2 minSize;
+    vec2 maxSize;
+    vec2 minSize;
 };
 
 } // namespace Amethyst

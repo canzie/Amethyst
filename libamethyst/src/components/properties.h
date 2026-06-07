@@ -5,7 +5,7 @@
 
 #include <cmath>
 #include <cstdint>
-#include <glm/vec2.hpp>
+#include "math/math.h"
 #include <limits>
 #include <optional>
 #include <string>
@@ -34,7 +34,7 @@ inline bool propIsSet(am_bool v)
 {
     return v != PROP_UNSET_BOOL;
 }
-inline bool propIsSet(const glm::vec2 &v)
+inline bool propIsSet(const vec2 &v)
 {
     return !std::isnan(v.x);
 }
@@ -133,7 +133,7 @@ inline bool propIsSet(DragMode v)
 
 struct BaseProperties {
     am_bool active = PROP_UNSET_BOOL;
-    glm::vec2 anchorPoint = glm::vec2(PROP_UNSET_FLOAT);
+    vec2 anchorPoint = vec2(PROP_UNSET_FLOAT);
     AutomaticSize automaticSize = AutomaticSize::NONE;
     am_bool clipsDescendants = PROP_UNSET_BOOL;
     GuiState guiState = GuiState::NONE;
@@ -141,8 +141,8 @@ struct BaseProperties {
     LayoutOrder layoutOrder = PROP_UNSET_UINT32;
     UDim4 padding = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
     UDim4 margin = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
-    UDim2 position = UDim2(glm::vec2(PROP_UNSET_FLOAT), glm::vec2(0));
-    UDim2 size = UDim2(glm::vec2(PROP_UNSET_FLOAT), glm::vec2(0));
+    UDim2 position = UDim2(vec2(PROP_UNSET_FLOAT), vec2(0));
+    UDim2 size = UDim2(vec2(PROP_UNSET_FLOAT), vec2(0));
     Degrees rotation = PROP_UNSET_FLOAT;
     am_bool visible = PROP_UNSET_BOOL;
     int32_t zIndex = PROP_UNSET_INT32;
@@ -187,7 +187,7 @@ struct ImageStyleProperties {
     Color4 imageColor = Color4(PROP_UNSET_FLOAT);
     float imageTransparency = PROP_UNSET_FLOAT;
     ImageScaleType scaleType = ImageScaleType::NONE;
-    glm::vec2 tileSize = glm::vec2(PROP_UNSET_FLOAT);
+    vec2 tileSize = vec2(PROP_UNSET_FLOAT);
 
     bool apply(const ImageStyleProperties &src);
     ImageStyleProperties diff(const ImageStyleProperties &base) const;
@@ -204,8 +204,8 @@ struct ButtonProperties {
 struct ScrollingFrameStyleProperties {
     ScrollAxis scrollAxis = ScrollAxis::NONE;
     ScrollBarVisibility scrollBarVisibility = ScrollBarVisibility::NONE;
-    UDim2 canvasSize = UDim2(glm::vec2(PROP_UNSET_FLOAT), glm::vec2(0));
-    UDim2 canvasPosition = UDim2(glm::vec2(PROP_UNSET_FLOAT), glm::vec2(0));
+    UDim2 canvasSize = UDim2(vec2(PROP_UNSET_FLOAT), vec2(0));
+    UDim2 canvasPosition = UDim2(vec2(PROP_UNSET_FLOAT), vec2(0));
     Color3 scrollBarColor = Color3(PROP_UNSET_FLOAT);
     float scrollBarTransparency = PROP_UNSET_FLOAT;
     float scrollBarThickness = PROP_UNSET_FLOAT;

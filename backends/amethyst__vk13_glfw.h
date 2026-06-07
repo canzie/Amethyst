@@ -69,7 +69,7 @@ class VkBackend : public AmethystBackend {
     void beginFrame();
     void endFrame();
     void record(VkCommandBuffer cmd);
-    void onResize(glm::vec2 extent);
+    void onResize(Amethyst::vec2 extent);
 
     void createAtlasTexture(uint32_t width, uint32_t height) override;
     void uploadAtlasData(void *cmdBuffer, const uint8_t *pixels, uint32_t width, uint32_t height) override;

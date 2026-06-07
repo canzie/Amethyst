@@ -43,7 +43,7 @@ class ImageButton : public UIButton {
 
     std::string m_svgData;
     bool m_svgResolved = false;
-    glm::vec4 m_svgUvRect = {0.0f, 0.0f, 1.0f, 1.0f};
+    vec4 m_svgUvRect = {0.0f, 0.0f, 1.0f, 1.0f};
 };
 
 } // namespace Amethyst

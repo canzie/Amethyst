@@ -85,8 +85,8 @@ class TabBar : public UIObject {
 
     std::function<void(Instance *content)> onTabClosed;
     std::function<void(Instance *content)> onTabTornOff;
-    std::function<void(Instance *content, glm::vec2 pos)> onTornOffTabMoved;
-    std::function<void(std::unique_ptr<Tab>, glm::vec2 dropPos)> onTornOffTabReleased;
+    std::function<void(Instance *content, vec2 pos)> onTornOffTabMoved;
+    std::function<void(std::unique_ptr<Tab>, vec2 dropPos)> onTornOffTabReleased;
     std::function<void(int32_t index)> onSelectionChanged;
 
   protected:
@@ -104,8 +104,8 @@ class TabBar : public UIObject {
     bool isVertical() const;
     bool shouldShowTabs() const;
     float getBarSize() const;
-    glm::vec2 getContentOffset() const;
-    glm::vec2 getContentSizeAdjust() const;
+    vec2 getContentOffset() const;
+    vec2 getContentSizeAdjust() const;
 
     int32_t findTabIndex(const Tab *tab) const;
     int32_t indexFromPosition(float pos) const;

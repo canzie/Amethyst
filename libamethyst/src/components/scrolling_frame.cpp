@@ -77,10 +77,10 @@ void ScrollingFrame::draw(DrawContext &ctx)
         }
     }
 
-    glm::vec2 absCanvasSize = m_sfProps.canvasSize.resolve(absoluteSize);
-    glm::vec2 maxScroll = glm::max(absCanvasSize - absoluteSize, glm::vec2(0.0f));
+    vec2 absCanvasSize = m_sfProps.canvasSize.resolve(absoluteSize);
+    vec2 maxScroll = max(absCanvasSize - absoluteSize, vec2(0.0f));
 
-    m_scrollOffset = glm::clamp(m_scrollOffset, glm::vec2(0.0f), maxScroll);
+    m_scrollOffset = clamp(m_scrollOffset, vec2(0.0f), maxScroll);
 
     if (auto *gridLayout = getExtension<UIGridLayout>()) {
         gridLayout->apply(m_children);
@@ -88,17 +88,17 @@ void ScrollingFrame::draw(DrawContext &ctx)
         listLayout->apply(m_children);
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
 
-    glm::vec2 canvasOrigin = m_sfProps.canvasPosition.resolve(absCanvasSize);
+    vec2 canvasOrigin = m_sfProps.canvasPosition.resolve(absCanvasSize);
 
     for (auto &child : m_children) {
         auto *obj = child->as<UIObject>();
         if (obj == nullptr) continue;
 
-        glm::vec2 childRelPos = obj->getBaseProperties().position.resolve(absCanvasSize);
-        glm::vec2 childEffectivePos = canvasOrigin + childRelPos - m_scrollOffset;
-        glm::vec2 childSize = obj->getBaseProperties().size.resolve(absCanvasSize);
+        vec2 childRelPos = obj->getBaseProperties().position.resolve(absCanvasSize);
+        vec2 childEffectivePos = canvasOrigin + childRelPos - m_scrollOffset;
+        vec2 childSize = obj->getBaseProperties().size.resolve(absCanvasSize);
 
         bool inViewport = (childEffectivePos.x + childSize.x > 0.0f) && (childEffectivePos.x < absoluteSize.x) &&
                           (childEffectivePos.y + childSize.y > 0.0f) && (childEffectivePos.y < absoluteSize.y);
@@ -128,7 +128,7 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
 {
     bool sfVisible = isVisible();
 
-    glm::vec2 absCanvasSize = m_sfProps.canvasSize.resolve(absoluteSize);
+    vec2 absCanvasSize = m_sfProps.canvasSize.resolve(absoluteSize);
     bool needsVertical = sfVisible && (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) &&
                          absCanvasSize.y > absoluteSize.y;
     bool needsHorizontal = sfVisible && (m_sfProps.scrollAxis == ScrollAxis::X || m_sfProps.scrollAxis == ScrollAxis::XY) &&
@@ -165,8 +165,8 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
         });
         m_verticalBar->clipRect = clipRect;
         m_verticalBar->markDirty();
-        m_verticalBar->computeAbsolutes(glm::vec2(m_sfProps.scrollBarThickness, trackHeight),
-                                        absolutePosition + glm::vec2(absoluteSize.x - m_sfProps.scrollBarThickness, 0.0f),
+        m_verticalBar->computeAbsolutes(vec2(m_sfProps.scrollBarThickness, trackHeight),
+                                        absolutePosition + vec2(absoluteSize.x - m_sfProps.scrollBarThickness, 0.0f),
                                         absoluteRotation);
         m_verticalBar->draw(ctx);
 
@@ -176,8 +176,8 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
         });
         m_verticalThumb->clipRect = clipRect;
         m_verticalThumb->markDirty();
-        m_verticalThumb->computeAbsolutes(glm::vec2(m_sfProps.scrollBarThickness, thumbHeight),
-                                          absolutePosition + glm::vec2(absoluteSize.x - m_sfProps.scrollBarThickness, thumbY),
+        m_verticalThumb->computeAbsolutes(vec2(m_sfProps.scrollBarThickness, thumbHeight),
+                                          absolutePosition + vec2(absoluteSize.x - m_sfProps.scrollBarThickness, thumbY),
                                           absoluteRotation);
         m_verticalThumb->draw(ctx);
     } else {
@@ -211,8 +211,8 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
         });
         m_horizontalBar->clipRect = clipRect;
         m_horizontalBar->markDirty();
-        m_horizontalBar->computeAbsolutes(glm::vec2(trackWidth, m_sfProps.scrollBarThickness),
-                                          absolutePosition + glm::vec2(0.0f, absoluteSize.y - m_sfProps.scrollBarThickness),
+        m_horizontalBar->computeAbsolutes(vec2(trackWidth, m_sfProps.scrollBarThickness),
+                                          absolutePosition + vec2(0.0f, absoluteSize.y - m_sfProps.scrollBarThickness),
                                           absoluteRotation);
         m_horizontalBar->draw(ctx);
 
@@ -222,8 +222,8 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
         });
         m_horizontalThumb->clipRect = clipRect;
         m_horizontalThumb->markDirty();
-        m_horizontalThumb->computeAbsolutes(glm::vec2(thumbWidth, m_sfProps.scrollBarThickness),
-                                            absolutePosition + glm::vec2(thumbX, absoluteSize.y - m_sfProps.scrollBarThickness),
+        m_horizontalThumb->computeAbsolutes(vec2(thumbWidth, m_sfProps.scrollBarThickness),
+                                            absolutePosition + vec2(thumbX, absoluteSize.y - m_sfProps.scrollBarThickness),
                                             absoluteRotation);
         m_horizontalThumb->draw(ctx);
     } else {

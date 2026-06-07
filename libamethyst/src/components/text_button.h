@@ -31,14 +31,14 @@ class TextButton : public UIButton {
     void setText(std::string text);
     const std::string &getText() const { return m_text; }
 
-    glm::vec2 getTextSize() const { return m_textSize; }
+    vec2 getTextSize() const { return m_textSize; }
 
   protected:
     TextStyleProperties m_textStyle;
     std::string m_text;
 
   private:
-    glm::vec2 m_textSize = {0.0f, 0.0f};
+    vec2 m_textSize = {0.0f, 0.0f};
     std::vector<GeometryAllocation *> m_textAllocations;
 };
 

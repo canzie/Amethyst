@@ -20,7 +20,7 @@ void Container::draw(DrawContext &ctx)
         return;
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
 
     for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {

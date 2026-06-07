@@ -8,7 +8,7 @@
 #include <concepts>
 #include <cstdint>
 #include <functional>
-#include <glm/vec2.hpp>
+#include "math/math.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -43,7 +43,7 @@ class Instance {
 
     virtual std::vector<Instance *> getHittableInstances();
     virtual int32_t getZIndex() const { return 0; }
-    virtual bool containsPoint(const glm::vec2 &) const { return false; }
+    virtual bool containsPoint(const vec2 &) const { return false; }
     virtual bool isHitTestVisible() const { return false; }
     virtual bool getClipsDescendants() const { return false; }
 

@@ -27,7 +27,7 @@ class UIBase2D : public Instance {
 
     virtual void draw(DrawContext &ctx) = 0;
 
-    bool containsPoint(const glm::vec2 &point) const override
+    bool containsPoint(const vec2 &point) const override
     {
         return point.x >= absolutePosition.x && point.x <= absolutePosition.x + absoluteSize.x && point.y >= absolutePosition.y &&
                point.y <= absolutePosition.y + absoluteSize.y;
@@ -36,12 +36,12 @@ class UIBase2D : public Instance {
     void setProperties(UIBase2DProperties props);
 
   public:
-    glm::vec2 absolutePosition = glm::vec2(0.0f);
-    glm::vec2 absoluteContentPosition = glm::vec2(0.0f);
+    vec2 absolutePosition = vec2(0.0f);
+    vec2 absoluteContentPosition = vec2(0.0f);
     Degrees absoluteRotation = 0.0f;
-    glm::vec2 absoluteSize;
-    glm::vec2 absoluteContentSize;
-    glm::vec4 clipRect = {0.0f, 0.0f, 0.0f, 0.0f};
+    vec2 absoluteSize;
+    vec2 absoluteContentSize;
+    vec4 clipRect = {0.0f, 0.0f, 0.0f, 0.0f};
 
   protected:
     GeometryAllocation *m_geometryAlloc = nullptr;

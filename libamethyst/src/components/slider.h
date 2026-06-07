@@ -11,7 +11,7 @@
 #include "components/text_label.h"
 #include "components/ui_object.h"
 #include <functional>
-#include <glm/glm.hpp>
+#include "math/math.h"
 
 namespace Amethyst {
 
@@ -99,11 +99,11 @@ class SliderVec2 : public Slider {
     std::vector<Instance *> getHittableInstances() override;
 
   public:
-    glm::vec2 *valueRef = nullptr;
-    std::function<void(glm::vec2)> onValueChanged;
+    vec2 *valueRef = nullptr;
+    std::function<void(vec2)> onValueChanged;
 
-    glm::vec2 min = glm::vec2(0.0f);
-    glm::vec2 max = glm::vec2(100.0f);
+    vec2 min = vec2(0.0f);
+    vec2 max = vec2(100.0f);
     float speed = 1.0f;
 
   private:
@@ -124,11 +124,11 @@ class SliderVec3 : public Slider {
     std::vector<Instance *> getHittableInstances() override;
 
   public:
-    glm::vec3 *valueRef = nullptr;
-    std::function<void(glm::vec3)> onValueChanged;
+    vec3 *valueRef = nullptr;
+    std::function<void(vec3)> onValueChanged;
 
-    glm::vec3 min = glm::vec3(0.0f);
-    glm::vec3 max = glm::vec3(100.0f);
+    vec3 min = vec3(0.0f);
+    vec3 max = vec3(100.0f);
     float speed = 1.0f;
 
   private:

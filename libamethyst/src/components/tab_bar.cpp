@@ -89,7 +89,7 @@ float TabBar::getBarSize() const
     return shouldShowTabs() ? m_tbProps.barThickness : 0.0f;
 }
 
-glm::vec2 TabBar::getContentOffset() const
+vec2 TabBar::getContentOffset() const
 {
     if (m_tbProps.mode == TabBarMode::OUTSIDE) return {0.0f, 0.0f};
 
@@ -104,12 +104,12 @@ glm::vec2 TabBar::getContentOffset() const
     }
 }
 
-glm::vec2 TabBar::getContentSizeAdjust() const
+vec2 TabBar::getContentSizeAdjust() const
 {
     if (m_tbProps.mode == TabBarMode::OUTSIDE) return {0.0f, 0.0f};
 
     float bar = getBarSize();
-    return isVertical() ? glm::vec2{-bar, 0.0f} : glm::vec2{0.0f, -bar};
+    return isVertical() ? vec2{-bar, 0.0f} : vec2{0.0f, -bar};
 }
 
 int32_t TabBar::findTabIndex(const Tab *tab) const
@@ -211,14 +211,14 @@ void TabBar::setupTabDragCallbacks(Tab &tab)
 
     Tab *tabPtr = &tab;
 
-    drag->onDragStart = [this, tabPtr](glm::vec2) {
+    drag->onDragStart = [this, tabPtr](vec2) {
         m_draggedTab = tabPtr;
         m_tornOff = false;
         tabPtr->labelFrame->setBaseProperties({.zIndex = 100});
         tabPtr->button->setBaseProperties({.zIndex = 100});
     };
 
-    drag->onDragUpdate = [this, tabPtr, drag](glm::vec2, glm::vec2 absPos) {
+    drag->onDragUpdate = [this, tabPtr, drag](vec2, vec2 absPos) {
         if (drag->isSoftLockBroken()) {
             if (!m_tornOff) {
                 m_tornOff = true;
@@ -233,7 +233,7 @@ void TabBar::setupTabDragCallbacks(Tab &tab)
         int32_t currentIdx = findTabIndex(tabPtr);
         if (currentIdx < 0) return;
 
-        glm::vec2 relPos = absPos - absolutePosition;
+        vec2 relPos = absPos - absolutePosition;
         float dragPos = isVertical() ? relPos.y : relPos.x;
         int32_t targetIdx = indexFromPosition(dragPos + m_tbProps.tabWidth * 0.5f);
 
@@ -253,7 +253,7 @@ void TabBar::setupTabDragCallbacks(Tab &tab)
         }
     };
 
-    drag->onDragEnd = [this, tabPtr](glm::vec2 endPos) {
+    drag->onDragEnd = [this, tabPtr](vec2 endPos) {
         bool wasTornOff = m_tornOff;
         Instance *content = tabPtr->content.get();
 
@@ -532,8 +532,8 @@ void TabBar::layoutContent()
         lastContent = m_tabs[m_lastSelectedIndex]->content.get();
     }
 
-    glm::vec2 contentOffset = getContentOffset();
-    glm::vec2 sizeAdjust = getContentSizeAdjust();
+    vec2 contentOffset = getContentOffset();
+    vec2 sizeAdjust = getContentSizeAdjust();
 
     for (auto &tab : m_tabs) {
         Instance *child = tab->content.get();
@@ -608,7 +608,7 @@ void TabBar::draw(DrawContext &ctx)
         }
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
 
     if (shouldShowTabs()) {
         DrawContext buttonCtx = ctx;
@@ -617,7 +617,7 @@ void TabBar::draw(DrawContext &ctx)
         }
         for (auto &tab : m_tabs) {
             bool isTornOff = (tab.get() == m_draggedTab && m_tornOff);
-            tab->button->clipRect = isTornOff ? glm::vec4(0.0f) : childClip;
+            tab->button->clipRect = isTornOff ? vec4(0.0f) : childClip;
             tab->button->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             tab->button->draw(buttonCtx);
         }

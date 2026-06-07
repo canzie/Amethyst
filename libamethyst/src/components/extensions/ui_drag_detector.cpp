@@ -15,7 +15,7 @@ void UIDragDetector::handleMouseDown(uint32_t x, uint32_t y)
     m_isDragging = true;
     m_softLockBroken = false;
 
-    glm::vec2 mousePosParentRelative(x, y);
+    vec2 mousePosParentRelative(x, y);
     if (m_owner->parent) {
         auto *parentBase = m_owner->parent->as<UIBase2D>();
         if (parentBase) {
@@ -27,7 +27,7 @@ void UIDragDetector::handleMouseDown(uint32_t x, uint32_t y)
     m_dragStartOffset = m_owner->getBaseProperties().position.offset;
 
     if (onDragStart) {
-        onDragStart(glm::vec2(x, y));
+        onDragStart(vec2(x, y));
     }
 
     if (auto *window = m_owner->getWindow()) {
@@ -41,7 +41,7 @@ void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
         return;
     }
 
-    glm::vec2 mousePosParentRelative(x, y);
+    vec2 mousePosParentRelative(x, y);
     if (m_owner->parent) {
         auto *parentBase = m_owner->parent->as<UIBase2D>();
         if (parentBase) {
@@ -49,7 +49,7 @@ void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
         }
     }
 
-    glm::vec2 delta = mousePosParentRelative - m_dragStartMouse;
+    vec2 delta = mousePosParentRelative - m_dragStartMouse;
 
     switch (mode) {
     case DragMode::NONE:
@@ -64,7 +64,7 @@ void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
         break;
     case DragMode::SOFT_HORIZONTAL:
         if (!m_softLockBroken) {
-            if (glm::abs(delta.y) > softLockDistance) {
+            if (abs(delta.y) > softLockDistance) {
                 m_softLockBroken = true;
             } else {
                 delta.y = 0.0f;
@@ -73,7 +73,7 @@ void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
         break;
     case DragMode::SOFT_VERTICAL:
         if (!m_softLockBroken) {
-            if (glm::abs(delta.x) > softLockDistance) {
+            if (abs(delta.x) > softLockDistance) {
                 m_softLockBroken = true;
             } else {
                 delta.x = 0.0f;
@@ -87,7 +87,7 @@ void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
     m_owner->setBaseProperties({.position = pos});
 
     if (onDragUpdate) {
-        onDragUpdate(delta, glm::vec2(x, y));
+        onDragUpdate(delta, vec2(x, y));
     }
 }
 
@@ -108,7 +108,7 @@ void UIDragDetector::handleMouseUp(uint32_t x, uint32_t y)
     }
 
     if (onDragEnd) {
-        onDragEnd(glm::vec2(x, y));
+        onDragEnd(vec2(x, y));
         // onDragEnd may have destroyed *this; no member access after this point.
     }
 }

@@ -10,7 +10,7 @@
 #include "components/ui_layer.h"
 #include <array>
 #include <cstdint>
-#include <glm/glm.hpp>
+#include "math/math.h"
 #include <memory>
 
 namespace Amethyst {

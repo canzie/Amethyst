@@ -211,10 +211,10 @@ class TreeView : public UIObject {
     void updateSeparators();
     void ensureHeaderCapacity();
     void ensurePoolCapacity(uint32_t count);
-    void drawHeader(DrawContext &ctx, const glm::vec4 &childClip);
-    void drawSeparators(DrawContext &ctx, const glm::vec4 &childClip);
+    void drawHeader(DrawContext &ctx, const vec4 &childClip);
+    void drawSeparators(DrawContext &ctx, const vec4 &childClip);
     void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y,
-                 const glm::vec4 &childClip);
+                 const vec4 &childClip);
     void attachRowCells(uint32_t poolSlot, uint32_t logicalRow);
     void parkRowCells(DrawContext &ctx, uint32_t logicalRow);
     void hideSlot(DrawContext &ctx, uint32_t poolSlot);
@@ -228,11 +228,11 @@ class TreeView : public UIObject {
     uint32_t m_cursorCol = 0;
 
     float m_rowHeightPx = 0.0f;
-    glm::vec4 m_cellPaddingPx = {0.0f, 0.0f, 0.0f, 0.0f};
+    vec4 m_cellPaddingPx = {0.0f, 0.0f, 0.0f, 0.0f};
     std::vector<float> m_columnPositions;
 
-    glm::vec2 m_lastAbsolutePosition = {0.0f, 0.0f};
-    glm::vec2 m_lastAbsoluteSize = {0.0f, 0.0f};
+    vec2 m_lastAbsolutePosition = {0.0f, 0.0f};
+    vec2 m_lastAbsoluteSize = {0.0f, 0.0f};
 
     std::vector<std::unique_ptr<Frame>> m_separators;
     std::vector<std::unique_ptr<Frame>> m_rowBackgrounds;

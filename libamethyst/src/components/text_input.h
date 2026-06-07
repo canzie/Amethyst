@@ -83,7 +83,7 @@ class TextInput : public UIObject {
     GeometryAllocation *m_selectionAlloc = nullptr;
     GeometryAllocation *m_cursorAlloc = nullptr;
 
-    glm::vec2 m_textSize = {0.0f, 0.0f};
+    vec2 m_textSize = {0.0f, 0.0f};
     std::vector<float> m_charPositions;
     bool m_showingPlaceholder = false;
     float m_textBaselineY = 0.0f;

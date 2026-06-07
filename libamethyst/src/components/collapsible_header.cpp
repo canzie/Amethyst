@@ -157,7 +157,7 @@ void CollapsibleHeader::draw(DrawContext &ctx)
         }
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
     bool expanded = static_cast<bool>(m_chProps.expanded);
     bool showIndicator = static_cast<bool>(m_chProps.showIndicator);
     float contentOffset =
@@ -221,8 +221,8 @@ void CollapsibleHeader::draw(DrawContext &ctx)
             listLayout->apply(m_children);
         }
 
-        glm::vec2 contentPos = absoluteContentPosition + glm::vec2(0.0f, m_chProps.headerHeight);
-        glm::vec2 contentSize = {absoluteContentSize.x, glm::max(absoluteContentSize.y - m_chProps.headerHeight, 0.0f)};
+        vec2 contentPos = absoluteContentPosition + vec2(0.0f, m_chProps.headerHeight);
+        vec2 contentSize = {absoluteContentSize.x, max(absoluteContentSize.y - m_chProps.headerHeight, 0.0f)};
 
         for (auto &child : m_children) {
             if (auto *drawable = child->as<UIObject>()) {

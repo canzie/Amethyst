@@ -30,9 +30,9 @@ void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
 
     if (sortedChildren.empty()) return;
 
-    glm::vec2 containerSize = m_owner->absoluteContentSize;
+    vec2 containerSize = m_owner->absoluteContentSize;
     m_absoluteCellSize = cellSize.resolve(containerSize);
-    glm::vec2 absCellPadding = cellPadding.resolve(containerSize);
+    vec2 absCellPadding = cellPadding.resolve(containerSize);
 
     bool isVertical = (fillDirection == FillDirection::FILL_VERTICAL);
 

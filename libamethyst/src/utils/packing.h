@@ -8,8 +8,7 @@
 #include "components/common.h"
 
 #include <cstdint>
-#include <glm/glm.hpp>
-#include <glm/gtc/packing.hpp>
+#include "math/math.h"
 
 namespace Amethyst {
 
@@ -34,12 +33,12 @@ inline uint32_t packColor(int r, int g, int b, int a)
 
 inline uint16_t packFloatToHalf(float f)
 {
-    return glm::packHalf1x16(f);
+    return packHalf1x16(f);
 }
 
 inline uint16_t packRotation(float radians)
 {
-    float normalized = glm::fract(radians / (2.0f * glm::pi<float>()));
+    float normalized = fract(radians / (2.0f * pi<float>()));
     return static_cast<uint16_t>(normalized * 65535.0f);
 }
 

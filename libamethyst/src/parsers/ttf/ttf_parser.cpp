@@ -290,8 +290,8 @@ bool Parser::parseGlyf(FontData &out, const std::vector<uint32_t> &locaOffsets)
             out.glyphs[i].flags = TTF_GLYPH_EMPTY;
             out.glyphs[i].contourStart = 0;
             out.glyphs[i].contourCount = 0;
-            out.glyphs[i].bboxMin = glm::vec2(0.0f);
-            out.glyphs[i].bboxMax = glm::vec2(0.0f);
+            out.glyphs[i].bboxMin = vec2(0.0f);
+            out.glyphs[i].bboxMax = vec2(0.0f);
             continue;
         }
 

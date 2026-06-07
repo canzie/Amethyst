@@ -157,9 +157,9 @@ class Table : public UIObject {
     void updateSeparators();
     void ensureHeaderCapacity();
     void ensureRowBackgroundCapacity(uint32_t count);
-    void drawHeader(DrawContext &ctx, const glm::vec4 &childClip);
-    void drawSeparators(DrawContext &ctx, const glm::vec4 &childClip);
-    void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const glm::vec4 &childClip);
+    void drawHeader(DrawContext &ctx, const vec4 &childClip);
+    void drawSeparators(DrawContext &ctx, const vec4 &childClip);
+    void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip);
 
     std::vector<TableColumn> m_columns;
 
@@ -177,7 +177,7 @@ class Table : public UIObject {
     uint32_t m_cursorCol = 0;
 
     float m_computedRowHeight = 0.0f;
-    glm::vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f};
+    vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f};
     std::vector<float> m_columnPositions;
 
     std::vector<std::unique_ptr<Frame>> m_separators;

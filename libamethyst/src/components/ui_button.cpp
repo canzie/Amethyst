@@ -38,7 +38,7 @@ EventResult UIButton::onInputEnded(const InputObject &input)
 
     uint32_t x = static_cast<uint32_t>(input.position.x);
     uint32_t y = static_cast<uint32_t>(input.position.y);
-    bool over = containsPoint(glm::vec2(input.position.x, input.position.y));
+    bool over = containsPoint(vec2(input.position.x, input.position.y));
     switch (input.type) {
     case InputType::MOUSE_BUTTON_1: {
         EventResult up = onMouseButton1Up(x, y);

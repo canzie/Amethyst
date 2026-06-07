@@ -182,7 +182,7 @@ void DockingLayer::collapseNode(int32_t nodeIndex)
     m_pendingDeletions.push_back(emptyTabBar);
 }
 
-DockZone DockingLayer::hitTestZone(int32_t nodeIndex, glm::vec2 position)
+DockZone DockingLayer::hitTestZone(int32_t nodeIndex, vec2 position)
 {
     if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(m_nodes.size())) {
         return DockZone::CENTER;
@@ -190,11 +190,11 @@ DockZone DockingLayer::hitTestZone(int32_t nodeIndex, glm::vec2 position)
 
     DockNode &node = m_nodes[nodeIndex];
 
-    glm::vec2 nodePos = node.content->absolutePosition;
-    glm::vec2 nodeSize = node.content->absoluteSize;
+    vec2 nodePos = node.content->absolutePosition;
+    vec2 nodeSize = node.content->absoluteSize;
 
-    glm::vec2 local = position - nodePos;
-    glm::vec2 normalized = local / nodeSize;
+    vec2 local = position - nodePos;
+    vec2 normalized = local / nodeSize;
 
     float zoneEdgeRatio = 0.33f;
     if (normalized.x < zoneEdgeRatio) return DockZone::LEFT;
@@ -212,7 +212,7 @@ int32_t DockingLayer::createNode()
     return idx;
 }
 
-void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition)
+void DockingLayer::computeLayout(int32_t nodeIndex, vec2 nodeSize, vec2 nodePosition)
 {
     if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(m_nodes.size())) {
         return;
@@ -223,8 +223,8 @@ void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec
     node.nodeSize = nodeSize;
 
     if (node.isLeaf()) {
-        glm::vec2 contentSize = nodeSize;
-        glm::vec2 contentPos = nodePosition;
+        vec2 contentSize = nodeSize;
+        vec2 contentPos = nodePosition;
 
         bool isTopEdge = (nodePosition.y <= absolutePosition.y + 0.01f);
         bool isBottomEdge = (nodePosition.y + nodeSize.y >= absolutePosition.y + absoluteSize.y - 0.01f);
@@ -247,8 +247,8 @@ void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec
         return;
     }
 
-    glm::vec2 firstSize = nodeSize, firstPos = nodePosition;
-    glm::vec2 secondSize = nodeSize, secondPos = nodePosition;
+    vec2 firstSize = nodeSize, firstPos = nodePosition;
+    vec2 secondSize = nodeSize, secondPos = nodePosition;
 
     if (node.axis == SplitAxis::HORIZONTAL) {
         firstSize.y = nodeSize.y * node.ratio;
@@ -279,7 +279,7 @@ void DockingLayer::computeLayout(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec
     }
 }
 
-void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm::vec2 nodePosition)
+void DockingLayer::setupResizeHandle(int32_t nodeIndex, vec2 nodeSize, vec2 nodePosition)
 {
     DockNode &node = m_nodes[nodeIndex];
     if (node.isLeaf()) {
@@ -320,10 +320,10 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm:
 
     InvisibleButton *handlePtr = node.resizeHandle.get();
 
-    drag->onDragStart = [cursorShape](glm::vec2) { InputInterface::setCursorShape(cursorShape); };
+    drag->onDragStart = [cursorShape](vec2) { InputInterface::setCursorShape(cursorShape); };
 
-    drag->onDragUpdate = [this, handlePtr](glm::vec2, glm::vec2 mousePos) {
-        glm::vec2 handlePos = handlePtr->absolutePosition + handlePtr->absoluteSize * 0.5f;
+    drag->onDragUpdate = [this, handlePtr](vec2, vec2 mousePos) {
+        vec2 handlePos = handlePtr->absolutePosition + handlePtr->absoluteSize * 0.5f;
         int32_t ownerIndex = findNodeByResizeHandlePosition(handlePos, m_rootNode);
 
         if (ownerIndex < 0 || ownerIndex >= static_cast<int32_t>(m_nodes.size())) {
@@ -334,16 +334,16 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, glm::vec2 nodeSize, glm:
 
         if (owner.axis == SplitAxis::VERTICAL) {
             float relativeX = mousePos.x - owner.nodePosition.x;
-            owner.ratio = glm::clamp(relativeX / owner.nodeSize.x, 0.1f, 0.9f);
+            owner.ratio = clamp(relativeX / owner.nodeSize.x, 0.1f, 0.9f);
         } else {
             float relativeY = mousePos.y - owner.nodePosition.y;
-            owner.ratio = glm::clamp(relativeY / owner.nodeSize.y, 0.1f, 0.9f);
+            owner.ratio = clamp(relativeY / owner.nodeSize.y, 0.1f, 0.9f);
         }
 
         markDirty();
     };
 
-    drag->onDragEnd = [](glm::vec2) { InputInterface::setCursorShape(CURSOR_ARROW); };
+    drag->onDragEnd = [](vec2) { InputInterface::setCursorShape(CURSOR_ARROW); };
 
     node.resizeHandle->computeAbsolutes(nodeSize, nodePosition, 0.0f);
 }
@@ -360,8 +360,8 @@ int32_t DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, std::unique_pt
     }
 
     TabBar *existingContent = m_nodes[nodeIndex].content;
-    glm::vec2 nodeSize = existingContent->absoluteSize;
-    glm::vec2 nodePosition = existingContent->absolutePosition;
+    vec2 nodeSize = existingContent->absoluteSize;
+    vec2 nodePosition = existingContent->absolutePosition;
 
     int32_t existingChild = createNode();
     int32_t newChild = createNode();
@@ -390,7 +390,7 @@ int32_t DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, std::unique_pt
     return newChild;
 }
 
-void DockingLayer::recalculateChildren(int32_t parentIndex, glm::vec2 parentSize, glm::vec2 parentPosition)
+void DockingLayer::recalculateChildren(int32_t parentIndex, vec2 parentSize, vec2 parentPosition)
 {
     if (parentIndex < 0 || parentIndex >= static_cast<int32_t>(m_nodes.size())) {
         return;
@@ -423,7 +423,7 @@ void DockingLayer::recalculateChildren(int32_t parentIndex, glm::vec2 parentSize
     secondChild.content->markDirty();
 }
 
-int32_t DockingLayer::findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::vec2 parentSize, glm::vec2 parentPosition)
+int32_t DockingLayer::findNodeByPosition(vec2 pos, int32_t nodeIndex, vec2 parentSize, vec2 parentPosition)
 {
     if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(m_nodes.size())) {
         return -1;
@@ -435,10 +435,10 @@ int32_t DockingLayer::findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::
         return nodeIndex;
     }
 
-    glm::vec2 firstPos = parentPosition;
-    glm::vec2 firstSize = parentSize;
-    glm::vec2 secondPos = parentPosition;
-    glm::vec2 secondSize = parentSize;
+    vec2 firstPos = parentPosition;
+    vec2 firstSize = parentSize;
+    vec2 secondPos = parentPosition;
+    vec2 secondSize = parentSize;
 
     if (node.axis == SplitAxis::HORIZONTAL) {
         float splitSizeTop = parentSize.y * node.ratio;
@@ -452,7 +452,7 @@ int32_t DockingLayer::findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::
         secondSize.x = parentSize.x - splitSizeLeft;
     }
 
-    glm::vec2 firstEnd = firstPos + firstSize;
+    vec2 firstEnd = firstPos + firstSize;
     if (pos.x >= firstPos.x && pos.x < firstEnd.x && pos.y >= firstPos.y && pos.y < firstEnd.y) {
         return findNodeByPosition(pos, node.firstChild, firstSize, firstPos);
     }
@@ -460,7 +460,7 @@ int32_t DockingLayer::findNodeByPosition(glm::vec2 pos, int32_t nodeIndex, glm::
     return findNodeByPosition(pos, node.secondChild, secondSize, secondPos);
 }
 
-int32_t DockingLayer::findNodeByResizeHandlePosition(glm::vec2 pos, int32_t nodeIndex)
+int32_t DockingLayer::findNodeByResizeHandlePosition(vec2 pos, int32_t nodeIndex)
 {
     if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(m_nodes.size())) {
         return -1;
@@ -469,8 +469,8 @@ int32_t DockingLayer::findNodeByResizeHandlePosition(glm::vec2 pos, int32_t node
     DockNode &node = m_nodes[nodeIndex];
 
     if (node.resizeHandle) {
-        glm::vec2 handlePos = node.resizeHandle->absolutePosition;
-        glm::vec2 handleSize = node.resizeHandle->absoluteSize;
+        vec2 handlePos = node.resizeHandle->absolutePosition;
+        vec2 handleSize = node.resizeHandle->absoluteSize;
         if (pos.x >= handlePos.x && pos.x < handlePos.x + handleSize.x && pos.y >= handlePos.y &&
             pos.y < handlePos.y + handleSize.y) {
             return nodeIndex;
@@ -481,8 +481,8 @@ int32_t DockingLayer::findNodeByResizeHandlePosition(glm::vec2 pos, int32_t node
         return -1;
     }
 
-    glm::vec2 nodePos = node.nodePosition;
-    glm::vec2 nodeSize = node.nodeSize;
+    vec2 nodePos = node.nodePosition;
+    vec2 nodeSize = node.nodeSize;
 
     if (node.axis == SplitAxis::HORIZONTAL) {
         float splitY = nodePos.y + nodeSize.y * node.ratio;
@@ -503,7 +503,7 @@ int32_t DockingLayer::findNodeByResizeHandlePosition(glm::vec2 pos, int32_t node
 
 void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
 {
-    tabBar->onTornOffTabReleased = [this, tabBar](std::unique_ptr<TabBar::Tab> tab, glm::vec2 dropPos) {
+    tabBar->onTornOffTabReleased = [this, tabBar](std::unique_ptr<TabBar::Tab> tab, vec2 dropPos) {
         hideDockHints();
         int32_t sourceNode = findNodeByPosition(tabBar->absolutePosition, m_rootNode, absoluteSize, absolutePosition);
 
@@ -529,7 +529,7 @@ void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
         markDirty();
     };
 
-    tabBar->onTornOffTabMoved = [this](Instance *, glm::vec2 pos) { updateDockHints(pos); };
+    tabBar->onTornOffTabMoved = [this](Instance *, vec2 pos) { updateDockHints(pos); };
 }
 
 void DockingLayer::initDockHints()
@@ -553,7 +553,7 @@ void DockingLayer::initDockHints()
     }
 }
 
-void DockingLayer::updateDockHints(glm::vec2 mousePos)
+void DockingLayer::updateDockHints(vec2 mousePos)
 {
     if (m_rootNode < 0) {
         hideDockHints();
@@ -567,10 +567,10 @@ void DockingLayer::updateDockHints(glm::vec2 mousePos)
     }
 
     DockNode &node = m_nodes[hoveredNode];
-    glm::vec2 nodePos = node.content->absolutePosition;
-    glm::vec2 nodeSize = node.content->absoluteSize;
+    vec2 nodePos = node.content->absolutePosition;
+    vec2 nodeSize = node.content->absoluteSize;
 
-    glm::vec2 layerPos = absolutePosition;
+    vec2 layerPos = absolutePosition;
 
     const float zoneSize = 0.33f;
     const float centerSize = 0.34f;

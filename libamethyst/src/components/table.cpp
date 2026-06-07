@@ -297,7 +297,7 @@ void Table::ensureRowBackgroundCapacity(uint32_t count)
     }
 }
 
-void Table::drawHeader(DrawContext &ctx, const glm::vec4 &childClip)
+void Table::drawHeader(DrawContext &ctx, const vec4 &childClip)
 {
     uint32_t cols = columnCount();
     ensureHeaderCapacity();
@@ -332,12 +332,12 @@ void Table::drawHeader(DrawContext &ctx, const glm::vec4 &childClip)
         float cellX = m_columnPositions[col] + m_resolvedPadding.w;
         float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col] - m_resolvedPadding.w - m_resolvedPadding.y;
 
-        lbl->computeAbsolutes({cellWidth, m_tProps.headerHeight}, absolutePosition + glm::vec2(cellX, 0.0f), absoluteRotation);
+        lbl->computeAbsolutes({cellWidth, m_tProps.headerHeight}, absolutePosition + vec2(cellX, 0.0f), absoluteRotation);
         lbl->draw(ctx);
     }
 }
 
-void Table::drawSeparators(DrawContext &ctx, const glm::vec4 &childClip)
+void Table::drawSeparators(DrawContext &ctx, const vec4 &childClip)
 {
     for (auto &sep : m_separators) {
         sep->clipRect = childClip;
@@ -346,7 +346,7 @@ void Table::drawSeparators(DrawContext &ctx, const glm::vec4 &childClip)
     }
 }
 
-void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const glm::vec4 &childClip)
+void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip)
 {
     uint32_t cols = columnCount();
 
@@ -370,7 +370,7 @@ void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex,
     });
     bg->clipRect = childClip;
     bg->markDirty();
-    bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + glm::vec2(0.0f, y), absoluteRotation);
+    bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + vec2(0.0f, y), absoluteRotation);
     bg->draw(ctx);
 
     for (uint32_t col = 0; col < cols; col++) {
@@ -393,7 +393,7 @@ void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex,
         float paddedHeight = m_computedRowHeight - m_resolvedPadding.x - m_resolvedPadding.z;
 
         drawable->clipRect = childClip;
-        drawable->computeAbsolutes({paddedWidth, paddedHeight}, absolutePosition + glm::vec2(paddedX, paddedY), absoluteRotation);
+        drawable->computeAbsolutes({paddedWidth, paddedHeight}, absolutePosition + vec2(paddedX, paddedY), absoluteRotation);
         drawable->draw(ctx);
     }
 }
@@ -414,7 +414,7 @@ void Table::draw(DrawContext &ctx)
 
     m_computedRowHeight = m_tProps.rowHeight > 0.0f ? m_tProps.rowHeight : 24.0f;
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
     float dataStartY = m_tProps.showHeader ? m_tProps.headerHeight : 0.0f;
 
     if (m_tProps.showHeader) {

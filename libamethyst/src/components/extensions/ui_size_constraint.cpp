@@ -6,7 +6,7 @@ namespace Amethyst {
 
 void UISizeConstraint::apply()
 {
-    m_owner->absoluteSize = glm::clamp(m_owner->absoluteSize, minSize, maxSize);
+    m_owner->absoluteSize = clamp(m_owner->absoluteSize, minSize, maxSize);
 }
 
 } // namespace Amethyst

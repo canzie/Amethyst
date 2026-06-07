@@ -385,7 +385,7 @@ void TreeView::ensurePoolCapacity(uint32_t count)
 }
 
 // WIP: header rendering is wired but off by default and unverified against all themes.
-void TreeView::drawHeader(DrawContext &ctx, const glm::vec4 &childClip)
+void TreeView::drawHeader(DrawContext &ctx, const vec4 &childClip)
 {
     uint32_t cols = columnCount();
     ensureHeaderCapacity();
@@ -420,12 +420,12 @@ void TreeView::drawHeader(DrawContext &ctx, const glm::vec4 &childClip)
         float cellX = m_columnPositions[col] + m_cellPaddingPx.w;
         float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col] - m_cellPaddingPx.w - m_cellPaddingPx.y;
 
-        lbl->computeAbsolutes({cellWidth, m_tvProps.headerHeight}, absolutePosition + glm::vec2(cellX, 0.0f), absoluteRotation);
+        lbl->computeAbsolutes({cellWidth, m_tvProps.headerHeight}, absolutePosition + vec2(cellX, 0.0f), absoluteRotation);
         lbl->draw(ctx);
     }
 }
 
-void TreeView::drawSeparators(DrawContext &ctx, const glm::vec4 &childClip)
+void TreeView::drawSeparators(DrawContext &ctx, const vec4 &childClip)
 {
     for (auto &sep : m_separators) {
         sep->clipRect = childClip;
@@ -435,7 +435,7 @@ void TreeView::drawSeparators(DrawContext &ctx, const glm::vec4 &childClip)
 }
 
 void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y,
-                       const glm::vec4 &childClip)
+                       const vec4 &childClip)
 {
     uint32_t cols = columnCount();
     uint32_t visualIndex = visibleIndex;
@@ -569,7 +569,7 @@ void TreeView::draw(DrawContext &ctx)
 
     m_rowHeightPx = m_tvProps.rowHeight > 0.0f ? m_tvProps.rowHeight : 24.0f;
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
     float headerH = static_cast<bool>(m_tvProps.showHeader) ? m_tvProps.headerHeight : 0.0f;
 
     float viewportHeight = childClip.w - childClip.y;

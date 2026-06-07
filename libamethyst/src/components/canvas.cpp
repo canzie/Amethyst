@@ -7,7 +7,7 @@
 #include "rendering/instance_data.h"
 
 #include <algorithm>
-#include <glm/glm.hpp>
+#include "math/math.h"
 
 namespace Amethyst {
 
@@ -32,7 +32,7 @@ void Canvas::clear()
     }
 }
 
-void Canvas::drawLine(glm::vec2 start, glm::vec2 end, Color4 color, float thickness)
+void Canvas::drawLine(vec2 start, vec2 end, Color4 color, float thickness)
 {
     DrawCmd cmd{};
     cmd.primitive = PRIMITIVE_CANVAS_LINE;
@@ -44,7 +44,7 @@ void Canvas::drawLine(glm::vec2 start, glm::vec2 end, Color4 color, float thickn
     markDirty();
 }
 
-void Canvas::drawTriangleFilled(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, Color4 color)
+void Canvas::drawTriangleFilled(vec2 p0, vec2 p1, vec2 p2, Color4 color)
 {
     DrawCmd cmd{};
     cmd.primitive = PRIMITIVE_CANVAS_TRI;
@@ -56,7 +56,7 @@ void Canvas::drawTriangleFilled(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, Color4
     markDirty();
 }
 
-void Canvas::drawTriangleStroke(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, Color4 color, float thickness)
+void Canvas::drawTriangleStroke(vec2 p0, vec2 p1, vec2 p2, Color4 color, float thickness)
 {
     DrawCmd cmd{};
     cmd.primitive = PRIMITIVE_CANVAS_TRI;
@@ -70,7 +70,7 @@ void Canvas::drawTriangleStroke(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, Color4
     markDirty();
 }
 
-void Canvas::drawQuadFilled(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, Color4 color)
+void Canvas::drawQuadFilled(vec2 p0, vec2 p1, vec2 p2, vec2 p3, Color4 color)
 {
     DrawCmd cmd{};
     cmd.primitive = PRIMITIVE_CANVAS_QUAD;
@@ -83,7 +83,7 @@ void Canvas::drawQuadFilled(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 
     markDirty();
 }
 
-void Canvas::drawQuadStroke(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, Color4 color, float thickness)
+void Canvas::drawQuadStroke(vec2 p0, vec2 p1, vec2 p2, vec2 p3, Color4 color, float thickness)
 {
     DrawCmd cmd{};
     cmd.primitive = PRIMITIVE_CANVAS_QUAD;
@@ -98,7 +98,7 @@ void Canvas::drawQuadStroke(glm::vec2 p0, glm::vec2 p1, glm::vec2 p2, glm::vec2 
     markDirty();
 }
 
-void Canvas::drawCircleFilled(glm::vec2 center, float radius, Color4 color)
+void Canvas::drawCircleFilled(vec2 center, float radius, Color4 color)
 {
     DrawCmd cmd{};
     cmd.primitive = PRIMITIVE_CANVAS_CIRCLE;
@@ -109,7 +109,7 @@ void Canvas::drawCircleFilled(glm::vec2 center, float radius, Color4 color)
     markDirty();
 }
 
-void Canvas::drawCircleStroke(glm::vec2 center, float radius, Color4 color, float thickness)
+void Canvas::drawCircleStroke(vec2 center, float radius, Color4 color, float thickness)
 {
     DrawCmd cmd{};
     cmd.primitive = PRIMITIVE_CANVAS_CIRCLE;
@@ -122,7 +122,7 @@ void Canvas::drawCircleStroke(glm::vec2 center, float radius, Color4 color, floa
     markDirty();
 }
 
-void Canvas::drawEllipseStroke(glm::vec2 center, float semiMajor, float semiMinor, float rotationDeg, Color4 color, float thickness)
+void Canvas::drawEllipseStroke(vec2 center, float semiMajor, float semiMinor, float rotationDeg, Color4 color, float thickness)
 {
     DrawCmd cmd{};
     cmd.primitive = PRIMITIVE_CANVAS_ELLIPSE;
@@ -137,7 +137,7 @@ void Canvas::drawEllipseStroke(glm::vec2 center, float semiMajor, float semiMino
     markDirty();
 }
 
-void Canvas::drawText(const std::string &text, glm::vec2 position, float fontSize, Color4 color, uint32_t maxChars)
+void Canvas::drawText(const std::string &text, vec2 position, float fontSize, Color4 color, uint32_t maxChars)
 {
     TextCmd cmd;
     cmd.text = text;
@@ -163,15 +163,15 @@ InstanceData Canvas::buildInstanceData(const DrawCmd &cmd) const
     float padding = std::max(cmd.borderThickness, 1.0f);
 
     if (cmd.primitive == PRIMITIVE_CANVAS_LINE) {
-        glm::vec2 bboxMin = glm::min(cmd.points[0], cmd.points[1]);
-        glm::vec2 bboxMax = glm::max(cmd.points[0], cmd.points[1]);
+        vec2 bboxMin = min(cmd.points[0], cmd.points[1]);
+        vec2 bboxMax = max(cmd.points[0], cmd.points[1]);
 
         float halfThick = cmd.borderThickness * 0.5f;
-        bboxMin -= glm::vec2(halfThick + padding);
-        bboxMax += glm::vec2(halfThick + padding);
+        bboxMin -= vec2(halfThick + padding);
+        bboxMax += vec2(halfThick + padding);
 
-        glm::vec2 center = (bboxMin + bboxMax) * 0.5f;
-        glm::vec2 size = bboxMax - bboxMin;
+        vec2 center = (bboxMin + bboxMax) * 0.5f;
+        vec2 size = bboxMax - bboxMin;
 
         data.translation = absolutePosition + center;
         data.scale = size;
@@ -180,14 +180,14 @@ InstanceData Canvas::buildInstanceData(const DrawCmd &cmd) const
         data.setShapePoint(1, cmd.points[1] - center);
 
     } else if (cmd.primitive == PRIMITIVE_CANVAS_TRI) {
-        glm::vec2 bboxMin = glm::min(glm::min(cmd.points[0], cmd.points[1]), cmd.points[2]);
-        glm::vec2 bboxMax = glm::max(glm::max(cmd.points[0], cmd.points[1]), cmd.points[2]);
+        vec2 bboxMin = min(min(cmd.points[0], cmd.points[1]), cmd.points[2]);
+        vec2 bboxMax = max(max(cmd.points[0], cmd.points[1]), cmd.points[2]);
 
-        bboxMin -= glm::vec2(padding);
-        bboxMax += glm::vec2(padding);
+        bboxMin -= vec2(padding);
+        bboxMax += vec2(padding);
 
-        glm::vec2 center = (bboxMin + bboxMax) * 0.5f;
-        glm::vec2 size = bboxMax - bboxMin;
+        vec2 center = (bboxMin + bboxMax) * 0.5f;
+        vec2 size = bboxMax - bboxMin;
 
         data.translation = absolutePosition + center;
         data.scale = size;
@@ -197,14 +197,14 @@ InstanceData Canvas::buildInstanceData(const DrawCmd &cmd) const
         data.setShapePoint(2, cmd.points[2] - center);
 
     } else if (cmd.primitive == PRIMITIVE_CANVAS_QUAD) {
-        glm::vec2 bboxMin = glm::min(glm::min(cmd.points[0], cmd.points[1]), glm::min(cmd.points[2], cmd.points[3]));
-        glm::vec2 bboxMax = glm::max(glm::max(cmd.points[0], cmd.points[1]), glm::max(cmd.points[2], cmd.points[3]));
+        vec2 bboxMin = min(min(cmd.points[0], cmd.points[1]), min(cmd.points[2], cmd.points[3]));
+        vec2 bboxMax = max(max(cmd.points[0], cmd.points[1]), max(cmd.points[2], cmd.points[3]));
 
-        bboxMin -= glm::vec2(padding);
-        bboxMax += glm::vec2(padding);
+        bboxMin -= vec2(padding);
+        bboxMax += vec2(padding);
 
-        glm::vec2 center = (bboxMin + bboxMax) * 0.5f;
-        glm::vec2 size = bboxMax - bboxMin;
+        vec2 center = (bboxMin + bboxMax) * 0.5f;
+        vec2 size = bboxMax - bboxMin;
 
         data.translation = absolutePosition + center;
         data.scale = size;
@@ -218,7 +218,7 @@ InstanceData Canvas::buildInstanceData(const DrawCmd &cmd) const
         float totalRadius = cmd.radius + padding;
 
         data.translation = absolutePosition + cmd.points[0];
-        data.scale = glm::vec2(totalRadius * 2.0f);
+        data.scale = vec2(totalRadius * 2.0f);
         data.setCornerRadius(cmd.radius);
         data.setBorderThickness(cmd.borderThickness);
 
@@ -227,10 +227,10 @@ InstanceData Canvas::buildInstanceData(const DrawCmd &cmd) const
         float totalH = cmd.semiMinor + padding + cmd.borderThickness;
 
         data.translation = absolutePosition + cmd.points[0];
-        data.scale = glm::vec2(totalW * 2.0f, totalH * 2.0f);
+        data.scale = vec2(totalW * 2.0f, totalH * 2.0f);
         data.setRotation(cmd.rotationDeg * 3.14159265359f / 180.0f);
         data.setBorderThickness(cmd.borderThickness);
-        data.setShapePoint(0, glm::vec2(cmd.semiMajor, cmd.semiMinor));
+        data.setShapePoint(0, vec2(cmd.semiMajor, cmd.semiMinor));
     }
 
     return data;

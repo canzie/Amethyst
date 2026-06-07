@@ -35,11 +35,11 @@ class UIObject : public UIBase2D {
     UIObject(UIObject &&) = default;
     UIObject &operator=(UIObject &&) = default;
 
-    void computeAbsolutes(glm::vec2 parentSize, glm::vec2 parentPos, Degrees parentRotation);
+    void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation);
     InstanceData createInstanceData() const;
     Window *getWindow();
 
-    glm::vec4 computeChildClipRect() const;
+    vec4 computeChildClipRect() const;
 
     template <typename T> T *getExtension()
     {

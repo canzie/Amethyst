@@ -9,8 +9,7 @@
 #include "utils/packing.h"
 
 #include <cstdint>
-#include <glm/glm.hpp>
-#include <glm/gtc/packing.hpp>
+#include "math/math.h"
 
 namespace Amethyst {
 
@@ -19,9 +18,9 @@ enum GpuInstanceFlags : uint32_t {
 };
 
 struct InstanceData {
-    alignas(8) glm::vec2 translation;     // 8B position
-    alignas(8) glm::vec2 scale;           // 8B size
-    alignas(16) glm::vec4 clipRect;       // 16B clip rect (keep as float)
+    alignas(8) vec2 translation;     // 8B position
+    alignas(8) vec2 scale;           // 8B size
+    alignas(16) vec4 clipRect;       // 16B clip rect (keep as float)
     uint32_t fillColor = 0xFFFFFFFF;      // 4B packed RGBA
     uint32_t borderColor = 0;             // 4B packed RGBA
     uint32_t shapeData[4] = {0, 0, 0, 0}; // 16B packed half2 pairs for triangle/line/text UV
@@ -62,15 +61,15 @@ struct InstanceData {
         cornerPrimitiveMode = (cornerPrimitiveMode & 0x00FFFFFFu) | (static_cast<uint32_t>(mode) << 24);
     }
 
-    void setUvRect(const glm::vec4 &uvRect)
+    void setUvRect(const vec4 &uvRect)
     {
-        shapeData[0] = glm::packHalf2x16(glm::vec2(uvRect.x, uvRect.y));
-        shapeData[1] = glm::packHalf2x16(glm::vec2(uvRect.z, uvRect.w));
+        shapeData[0] = packHalf2x16(vec2(uvRect.x, uvRect.y));
+        shapeData[1] = packHalf2x16(vec2(uvRect.z, uvRect.w));
     }
 
-    void setShapePoint(uint32_t index, glm::vec2 point)
+    void setShapePoint(uint32_t index, vec2 point)
     {
-        shapeData[index] = glm::packHalf2x16(point);
+        shapeData[index] = packHalf2x16(point);
     }
 
     void setVisible(bool visible)

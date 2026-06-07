@@ -6,7 +6,7 @@
 #define AMETHYST__INPUT_EVENTS_H
 
 #include <functional>
-#include <glm/glm.hpp>
+#include "math/math.h"
 #include <variant>
 
 namespace Amethyst {
@@ -60,7 +60,7 @@ enum KeyModifier {
 };
 
 struct MouseEvent {
-    glm::vec2 position;
+    vec2 position;
     MouseButton button;
     MouseAction action;
     int mods;
@@ -74,13 +74,13 @@ struct KeyEvent {
 };
 
 struct CursorMoveEvent {
-    glm::vec2 position;
-    glm::vec2 delta;
+    vec2 position;
+    vec2 delta;
 };
 
 struct ScrollEvent {
-    glm::vec2 position;
-    glm::vec2 offset;
+    vec2 position;
+    vec2 offset;
     int mods;
 };
 
@@ -89,7 +89,7 @@ using InputEvent = std::variant<MouseEvent, KeyEvent, CursorMoveEvent, ScrollEve
 class Instance;
 
 struct ClickEvent {
-    glm::vec2 position;
+    vec2 position;
     MouseButton button;
     Instance *target;
 };
@@ -118,8 +118,8 @@ enum class InputState {
 struct InputObject {
     InputType type = InputType::NONE;
     InputState state = InputState::NONE;
-    glm::vec3 position{0.0f, 0.0f, 0.0f};
-    glm::vec3 delta{0.0f, 0.0f, 0.0f};
+    vec3 position{0.0f, 0.0f, 0.0f};
+    vec3 delta{0.0f, 0.0f, 0.0f};
     int keyCode = 0;
     int modifiers = 0; // bitmask of KeyModifier (MOD_SHIFT/MOD_CONTROL/MOD_ALT/MOD_SUPER)
 };

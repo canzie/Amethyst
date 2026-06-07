@@ -82,7 +82,7 @@ int main()
 
     amCtx.init(backend);
 
-    glm::vec2 screenSize = {
+    vec2 screenSize = {
         static_cast<float>(ctx.swapchainExtent.width),
         static_cast<float>(ctx.swapchainExtent.height),
     };

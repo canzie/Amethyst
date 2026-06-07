@@ -11,7 +11,7 @@
 
 #include <algorithm>
 #include <climits>
-#include <glm/glm.hpp>
+#include "math/math.h"
 
 namespace Amethyst {
 
@@ -170,7 +170,7 @@ void Dropdown::buildMainPopup(OverlayLayer *overlay)
                               ? totalHeight
                               : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
 
-    glm::vec2 pos;
+    vec2 pos;
     switch (m_ddProps.popupDirection) {
     case DropdownDirection::UP:
         pos = {absolutePosition.x, absolutePosition.y - visibleHeight};
@@ -186,14 +186,14 @@ void Dropdown::buildMainPopup(OverlayLayer *overlay)
         break;
     }
 
-    glm::vec2 viewport = m_overlayPtr->absoluteSize;
+    vec2 viewport = m_overlayPtr->absoluteSize;
     pos.x = std::min(pos.x, std::max(0.0f, viewport.x - m_ddProps.popupWidth));
     pos.y = std::min(pos.y, std::max(0.0f, viewport.y - visibleHeight));
 
     m_popup = buildPopupPanel(overlay, pos, totalHeight, visibleHeight, 1, {});
 }
 
-void Dropdown::buildSubmenuAtPath(OverlayLayer *overlay, const std::vector<size_t> &path, glm::vec2 pos)
+void Dropdown::buildSubmenuAtPath(OverlayLayer *overlay, const std::vector<size_t> &path, vec2 pos)
 {
     size_t depth = path.size() - 1;
     closeSubmenuFrom(depth);
@@ -204,7 +204,7 @@ void Dropdown::buildSubmenuAtPath(OverlayLayer *overlay, const std::vector<size_
                               ? totalHeight
                               : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
 
-    glm::vec2 viewport = overlay->absoluteSize;
+    vec2 viewport = overlay->absoluteSize;
     pos.y = std::min(pos.y, std::max(0.0f, viewport.y - visibleHeight));
 
     UIObject *panel = buildPopupPanel(overlay, pos, totalHeight, visibleHeight, 2 + static_cast<int>(depth), path);
@@ -220,7 +220,7 @@ std::vector<DropdownItem> &Dropdown::itemsAtPath(const std::vector<size_t> &path
     return *items;
 }
 
-UIObject *Dropdown::buildPopupPanel(OverlayLayer *overlay, glm::vec2 pos, float totalHeight, float visibleHeight, int zIdx,
+UIObject *Dropdown::buildPopupPanel(OverlayLayer *overlay, vec2 pos, float totalHeight, float visibleHeight, int zIdx,
                                     const std::vector<size_t> &path)
 {
     UIObject *panel;

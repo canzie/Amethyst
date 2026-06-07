@@ -37,7 +37,7 @@ class ScrollingFrame : public UIObject {
   private:
     void drawScrollbars(DrawContext &ctx);
 
-    glm::vec2 m_scrollOffset = {0.0f, 0.0f};
+    vec2 m_scrollOffset = {0.0f, 0.0f};
     std::unique_ptr<Frame> m_verticalBar;
     std::unique_ptr<Frame> m_verticalThumb;
     std::unique_ptr<Frame> m_horizontalBar;

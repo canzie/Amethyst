@@ -1,7 +1,7 @@
 #ifndef AMETHYST__GIZMO_H
 #define AMETHYST__GIZMO_H
 
-#include <glm/glm.hpp>
+#include "math/math.h"
 #include <memory>
 
 namespace Amethyst {
@@ -53,10 +53,10 @@ struct GizmoConfig {
 };
 
 struct GizmoParams {
-    glm::mat4 view{1.0f};
-    glm::mat4 projection{1.0f};
-    glm::mat4 objectTransform{1.0f};
-    glm::vec3 pivot{0.0f};
+    mat4 view{1.0f};
+    mat4 projection{1.0f};
+    mat4 objectTransform{1.0f};
+    vec3 pivot{0.0f};
     GizmoOperation operation = GizmoOperation::TRANSLATE;
     GizmoSpace space = GizmoSpace::WORLD;
 
@@ -68,9 +68,9 @@ struct GizmoResult {
     bool hovered = false;
     GizmoAxis axis = GizmoAxis::NONE;
     GizmoOperation operation = GizmoOperation::TRANSLATE;
-    glm::vec3 deltaPosition{0.0f};
-    glm::vec3 deltaRotation{0.0f};
-    glm::vec3 deltaScale{1.0f};
+    vec3 deltaPosition{0.0f};
+    vec3 deltaRotation{0.0f};
+    vec3 deltaScale{1.0f};
     float rotationDegrees = 0.0f;
 };
 

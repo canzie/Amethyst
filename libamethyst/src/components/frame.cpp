@@ -49,7 +49,7 @@ void Frame::draw(DrawContext &ctx)
         listLayout->apply(m_children);
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
 
     for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {

@@ -176,7 +176,7 @@ void SliderFloat::draw(DrawContext &ctx)
         updateComponents();
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
 
     UIObject *parts[] = {&m_sideLabel, &m_track, &m_thumb, &m_valueLabel};
     for (auto *part : parts) {
@@ -224,7 +224,7 @@ void SliderFloat::updateComponents()
         dragDetector->mode = DragMode::HORIZONTAL;
     }
 
-    dragDetector->onDragUpdate = [this, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
+    dragDetector->onDragUpdate = [this, trackX, trackWidth, thumbWidth](vec2, vec2 position) {
         if (!valueRef) return;
 
         float mouseXRelative = position.x - absolutePosition.x - trackX;
@@ -274,7 +274,7 @@ void SliderInt::draw(DrawContext &ctx)
         updateComponents();
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
 
     UIObject *parts[] = {&m_sideLabel, &m_track, &m_thumb, &m_valueLabel};
     for (auto *part : parts) {
@@ -322,7 +322,7 @@ void SliderInt::updateComponents()
         dragDetector->mode = DragMode::HORIZONTAL;
     }
 
-    dragDetector->onDragUpdate = [this, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
+    dragDetector->onDragUpdate = [this, trackX, trackWidth, thumbWidth](vec2, vec2 position) {
         if (!valueRef) return;
 
         float mouseXRelative = position.x - absolutePosition.x - trackX;
@@ -374,7 +374,7 @@ void SliderVec2::draw(DrawContext &ctx)
         updateComponents();
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
 
     for (int i = 0; i < 2; i++) {
         UIObject *parts[] = {&m_track[i], &m_thumb[i], &m_valueLabel[i]};
@@ -441,7 +441,7 @@ void SliderVec2::updateComponents()
             dragDetector->mode = DragMode::HORIZONTAL;
         }
 
-        dragDetector->onDragUpdate = [this, i, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
+        dragDetector->onDragUpdate = [this, i, trackX, trackWidth, thumbWidth](vec2, vec2 position) {
             if (!valueRef) return;
 
             float mouseXRelative = position.x - absolutePosition.x - trackX;
@@ -496,7 +496,7 @@ void SliderVec3::draw(DrawContext &ctx)
         updateComponents();
     }
 
-    glm::vec4 childClip = computeChildClipRect();
+    vec4 childClip = computeChildClipRect();
 
     for (int i = 0; i < 3; i++) {
         UIObject *parts[] = {&m_track[i], &m_thumb[i], &m_valueLabel[i]};
@@ -563,7 +563,7 @@ void SliderVec3::updateComponents()
             dragDetector->mode = DragMode::HORIZONTAL;
         }
 
-        dragDetector->onDragUpdate = [this, i, trackX, trackWidth, thumbWidth](glm::vec2, glm::vec2 position) {
+        dragDetector->onDragUpdate = [this, i, trackX, trackWidth, thumbWidth](vec2, vec2 position) {
             if (!valueRef) return;
 
             float mouseXRelative = position.x - absolutePosition.x - trackX;

@@ -3,12 +3,6 @@ include(FetchContent)
 set(FETCHCONTENT_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor)
 
 FetchContent_Declare(
-    glm
-    GIT_REPOSITORY https://github.com/g-truc/glm.git
-    GIT_TAG 1.0.1
-)
-
-FetchContent_Declare(
     freetype
     GIT_REPOSITORY https://github.com/freetype/freetype.git
     GIT_TAG VER-2-13-3
@@ -36,7 +30,7 @@ else()
     set(TRACY_ENABLE OFF CACHE BOOL "Enable Tracy profiling" FORCE)
 endif()
 
-FetchContent_MakeAvailable(glm freetype tracy lunasvg)
+FetchContent_MakeAvailable(freetype tracy lunasvg)
 
 file(GLOB_RECURSE AMETHYST_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 
@@ -48,7 +42,7 @@ target_include_directories(amethyst
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(amethyst PUBLIC glm::glm freetype TracyClient lunasvg)
+target_link_libraries(amethyst PUBLIC freetype TracyClient lunasvg)
 
 target_compile_options(amethyst PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic -Werror>

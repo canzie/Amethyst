@@ -11,18 +11,18 @@
 #define AMETHYST__COLOR_H
 
 #include <cstdint>
-#include <glm/glm.hpp>
+#include "math/math.h"
 
 namespace Amethyst {
 
 inline float srgbToLinear(float srgb)
 {
-    return srgb <= 0.04045f ? srgb / 12.92f : glm::pow((srgb + 0.055f) / 1.055f, 2.4f);
+    return srgb <= 0.04045f ? srgb / 12.92f : pow((srgb + 0.055f) / 1.055f, 2.4f);
 }
 
 inline float linearToSrgb(float linear)
 {
-    return linear <= 0.0031308f ? linear * 12.92f : 1.055f * glm::pow(linear, 1.0f / 2.4f) - 0.055f;
+    return linear <= 0.0031308f ? linear * 12.92f : 1.055f * pow(linear, 1.0f / 2.4f) - 0.055f;
 }
 
 struct Color4;
@@ -36,7 +36,7 @@ struct Color3 {
 
     explicit Color3(float _v) : r(srgbToLinear(_v)), g(srgbToLinear(_v)), b(srgbToLinear(_v)) {}
 
-    Color3(const glm::vec3 &v) : r(srgbToLinear(v.r)), g(srgbToLinear(v.g)), b(srgbToLinear(v.b)) {}
+    Color3(const vec3 &v) : r(srgbToLinear(v.r)), g(srgbToLinear(v.g)), b(srgbToLinear(v.b)) {}
 
     inline Color3(const Color4 &c);
 
@@ -54,7 +54,7 @@ struct Color3 {
         );
     }
 
-    constexpr operator glm::vec3() const { return glm::vec3(r, g, b); }
+    constexpr operator vec3() const { return vec3(r, g, b); }
 
     bool operator==(const Color3 &other) const { return r == other.r && g == other.g && b == other.b; }
     bool operator!=(const Color3 &other) const { return !(*this == other); }
@@ -87,7 +87,7 @@ struct Color4 {
 
     constexpr Color4(const Color3 &c, float _a) : r(c.r), g(c.g), b(c.b), a(_a) {}
 
-    Color4(const glm::vec4 &v) : r(srgbToLinear(v.r)), g(srgbToLinear(v.g)), b(srgbToLinear(v.b)), a(v.a) {}
+    Color4(const vec4 &v) : r(srgbToLinear(v.r)), g(srgbToLinear(v.g)), b(srgbToLinear(v.b)), a(v.a) {}
 
     static Color4 fromRgb(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a = 255)
     {
@@ -112,8 +112,8 @@ struct Color4 {
         );
     }
 
-    constexpr operator glm::vec4() const { return glm::vec4(r, g, b, a); }
-    constexpr operator glm::vec3() const { return glm::vec3(r, g, b); }
+    constexpr operator vec4() const { return vec4(r, g, b, a); }
+    constexpr operator vec3() const { return vec3(r, g, b); }
 
     bool operator==(const Color4 &other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
     bool operator!=(const Color4 &other) const { return !(*this == other); }

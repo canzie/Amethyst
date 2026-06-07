@@ -7,7 +7,7 @@
 #define AMETHYST__FONT_LOADER_H
 
 #include <cstdint>
-#include <glm/glm.hpp>
+#include "math/math.h"
 #include <memory>
 #include <string>
 #include <vector>

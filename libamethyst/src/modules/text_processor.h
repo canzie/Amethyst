@@ -11,7 +11,7 @@
 #include "parsers/ttf/ttf_types.h"
 #include "rendering/instance_data.h"
 
-#include <glm/glm.hpp>
+#include "math/math.h"
 #include <string>
 #include <vector>
 
@@ -21,8 +21,8 @@ namespace Amethyst {
  * @brief Parameters for text layout
  */
 struct TextLayoutParams {
-    glm::vec2 position = {0.0f, 0.0f};
-    glm::vec2 bounds = {0.0f, 0.0f};
+    vec2 position = {0.0f, 0.0f};
+    vec2 bounds = {0.0f, 0.0f};
     float fontSize = 14.0f;
     Color4 color = {0.0f, 0.0f, 0.0f, 1.0f};
     float letterSpacing = 0.0f;
@@ -60,7 +60,7 @@ class TextProcessor {
      * @param letterSpacing Additional spacing between characters
      * @return Width and height of text
      */
-    glm::vec2 measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing = 0.0f) const;
+    vec2 measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing = 0.0f) const;
 
     /**
      * @brief Get advance width for a character using glyph atlas
