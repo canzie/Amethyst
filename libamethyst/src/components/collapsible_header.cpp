@@ -170,7 +170,7 @@ void CollapsibleHeader::draw(DrawContext &ctx)
     });
     m_indicator->setBaseProperties({
         .anchorPoint = {0.5f, 0.5f},
-        .position = UDim2{{0.0f, m_chProps.indicatorPadding + m_chProps.indicatorSize * 0.5f}, {0.5f, 0.0f}},
+        .position = UDim2(0.0f, m_chProps.indicatorPadding + m_chProps.indicatorSize * 0.5f, 0.5f, 0.0f),
         .size = UDim2::fromOffset(m_chProps.indicatorSize, m_chProps.indicatorSize),
         .rotation = expanded ? 90.0f : 0.0f,
         .visible = m_chProps.showIndicator,
@@ -178,8 +178,8 @@ void CollapsibleHeader::draw(DrawContext &ctx)
     });
 
     m_headerContent->setBaseProperties({
-        .position = UDim2{{0.0f, contentOffset}, {0.0f, 0.0f}},
-        .size = UDim2{{1.0f, -(contentOffset + m_chProps.indicatorPadding)}, {1.0f, 0.0f}},
+        .position = UDim2(0.0f, contentOffset, 0.0f, 0.0f),
+        .size = UDim2(1.0f, -(contentOffset + m_chProps.indicatorPadding), 1.0f, 0.0f),
         .visible = true,
         .zIndex = getZIndex() + 2,
     });
