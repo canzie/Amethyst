@@ -1,14 +1,16 @@
-/*
- * ImageLabel implementation
- */
-
 #include "components/image_label.h"
 
+#include "modules/style.h"
 #include "modules/svg_atlas.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 
 namespace Amethyst {
+
+ImageLabel::ImageLabel()
+{
+    resolveStyle();
+}
 
 ImageLabel::ImageLabel(const std::string &svgData) : m_svgData(svgData)
 {
@@ -16,6 +18,12 @@ ImageLabel::ImageLabel(const std::string &svgData) : m_svgData(svgData)
     m_imgStyle.imageTransparency = 0.0f;
     m_imgStyle.scaleType = ImageScaleType::STRETCH;
     m_imgStyle.tileSize = {1.0f, 1.0f};
+    resolveStyle();
+}
+
+void ImageLabel::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::IMAGE_LABEL, getClasses()));
 }
 
 bool ImageLabel::setImageStyleProperties(const ImageStyleProperties &props)

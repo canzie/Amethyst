@@ -18,6 +18,7 @@ class CollapsibleHeader : public UIObject {
     ~CollapsibleHeader() override;
 
     void draw(DrawContext &ctx) override;
+    void resolveStyle() override;
     std::vector<Instance *> getHittableInstances() override;
 
     void toggle();

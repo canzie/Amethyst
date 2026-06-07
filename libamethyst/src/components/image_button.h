@@ -15,11 +15,12 @@ namespace Amethyst {
 
 class ImageButton : public UIButton {
   public:
-    ImageButton() = default;
+    ImageButton();
     explicit ImageButton(const std::string &svgData);
     virtual ~ImageButton() = default;
 
     void draw(DrawContext &ctx) override;
+    void resolveStyle() override;
 
     void setSvg(std::string svgData);
     const std::string &getSvg() const { return m_svgData; }

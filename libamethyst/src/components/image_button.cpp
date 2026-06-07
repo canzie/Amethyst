@@ -1,14 +1,16 @@
-/*
- * ImageButton implementation
- */
-
 #include "components/image_button.h"
 
+#include "modules/style.h"
 #include "modules/svg_atlas.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 
 namespace Amethyst {
+
+ImageButton::ImageButton()
+{
+    resolveStyle();
+}
 
 ImageButton::ImageButton(const std::string &svgData) : m_svgData(svgData)
 {
@@ -16,6 +18,12 @@ ImageButton::ImageButton(const std::string &svgData) : m_svgData(svgData)
     m_imgStyle.imageTransparency = 0.0f;
     m_imgStyle.scaleType = ImageScaleType::STRETCH;
     m_imgStyle.tileSize = {1.0f, 1.0f};
+    resolveStyle();
+}
+
+void ImageButton::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::IMAGE_BUTTON, getClasses()));
 }
 
 bool ImageButton::setImageStyleProperties(const ImageStyleProperties &props)

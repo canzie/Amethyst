@@ -5,9 +5,9 @@
 #ifndef AMETHYST__LOG_H
 #define AMETHYST__LOG_H
 
-#include <memory>
-#include <spdlog/spdlog.h>
+#include <format>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #if defined(_MSC_VER)
@@ -47,9 +47,11 @@ inline std::string ExtractFunctionName(const char *prettyFunction)
     return func;
 }
 
+enum class LogLevel { TRACE, DEBUG, INFO, WARN, ERR, CRITICAL };
+
 struct LogMessage {
     std::string message;
-    spdlog::level::level_enum level;
+    LogLevel level;
     std::string timestamp;
 };
 
@@ -58,35 +60,38 @@ class Log {
     static void Init();
     static void Shutdown();
 
-    static std::shared_ptr<spdlog::logger> &GetLogger() { return s_Logger; }
-
     static const std::vector<LogMessage> &GetRecentLogs() { return s_RecentLogs; }
     static void ClearRecentLogs() { s_RecentLogs.clear(); }
     static void SetMaxRecentLogs(size_t count) { s_MaxRecentLogs = count; }
+    static void SetLogLevel(LogLevel level) { s_Level = level; }
 
-    static void SetLogLevel(spdlog::level::level_enum level);
+    static void WriteV(LogLevel level, std::string_view tag, std::string msg);
 
   private:
-    static std::shared_ptr<spdlog::logger> s_Logger;
     static std::vector<LogMessage> s_RecentLogs;
     static size_t s_MaxRecentLogs;
-
-    static void LogCallback(const spdlog::details::log_msg &msg);
+    static LogLevel s_Level;
 };
 
 } // namespace Amethyst
 
 #define AM_LOG_TRACE(...) \
-    ::Amethyst::Log::GetLogger()->trace("{}: {}", ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), fmt::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::TRACE, \
+        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
 #define AM_LOG_DEBUG(...) \
-    ::Amethyst::Log::GetLogger()->debug("{}: {}", ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), fmt::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::DEBUG, \
+        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
 #define AM_LOG_INFO(...) \
-    ::Amethyst::Log::GetLogger()->info("{}: {}", ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), fmt::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::INFO, \
+        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
 #define AM_LOG_WARN(...) \
-    ::Amethyst::Log::GetLogger()->warn("{}: {}", ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), fmt::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::WARN, \
+        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
 #define AM_LOG_ERROR(...) \
-    ::Amethyst::Log::GetLogger()->error("{}: {}", ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), fmt::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::ERR, \
+        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
 #define AM_LOG_CRITICAL(...) \
-    ::Amethyst::Log::GetLogger()->critical("{}: {}", ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), fmt::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::CRITICAL, \
+        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
 
 #endif // AMETHYST__LOG_H

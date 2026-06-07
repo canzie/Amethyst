@@ -1,14 +1,20 @@
 #include "components/checkbox.h"
 
+#include "modules/style.h"
 #include "rendering/draw_context.h"
 
 namespace Amethyst {
 
 Checkbox::Checkbox()
 {
-    m_cbProps.checkColor = Color3{0.0f, 0.0f, 0.0f};
-    m_cbProps.checkTransparency = 0.0f;
-    m_cbProps.checkboxSize = 20.0f;
+    resolveStyle();
+}
+
+void Checkbox::resolveStyle()
+{
+    auto &style = Style::instance();
+    setBaseStyleProperties(style.getBaseStyle(ComponentType::CHECKBOX, getClasses()));
+    setCheckboxProperties(style.getCheckboxStyle(ComponentType::CHECKBOX, getClasses()));
 }
 
 bool Checkbox::setCheckboxProperties(const CheckboxStyleProperties &props)

@@ -4,14 +4,12 @@
 #include "components/extensions/ui_list_layout.h"
 #include "components/text_label.h"
 #include "components/ui_layer.h"
-// #include "modules/style.h"  // TODO: update style system to use property structs
+#include "modules/style.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 #include "utils/profiling.h"
 
 namespace Amethyst {
-
-// static void applyStyle(CollapsibleHeader &ch) { ... }  // TODO: update style system to use property structs
 
 CollapsibleHeader::CollapsibleHeader() : CollapsibleHeader(nullptr, nullptr) {}
 
@@ -30,7 +28,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_chProps.indicatorPadding = 6.0f;
     m_chProps.indicatorColor = Color4{0.7f, 0.7f, 0.7f, 1.0f};
 
-    // applyStyle(*this);
+    resolveStyle();
 
     m_headerBackground = std::make_unique<Frame>();
     m_headerBackground->parent = this;
@@ -68,6 +66,13 @@ CollapsibleHeader::~CollapsibleHeader()
 {
     m_headerBackground->parent = nullptr;
     m_headerButton->parent = nullptr;
+}
+
+void CollapsibleHeader::resolveStyle()
+{
+    auto &style = Style::instance();
+    setBaseStyleProperties(style.getBaseStyle(ComponentType::COLLAPSIBLE_HEADER, getClasses()));
+    setCollapsibleHeaderProperties(style.getCollapsibleHeaderStyle(ComponentType::COLLAPSIBLE_HEADER, getClasses()));
 }
 
 void CollapsibleHeader::toggle()

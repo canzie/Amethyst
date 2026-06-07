@@ -49,3 +49,5 @@ CLAUDE.md
 
 build/*
 libamethyst/vendor/*
+logs/
+.log

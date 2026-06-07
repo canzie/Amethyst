@@ -4,82 +4,147 @@
 
 #include "logging/log.h"
 
-#include <spdlog/sinks/callback_sink.h>
-#include <spdlog/sinks/rotating_file_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/pattern_formatter.h>
+#include <chrono>
+#include <cstdio>
+#include <ctime>
+#include <filesystem>
+#include <format>
+
+#ifdef _WIN32
+#include <io.h>
+#define AM_ISATTY(fd) _isatty(fd)
+#define AM_FILENO(f) _fileno(f)
+#define AM_LOCALTIME(tm, t) localtime_s(tm, t)
+#else
+#include <unistd.h>
+#define AM_ISATTY(fd) isatty(fd)
+#define AM_FILENO(f) fileno(f)
+#define AM_LOCALTIME(tm, t) localtime_r(t, tm)
+#endif
 
 namespace Amethyst {
 
-std::shared_ptr<spdlog::logger> Log::s_Logger;
 std::vector<LogMessage> Log::s_RecentLogs;
 size_t Log::s_MaxRecentLogs = 1000;
+LogLevel Log::s_Level = LogLevel::TRACE;
+
+static FILE *s_LogFile = nullptr;
+static bool s_StderrColor = false;
+
+static constexpr size_t MAX_LOG_FILE_BYTES = 5 * 1024 * 1024;
+static constexpr int LOG_ROTATE_COUNT = 3;
+static constexpr const char *LOG_PATH = "logs/amethyst.log";
+
+static const char *levelTag(LogLevel level)
+{
+    switch (level) {
+        case LogLevel::TRACE:    return "trace";
+        case LogLevel::DEBUG:    return "debug";
+        case LogLevel::INFO:     return "info";
+        case LogLevel::WARN:     return "warn";
+        case LogLevel::ERR:      return "error";
+        case LogLevel::CRITICAL: return "critical";
+    }
+    return "?";
+}
+
+static const char *levelColor(LogLevel level)
+{
+    switch (level) {
+        case LogLevel::TRACE:    return "\033[37m";
+        case LogLevel::DEBUG:    return "\033[36m";
+        case LogLevel::INFO:     return "\033[32m";
+        case LogLevel::WARN:     return "\033[33m";
+        case LogLevel::ERR:      return "\033[31m";
+        case LogLevel::CRITICAL: return "\033[1;31m";
+    }
+    return "";
+}
+
+static void rotateLogFile()
+{
+    std::error_code ec;
+    auto sz = std::filesystem::file_size(LOG_PATH, ec);
+    if (ec || sz <= MAX_LOG_FILE_BYTES) {
+        return;
+    }
+
+    for (int i = LOG_ROTATE_COUNT - 1; i >= 1; --i) {
+        auto from = std::format("{}.{}", LOG_PATH, i);
+        auto to = std::format("{}.{}", LOG_PATH, i + 1);
+        std::filesystem::rename(from, to, ec);
+    }
+    std::filesystem::rename(LOG_PATH, std::format("{}.1", LOG_PATH), ec);
+}
 
 void Log::Init()
 {
-    auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    consoleSink->set_pattern("%^[%T] [%l] %v%$");
-
-    auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-        "logs/amethyst.log", 5 * 1024 * 1024, 3);
-    fileSink->set_pattern("[%Y-%m-%d %T.%e] [%l] %v");
-
-    auto callbackSink = std::make_shared<spdlog::sinks::callback_sink_mt>(
-        [](const spdlog::details::log_msg &msg) { Log::LogCallback(msg); });
-
-    std::vector<spdlog::sink_ptr> sinks = {consoleSink, fileSink, callbackSink};
-
-    s_Logger = std::make_shared<spdlog::logger>("AMETHYST", sinks.begin(), sinks.end());
-    s_Logger->set_level(spdlog::level::trace);
-    s_Logger->flush_on(spdlog::level::info);
-    spdlog::register_logger(s_Logger);
+    std::filesystem::create_directories("logs");
+    rotateLogFile();
+    s_LogFile = fopen(LOG_PATH, "a");
+    s_StderrColor = AM_ISATTY(AM_FILENO(stderr)) != 0;
 
 #ifdef NDEBUG
-    SetLogLevel(spdlog::level::info);
+    s_Level = LogLevel::INFO;
 #else
-    SetLogLevel(spdlog::level::trace);
+    s_Level = LogLevel::TRACE;
 #endif
 
-    s_Logger->info("Logger initialized");
+    WriteV(LogLevel::INFO, "Log", "Logger initialized");
 }
 
 void Log::Shutdown()
 {
-    s_Logger->info("Shutting down logger");
-    s_Logger.reset();
+    WriteV(LogLevel::INFO, "Log", "Shutting down logger");
+    if (s_LogFile != nullptr) {
+        fclose(s_LogFile);
+        s_LogFile = nullptr;
+    }
     s_RecentLogs.clear();
-    spdlog::shutdown();
 }
 
-void Log::SetLogLevel(spdlog::level::level_enum level)
+void Log::WriteV(LogLevel level, std::string_view tag, std::string msg)
 {
-    s_Logger->set_level(level);
-}
+    if (level < s_Level) {
+        return;
+    }
 
-void Log::LogCallback(const spdlog::details::log_msg &msg)
-{
-    spdlog::memory_buf_t formatted;
-    spdlog::pattern_formatter formatter("[%T.%e] [%^%l%$] %v");
-    formatter.format(msg, formatted);
+    auto now = std::chrono::system_clock::now();
+    auto tt = std::chrono::system_clock::to_time_t(now);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+
+    struct tm timeinfo {};
+    AM_LOCALTIME(&timeinfo, &tt);
+
+    char shortTs[16];
+    strftime(shortTs, sizeof(shortTs), "%H:%M:%S", &timeinfo);
+
+    const char *tag_s = levelTag(level);
+
+    if (s_StderrColor) {
+        fprintf(stderr, "%s[%s.%03d] [%s] %s: %s\033[0m\n",
+            levelColor(level), shortTs, (int)ms.count(), tag_s, std::string(tag).c_str(), msg.c_str());
+    } else {
+        fprintf(stderr, "[%s.%03d] [%s] %s: %s\n",
+            shortTs, (int)ms.count(), tag_s, std::string(tag).c_str(), msg.c_str());
+    }
+
+    if (s_LogFile != nullptr) {
+        char fullTs[32];
+        strftime(fullTs, sizeof(fullTs), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        fprintf(s_LogFile, "[%s.%03d] [%s] %s: %s\n",
+            fullTs, (int)ms.count(), tag_s, std::string(tag).c_str(), msg.c_str());
+        if (level >= LogLevel::INFO) {
+            fflush(s_LogFile);
+        }
+    }
 
     LogMessage logMsg;
-    logMsg.message = fmt::to_string(formatted);
-    logMsg.level = msg.level;
+    logMsg.message = std::format("[{}.{:03d}] [{}] {}: {}", shortTs, (int)ms.count(), tag_s, tag, msg);
+    logMsg.level = level;
+    logMsg.timestamp = std::format("{}.{:03d}", shortTs, (int)ms.count());
 
-    char timestamp[64];
-    time_t rawtime;
-    struct tm timeinfo;
-    time(&rawtime);
-#ifdef _WIN32
-    localtime_s(&timeinfo, &rawtime);
-#else
-    localtime_r(&rawtime, &timeinfo);
-#endif
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", &timeinfo);
-    logMsg.timestamp = timestamp;
-
-    s_RecentLogs.push_back(logMsg);
-
+    s_RecentLogs.push_back(std::move(logMsg));
     if (s_RecentLogs.size() > s_MaxRecentLogs) {
         s_RecentLogs.erase(s_RecentLogs.begin());
     }

@@ -20,6 +20,7 @@ class Checkbox : public UIButton {
     virtual ~Checkbox() = default;
 
     void draw(DrawContext &ctx) override;
+    void resolveStyle() override;
 
     bool setCheckboxProperties(const CheckboxStyleProperties &props);
     const CheckboxStyleProperties &getCheckboxProperties() const { return m_cbProps; }

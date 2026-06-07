@@ -15,11 +15,12 @@ namespace Amethyst {
 
 class ImageLabel : public UILabel {
   public:
-    ImageLabel() = default;
+    ImageLabel();
     explicit ImageLabel(const std::string &svgData);
     virtual ~ImageLabel() = default;
 
     void draw(DrawContext &ctx) override;
+    void resolveStyle() override;
     EventResult onMouseMoved(uint32_t, uint32_t) override { return EventResult::PROPAGATE; }
 
     void setSvg(std::string svgData);
