@@ -536,6 +536,7 @@ void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot,
         float indentPx = col == 0 ? indent : 0.0f;
 
         drawable->setBaseProperties({
+            .interactable = false,
             .position = UDim2(startFrac, padL + indentPx, 0.0f, padT),
             .size = UDim2(widthFrac, -(padL + padR + indentPx), 1.0f, -(padT + padB)),
             .visible = true,

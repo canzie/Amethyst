@@ -39,16 +39,27 @@ void DockingLayer::draw(DrawContext &ctx)
         return;
     }
 
-    if (flags & FLAG_DIRTY) {
-        computeLayout(m_rootNode, absoluteSize, absolutePosition);
-    }
-
     DrawContext layerCtx;
     layerCtx.geometry = geometryRegistry();
     layerCtx.overlay = ctx.overlay;
     layerCtx.textProcessor = ctx.textProcessor;
     layerCtx.glyphAtlas = ctx.glyphAtlas;
     layerCtx.svgAtlas = ctx.svgAtlas;
+
+    if (!visible) {
+        if (flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY)) {
+            for (auto &tabBar : m_tabBars) {
+                tabBar->markDirty();
+                tabBar->draw(layerCtx);
+            }
+        }
+        flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+        return;
+    }
+
+    if (flags & FLAG_DIRTY) {
+        computeLayout(m_rootNode, absoluteSize, absolutePosition);
+    }
 
     for (auto &tabBar : m_tabBars) {
         tabBar->draw(layerCtx);
