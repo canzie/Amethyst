@@ -335,6 +335,7 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
     static const std::array<ComponentType, 3> radioButton = {ComponentType::RADIO_BUTTON, ComponentType::UI_BUTTON,
                                                              ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 2> collapsibleHeader = {ComponentType::COLLAPSIBLE_HEADER, ComponentType::UI_OBJECT};
+    static const std::array<ComponentType, 2> textInput = {ComponentType::TEXT_INPUT, ComponentType::UI_OBJECT};
 
     switch (type) {
     case ComponentType::UI_OBJECT:
@@ -373,6 +374,8 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
         return radioButton;
     case ComponentType::COLLAPSIBLE_HEADER:
         return collapsibleHeader;
+    case ComponentType::TEXT_INPUT:
+        return textInput;
     }
     return uiObject;
 }
@@ -398,6 +401,7 @@ const std::unordered_map<std::string, ComponentType> &Style::getComponentTypeNam
         {"slider", ComponentType::SLIDER},
         {"radio-button", ComponentType::RADIO_BUTTON},
         {"collapsible-header", ComponentType::COLLAPSIBLE_HEADER},
+        {"text-input", ComponentType::TEXT_INPUT},
     };
     return names;
 }

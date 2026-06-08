@@ -116,6 +116,7 @@ enum class ComponentType {
     SLIDER,
     RADIO_BUTTON,
     COLLAPSIBLE_HEADER,
+    TEXT_INPUT,
 };
 
 /**

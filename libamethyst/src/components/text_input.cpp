@@ -7,6 +7,7 @@
 #include "components/input_events.h"
 #include "components/input_interface.h"
 #include "components/window.h"
+#include "modules/style.h"
 #include "modules/text_processor.h"
 #include "rendering/draw_context.h"
 #include "rendering/instance_data.h"
@@ -29,6 +30,16 @@ TextInput::TextInput()
     m_tiProps.maxLength = -1;
     m_tiProps.readOnly = 0;
     m_tiProps.cursorBlinkRate = 0.5f;
+    resolveStyle();
+}
+
+void TextInput::resolveStyle()
+{
+    auto &style = Style::instance();
+    setBaseStyleProperties(style.getBaseStyle(ComponentType::TEXT_INPUT, getClasses()));
+    TextInputStyleProperties tiStyle;
+    tiStyle.text = style.getTextStyle(ComponentType::TEXT_INPUT, getClasses());
+    setTextInputProperties(tiStyle);
 }
 
 bool TextInput::setTextInputProperties(const TextInputStyleProperties &props)
@@ -481,8 +492,10 @@ void TextInput::drawText(DrawContext &ctx)
 
     auto glyphs = ctx.textProcessor->layoutTextAtlas(textToRender, params);
     int32_t desiredZIndex = getZIndex() + 1;
+    bool visible = isVisible();
     for (auto &g : glyphs) {
         g.zIndex = desiredZIndex;
+        g.setVisible(visible);
     }
 
     if (modeChanged || glyphs.size() != m_textAllocations.size()) {

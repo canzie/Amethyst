@@ -23,6 +23,7 @@ class TextInput : public UIObject {
     virtual ~TextInput();
 
     void draw(DrawContext &ctx) override;
+    void resolveStyle() override;
     void update(float deltaTime);
 
     std::string getText() const { return m_text; }

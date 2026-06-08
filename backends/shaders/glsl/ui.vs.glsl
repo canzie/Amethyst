@@ -54,13 +54,19 @@ const uint PRIMITIVE_SVG = 10;
 const float PI = 3.14159265359;
 const uint INSTANCE_FLAG_VISIBLE = 0x00000001u;
 
+vec3 srgbToLinear(vec3 c) {
+    return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+}
+
 vec4 unpackColor(uint packed) {
-    return vec4(
+    vec4 c = vec4(
         float(packed & 0xFFu) / 255.0,
         float((packed >> 8u) & 0xFFu) / 255.0,
         float((packed >> 16u) & 0xFFu) / 255.0,
         float((packed >> 24u) & 0xFFu) / 255.0
     );
+    c.rgb = srgbToLinear(c.rgb);
+    return c;
 }
 
 float unpackHalf(uint packed) {

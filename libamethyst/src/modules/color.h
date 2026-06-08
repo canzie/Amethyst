@@ -32,11 +32,11 @@ struct Color3 {
 
     constexpr Color3() : r(0.0f), g(0.0f), b(0.0f) {}
 
-    Color3(float _r, float _g, float _b) : r(srgbToLinear(_r)), g(srgbToLinear(_g)), b(srgbToLinear(_b)) {}
+    Color3(float _r, float _g, float _b) : r(_r), g(_g), b(_b) {}
 
-    explicit Color3(float _v) : r(srgbToLinear(_v)), g(srgbToLinear(_v)), b(srgbToLinear(_v)) {}
+    explicit Color3(float _v) : r(_v), g(_v), b(_v) {}
 
-    Color3(const vec3 &v) : r(srgbToLinear(v.r)), g(srgbToLinear(v.g)), b(srgbToLinear(v.b)) {}
+    Color3(const vec3 &v) : r(v.r), g(v.g), b(v.b) {}
 
     inline Color3(const Color4 &c);
 
@@ -81,13 +81,13 @@ struct Color4 {
     constexpr Color4() : r(0.0f), g(0.0f), b(0.0f), a(1.0f) {}
 
     Color4(float _r, float _g, float _b, float _a = 1.0f)
-        : r(srgbToLinear(_r)), g(srgbToLinear(_g)), b(srgbToLinear(_b)), a(_a) {}
+        : r(_r), g(_g), b(_b), a(_a) {}
 
-    explicit Color4(float _v) : r(srgbToLinear(_v)), g(srgbToLinear(_v)), b(srgbToLinear(_v)), a(1.0f) {}
+    explicit Color4(float _v) : r(_v), g(_v), b(_v), a(1.0f) {}
 
     constexpr Color4(const Color3 &c, float _a) : r(c.r), g(c.g), b(c.b), a(_a) {}
 
-    Color4(const vec4 &v) : r(srgbToLinear(v.r)), g(srgbToLinear(v.g)), b(srgbToLinear(v.b)), a(v.a) {}
+    Color4(const vec4 &v) : r(v.r), g(v.g), b(v.b), a(v.a) {}
 
     static Color4 fromRgb(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a = 255)
     {
