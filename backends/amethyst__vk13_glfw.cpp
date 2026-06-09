@@ -139,7 +139,7 @@ static GLFWcursor *createCustomVerticalResizeCursor()
     return createCursorFromMask(size, fill);
 }
 
-constexpr size_t INITIAL_INSTANCE_CAPACITY = 256 * 32; // 8192 instances, ~32 layers @ 256 each
+constexpr size_t INITIAL_ARENA_BYTES = 8 * 1024 * 1024;
 constexpr size_t INDEX_COUNT_RECT = 6;
 
 struct PushConstants {
@@ -377,7 +377,7 @@ void VkBackend::allocateBufferArenas()
     m_staticArena.capacity = sizeof(uint32_t) * INDEX_COUNT_RECT;
 
     m_dynamicArena = {};
-    m_dynamicArena.capacity = sizeof(InstanceData) * INITIAL_INSTANCE_CAPACITY;
+    m_dynamicArena.capacity = INITIAL_ARENA_BYTES;
 
     VkBufferUsageFlags staticUsage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     VkMemoryPropertyFlags staticProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -820,6 +820,7 @@ bool VkBackend::reallocBufferArena(BufferArena &arena, VkBufferUsageFlags usage,
         if (arena.mappedMemory) {
             vkUnmapMemory(m_info.device, arena.memory);
         }
+        vkDeviceWaitIdle(m_info.device);
         vkDestroyBuffer(m_info.device, arena.buffer, nullptr);
         vkFreeMemory(m_info.device, arena.memory, nullptr);
     }
