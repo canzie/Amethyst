@@ -57,6 +57,7 @@ class TreeView : public UIObject {
 
     void draw(DrawContext &ctx) override;
     void resolveStyle() override;
+    void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation) override;
 
     /**
      * @brief Append a column definition. Must be called before adding rows.
@@ -205,7 +206,6 @@ class TreeView : public UIObject {
   private:
     static constexpr uint32_t INVALID_ROW = UINT32_MAX;
 
-    void fixupHasChildren();
     void rebuildVisiblePlan();
     void rebuildColumnPositions();
     void updateSeparators();

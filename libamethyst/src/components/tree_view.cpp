@@ -11,6 +11,8 @@
 
 namespace Amethyst {
 
+static constexpr float DEFAULT_ROW_HEIGHT = 24.0f;
+
 TreeView::TreeView()
 {
     m_tvProps.rowHeight = 0.0f;
@@ -208,6 +210,17 @@ uint32_t TreeView::rowCount() const
     return static_cast<uint32_t>(m_rows.size());
 }
 
+void TreeView::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation)
+{
+    UIObject::computeAbsolutes(parentSize, parentPos, parentRotation);
+    if (flags & FLAG_DIRTY) {
+        rebuildVisiblePlan();
+    }
+    float rowH = m_tvProps.rowHeight > 0.0f ? m_tvProps.rowHeight : DEFAULT_ROW_HEIGHT;
+    float headerH = static_cast<bool>(m_tvProps.showHeader) ? m_tvProps.headerHeight : 0.0f;
+    absoluteSize.y = headerH + static_cast<float>(m_visible.size()) * rowH;
+}
+
 uint16_t TreeView::depth(uint32_t row) const
 {
     AM_ASSERT(row < m_rows.size(), "Row index out of bounds");
@@ -276,18 +289,13 @@ void TreeView::collapseAll()
     markDirty();
 }
 
-void TreeView::fixupHasChildren()
+void TreeView::rebuildVisiblePlan()
 {
     uint32_t n = static_cast<uint32_t>(m_rows.size());
     for (uint32_t i = 0; i < n; i++) {
         m_rows[i].hasChildren = (i + 1 < n && m_rows[i + 1].depth > m_rows[i].depth);
     }
-}
-
-void TreeView::rebuildVisiblePlan()
-{
     m_visible.clear();
-    uint32_t n = static_cast<uint32_t>(m_rows.size());
     for (uint32_t i = 0; i < n;) {
         m_visible.push_back(i);
         if (!m_rows[i].expanded && m_rows[i].hasChildren) {
@@ -536,7 +544,7 @@ void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot,
         float indentPx = col == 0 ? indent : 0.0f;
 
         drawable->setBaseProperties({
-            .interactable = false,
+            //.interactable = false,
             .position = UDim2(startFrac, padL + indentPx, 0.0f, padT),
             .size = UDim2(widthFrac, -(padL + padR + indentPx), 1.0f, -(padT + padB)),
             .visible = true,
@@ -561,14 +569,12 @@ void TreeView::draw(DrawContext &ctx)
     }
 
     if (flags & FLAG_DIRTY) {
-        fixupHasChildren();
-        rebuildVisiblePlan();
         rebuildColumnPositions();
         updateSeparators();
         m_cellPaddingPx = m_tvProps.cellPadding.resolve(absoluteSize);
     }
 
-    m_rowHeightPx = m_tvProps.rowHeight > 0.0f ? m_tvProps.rowHeight : 24.0f;
+    m_rowHeightPx = m_tvProps.rowHeight > 0.0f ? m_tvProps.rowHeight : DEFAULT_ROW_HEIGHT;
 
     vec4 childClip = computeChildClipRect();
     float headerH = static_cast<bool>(m_tvProps.showHeader) ? m_tvProps.headerHeight : 0.0f;

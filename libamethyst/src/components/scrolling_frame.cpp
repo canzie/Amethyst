@@ -78,9 +78,9 @@ void ScrollingFrame::draw(DrawContext &ctx)
     }
 
     vec2 absCanvasSize = m_sfProps.canvasSize.resolve(absoluteSize);
-    vec2 maxScroll = max(absCanvasSize - absoluteSize, vec2(0.0f));
+    AutomaticSize acs = m_sfProps.automaticCanvasSize;
+    bool autoCanvas = acs != AutomaticSize::NONE && acs != AutomaticSize::OFF;
 
-    m_scrollOffset = clamp(m_scrollOffset, vec2(0.0f), maxScroll);
 
     if (auto *gridLayout = getExtension<UIGridLayout>()) {
         gridLayout->apply(m_children);
@@ -89,19 +89,25 @@ void ScrollingFrame::draw(DrawContext &ctx)
     }
 
     vec4 childClip = computeChildClipRect();
-
     vec2 canvasOrigin = m_sfProps.canvasPosition.resolve(absCanvasSize);
 
     for (auto &child : m_children) {
         auto *obj = child->as<UIObject>();
         if (obj == nullptr) continue;
 
-        vec2 childRelPos = obj->getBaseProperties().position.resolve(absCanvasSize);
-        vec2 childEffectivePos = canvasOrigin + childRelPos - m_scrollOffset;
-        vec2 childSize = obj->getBaseProperties().size.resolve(absCanvasSize);
+        obj->clipRect = childClip;
+        obj->computeAbsolutes(absCanvasSize, absolutePosition - m_scrollOffset, absoluteRotation);
 
-        bool inViewport = (childEffectivePos.x + childSize.x > 0.0f) && (childEffectivePos.x < absoluteSize.x) &&
-                          (childEffectivePos.y + childSize.y > 0.0f) && (childEffectivePos.y < absoluteSize.y);
+        if (autoCanvas) {
+            if (acs == AutomaticSize::X || acs == AutomaticSize::XY)
+                absCanvasSize.x = std::max(absCanvasSize.x, obj->absoluteSize.x);
+            if (acs == AutomaticSize::Y || acs == AutomaticSize::XY)
+                absCanvasSize.y = std::max(absCanvasSize.y, obj->absoluteSize.y);
+        }
+
+        vec2 childEffectivePos = obj->absolutePosition - absolutePosition;
+        bool inViewport = (childEffectivePos.x + obj->absoluteSize.x > 0.0f) && (childEffectivePos.x < absoluteSize.x) &&
+                          (childEffectivePos.y + obj->absoluteSize.y > 0.0f) && (childEffectivePos.y < absoluteSize.y);
 
         bool original = obj->isVisible();
         bool effective = original && inViewport;
@@ -113,22 +119,20 @@ void ScrollingFrame::draw(DrawContext &ctx)
         }
 
         obj->setBaseProperties({.visible = static_cast<int8_t>(effective)});
-        obj->clipRect = childClip;
-        obj->computeAbsolutes(absCanvasSize, absolutePosition - m_scrollOffset, absoluteRotation);
         obj->draw(ctx);
         obj->setBaseProperties({.visible = static_cast<int8_t>(original)});
     }
 
-    drawScrollbars(ctx);
+    m_scrollOffset = clamp(m_scrollOffset, vec2(0.0f), max(absCanvasSize - absoluteSize, vec2(0.0f)));
+
+    drawScrollbars(ctx, absCanvasSize);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }
 
-void ScrollingFrame::drawScrollbars(DrawContext &ctx)
+void ScrollingFrame::drawScrollbars(DrawContext &ctx, vec2 absCanvasSize)
 {
     bool sfVisible = isVisible();
-
-    vec2 absCanvasSize = m_sfProps.canvasSize.resolve(absoluteSize);
     bool needsVertical = sfVisible && (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) &&
                          absCanvasSize.y > absoluteSize.y;
     bool needsHorizontal = sfVisible && (m_sfProps.scrollAxis == ScrollAxis::X || m_sfProps.scrollAxis == ScrollAxis::XY) &&
@@ -235,9 +239,9 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
 EventResult ScrollingFrame::onMouseScrollUp()
 {
     if (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) {
-        m_scrollOffset.y -= m_sfProps.scrollSpeed;
+        m_scrollOffset.y = std::max(0.0f, m_scrollOffset.y - m_sfProps.scrollSpeed);
     } else {
-        m_scrollOffset.x -= m_sfProps.scrollSpeed;
+        m_scrollOffset.x = std::max(0.0f, m_scrollOffset.x - m_sfProps.scrollSpeed);
     }
     markDirty();
     return EventResult::CONSUMED;

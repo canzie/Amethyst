@@ -35,7 +35,7 @@ class ScrollingFrame : public UIObject {
     ScrollingFrameStyleProperties m_sfProps;
 
   private:
-    void drawScrollbars(DrawContext &ctx);
+    void drawScrollbars(DrawContext &ctx, vec2 absCanvasSize);
 
     vec2 m_scrollOffset = {0.0f, 0.0f};
     std::unique_ptr<Frame> m_verticalBar;

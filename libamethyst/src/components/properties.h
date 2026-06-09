@@ -206,6 +206,7 @@ struct ScrollingFrameStyleProperties {
     ScrollBarVisibility scrollBarVisibility = ScrollBarVisibility::NONE;
     UDim2 canvasSize = UDim2(vec2(PROP_UNSET_FLOAT), vec2(0));
     UDim2 canvasPosition = UDim2(vec2(PROP_UNSET_FLOAT), vec2(0));
+    AutomaticSize automaticCanvasSize = AutomaticSize::NONE;
     Color3 scrollBarColor = Color3(PROP_UNSET_FLOAT);
     float scrollBarTransparency = PROP_UNSET_FLOAT;
     float scrollBarThickness = PROP_UNSET_FLOAT;

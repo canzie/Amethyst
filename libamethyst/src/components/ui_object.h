@@ -35,7 +35,7 @@ class UIObject : public UIBase2D {
     UIObject(UIObject &&) = default;
     UIObject &operator=(UIObject &&) = default;
 
-    void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation);
+    virtual void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation);
     InstanceData createInstanceData() const;
     Window *getWindow();
 
