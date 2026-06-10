@@ -61,10 +61,11 @@ void TextInput::setPlaceholder(std::string placeholder)
 
 TextInput::~TextInput()
 {
-    for (auto *alloc : m_textAllocations) {
-        if (alloc && alloc->isValid()) {
-            alloc->registry->release(*alloc);
+    if (m_textAlloc != nullptr && m_textAlloc->isValid()) {
+        if (m_glyphSlice.isValid()) {
+            m_textAlloc->registry->glyphBuffer().destroySlice(m_glyphSlice);
         }
+        m_textAlloc->registry->release(*m_textAlloc);
     }
     if (m_selectionAlloc && m_selectionAlloc->isValid()) {
         m_selectionAlloc->registry->release(*m_selectionAlloc);
@@ -454,14 +455,18 @@ void TextInput::selectAll()
     markDirty();
 }
 
-void TextInput::releaseTextAllocations(GeometryRegistry *)
+void TextInput::releaseText(DrawContext &ctx)
 {
-    for (auto *alloc : m_textAllocations) {
-        if (alloc && alloc->isValid()) {
-            alloc->registry->release(*alloc);
-        }
+    if (m_glyphSlice.isValid()) {
+        ctx.geometry->glyphBuffer().destroySlice(m_glyphSlice);
+        m_glyphSlice = GlyphSliceHandle{};
     }
-    m_textAllocations.clear();
+    if (m_textAlloc != nullptr) {
+        if (m_textAlloc->isValid()) {
+            ctx.geometry->release(*m_textAlloc);
+        }
+        m_textAlloc = nullptr;
+    }
 }
 
 void TextInput::drawText(DrawContext &ctx)
@@ -479,14 +484,13 @@ void TextInput::drawText(DrawContext &ctx)
     }
 
     bool shouldShowPlaceholder = m_text.empty() && !m_placeholder.empty();
-    bool modeChanged = (shouldShowPlaceholder != m_showingPlaceholder);
     m_showingPlaceholder = shouldShowPlaceholder;
 
     const std::string &textToRender = m_showingPlaceholder ? m_placeholder : m_text;
     const Color4 &colorToUse = m_showingPlaceholder ? m_tiProps.placeholderColor : m_tiProps.text.textColor;
 
     if (textToRender.empty()) {
-        releaseTextAllocations(ctx.geometry);
+        releaseText(ctx);
         m_charPositions.clear();
         return;
     }
@@ -500,23 +504,32 @@ void TextInput::drawText(DrawContext &ctx)
     params.yAlign = m_tiProps.text.textYAlignment;
     params.wrap = m_tiProps.multiline;
 
-    auto glyphs = ctx.textProcessor->layoutTextAtlas(textToRender, params);
-    int32_t desiredZIndex = getZIndex() + 1;
-    bool visible = isVisible();
-    for (auto &g : glyphs) {
-        g.zIndex = desiredZIndex;
-        g.setVisible(visible);
-    }
-
-    if (modeChanged || glyphs.size() != m_textAllocations.size()) {
-        releaseTextAllocations(ctx.geometry);
-        m_textAllocations.reserve(glyphs.size());
-        for (const auto &glyphData : glyphs) {
-            m_textAllocations.push_back(ctx.geometry->submit(glyphData));
-        }
+    BatchedText batched = ctx.textProcessor->layoutTextBatched(textToRender, params);
+    if (batched.glyphs.empty()) {
+        releaseText(ctx);
     } else {
-        for (size_t i = 0; i < glyphs.size(); ++i) {
-            ctx.geometry->update(*m_textAllocations[i], glyphs[i]);
+        GlyphBuffer &glyphBuffer = ctx.geometry->glyphBuffer();
+        if (!m_glyphSlice.isValid()) {
+            m_glyphSlice = glyphBuffer.createSlice();
+        }
+        glyphBuffer.updateSlice(m_glyphSlice, batched.glyphs.data(), static_cast<uint32_t>(batched.glyphs.size()),
+                                batched.lines.data(), static_cast<uint32_t>(batched.lines.size()), batched.lineHeightPx);
+
+        InstanceData inst{};
+        inst.translation = batched.pos + batched.size * 0.5f;
+        inst.scale = batched.size;
+        inst.setFillColor(colorToUse);
+        inst.setPrimitiveType(PRIMITIVE_TEXT);
+        inst.setGlyphSlice(m_glyphSlice.id);
+        inst.textureId = ctx.glyphAtlas->getTextureId().id;
+        inst.zIndex = getZIndex() + 1;
+        inst.clipRect = clipRect;
+        inst.setVisible(isVisible());
+
+        if (m_textAlloc == nullptr) {
+            m_textAlloc = ctx.geometry->submit(inst);
+        } else {
+            ctx.geometry->update(*m_textAlloc, inst);
         }
     }
 

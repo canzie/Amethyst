@@ -53,7 +53,7 @@ class TextInput : public UIObject {
     void cut();
     void selectAll();
 
-    void releaseTextAllocations(GeometryRegistry *geometry);
+    void releaseText(DrawContext &ctx);
     void drawText(DrawContext &ctx);
     void drawSelection(DrawContext &ctx);
     void drawCursor(DrawContext &ctx);
@@ -80,7 +80,8 @@ class TextInput : public UIObject {
     bool m_cursorVisible = true;
     bool m_draggingSelection = false;
 
-    std::vector<GeometryAllocation *> m_textAllocations;
+    GeometryAllocation *m_textAlloc = nullptr;
+    GlyphSliceHandle m_glyphSlice;
     GeometryAllocation *m_selectionAlloc = nullptr;
     GeometryAllocation *m_cursorAlloc = nullptr;
 

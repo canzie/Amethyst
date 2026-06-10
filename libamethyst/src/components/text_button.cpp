@@ -33,10 +33,11 @@ void TextButton::resolveStyle()
 
 TextButton::~TextButton()
 {
-    for (auto *alloc : m_textAllocations) {
-        if (alloc && alloc->isValid()) {
-            alloc->registry->release(*alloc);
+    if (m_textAlloc != nullptr && m_textAlloc->isValid()) {
+        if (m_glyphSlice.isValid()) {
+            m_textAlloc->registry->glyphBuffer().destroySlice(m_glyphSlice);
         }
+        m_textAlloc->registry->release(*m_textAlloc);
     }
 }
 
@@ -95,7 +96,7 @@ void TextButton::draw(DrawContext &ctx)
 
 void TextButton::updateTextGeometry(DrawContext &ctx)
 {
-    if (ctx.textProcessor == nullptr || ctx.geometry == nullptr || m_text.empty()) {
+    if (ctx.textProcessor == nullptr || ctx.geometry == nullptr || ctx.glyphAtlas == nullptr || m_text.empty()) {
         return;
     }
 
@@ -138,16 +139,14 @@ void TextButton::updateTextGeometry(DrawContext &ctx)
 void TextButton::repositionGlyphs(DrawContext &ctx, vec2 delta, bool visible)
 {
     AM_PROFILE_FUNCTION();
-    for (auto *alloc : m_textAllocations) {
-        if (alloc == nullptr) {
-            continue;
-        }
-        InstanceData *inst = ctx.geometry->getMutable(*alloc);
-        if (inst != nullptr) {
-            inst->translation = inst->translation + delta;
-            inst->clipRect = clipRect;
-            inst->setVisible(visible);
-        }
+    if (m_textAlloc == nullptr) {
+        return;
+    }
+    InstanceData *inst = ctx.geometry->getMutable(*m_textAlloc);
+    if (inst != nullptr) {
+        inst->translation = inst->translation + delta;
+        inst->clipRect = clipRect;
+        inst->setVisible(visible);
     }
 }
 
@@ -168,28 +167,48 @@ void TextButton::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_
     params.truncate = m_textStyle.textTruncate;
     params.wrap = static_cast<bool>(m_textStyle.textWrapped);
 
-    auto glyphs = ctx.textProcessor->layoutTextAtlas(m_text, params);
-    for (auto &glyphData : glyphs) {
-        glyphData.zIndex = zIndex;
-        glyphData.clipRect = clipRect;
-        glyphData.setVisible(visible);
+    BatchedText batched = ctx.textProcessor->layoutTextBatched(m_text, params);
+    if (batched.glyphs.empty()) {
+        releaseText(ctx);
+        return;
     }
 
-    if (glyphs.size() != m_textAllocations.size()) {
-        for (auto *alloc : m_textAllocations) {
-            if (alloc && alloc->isValid()) {
-                ctx.geometry->release(*alloc);
-            }
-        }
-        m_textAllocations.clear();
-        m_textAllocations.reserve(glyphs.size());
-        for (const auto &glyphData : glyphs) {
-            m_textAllocations.push_back(ctx.geometry->submit(glyphData));
-        }
+    GlyphBuffer &glyphBuffer = ctx.geometry->glyphBuffer();
+    if (!m_glyphSlice.isValid()) {
+        m_glyphSlice = glyphBuffer.createSlice();
+    }
+    glyphBuffer.updateSlice(m_glyphSlice, batched.glyphs.data(), static_cast<uint32_t>(batched.glyphs.size()),
+                            batched.lines.data(), static_cast<uint32_t>(batched.lines.size()), batched.lineHeightPx);
+
+    InstanceData inst{};
+    inst.translation = batched.pos + batched.size * 0.5f;
+    inst.scale = batched.size;
+    inst.setFillColor(m_textStyle.textColor);
+    inst.setPrimitiveType(PRIMITIVE_TEXT);
+    inst.setGlyphSlice(m_glyphSlice.id);
+    inst.textureId = ctx.glyphAtlas->getTextureId().id;
+    inst.zIndex = zIndex;
+    inst.clipRect = clipRect;
+    inst.setVisible(visible);
+
+    if (m_textAlloc == nullptr) {
+        m_textAlloc = ctx.geometry->submit(inst);
     } else {
-        for (size_t i = 0; i < glyphs.size(); ++i) {
-            ctx.geometry->update(*m_textAllocations[i], glyphs[i]);
+        ctx.geometry->update(*m_textAlloc, inst);
+    }
+}
+
+void TextButton::releaseText(DrawContext &ctx)
+{
+    if (m_glyphSlice.isValid()) {
+        ctx.geometry->glyphBuffer().destroySlice(m_glyphSlice);
+        m_glyphSlice = GlyphSliceHandle{};
+    }
+    if (m_textAlloc != nullptr) {
+        if (m_textAlloc->isValid()) {
+            ctx.geometry->release(*m_textAlloc);
         }
+        m_textAlloc = nullptr;
     }
 }
 
