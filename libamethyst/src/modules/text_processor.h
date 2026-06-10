@@ -8,6 +8,7 @@
 
 #include "components/common.h"
 #include "modules/glyph_atlas.h"
+#include "modules/glyph_buffer.h"
 #include "parsers/ttf/ttf_types.h"
 #include "rendering/instance_data.h"
 
@@ -78,6 +79,20 @@ struct TextLayoutState {
 };
 
 /**
+ * @brief A laid-out text label reduced to a single quad plus its glyph side data.
+ *
+ * Glyph positions are stored inside the buffers as u16 pixels relative to `pos`; the quad
+ * is `pos`/`size` in screen space. `lines` partitions `glyphs` into reading-order rows.
+ */
+struct BatchedText {
+    vec2 pos = {0.0f, 0.0f};
+    vec2 size = {0.0f, 0.0f};
+    float lineHeightPx = 0.0f;
+    std::vector<GlyphQuad> glyphs;
+    std::vector<GlyphLine> lines;
+};
+
+/**
  * @brief Processes text strings into CharacterInstance data for rendering
  */
 class TextProcessor {
@@ -94,6 +109,14 @@ class TextProcessor {
      * @return Vector of InstanceData for rendering
      */
     std::vector<InstanceData> layoutTextAtlas(const std::string &text, const TextLayoutParams &params) const;
+
+    /**
+     * @brief Lay out text as a single batched quad with glyph data in side buffers.
+     * @param text The text to lay out.
+     * @param params Layout parameters.
+     * @return The bbox quad plus bbox-relative glyph quads and per-line ranges.
+     */
+    BatchedText layoutTextBatched(const std::string &text, const TextLayoutParams &params) const;
 
     /**
      * @brief Measure text dimensions using glyph atlas

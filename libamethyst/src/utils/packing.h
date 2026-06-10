@@ -36,6 +36,11 @@ inline uint16_t packFloatToHalf(float f)
     return packHalf1x16(f);
 }
 
+inline uint32_t packU16x2(uint16_t low, uint16_t high)
+{
+    return static_cast<uint32_t>(low) | (static_cast<uint32_t>(high) << 16);
+}
+
 inline uint16_t packRotation(float radians)
 {
     float normalized = fract(radians / (2.0f * pi<float>()));

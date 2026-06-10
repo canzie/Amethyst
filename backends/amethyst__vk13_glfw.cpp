@@ -144,6 +144,9 @@ constexpr size_t INDEX_COUNT_RECT = 6;
 
 struct PushConstants {
     vec2 screenSize;
+    uint32_t glyphOffset;
+    uint32_t lineOffset;
+    uint32_t sliceOffset;
 };
 
 void VkBackend::init(const VulkanInitInfo &config, const GLFWInitInfo &info)
@@ -198,6 +201,27 @@ void VkBackend::shutdown()
     if (m_dynamicArena.buffer != VK_NULL_HANDLE) {
         vkDestroyBuffer(device, m_dynamicArena.buffer, nullptr);
         vkFreeMemory(device, m_dynamicArena.memory, nullptr);
+    }
+    if (m_glyphArena.mappedMemory) {
+        vkUnmapMemory(device, m_glyphArena.memory);
+    }
+    if (m_glyphArena.buffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, m_glyphArena.buffer, nullptr);
+        vkFreeMemory(device, m_glyphArena.memory, nullptr);
+    }
+    if (m_lineArena.mappedMemory) {
+        vkUnmapMemory(device, m_lineArena.memory);
+    }
+    if (m_lineArena.buffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, m_lineArena.buffer, nullptr);
+        vkFreeMemory(device, m_lineArena.memory, nullptr);
+    }
+    if (m_sliceArena.mappedMemory) {
+        vkUnmapMemory(device, m_sliceArena.memory);
+    }
+    if (m_sliceArena.buffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device, m_sliceArena.buffer, nullptr);
+        vkFreeMemory(device, m_sliceArena.memory, nullptr);
     }
     if (m_staticArena.buffer != VK_NULL_HANDLE) {
         vkDestroyBuffer(device, m_staticArena.buffer, nullptr);
@@ -284,6 +308,14 @@ void VkBackend::record(VkCommandBuffer cmd)
         if (alloc) {
             updateInstances(*alloc, *registry);
         }
+
+        GlyphBuffer *gb = registry->getGlyphBuffer();
+        if (gb != nullptr) {
+            TextGpuAllocation *talloc = obtainTextAllocation(registry);
+            if (talloc != nullptr) {
+                updateTextBuffers(*talloc, *gb);
+            }
+        }
     }
 
     VkViewport viewport = {
@@ -304,6 +336,9 @@ void VkBackend::record(VkCommandBuffer cmd)
 
     PushConstants pc = {
         .screenSize = {static_cast<float>(m_info.extent.width), static_cast<float>(m_info.extent.height)},
+        .glyphOffset = 0,
+        .lineOffset = 0,
+        .sliceOffset = 0,
     };
 
     bool pipelineBound = false;
@@ -315,11 +350,22 @@ void VkBackend::record(VkCommandBuffer cmd)
         if (it != m_geometryAllocations.end() && it->second.size > 0) {
             if (!pipelineBound) {
                 vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-                vkCmdPushConstants(cmd, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
                 vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, nullptr);
                 vkCmdBindIndexBuffer(cmd, m_indexBuffer.arena->buffer, m_indexBuffer.offset, VK_INDEX_TYPE_UINT32);
                 pipelineBound = true;
             }
+
+            pc.glyphOffset = 0;
+            pc.lineOffset = 0;
+            pc.sliceOffset = 0;
+            auto tit = m_textAllocations.find(registry);
+            if (tit != m_textAllocations.end()) {
+                pc.glyphOffset = static_cast<uint32_t>(tit->second.glyph.offset / sizeof(GlyphQuad));
+                pc.lineOffset = static_cast<uint32_t>(tit->second.line.offset / sizeof(GlyphLine));
+                pc.sliceOffset = static_cast<uint32_t>(tit->second.slice.offset / sizeof(GlyphSlice));
+            }
+            vkCmdPushConstants(cmd, m_pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
+
             uint32_t firstInstance = static_cast<uint32_t>(it->second.offset / sizeof(InstanceData));
             vkCmdDrawIndexed(cmd, INDEX_COUNT_RECT, static_cast<uint32_t>(it->second.size), 0, 0, firstInstance);
         }
@@ -388,6 +434,21 @@ void VkBackend::allocateBufferArenas()
     s_createBuffer(m_info.device, m_info.physicalDevice, m_dynamicArena, dynamicUsage, dynamicProperties);
 
     vkMapMemory(m_info.device, m_dynamicArena.memory, 0, VK_WHOLE_SIZE, 0, &m_dynamicArena.mappedMemory);
+
+    m_glyphArena = {};
+    m_glyphArena.capacity = 4 * (GlyphBuffer::GLYPH_CAPACITY * sizeof(GlyphQuad));
+    s_createBuffer(m_info.device, m_info.physicalDevice, m_glyphArena, dynamicUsage, dynamicProperties);
+    vkMapMemory(m_info.device, m_glyphArena.memory, 0, VK_WHOLE_SIZE, 0, &m_glyphArena.mappedMemory);
+
+    m_lineArena = {};
+    m_lineArena.capacity = 8 * (GlyphBuffer::LINE_CAPACITY * sizeof(GlyphLine));
+    s_createBuffer(m_info.device, m_info.physicalDevice, m_lineArena, dynamicUsage, dynamicProperties);
+    vkMapMemory(m_info.device, m_lineArena.memory, 0, VK_WHOLE_SIZE, 0, &m_lineArena.mappedMemory);
+
+    m_sliceArena = {};
+    m_sliceArena.capacity = 8 * (GlyphBuffer::SLICE_CAPACITY * sizeof(GlyphSlice));
+    s_createBuffer(m_info.device, m_info.physicalDevice, m_sliceArena, dynamicUsage, dynamicProperties);
+    vkMapMemory(m_info.device, m_sliceArena.memory, 0, VK_WHOLE_SIZE, 0, &m_sliceArena.mappedMemory);
 }
 
 void VkBackend::allocateIndexBuffer()
@@ -565,7 +626,7 @@ void VkBackend::createPipeline()
     m_vertShader = loadShaderModule(m_info.vertexShaderPath);
     m_fragShader = loadShaderModule(m_info.fragmentShaderPath);
 
-    VkDescriptorSetLayoutBinding bindings[2] = {};
+    VkDescriptorSetLayoutBinding bindings[5] = {};
     bindings[0].binding = 0;
     bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     bindings[0].descriptorCount = 1;
@@ -574,10 +635,25 @@ void VkBackend::createPipeline()
     bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindings[1].descriptorCount = MAX_BINDLESS_TEXTURES;
     bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[2].binding = 2;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bindings[2].descriptorCount = 1;
+    bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[3].binding = 3;
+    bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bindings[3].descriptorCount = 1;
+    bindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[4].binding = 4;
+    bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bindings[4].descriptorCount = 1;
+    bindings[4].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
     VkDescriptorBindingFlags bindingFlags[] = {
         0,
         VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+        0,
+        0,
+        0,
     };
 
     VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo = {};
@@ -704,6 +780,28 @@ void VkBackend::allocateDescriptorSet()
     descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     descriptorWrite.pBufferInfo = &bufferInfo;
     vkUpdateDescriptorSets(m_info.device, 1, &descriptorWrite, 0, nullptr);
+
+    VkDescriptorBufferInfo textBufferInfos[3] = {};
+    textBufferInfos[0].buffer = m_glyphArena.buffer;
+    textBufferInfos[0].offset = 0;
+    textBufferInfos[0].range = VK_WHOLE_SIZE;
+    textBufferInfos[1].buffer = m_lineArena.buffer;
+    textBufferInfos[1].offset = 0;
+    textBufferInfos[1].range = VK_WHOLE_SIZE;
+    textBufferInfos[2].buffer = m_sliceArena.buffer;
+    textBufferInfos[2].offset = 0;
+    textBufferInfos[2].range = VK_WHOLE_SIZE;
+
+    VkWriteDescriptorSet textWrites[3] = {};
+    for (uint32_t i = 0; i < 3; i++) {
+        textWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        textWrites[i].dstSet = m_descriptorSet;
+        textWrites[i].dstBinding = 2 + i;
+        textWrites[i].descriptorCount = 1;
+        textWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        textWrites[i].pBufferInfo = &textBufferInfos[i];
+    }
+    vkUpdateDescriptorSets(m_info.device, 3, textWrites, 0, nullptr);
 }
 
 BufferAllocation VkBackend::allocateFromArena(BufferArena &arena, std::vector<FreeBlock> &freeList, size_t size)
@@ -827,15 +925,24 @@ bool VkBackend::reallocBufferArena(BufferArena &arena, VkBufferUsageFlags usage,
 
     arena = newArena;
 
+    uint32_t binding = 0;
+    if (&arena == &m_glyphArena) {
+        binding = 2;
+    } else if (&arena == &m_lineArena) {
+        binding = 3;
+    } else if (&arena == &m_sliceArena) {
+        binding = 4;
+    }
+
     VkDescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer = m_dynamicArena.buffer;
+    bufferInfo.buffer = arena.buffer;
     bufferInfo.offset = 0;
     bufferInfo.range = VK_WHOLE_SIZE;
 
     VkWriteDescriptorSet descriptorWrite = {};
     descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite.dstSet = m_descriptorSet;
-    descriptorWrite.dstBinding = 0;
+    descriptorWrite.dstBinding = binding;
     descriptorWrite.descriptorCount = 1;
     descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     descriptorWrite.pBufferInfo = &bufferInfo;
@@ -867,6 +974,94 @@ void VkBackend::freeGeometryAllocation(GeometryRegistry *registry)
     if (it != m_geometryAllocations.end()) {
         freeToArena(m_dynamicArenaFreeList, it->second);
         m_geometryAllocations.erase(it);
+    }
+    freeTextAllocation(registry);
+}
+
+TextGpuAllocation *VkBackend::obtainTextAllocation(GeometryRegistry *registry)
+{
+    auto it = m_textAllocations.find(registry);
+    if (it != m_textAllocations.end()) {
+        return &it->second;
+    }
+
+    const size_t glyphBytes = GlyphBuffer::GLYPH_CAPACITY * sizeof(GlyphQuad);
+    const size_t lineBytes = GlyphBuffer::LINE_CAPACITY * sizeof(GlyphLine);
+    const size_t sliceBytes = GlyphBuffer::SLICE_CAPACITY * sizeof(GlyphSlice);
+
+    TextGpuAllocation result;
+    result.glyph = allocateFromArena(m_glyphArena, m_glyphArenaFreeList, glyphBytes);
+    result.line = allocateFromArena(m_lineArena, m_lineArenaFreeList, lineBytes);
+    result.slice = allocateFromArena(m_sliceArena, m_sliceArenaFreeList, sliceBytes);
+
+    if (result.glyph.arena == nullptr || result.line.arena == nullptr || result.slice.arena == nullptr) {
+        if (result.glyph.arena != nullptr) {
+            freeToArena(m_glyphArenaFreeList, result.glyph);
+        }
+        if (result.line.arena != nullptr) {
+            freeToArena(m_lineArenaFreeList, result.line);
+        }
+        if (result.slice.arena != nullptr) {
+            freeToArena(m_sliceArenaFreeList, result.slice);
+        }
+        AM_LOG_ERROR("Failed to allocate text GPU buffers for registry");
+        return nullptr;
+    }
+
+    auto [inserted, _] = m_textAllocations.emplace(registry, result);
+    return &inserted->second;
+}
+
+void VkBackend::updateTextBuffers(TextGpuAllocation &alloc, GlyphBuffer &glyphBuffer)
+{
+    struct UploadSlot {
+        BufferAllocation *target;
+        const uint8_t *cpuData;
+        size_t elemSize;
+        DirtyRange dirty;
+    };
+
+    UploadSlot slots[3] = {
+        {&alloc.glyph, reinterpret_cast<const uint8_t *>(glyphBuffer.glyphData()), sizeof(GlyphQuad), glyphBuffer.glyphDirty()},
+        {&alloc.line, reinterpret_cast<const uint8_t *>(glyphBuffer.lineData()), sizeof(GlyphLine), glyphBuffer.lineDirty()},
+        {&alloc.slice, reinterpret_cast<const uint8_t *>(glyphBuffer.sliceData()), sizeof(GlyphSlice), glyphBuffer.sliceDirty()},
+    };
+
+    for (UploadSlot &slot : slots) {
+        if (slot.dirty.empty()) {
+            continue;
+        }
+
+        size_t loBytes = static_cast<size_t>(slot.dirty.lo) * slot.elemSize;
+        size_t hiBytes = static_cast<size_t>(slot.dirty.hi) * slot.elemSize;
+        size_t rangeBytes = hiBytes - loBytes;
+
+        auto *basePtr = static_cast<uint8_t *>(slot.target->arena->mappedMemory);
+        std::memcpy(basePtr + slot.target->offset + loBytes, slot.cpuData + loBytes, rangeBytes);
+
+        VkMappedMemoryRange memoryRange{};
+        memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+        memoryRange.memory = slot.target->arena->memory;
+        size_t alignedOffset = ((slot.target->offset + loBytes) / 64) * 64;
+        size_t alignedEnd = alignUp(slot.target->offset + hiBytes, 64);
+        memoryRange.offset = alignedOffset;
+        memoryRange.size = alignedEnd - alignedOffset;
+        vkFlushMappedMemoryRanges(m_info.device, 1, &memoryRange);
+
+        slot.target->size = hiBytes;
+    }
+
+    glyphBuffer.clearDirty();
+}
+
+void VkBackend::freeTextAllocation(GeometryRegistry *registry)
+{
+    auto it = m_textAllocations.find(registry);
+    if (it != m_textAllocations.end()) {
+        freeToArena(m_glyphArenaFreeList, it->second.glyph);
+        freeToArena(m_lineArenaFreeList, it->second.line);
+        freeToArena(m_sliceArenaFreeList, it->second.slice);
+        m_textAllocations.erase(it);
     }
 }
 

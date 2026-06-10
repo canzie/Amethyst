@@ -2,7 +2,17 @@
 
 layout(push_constant) uniform PushConstants {
     vec2 screenSize;
+    uint glyphOffset;
+    uint lineOffset;
+    uint sliceOffset;
 } pc;
+
+struct GlyphSlice {
+    uint firstGlyph;
+    uint firstLine;
+    uint packed;
+    uint pad;
+};
 
 struct InstanceData {
     vec2 translation;             // 8B position
@@ -22,6 +32,10 @@ layout(std430, binding = 0) readonly buffer InstanceBuffer {
     InstanceData instances[];
 };
 
+layout(std430, binding = 4) readonly buffer SliceBuffer {
+    GlyphSlice slices[];
+};
+
 layout(location = 0) out vec2 fragUV;
 layout(location = 1) out flat uint fragPrimitiveType;
 layout(location = 2) out flat vec4 fragFillColor;
@@ -34,6 +48,11 @@ layout(location = 8) out flat uint fragTextureId;
 layout(location = 9) out flat vec4 fragClipRect;
 layout(location = 10) out vec2 fragWorldPos;
 layout(location = 11) out flat uvec4 fragShapeData;
+layout(location = 12) out flat uint fragGlyphBase;
+layout(location = 13) out flat uint fragLineBase;
+layout(location = 14) out flat uint fragLineCount;
+layout(location = 15) out flat float fragLineHeight;
+layout(location = 16) out flat uint fragTextBatched;
 
 const vec2 positions[4] = vec2[](
     vec2(-0.5, -0.5),
@@ -53,6 +72,7 @@ const uint PRIMITIVE_TEXT = 4;
 const uint PRIMITIVE_SVG = 10;
 const float PI = 3.14159265359;
 const uint INSTANCE_FLAG_VISIBLE = 0x00000001u;
+const uint INSTANCE_FLAG_TEXT_RICH = 0x00000002u;
 
 vec3 srgbToLinear(vec3 c) {
     return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
@@ -107,7 +127,20 @@ void main()
     // Unpack primitive type from bits 16-23
     uint primitiveType = (inst.cornerPrimitiveMode >> 16u) & 0xFFu;
 
-    if (primitiveType == PRIMITIVE_TEXT || primitiveType == PRIMITIVE_SVG) {
+    bool textBatched = (primitiveType == PRIMITIVE_TEXT) && ((inst.flags & INSTANCE_FLAG_TEXT_RICH) == 0u);
+    fragTextBatched = textBatched ? 1u : 0u;
+    fragGlyphBase = 0u;
+    fragLineBase = 0u;
+    fragLineCount = 0u;
+    fragLineHeight = 0.0;
+
+    if (textBatched) {
+        GlyphSlice sl = slices[pc.sliceOffset + inst.shapeData[0]];
+        fragGlyphBase = pc.glyphOffset + sl.firstGlyph;
+        fragLineBase = pc.lineOffset + sl.firstLine;
+        fragLineCount = sl.packed & 0xFFFFu;
+        fragLineHeight = unpackHalf2x16(sl.packed).y;
+    } else if (primitiveType == PRIMITIVE_TEXT || primitiveType == PRIMITIVE_SVG) {
         vec2 uvMin = unpackHalf2x16(inst.shapeData[0]);
         vec2 uvMax = unpackHalf2x16(inst.shapeData[1]);
         fragUV = mix(uvMin, uvMax, uvs[gl_VertexIndex]);

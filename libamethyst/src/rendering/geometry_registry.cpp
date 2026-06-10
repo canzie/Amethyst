@@ -35,6 +35,14 @@ GeometryRegistry::~GeometryRegistry()
     }
 }
 
+GlyphBuffer &GeometryRegistry::glyphBuffer()
+{
+    if (m_glyphBuffer == nullptr) {
+        m_glyphBuffer = std::make_unique<GlyphBuffer>();
+    }
+    return *m_glyphBuffer;
+}
+
 std::unique_ptr<GeometryRegistry> GeometryRegistry::create(UILayer *owner)
 {
     return std::unique_ptr<GeometryRegistry>(new GeometryRegistry(owner));

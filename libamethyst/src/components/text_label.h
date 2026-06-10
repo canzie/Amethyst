@@ -8,10 +8,10 @@
 #include "components/instance.h"
 #include "components/properties.h"
 #include "components/ui_label.h"
+#include "modules/glyph_buffer.h"
 #include "modules/text_processor.h"
 
 #include <string>
-#include <vector>
 
 namespace Amethyst {
 
@@ -45,23 +45,30 @@ class TextLabel : public UILabel {
     void updateTextGeometry(DrawContext &ctx);
 
     /**
-     * @brief Shifts the already-submitted glyphs in place (cheap path, only the origin moved).
+     * @brief Shifts the text quad in place (cheap path, only the origin moved).
      * @param ctx The draw context providing the geometry registry
-     * @param delta The amount to move each glyph by
-     * @param visible Whether the glyphs should be visible
+     * @param delta The amount to move the quad by
+     * @param visible Whether the text should be visible
      */
     void repositionGlyphs(DrawContext &ctx, vec2 delta, bool visible);
 
     /**
-     * @brief Lays the text out from scratch and re-uploads the glyphs (expensive path).
+     * @brief Lays the text out from scratch and re-uploads the glyph slice (expensive path).
      * @param ctx The draw context providing the text processor and geometry registry
      * @param effectiveFontSize The resolved font size after textScaled adjustment
-     * @param zIndex The z-index to assign to the glyphs
-     * @param visible Whether the glyphs should be visible
+     * @param zIndex The z-index to assign to the text quad
+     * @param visible Whether the text should be visible
      */
     void reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t zIndex, bool visible);
 
-    std::vector<GeometryAllocation *> m_textAllocations;
+    /**
+     * @brief Release the text quad and its glyph slice.
+     * @param ctx The draw context providing the geometry registry
+     */
+    void releaseText(DrawContext &ctx);
+
+    GeometryAllocation *m_textAlloc = nullptr;
+    GlyphSliceHandle m_glyphSlice;
     TextLayoutState m_textLayout;
     vec2 m_textSize = {0.0f, 0.0f};
 };

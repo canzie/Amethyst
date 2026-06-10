@@ -60,6 +60,12 @@ struct FreeBlock {
     size_t size;
 };
 
+struct TextGpuAllocation {
+    BufferAllocation glyph;
+    BufferAllocation line;
+    BufferAllocation slice;
+};
+
 class VkBackend : public AmethystBackend {
   public:
     void init(const VulkanInitInfo &config, const GLFWInitInfo &info);
@@ -94,6 +100,9 @@ class VkBackend : public AmethystBackend {
     void setupGLFWCallbacks();
     BufferAllocation* obtainGeometryAllocation(GeometryRegistry* registry);
     void freeGeometryAllocation(GeometryRegistry* registry);
+    TextGpuAllocation* obtainTextAllocation(GeometryRegistry* registry);
+    void updateTextBuffers(TextGpuAllocation& alloc, GlyphBuffer& glyphBuffer);
+    void freeTextAllocation(GeometryRegistry* registry);
     BufferAllocation allocateFromArena(BufferArena& arena, std::vector<FreeBlock>& freeList, size_t size);
     void freeToArena(std::vector<FreeBlock>& freeList, const BufferAllocation& alloc);
     bool reallocBufferArena(BufferArena& arena, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
@@ -147,11 +156,20 @@ class VkBackend : public AmethystBackend {
     // stream arena for text (coherent, no flush)
     BufferArena m_streamArena;
 
+    // pooled storage buffers for batched text
+    BufferArena m_glyphArena;
+    BufferArena m_lineArena;
+    BufferArena m_sliceArena;
+
     BufferAllocation m_indexBuffer;
 
     std::unordered_map<GeometryRegistry*, BufferAllocation> m_geometryAllocations;
+    std::unordered_map<GeometryRegistry*, TextGpuAllocation> m_textAllocations;
 
     std::vector<FreeBlock> m_dynamicArenaFreeList;
+    std::vector<FreeBlock> m_glyphArenaFreeList;
+    std::vector<FreeBlock> m_lineArenaFreeList;
+    std::vector<FreeBlock> m_sliceArenaFreeList;
 
     std::vector<uint32_t> m_textureFreeList;
     uint32_t m_nextTextureSlot = 0;

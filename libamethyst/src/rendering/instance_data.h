@@ -15,6 +15,7 @@ namespace Amethyst {
 
 enum GpuInstanceFlags : uint32_t {
     INSTANCE_FLAG_VISIBLE = 0x00000001,
+    INSTANCE_FLAG_TEXT_RICH = 0x00000002,
 };
 
 struct InstanceData {
@@ -80,6 +81,17 @@ struct InstanceData {
             flags &= ~INSTANCE_FLAG_VISIBLE;
         }
     }
+
+    void setTextRich(bool rich)
+    {
+        if (rich) {
+            flags |= INSTANCE_FLAG_TEXT_RICH;
+        } else {
+            flags &= ~INSTANCE_FLAG_TEXT_RICH;
+        }
+    }
+
+    void setGlyphSlice(uint32_t sliceHandle) { shapeData[0] = sliceHandle; }
 };
 
 } // namespace Amethyst

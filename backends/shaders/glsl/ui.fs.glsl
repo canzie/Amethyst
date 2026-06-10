@@ -13,8 +13,33 @@ layout(location = 8) in flat uint fragTextureId;
 layout(location = 9) in flat vec4 fragClipRect;
 layout(location = 10) in vec2 fragWorldPos;
 layout(location = 11) in flat uvec4 fragShapeData;
+layout(location = 12) in flat uint fragGlyphBase;
+layout(location = 13) in flat uint fragLineBase;
+layout(location = 14) in flat uint fragLineCount;
+layout(location = 15) in flat float fragLineHeight;
+layout(location = 16) in flat uint fragTextBatched;
 
 layout(set = 0, binding = 1) uniform sampler2D gTextures[];
+
+struct GlyphQuad {
+    uint posMin;
+    uint posMax;
+    uint uvMin;
+    uint uvMax;
+};
+
+struct GlyphLine {
+    uint glyphStart;
+    uint glyphCount;
+};
+
+layout(std430, binding = 2) readonly buffer GlyphBuffer {
+    GlyphQuad glyphs[];
+};
+
+layout(std430, binding = 3) readonly buffer LineBuffer {
+    GlyphLine glyphLines[];
+};
 
 layout(location = 0) out vec4 outColor;
 
@@ -165,6 +190,47 @@ void main()
             fragWorldPos.x > fragClipRect.z || fragWorldPos.y > fragClipRect.w) {
             discard;
         }
+    }
+
+    if (fragPrimitiveType == PRIMITIVE_TEXT && fragTextBatched == 1u) {
+        vec2 local = fragUV * fragSize;
+        uint line = min(uint(local.y / fragLineHeight), fragLineCount - 1u);
+        GlyphLine lr = glyphLines[fragLineBase + line];
+
+        uint lo = lr.glyphStart;
+        uint hi = lr.glyphStart + lr.glyphCount;
+        while (lo < hi) {
+            uint mid = (lo + hi) >> 1u;
+            float xmin = float(glyphs[fragGlyphBase + mid].posMin & 0xFFFFu);
+            if (xmin <= local.x) {
+                lo = mid + 1u;
+            } else {
+                hi = mid;
+            }
+        }
+        if (lo == lr.glyphStart) {
+            discard;
+        }
+
+        GlyphQuad g = glyphs[fragGlyphBase + (lo - 1u)];
+        vec2 pmin = vec2(float(g.posMin & 0xFFFFu), float(g.posMin >> 16u));
+        vec2 pmax = vec2(float(g.posMax & 0xFFFFu), float(g.posMax >> 16u));
+        if (any(lessThan(local, pmin)) || any(greaterThanEqual(local, pmax))) {
+            discard;
+        }
+
+        vec2 luv = (local - pmin) / (pmax - pmin);
+        vec2 amin = vec2(float(g.uvMin & 0xFFFFu), float(g.uvMin >> 16u));
+        vec2 amax = vec2(float(g.uvMax & 0xFFFFu), float(g.uvMax >> 16u));
+        vec2 atlasSize = vec2(textureSize(gTextures[fragTextureId], 0));
+        float cov = textureLod(gTextures[fragTextureId], mix(amin, amax, luv) / atlasSize, 0.0).r;
+
+        float alpha = cov * fragFillColor.a;
+        if (alpha < 0.001) {
+            discard;
+        }
+        outColor = vec4(fragFillColor.rgb, alpha);
+        return;
     }
 
     if (fragPrimitiveType == PRIMITIVE_TEXT) {

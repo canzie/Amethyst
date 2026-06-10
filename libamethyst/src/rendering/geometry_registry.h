@@ -1,6 +1,7 @@
 #ifndef AMETHYST__GEOMETRY_REGISTRY_H
 #define AMETHYST__GEOMETRY_REGISTRY_H
 
+#include "modules/glyph_buffer.h"
 #include "rendering/instance_data.h"
 
 #include <cstdint>
@@ -119,6 +120,18 @@ class GeometryRegistry {
      */
     UILayer *getOwningLayer() const { return m_owningLayer; }
 
+    /**
+     * @brief Get the batched-text glyph buffer, creating it on first use.
+     * @return Reference to this registry's glyph buffer.
+     */
+    GlyphBuffer &glyphBuffer();
+
+    /**
+     * @brief Get the glyph buffer without creating it.
+     * @return Pointer to the glyph buffer, or nullptr if no text slice has been allocated.
+     */
+    GlyphBuffer *getGlyphBuffer() const { return m_glyphBuffer.get(); }
+
     ~GeometryRegistry();
 
   private:
@@ -146,6 +159,8 @@ class GeometryRegistry {
     bool m_needsRebuild = false;
     bool m_fullDirty = false;
     std::vector<uint32_t> m_dirtyGpuIndices;
+
+    std::unique_ptr<GlyphBuffer> m_glyphBuffer;
 };
 
 } // namespace Amethyst

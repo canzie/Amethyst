@@ -38,7 +38,9 @@ static std::pair<uint32_t, size_t> s_decodeUtf8(const std::string &text, size_t 
         return {(uint32_t(c & UTF8_3BYTE_BITS) << 12) | (uint32_t(b(1) & UTF8_CONT_BITS) << 6) | (b(2) & UTF8_CONT_BITS), 3};
     }
     if ((c & UTF8_4BYTE_MASK) == UTF8_4BYTE_MARK && pos + 3 < text.size()) {
-        return {(uint32_t(c & UTF8_4BYTE_BITS) << 18) | (uint32_t(b(1) & UTF8_CONT_BITS) << 12) | (uint32_t(b(2) & UTF8_CONT_BITS) << 6) | (b(3) & UTF8_CONT_BITS), 4};
+        return {(uint32_t(c & UTF8_4BYTE_BITS) << 18) | (uint32_t(b(1) & UTF8_CONT_BITS) << 12) |
+                    (uint32_t(b(2) & UTF8_CONT_BITS) << 6) | (b(3) & UTF8_CONT_BITS),
+                4};
     }
     return {UTF8_REPLACEMENT, 1};
 }
@@ -53,7 +55,7 @@ vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixelSize
     FontMetrics metrics = m_glyphAtlas->getMetrics(pixelSize);
     float width = 0.0f;
 
-    for (size_t i = 0; i < text.size(); ) {
+    for (size_t i = 0; i < text.size();) {
         auto [codepoint, charBytes] = s_decodeUtf8(text, i);
         i += charBytes;
         const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(codepoint, pixelSize);
@@ -85,32 +87,32 @@ float TextProcessor::getCharAdvanceAtlas(uint32_t codepoint, uint32_t pixelSize,
     return glyphInfo->advance + letterSpacing;
 }
 
-std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text, const TextLayoutParams &params) const
+struct ShapedGlyph {
+    const GlyphInfo *info;
+    float localX;
+};
+
+static uint16_t s_clampU16(float v)
+{
+    if (v <= 0.0f) {
+        return 0;
+    }
+    if (v >= 65535.0f) {
+        return 65535;
+    }
+    return static_cast<uint16_t>(v + 0.5f);
+}
+
+static void s_shapeText(const std::string &text, const TextLayoutParams &params, GlyphAtlas &atlas,
+                        std::vector<std::vector<ShapedGlyph>> &lines, std::vector<float> &lineWidths, FontMetrics &metrics,
+                        float &lineHeightPx)
 {
     AM_PROFILE_FUNCTION();
-    std::vector<InstanceData> result;
-
-    if (!m_glyphAtlas || text.empty()) {
-        return result;
-    }
-
-    result.reserve(text.size());
-
     uint32_t pixelSize = static_cast<uint32_t>(params.fontSize);
-    FontMetrics metrics = m_glyphAtlas->getMetrics(pixelSize);
+    metrics = atlas.getMetrics(pixelSize);
+    lineHeightPx = metrics.lineHeight * params.lineHeight;
 
-    float atlasWidth = static_cast<float>(m_glyphAtlas->getWidth());
-    float atlasHeight = static_cast<float>(m_glyphAtlas->getHeight());
-    float lineHeightPx = metrics.lineHeight * params.lineHeight;
-
-    struct GlyphInstance {
-        const GlyphInfo *info;
-        float localX;
-    };
-
-    std::vector<std::vector<GlyphInstance>> lines;
-    std::vector<float> lineWidths;
-    std::vector<GlyphInstance> currentLine;
+    std::vector<ShapedGlyph> currentLine;
     currentLine.reserve(text.size());
     float currentLineWidth = 0.0f;
 
@@ -132,7 +134,7 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
     size_t i = 0;
     while (i < text.size()) {
         auto [codepoint, charBytes] = s_decodeUtf8(text, i);
-        const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(codepoint, pixelSize);
+        const GlyphInfo *glyphInfo = atlas.getGlyph(codepoint, pixelSize);
 
         if (!glyphInfo) {
             i += charBytes;
@@ -171,7 +173,7 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
         }
 
         if (glyphInfo->width > 0 && glyphInfo->height > 0) {
-            GlyphInstance gi;
+            ShapedGlyph gi;
             gi.info = glyphInfo;
             gi.localX = currentLineWidth;
             currentLine.push_back(gi);
@@ -181,6 +183,27 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
         i += charBytes;
     }
     flushLine();
+}
+
+std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text, const TextLayoutParams &params) const
+{
+    AM_PROFILE_FUNCTION();
+    std::vector<InstanceData> result;
+
+    if (!m_glyphAtlas || text.empty()) {
+        return result;
+    }
+
+    std::vector<std::vector<ShapedGlyph>> lines;
+    std::vector<float> lineWidths;
+    FontMetrics metrics;
+    float lineHeightPx = 0.0f;
+    s_shapeText(text, params, *m_glyphAtlas, lines, lineWidths, metrics, lineHeightPx);
+
+    result.reserve(text.size());
+
+    float atlasWidth = static_cast<float>(m_glyphAtlas->getWidth());
+    float atlasHeight = static_cast<float>(m_glyphAtlas->getHeight());
 
     float totalHeight = lines.size() * lineHeightPx;
     float startY = params.position.y;
@@ -227,12 +250,103 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
             inst.setUvRect(vec4(uvMinX, uvMinY, uvMaxX, uvMaxY));
             inst.setPrimitiveType(PRIMITIVE_TEXT);
             inst.textureId = textureId;
+            inst.setTextRich(true);
 
             result.push_back(inst);
         }
     }
 
     return result;
+}
+
+BatchedText TextProcessor::layoutTextBatched(const std::string &text, const TextLayoutParams &params) const
+{
+    AM_PROFILE_FUNCTION();
+    BatchedText out;
+
+    if (m_glyphAtlas == nullptr || text.empty()) {
+        return out;
+    }
+
+    std::vector<std::vector<ShapedGlyph>> lines;
+    std::vector<float> lineWidths;
+    FontMetrics metrics;
+    float lineHeightPx = 0.0f;
+    s_shapeText(text, params, *m_glyphAtlas, lines, lineWidths, metrics, lineHeightPx);
+
+    if (lines.empty()) {
+        return out;
+    }
+
+    float totalHeight = lines.size() * lineHeightPx;
+    float startY = params.position.y;
+
+    if (params.yAlign == TextYAlignment::CENTER) {
+        startY += (params.bounds.y - totalHeight) * 0.5f;
+    } else if (params.yAlign == TextYAlignment::BOTTOM) {
+        startY += params.bounds.y - totalHeight;
+    }
+
+    float maxLineWidth = 0.0f;
+    for (float w : lineWidths) {
+        if (w > maxLineWidth) {
+            maxLineWidth = w;
+        }
+    }
+
+    float boxX = params.position.x;
+    float boxY = startY;
+    out.pos = vec2(boxX, boxY);
+    out.size = vec2(std::max(params.bounds.x, maxLineWidth), totalHeight);
+    out.lineHeightPx = lineHeightPx;
+
+    size_t glyphTotal = 0;
+    for (const auto &line : lines) {
+        glyphTotal += line.size();
+    }
+    out.glyphs.reserve(glyphTotal);
+    out.lines.reserve(lines.size());
+
+    {
+        AM_PROFILE_SCOPE("emit batched glyphs");
+        for (size_t lineIdx = 0; lineIdx < lines.size(); lineIdx++) {
+            float lineWidth = lineWidths[lineIdx];
+            float offsetX = params.position.x;
+
+            if (params.xAlign == TextXAlignment::CENTER) {
+                offsetX += (params.bounds.x - lineWidth) * 0.5f;
+            } else if (params.xAlign == TextXAlignment::RIGHT) {
+                offsetX += params.bounds.x - lineWidth;
+            }
+
+            float baseline = startY + lineIdx * lineHeightPx + metrics.ascender;
+
+            GlyphLine glyphLine;
+            glyphLine.glyphStart = static_cast<uint32_t>(out.glyphs.size());
+            glyphLine.glyphCount = 0;
+
+            for (const auto &gi : lines[lineIdx]) {
+                const GlyphInfo *glyphInfo = gi.info;
+
+                float relX = offsetX + gi.localX + glyphInfo->bearingX - boxX;
+                float relY = baseline - glyphInfo->bearingY - boxY;
+
+                GlyphQuad quad;
+                quad.posMin = packU16x2(s_clampU16(relX), s_clampU16(relY));
+                quad.posMax = packU16x2(s_clampU16(relX + glyphInfo->width), s_clampU16(relY + glyphInfo->height));
+                quad.uvMin = packU16x2(glyphInfo->x, glyphInfo->y);
+                quad.uvMax = packU16x2(static_cast<uint16_t>(glyphInfo->x + glyphInfo->width),
+                                       static_cast<uint16_t>(glyphInfo->y + glyphInfo->height));
+
+                out.glyphs.push_back(quad);
+                glyphLine.glyphCount++;
+            }
+
+            out.lines.push_back(glyphLine);
+        }
+    }
+
+    return out;
 }
 
 } // namespace Amethyst
