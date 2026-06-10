@@ -330,7 +330,6 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
 void TabBar::markAllTabsDirty()
 {
     for (auto &tab : m_tabs) {
-        tab->labelFrame->markDirty();
         tab->button->markDirty();
     }
 }
@@ -400,7 +399,6 @@ std::unique_ptr<Instance> TabBar::removeTab(Instance *content)
     if (it == m_tabs.end()) return nullptr;
 
     int32_t removedIdx = static_cast<int32_t>(std::distance(m_tabs.begin(), it));
-    (*it)->labelFrame->parent = nullptr;
     (*it)->button->parent = nullptr;
 
     auto removedContent = std::move((*it)->content);
@@ -443,7 +441,6 @@ Instance *TabBar::getTabContent(int32_t index) const
 std::vector<std::unique_ptr<TabBar::Tab>> TabBar::removeAllTabs()
 {
     for (auto &tab : m_tabs) {
-        tab->labelFrame->parent = nullptr;
         tab->button->parent = nullptr;
         tab->content->parent = nullptr;
     }
@@ -462,7 +459,6 @@ std::unique_ptr<TabBar::Tab> TabBar::extractTab(Instance *content)
     }
 
     int32_t removedIdx = static_cast<int32_t>(std::distance(m_tabs.begin(), it));
-    (*it)->labelFrame->parent = nullptr;
     (*it)->button->parent = nullptr;
     (*it)->content->parent = nullptr;
 
@@ -507,6 +503,7 @@ void TabBar::layoutTabs()
                     .position = UDim2::fromOffset(x, offset),
                     .size = UDim2::fromOffset(m_tbProps.barThickness, m_tbProps.tabWidth),
                     .rotation = (m_tbProps.tabPosition == TabBarPosition::LEFT) ? -90.0f : 90.0f,
+                    .visible = isVisible(),
                 });
             } else {
                 float y = (m_tbProps.tabPosition == TabBarPosition::TOP) ? 0.0f : absoluteSize.y - m_tbProps.barThickness;
@@ -514,6 +511,7 @@ void TabBar::layoutTabs()
                     .position = UDim2::fromOffset(offset, y),
                     .size = UDim2::fromOffset(m_tbProps.tabWidth, m_tbProps.barThickness),
                     .rotation = 0.0f,
+                    .visible = isVisible(),
                 });
             }
         }

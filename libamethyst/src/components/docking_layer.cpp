@@ -3,6 +3,7 @@
 #include "components/common.h"
 #include "components/extensions/ui_drag_detector.h"
 #include "components/input_interface.h"
+#include "components/instance.h"
 #include "components/invisible_button.h"
 #include "components/tab_bar.h"
 #include "components/ui_base_2d.h"
@@ -46,7 +47,8 @@ void DockingLayer::draw(DrawContext &ctx)
     layerCtx.glyphAtlas = ctx.glyphAtlas;
     layerCtx.svgAtlas = ctx.svgAtlas;
 
-    if (!visible) {
+    if (!isVisible()) {
+
         if (flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY)) {
             for (auto &tabBar : m_tabBars) {
                 tabBar->markDirty();
