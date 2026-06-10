@@ -1,7 +1,9 @@
 #include "components/collapsible_header.h"
 
+#include "amethyst/icons.h"
 #include "components/extensions/ui_grid_layout.h"
 #include "components/extensions/ui_list_layout.h"
+#include "components/image_label.h"
 #include "components/text_label.h"
 #include "components/ui_layer.h"
 #include "modules/style.h"
@@ -47,8 +49,9 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
         m_indicator = customIndicator.get();
         m_headerBackground->addChild(std::move(customIndicator));
     } else {
-        auto indicator = std::make_unique<Frame>();
+        auto indicator = std::make_unique<ImageLabel>();
         m_indicator = indicator.get();
+        indicator->setSvg(Icons::ARROW);
         m_headerBackground->addChild(std::move(indicator));
     }
 

@@ -1,26 +1,23 @@
-- corner resizing for docking layer
-- more options in the docking layer, not only a 50-50 split, but also a 75-25 split
-- improve text allocations, at the very least allow a buffer with a max size (no dynamic sizing)
-- tweening/animations
-- implement the gradient extension
-- color picker
-- use svg for checkbox
-- get rid of glm and spd for this lib, to make it slightly less dependent
+### Docking layer 
+    - corner resizing for docking layer
+    - more options in the docking layer, not only a 50-50 split, but also a 75-25 split
 
-- treeview revision
-    - check ai slop code for issues (cpp file)
-    - find a way to propegate events to overlapping siblings
-        -? parent the cells to the bg frame
-            -? do we use per row frame? this does lead to waaay more bg frames then using a pool
-            -? can still keep the pool but correctly reparent?
-        -? does it make sense for the hoverstack to respect overlapping siblings? i guess? maybe in certain conditions like if the zindex 
-           is set to global it would, or some absolute positioning, so to support these cases we can make the hoverstack support evenresults, 
-           that way the treeview system can work unchagned(maybe need to force propegate some events)
-- styling system update
-    - thing about what goes into the styling and what does not
-    - do we split properties between layout and styling??
-    - make styling system return a fully non-sentinal properties object so manual defaults can be removed. better to rely on the styling system returning sane defaults with or witouth a provided stylesheet.
-    - let the style system have classes, some reserved. for states we could do it again like css, with :hover, :active, etc. just need to document this properly.
-    - to support the above, maybe move to something non-toml? not sure if toml can do this, if not, most likely write our own -> -1 dependency
-    - allow multiple files to be provided, makes it easier for the user to split up their work, internally it will all be appended and parsed as 1 big string anyay.
+### Text
+    -[x] improve text allocations, at the very least allow a buffer with a max size (no dynamic sizing)
+    - find a way to do normal text, at this point just figure out how to let a pixel know which glyph(+uv) it needs based on its position, lets assume relatvie to the bb
+
+### Animations
+    - tweening/animations
+
+### Color Picker
+    - implement the gradient extension (doesn't need to be an extension, just general enough)
+    - color picker
+
+### Checkbox
+    - use svg for checkbox
+
+### Dragger?
+    - currently only have a slider but a DragFloat, Drag<type> needs to be implemented too
+
+### Style system
 

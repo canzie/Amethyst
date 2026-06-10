@@ -81,7 +81,6 @@ void ScrollingFrame::draw(DrawContext &ctx)
     AutomaticSize acs = m_sfProps.automaticCanvasSize;
     bool autoCanvas = acs != AutomaticSize::NONE && acs != AutomaticSize::OFF;
 
-
     if (auto *gridLayout = getExtension<UIGridLayout>()) {
         gridLayout->apply(m_children);
     } else if (auto *listLayout = getExtension<UIListLayout>()) {
@@ -89,7 +88,6 @@ void ScrollingFrame::draw(DrawContext &ctx)
     }
 
     vec4 childClip = computeChildClipRect();
-    vec2 canvasOrigin = m_sfProps.canvasPosition.resolve(absCanvasSize);
 
     for (auto &child : m_children) {
         auto *obj = child->as<UIObject>();

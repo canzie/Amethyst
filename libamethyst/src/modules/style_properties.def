@@ -71,7 +71,11 @@
     X(TAB_PRESSED_COLOR, "tab-pressed-color", Color3, COLOR3, Color3(0.18f))                                  \
     X(HEADER_COLOR, "header-color", Color3, COLOR3, Color3(0.25f, 0.25f, 0.28f))                              \
     X(HEADER_TRANSPARENCY, "header-transparency", float, RATIO, 0.0f)                                         \
-    X(HEADER_HEIGHT, "header-height", float, LENGTH, 30.0f)
+    X(HEADER_HEIGHT, "header-height", float, LENGTH, 30.0f)                                                   \
+    X(HEADER_CORNER_RADIUS, "header-corner-radius", float, LENGTH, 0.0f)                                      \
+    X(INDICATOR_SIZE, "indicator-size", float, LENGTH, 10.0f)                                                 \
+    X(INDICATOR_PADDING, "indicator-padding", float, LENGTH, 6.0f)                                            \
+    X(INDICATOR_COLOR, "indicator-color", Color4, COLOR4, Color4(0.7f, 0.7f, 0.7f, 1.0f))
 
 #define AM_BASE_STYLE_FIELDS(X)                               \
     X(BACKGROUND_COLOR, backgroundColor, Color3)              \
@@ -146,9 +150,13 @@
     X(CHECK_TRANSPARENCY, checkTransparency, float) \
     X(CHECKBOX_SIZE, checkboxSize, float)
 
-#define AM_COLLAPSIBLE_HEADER_STYLE_FIELDS(X) \
-    X(HEADER_HEIGHT, headerHeight, float)     \
-    X(HEADER_COLOR, headerColor, Color3)      \
-    X(HEADER_TRANSPARENCY, headerTransparency, float)
+#define AM_COLLAPSIBLE_HEADER_STYLE_FIELDS(X)          \
+    X(HEADER_HEIGHT, headerHeight, float)              \
+    X(HEADER_COLOR, headerColor, Color3)               \
+    X(HEADER_TRANSPARENCY, headerTransparency, float)  \
+    X(HEADER_CORNER_RADIUS, headerCornerRadius, float) \
+    X(INDICATOR_SIZE, indicatorSize, float)            \
+    X(INDICATOR_PADDING, indicatorPadding, float)      \
+    X(INDICATOR_COLOR, indicatorColor, Color4)
 
 #endif // AMETHYST__STYLE_PROPERTIES_DEF

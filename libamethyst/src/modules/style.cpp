@@ -301,6 +301,11 @@ CollapsibleHeaderStyleProperties Style::getCollapsibleHeaderStyle(ComponentType 
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_COLLAPSIBLE_HEADER_STYLE_FIELDS(X)
 #undef X
+    r.titleStyle.fontSize = std::get<float>(d[static_cast<size_t>(StyleProperty::FONT_SIZE)]);
+    r.titleStyle.textColor = std::get<Color4>(d[static_cast<size_t>(StyleProperty::TEXT_COLOR)]);
+    r.titleStyle.textXAlignment = std::get<TextXAlignment>(d[static_cast<size_t>(StyleProperty::TEXT_X_ALIGNMENT)]);
+    r.titleStyle.textYAlignment = std::get<TextYAlignment>(d[static_cast<size_t>(StyleProperty::TEXT_Y_ALIGNMENT)]);
+    r.titleStyle.fontFamily = fontName(std::get<FontHandle>(d[static_cast<size_t>(StyleProperty::FONT_FAMILY)]));
     return r;
 }
 

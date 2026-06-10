@@ -165,6 +165,16 @@ void TextInput::update(float deltaTime)
         return;
     }
 
+    if (!isVisible()) {
+        m_focused = false;
+        m_cursorVisible = false;
+        markDirty();
+        if (onFocusLost) {
+            onFocusLost();
+        }
+        return;
+    }
+
     processKeyboardInput();
 
     m_cursorBlinkTimer += deltaTime;
