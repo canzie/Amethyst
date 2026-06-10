@@ -36,6 +36,48 @@ struct TextLayoutParams {
 };
 
 /**
+ * @brief Snapshot of the inputs a text layout was last built with, used by components to cache.
+ *
+ * A component rebuilds this each frame and compares with matches(): if true, only the origin
+ * moved (scrolling) so cached glyphs can be shifted in place instead of re-shaped. A fontSize
+ * of 0 marks the snapshot as unset, so it never matches a freshly built one. The origin travels
+ * with the snapshot but is excluded from matches().
+ */
+struct TextLayoutState {
+    float fontSize = 0.0f;
+    vec2 bounds = {0.0f, 0.0f};
+    float lineHeight = 0.0f;
+    uint32_t color = 0;
+    int32_t zIndex = 0;
+    TextXAlignment xAlign = TextXAlignment::NONE;
+    TextYAlignment yAlign = TextYAlignment::NONE;
+    TextTruncate truncate = TextTruncate::NONE;
+    bool wrap = false;
+    vec2 origin = {0.0f, 0.0f};
+
+    /**
+     * @brief True if the shaped glyphs would be identical (every input except origin matches).
+     * @param o The snapshot to compare against
+     * @return Whether the cached layout can be reused by only moving it
+     */
+    bool matches(const TextLayoutState &o) const
+    {
+        return fontSize == o.fontSize && bounds == o.bounds && lineHeight == o.lineHeight && color == o.color &&
+               zIndex == o.zIndex && xAlign == o.xAlign && yAlign == o.yAlign && truncate == o.truncate && wrap == o.wrap;
+    }
+
+    /**
+     * @brief Mark the snapshot as unset so the next draw re-shapes from scratch.
+     */
+    void invalidate() { fontSize = 0.0f; }
+
+    /**
+     * @brief Whether the snapshot holds a usable layout (fontSize 0 means unset).
+     */
+    bool isValid() const { return fontSize != 0.0f; }
+};
+
+/**
  * @brief Processes text strings into CharacterInstance data for rendering
  */
 class TextProcessor {

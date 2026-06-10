@@ -48,6 +48,7 @@ bool TextLabel::setTextStyleProperties(const TextStyleProperties &props)
 {
     bool changed = m_textStyle.apply(props);
     if (changed) {
+        m_textLayout.invalidate();
         markDirty();
     }
     return changed;
@@ -57,6 +58,7 @@ void TextLabel::setText(std::string text)
 {
     if (m_text != text) {
         m_text = std::move(text);
+        m_textLayout.invalidate();
         markDirty();
     }
 }
@@ -78,57 +80,7 @@ void TextLabel::draw(DrawContext &ctx)
             ctx.geometry->update(*m_geometryAlloc, data);
         }
 
-        if (ctx.textProcessor && ctx.geometry && !m_text.empty()) {
-            uint32_t pixelSize = static_cast<uint32_t>(m_textStyle.fontSize);
-            m_textSize = ctx.textProcessor->measureTextAtlas(m_text, pixelSize);
-            float effectiveFontSize = m_textStyle.fontSize;
-
-            if (m_textStyle.textScaled) {
-                if (m_textSize.x > 0.0f && m_textSize.y > 0.0f) {
-                    float scaleX = absoluteContentSize.x / m_textSize.x;
-                    float scaleY = absoluteContentSize.y / m_textSize.y;
-                    effectiveFontSize = m_textStyle.fontSize * std::min(scaleX, scaleY);
-                }
-            }
-
-            TextLayoutParams params;
-            params.position = absoluteContentPosition;
-            params.bounds = absoluteContentSize;
-            params.fontSize = effectiveFontSize;
-            params.color = m_textStyle.textColor;
-            params.lineHeight = m_textStyle.lineHeight;
-            params.strokeThickness = m_textStyle.strokeThickness;
-            params.strokeColor = m_textStyle.strokeColor;
-            params.xAlign = m_textStyle.textXAlignment;
-            params.yAlign = m_textStyle.textYAlignment;
-            params.truncate = m_textStyle.textTruncate;
-            params.wrap = static_cast<bool>(m_textStyle.textWrapped);
-
-            auto glyphs = ctx.textProcessor->layoutTextAtlas(m_text, params);
-
-            for (auto &glyphData : glyphs) {
-                glyphData.clipRect = clipRect;
-                glyphData.zIndex = getAbsoluteZIndex() + 1;
-                glyphData.setVisible(isVisible());
-            }
-
-            if (glyphs.size() != m_textAllocations.size()) {
-                for (auto *alloc : m_textAllocations) {
-                    if (alloc && alloc->isValid()) {
-                        alloc->registry->release(*alloc);
-                    }
-                }
-                m_textAllocations.clear();
-                m_textAllocations.reserve(glyphs.size());
-                for (const auto &glyphData : glyphs) {
-                    m_textAllocations.push_back(ctx.geometry->submit(glyphData));
-                }
-            } else {
-                for (size_t i = 0; i < glyphs.size(); ++i) {
-                    ctx.geometry->update(*m_textAllocations[i], glyphs[i]);
-                }
-            }
-        }
+        updateTextGeometry(ctx);
     }
 
     vec4 childClip = computeChildClipRect();
@@ -142,6 +94,106 @@ void TextLabel::draw(DrawContext &ctx)
     }
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+}
+
+void TextLabel::updateTextGeometry(DrawContext &ctx)
+{
+    if (ctx.textProcessor == nullptr || ctx.geometry == nullptr || m_text.empty()) {
+        return;
+    }
+
+    uint32_t pixelSize = static_cast<uint32_t>(m_textStyle.fontSize);
+    if (!m_textLayout.isValid()) {
+        m_textSize = ctx.textProcessor->measureTextAtlas(m_text, pixelSize);
+    }
+
+    float effectiveFontSize = m_textStyle.fontSize;
+    if (m_textStyle.textScaled && m_textSize.x > 0.0f && m_textSize.y > 0.0f) {
+        float scaleX = absoluteContentSize.x / m_textSize.x;
+        float scaleY = absoluteContentSize.y / m_textSize.y;
+        effectiveFontSize = m_textStyle.fontSize * std::min(scaleX, scaleY);
+    }
+
+    int32_t glyphZIndex = getAbsoluteZIndex() + 1;
+    bool glyphVisible = isVisible();
+
+    TextLayoutState next;
+    next.fontSize = effectiveFontSize;
+    next.bounds = absoluteContentSize;
+    next.lineHeight = m_textStyle.lineHeight;
+    next.color = packColor(m_textStyle.textColor);
+    next.zIndex = glyphZIndex;
+    next.xAlign = m_textStyle.textXAlignment;
+    next.yAlign = m_textStyle.textYAlignment;
+    next.truncate = m_textStyle.textTruncate;
+    next.wrap = static_cast<bool>(m_textStyle.textWrapped);
+    next.origin = absoluteContentPosition;
+
+    if (m_textLayout.matches(next)) {
+        repositionGlyphs(ctx, next.origin - m_textLayout.origin, glyphVisible);
+    } else {
+        reshapeGlyphs(ctx, effectiveFontSize, glyphZIndex, glyphVisible);
+    }
+
+    m_textLayout = next;
+}
+
+void TextLabel::repositionGlyphs(DrawContext &ctx, vec2 delta, bool visible)
+{
+    AM_PROFILE_FUNCTION();
+    for (auto *alloc : m_textAllocations) {
+        if (alloc == nullptr) {
+            continue;
+        }
+        InstanceData *inst = ctx.geometry->getMutable(*alloc);
+        if (inst != nullptr) {
+            inst->translation = inst->translation + delta;
+            inst->clipRect = clipRect;
+            inst->setVisible(visible);
+        }
+    }
+}
+
+void TextLabel::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t zIndex, bool visible)
+{
+    AM_PROFILE_FUNCTION();
+
+    TextLayoutParams params;
+    params.position = absoluteContentPosition;
+    params.bounds = absoluteContentSize;
+    params.fontSize = effectiveFontSize;
+    params.color = m_textStyle.textColor;
+    params.lineHeight = m_textStyle.lineHeight;
+    params.strokeThickness = m_textStyle.strokeThickness;
+    params.strokeColor = m_textStyle.strokeColor;
+    params.xAlign = m_textStyle.textXAlignment;
+    params.yAlign = m_textStyle.textYAlignment;
+    params.truncate = m_textStyle.textTruncate;
+    params.wrap = static_cast<bool>(m_textStyle.textWrapped);
+
+    auto glyphs = ctx.textProcessor->layoutTextAtlas(m_text, params);
+    for (auto &glyphData : glyphs) {
+        glyphData.clipRect = clipRect;
+        glyphData.zIndex = zIndex;
+        glyphData.setVisible(visible);
+    }
+
+    if (glyphs.size() != m_textAllocations.size()) {
+        for (auto *alloc : m_textAllocations) {
+            if (alloc && alloc->isValid()) {
+                alloc->registry->release(*alloc);
+            }
+        }
+        m_textAllocations.clear();
+        m_textAllocations.reserve(glyphs.size());
+        for (const auto &glyphData : glyphs) {
+            m_textAllocations.push_back(ctx.geometry->submit(glyphData));
+        }
+    } else {
+        for (size_t i = 0; i < glyphs.size(); ++i) {
+            ctx.geometry->update(*m_textAllocations[i], glyphs[i]);
+        }
+    }
 }
 
 } // namespace Amethyst

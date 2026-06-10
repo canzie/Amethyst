@@ -113,9 +113,30 @@ class GlyphAtlas {
     AmTextureId getTextureId() const { return m_textureId; }
 
   private:
+    static constexpr uint32_t ASCII_COUNT = 128;
+
+    /**
+     * @brief Per-pixel-size glyph cache: flat array for ASCII, map for the rest.
+     *
+     * ASCII (the common case) resolves to a direct array index instead of a
+     * hashmap probe, and metrics are cached to avoid re-querying the font loader.
+     */
+    struct SizeGlyphTable {
+        GlyphInfo ascii[ASCII_COUNT];
+        bool asciiLoaded[ASCII_COUNT] = {};
+        std::unordered_map<uint32_t, GlyphInfo> extended;
+        FontMetrics metrics;
+        bool metricsLoaded = false;
+    };
+
+    SizeGlyphTable &getSizeTable(uint32_t pixelSize);
+    bool rasterizeGlyphInfo(uint32_t codepoint, uint32_t pixelSize, GlyphInfo &out);
+
     FontLoader *m_fontLoader;
     std::vector<uint8_t> m_pixels;
-    std::unordered_map<uint64_t, GlyphInfo> m_cache;
+    std::unordered_map<uint32_t, SizeGlyphTable> m_sizeTables;
+    uint32_t m_lastPixelSize = UINT32_MAX;
+    SizeGlyphTable *m_lastTable = nullptr;
     AmTextureId m_textureId = AM_INVALID_TEXTURE;
     uint32_t m_width;
     uint32_t m_height;

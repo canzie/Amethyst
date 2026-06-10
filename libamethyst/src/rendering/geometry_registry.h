@@ -67,6 +67,18 @@ class GeometryRegistry {
     void update(GeometryAllocation &alloc, const InstanceData &data);
 
     /**
+     * @brief Get mutable access to an allocation's instance data, marking it dirty for re-upload
+     *
+     * For cheap in-place edits that do not change sort order, e.g. shifting translation,
+     * toggling visibility or updating the clip rect when a cached element only moved.
+     *
+     * @warning Do not change zIndex through this pointer; the sort order is not rebuilt. Use update() for that.
+     * @param alloc The allocation handle to mutate
+     * @return Pointer to the slot's instance data, or nullptr if the allocation is invalid
+     */
+    InstanceData *getMutable(const GeometryAllocation &alloc);
+
+    /**
      * @brief Release an allocation, freeing its slot for reuse
      * @param alloc The allocation handle to release
      */

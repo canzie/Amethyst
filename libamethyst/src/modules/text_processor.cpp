@@ -5,6 +5,8 @@
 
 #include "modules/text_processor.h"
 
+#include "utils/profiling.h"
+
 #define UTF8_ASCII_MASK  0x80u
 #define UTF8_2BYTE_MASK  0xE0u
 #define UTF8_2BYTE_MARK  0xC0u
@@ -43,6 +45,7 @@ static std::pair<uint32_t, size_t> s_decodeUtf8(const std::string &text, size_t 
 
 vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing) const
 {
+    AM_PROFILE_FUNCTION();
     if (!m_glyphAtlas || text.empty()) {
         return {0.0f, 0.0f};
     }
@@ -84,6 +87,7 @@ float TextProcessor::getCharAdvanceAtlas(uint32_t codepoint, uint32_t pixelSize,
 
 std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text, const TextLayoutParams &params) const
 {
+    AM_PROFILE_FUNCTION();
     std::vector<InstanceData> result;
 
     if (!m_glyphAtlas || text.empty()) {
@@ -99,20 +103,15 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
     float atlasHeight = static_cast<float>(m_glyphAtlas->getHeight());
     float lineHeightPx = metrics.lineHeight * params.lineHeight;
 
-    for (size_t i = 0; i < text.size(); ) {
-        auto [codepoint, charBytes] = s_decodeUtf8(text, i);
-        i += charBytes;
-        m_glyphAtlas->getGlyph(codepoint, pixelSize);
-    }
-
     struct GlyphInstance {
-        uint32_t codepoint;
+        const GlyphInfo *info;
         float localX;
     };
 
     std::vector<std::vector<GlyphInstance>> lines;
     std::vector<float> lineWidths;
     std::vector<GlyphInstance> currentLine;
+    currentLine.reserve(text.size());
     float currentLineWidth = 0.0f;
 
     size_t wordStartIdx = 0;
@@ -173,7 +172,7 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
 
         if (glyphInfo->width > 0 && glyphInfo->height > 0) {
             GlyphInstance gi;
-            gi.codepoint = codepoint;
+            gi.info = glyphInfo;
             gi.localX = currentLineWidth;
             currentLine.push_back(gi);
         }
@@ -192,6 +191,9 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
         startY += params.bounds.y - totalHeight;
     }
 
+    uint32_t packedColor = packColor(params.color);
+    uint32_t textureId = m_glyphAtlas->getTextureId().id;
+
     for (size_t lineIdx = 0; lineIdx < lines.size(); lineIdx++) {
         float lineWidth = lineWidths[lineIdx];
         float offsetX = params.position.x;
@@ -205,7 +207,7 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
         float baseline = startY + lineIdx * lineHeightPx + metrics.ascender;
 
         for (const auto &gi : lines[lineIdx]) {
-            const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(gi.codepoint, pixelSize);
+            const GlyphInfo *glyphInfo = gi.info;
 
             float posX = offsetX + gi.localX + glyphInfo->bearingX;
             float posY = baseline - glyphInfo->bearingY;
@@ -221,10 +223,10 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
             InstanceData inst{};
             inst.translation = vec2(centerX, centerY);
             inst.scale = vec2(glyphInfo->width, glyphInfo->height);
-            inst.setFillColor(params.color);
+            inst.fillColor = packedColor;
             inst.setUvRect(vec4(uvMinX, uvMinY, uvMaxX, uvMaxY));
             inst.setPrimitiveType(PRIMITIVE_TEXT);
-            inst.textureId = m_glyphAtlas->getTextureId().id;
+            inst.textureId = textureId;
 
             result.push_back(inst);
         }

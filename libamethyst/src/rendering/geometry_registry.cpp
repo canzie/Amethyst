@@ -74,6 +74,7 @@ GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
         m_slotAlive.push_back(0);
         m_slotDirty.push_back(0);
         m_slotToSorted.push_back(UINT32_MAX);
+        m_dirtySlotList.reserve(m_slotData.capacity());
     }
 
     m_slotData[slotId] = data;
@@ -100,6 +101,19 @@ void GeometryRegistry::update(GeometryAllocation &alloc, const InstanceData &dat
         m_slotDirty[alloc.slotId] = 1;
         m_dirtySlotList.push_back(alloc.slotId);
     }
+}
+
+InstanceData *GeometryRegistry::getMutable(const GeometryAllocation &alloc)
+{
+    if (!alloc.isValid() || alloc.slotId >= static_cast<uint32_t>(m_slotData.size())) {
+        return nullptr;
+    }
+
+    if (!m_slotDirty[alloc.slotId]) {
+        m_slotDirty[alloc.slotId] = 1;
+        m_dirtySlotList.push_back(alloc.slotId);
+    }
+    return &m_slotData[alloc.slotId];
 }
 
 void GeometryRegistry::release(GeometryAllocation &alloc)
