@@ -139,6 +139,46 @@ static GLFWcursor *createCustomVerticalResizeCursor()
     return createCursorFromMask(size, fill);
 }
 
+static GLFWcursor *s_createCustomDiagonalResizeCursor(bool nesw)
+{
+    constexpr int size = 24;
+    bool fill[size * size] = {};
+
+    for (int i = 6; i < size - 7; i++) {
+        fill[i * size + i] = true;
+        fill[i * size + (i + 1)] = true;
+        fill[(i + 1) * size + i] = true;
+    }
+
+    for (int y = 2; y <= 8; y++) {
+        for (int x = 2; x <= 8; x++) {
+            if (x + y <= 10) {
+                fill[y * size + x] = true;
+            }
+        }
+    }
+
+    for (int y = size - 9; y <= size - 3; y++) {
+        for (int x = size - 9; x <= size - 3; x++) {
+            if (x + y >= 2 * size - 12) {
+                fill[y * size + x] = true;
+            }
+        }
+    }
+
+    if (nesw) {
+        bool mirrored[size * size] = {};
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                mirrored[y * size + (size - 1 - x)] = fill[y * size + x];
+            }
+        }
+        return createCursorFromMask(size, mirrored);
+    }
+
+    return createCursorFromMask(size, fill);
+}
+
 constexpr size_t INITIAL_ARENA_BYTES = 8 * 1024 * 1024;
 constexpr size_t INDEX_COUNT_RECT = 6;
 
@@ -171,6 +211,26 @@ void VkBackend::init(const VulkanInitInfo &config, const GLFWInitInfo &info)
     CURSOR_SHAPE_MAP[CURSOR_VERT_RESIZE] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
     if (!CURSOR_SHAPE_MAP[CURSOR_VERT_RESIZE]) {
         CURSOR_SHAPE_MAP[CURSOR_VERT_RESIZE] = createCustomVerticalResizeCursor();
+    }
+
+    CURSOR_SHAPE_MAP[CURSOR_NWSE_RESIZE] = glfwCreateStandardCursor(GLFW_RESIZE_NWSE_CURSOR);
+    if (CURSOR_SHAPE_MAP[CURSOR_NWSE_RESIZE] == nullptr) {
+        CURSOR_SHAPE_MAP[CURSOR_NWSE_RESIZE] = s_createCustomDiagonalResizeCursor(false);
+    }
+
+    CURSOR_SHAPE_MAP[CURSOR_NESW_RESIZE] = glfwCreateStandardCursor(GLFW_RESIZE_NESW_CURSOR);
+    if (CURSOR_SHAPE_MAP[CURSOR_NESW_RESIZE] == nullptr) {
+        CURSOR_SHAPE_MAP[CURSOR_NESW_RESIZE] = s_createCustomDiagonalResizeCursor(true);
+    }
+
+    CURSOR_SHAPE_MAP[CURSOR_ALL_RESIZE] = glfwCreateStandardCursor(GLFW_RESIZE_ALL_CURSOR);
+    if (CURSOR_SHAPE_MAP[CURSOR_ALL_RESIZE] == nullptr) {
+        CURSOR_SHAPE_MAP[CURSOR_ALL_RESIZE] = CURSOR_SHAPE_MAP[CURSOR_ARROW];
+    }
+
+    CURSOR_SHAPE_MAP[CURSOR_NOT_ALLOWED] = glfwCreateStandardCursor(GLFW_NOT_ALLOWED_CURSOR);
+    if (CURSOR_SHAPE_MAP[CURSOR_NOT_ALLOWED] == nullptr) {
+        CURSOR_SHAPE_MAP[CURSOR_NOT_ALLOWED] = CURSOR_SHAPE_MAP[CURSOR_ARROW];
     }
 
     setupGLFWCallbacks();
