@@ -109,8 +109,8 @@ void ScrollingFrame::draw(DrawContext &ctx)
         bool inViewport = (childEffectivePos.x + obj->absoluteSize.x > 0.0f) && (childEffectivePos.x < absoluteSize.x) &&
                           (childEffectivePos.y + obj->absoluteSize.y > 0.0f) && (childEffectivePos.y < absoluteSize.y);
 
-        bool original = obj->isVisible();
-        bool effective = original && inViewport;
+        bool localVisible = obj->getBaseProperties().visible != 0;
+        bool effective = obj->isVisible() && inViewport;
 
         auto &lastViewport = m_childViewportVisibility[child.get()];
         if (effective != lastViewport) {
@@ -118,9 +118,9 @@ void ScrollingFrame::draw(DrawContext &ctx)
             lastViewport = effective;
         }
 
-        obj->setBaseProperties({.visible = static_cast<int8_t>(effective)});
+        obj->setBaseProperties({.visible = static_cast<am_bool>(effective)});
         obj->draw(ctx);
-        obj->setBaseProperties({.visible = static_cast<int8_t>(original)});
+        obj->setBaseProperties({.visible = static_cast<am_bool>(localVisible)});
     }
 
     m_scrollOffset = clamp(m_scrollOffset, vec2(0.0f), max(absCanvasSize - absoluteSize, vec2(0.0f)));
