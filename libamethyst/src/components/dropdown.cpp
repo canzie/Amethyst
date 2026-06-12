@@ -9,9 +9,9 @@
 #include "components/window.h"
 #include "rendering/draw_context.h"
 
+#include "math/math.h"
 #include <algorithm>
 #include <climits>
-#include "math/math.h"
 
 namespace Amethyst {
 

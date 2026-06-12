@@ -3,12 +3,9 @@
 
 #include "amethyst/amethyst_backend.h"
 #include "components/common.h"
-#include "components/input_interface.h"
-#include "rendering/instance_data.h"
-#include "rendering/geometry_registry.h"
+#include "rendering/frame_draw_list.h"
 
 #include <GLFW/glfw3.h>
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -17,15 +14,14 @@
 #include <vulkan/vulkan_core.h>
 
 constexpr uint32_t MAX_BINDLESS_TEXTURES = 1024;
-constexpr size_t MAX_BUFFER_ARENA_SIZE = 10 * 1024 * 1024; // 10MB hard limit
 
 namespace Amethyst {
 
-struct GLFWInitInfo {
+struct AmGlfwInitInfo {
     void *window;
 };
 
-struct VulkanInitInfo {
+struct AmVulkanInitInfo {
     VkDevice device;
     VkInstance instance;
     VkPhysicalDevice physicalDevice;
@@ -36,54 +32,49 @@ struct VulkanInitInfo {
     uint32_t imageCount;
     VkFormat colorFormat;
     VkExtent2D extent;
-    const char* vertexShaderPath;
-    const char* fragmentShaderPath;
+    const char *vertexShaderPath;
+    const char *fragmentShaderPath;
 };
 
-struct BufferArena {
+struct BufferRecord {
     VkBuffer buffer = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE;
-    void *mappedMemory = nullptr;
-    size_t size = 0;
+    void *mapped = nullptr;
     size_t capacity = 0;
+    AmBufferDesc desc;
+    bool alive = false;
 };
 
-struct BufferAllocation {
-    BufferArena *arena = nullptr;
-    size_t offset = 0;   // start of the allocation
-    size_t size = 0;     // current amount of bytes used out of capacity
-    size_t capacity = 0; // the amount of bytes allocated from the arena
+struct TextureRecord {
+    VkImage image = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+    VkImageView view = VK_NULL_HANDLE;
+    VkSampler sampler = VK_NULL_HANDLE;
+    VkBuffer stagingBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
+    void *stagingMapped = nullptr;
+    AmTextureDesc desc;
 };
 
-struct FreeBlock {
-    size_t offset;
-    size_t size;
-};
-
-struct TextGpuAllocation {
-    BufferAllocation glyph;
-    BufferAllocation line;
-    BufferAllocation slice;
-};
-
-class VkBackend : public AmethystBackend {
+class AmVulkanBackend : public AmethystBackend {
   public:
-    void init(const VulkanInitInfo &config, const GLFWInitInfo &info);
+    void init(const AmVulkanInitInfo &config, const AmGlfwInitInfo &info);
     void shutdown();
 
   public:
     void beginFrame();
     void endFrame();
-    void record(VkCommandBuffer cmd);
+    void record(VkCommandBuffer cmd, const FrameDrawList &drawList);
     void onResize(Amethyst::vec2 extent);
 
-    void createAtlasTexture(uint32_t width, uint32_t height) override;
-    void uploadAtlasData(void *cmdBuffer, const uint8_t *pixels, uint32_t width, uint32_t height) override;
-    AmTextureId getAtlasTextureId() const override { return m_atlasTextureId; }
+    AmBufferId createBuffer(const AmBufferDesc &desc) override;
+    bool growBuffer(AmBufferId id, size_t newCapacity) override;
+    void uploadBufferRange(void *cmdBuffer, AmBufferId id, const void *data, size_t offsetBytes, size_t sizeBytes) override;
+    void destroyBuffer(AmBufferId id) override;
 
-    void createSvgAtlasTexture(uint32_t width, uint32_t height) override;
-    void uploadSvgAtlasData(void *cmdBuffer, const uint8_t *pixels, uint32_t width, uint32_t height) override;
-    AmTextureId getSvgAtlasTextureId() const override { return m_svgAtlasTextureId; }
+    AmTextureId createTexture(const AmTextureDesc &desc) override;
+    void uploadTexture(void *cmdBuffer, AmTextureId id, const uint8_t *pixels) override;
+    void destroyTexture(AmTextureId id) override;
 
     AmTextureId registerTexture(VkImageView imageView, VkSampler sampler);
     void unregisterTexture(AmTextureId id);
@@ -91,21 +82,12 @@ class VkBackend : public AmethystBackend {
   private:
     void createPipeline();
     void allocateDescriptorSet();
-    void allocateBufferArenas();
-    void allocateIndexBuffer();
-    void allocateInstanceBuffers();
-    void updateInstances(BufferAllocation &alloc, GeometryRegistry &registry);
-    void uploadToGpu(BufferAllocation &alloc, const void *data, size_t size, size_t offset);
+    void writeBufferDescriptor(VkBuffer buffer, uint32_t binding);
+    void uploadDeviceLocal(VkBuffer dst, const void *data, size_t offsetBytes, size_t sizeBytes);
+    void destroyBufferRecord(BufferRecord &record);
+    void destroyTextureRecord(TextureRecord &record);
     VkShaderModule loadShaderModule(const char *path);
     void setupGLFWCallbacks();
-    BufferAllocation* obtainGeometryAllocation(GeometryRegistry* registry);
-    void freeGeometryAllocation(GeometryRegistry* registry);
-    TextGpuAllocation* obtainTextAllocation(GeometryRegistry* registry);
-    void updateTextBuffers(TextGpuAllocation& alloc, GlyphBuffer& glyphBuffer);
-    void freeTextAllocation(GeometryRegistry* registry);
-    BufferAllocation allocateFromArena(BufferArena& arena, std::vector<FreeBlock>& freeList, size_t size);
-    void freeToArena(std::vector<FreeBlock>& freeList, const BufferAllocation& alloc);
-    bool reallocBufferArena(BufferArena& arena, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
     static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
     static void cursorPosCallback(GLFWwindow *window, double x, double y);
     static void scrollCallback(GLFWwindow *window, double xoffset, double yoffset);
@@ -114,8 +96,8 @@ class VkBackend : public AmethystBackend {
     static void contentScaleCallback(GLFWwindow *window, float xscale, float yscale);
 
   private:
-    VulkanInitInfo m_info;
-    GLFWInitInfo m_glfwInfo;
+    AmVulkanInitInfo m_info;
+    AmGlfwInitInfo m_glfwInfo;
 
     // UI geometry pipeline
     VkPipeline m_pipeline = VK_NULL_HANDLE;
@@ -125,51 +107,11 @@ class VkBackend : public AmethystBackend {
     VkShaderModule m_vertShader = VK_NULL_HANDLE;
     VkShaderModule m_fragShader = VK_NULL_HANDLE;
 
-    // Glyph atlas texture
-    VkImage m_atlasImage = VK_NULL_HANDLE;
-    VkDeviceMemory m_atlasMemory = VK_NULL_HANDLE;
-    VkImageView m_atlasView = VK_NULL_HANDLE;
-    VkSampler m_atlasSampler = VK_NULL_HANDLE;
-    AmTextureId m_atlasTextureId = AM_INVALID_TEXTURE;
-    VkBuffer m_atlasStagingBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory m_atlasStagingMemory = VK_NULL_HANDLE;
-    void *m_atlasStagingMapped = nullptr;
-    uint32_t m_atlasWidth = 0;
-    uint32_t m_atlasHeight = 0;
+    std::vector<BufferRecord> m_buffers;
+    std::vector<uint32_t> m_bufferFreeSlots;
 
-    // SVG atlas texture
-    VkImage m_svgAtlasImage = VK_NULL_HANDLE;
-    VkDeviceMemory m_svgAtlasMemory = VK_NULL_HANDLE;
-    VkImageView m_svgAtlasView = VK_NULL_HANDLE;
-    VkSampler m_svgAtlasSampler = VK_NULL_HANDLE;
-    AmTextureId m_svgAtlasTextureId = AM_INVALID_TEXTURE;
-    VkBuffer m_svgAtlasStagingBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory m_svgAtlasStagingMemory = VK_NULL_HANDLE;
-    void *m_svgAtlasStagingMapped = nullptr;
-    uint32_t m_svgAtlasWidth = 0;
-    uint32_t m_svgAtlasHeight = 0;
-
-    // used for indices
-    BufferArena m_staticArena;
-    // dynamic arena for geometry instances
-    BufferArena m_dynamicArena;
-    // stream arena for text (coherent, no flush)
-    BufferArena m_streamArena;
-
-    // pooled storage buffers for batched text
-    BufferArena m_glyphArena;
-    BufferArena m_lineArena;
-    BufferArena m_sliceArena;
-
-    BufferAllocation m_indexBuffer;
-
-    std::unordered_map<GeometryRegistry*, BufferAllocation> m_geometryAllocations;
-    std::unordered_map<GeometryRegistry*, TextGpuAllocation> m_textAllocations;
-
-    std::vector<FreeBlock> m_dynamicArenaFreeList;
-    std::vector<FreeBlock> m_glyphArenaFreeList;
-    std::vector<FreeBlock> m_lineArenaFreeList;
-    std::vector<FreeBlock> m_sliceArenaFreeList;
+    // keyed by bindless texture slot so AmTextureId doubles as the resource handle
+    std::unordered_map<uint32_t, TextureRecord> m_textures;
 
     std::vector<uint32_t> m_textureFreeList;
     uint32_t m_nextTextureSlot = 0;

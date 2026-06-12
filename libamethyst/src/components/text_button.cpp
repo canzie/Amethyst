@@ -177,8 +177,8 @@ void TextButton::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_
     if (!m_glyphSlice.isValid()) {
         m_glyphSlice = glyphBuffer.createSlice();
     }
-    glyphBuffer.updateSlice(m_glyphSlice, batched.glyphs.data(), static_cast<uint32_t>(batched.glyphs.size()),
-                            batched.lines.data(), static_cast<uint32_t>(batched.lines.size()), batched.lineHeightPx);
+    glyphBuffer.updateSlice(m_glyphSlice, batched.glyphs.data(), static_cast<uint32_t>(batched.glyphs.size()), batched.lines.data(),
+                            static_cast<uint32_t>(batched.lines.size()), batched.lineHeightPx);
 
     InstanceData inst{};
     inst.translation = batched.pos + batched.size * 0.5f;

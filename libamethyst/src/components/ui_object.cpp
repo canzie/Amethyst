@@ -1,5 +1,4 @@
 #include "components/ui_object.h"
-#include <algorithm>
 #include "components/common.h"
 #include "components/extensions/ui_aspect_ratio_constraint.h"
 #include "components/extensions/ui_drag_detector.h"
@@ -9,6 +8,7 @@
 #include "components/window.h"
 #include "rendering/instance_data.h"
 #include "utils/profiling.h"
+#include <algorithm>
 
 #include <cstdint>
 
@@ -171,12 +171,11 @@ vec4 UIObject::computeChildClipRect() const
         return clipRect;
     }
     vec4 myBounds = {absolutePosition.x, absolutePosition.y, absolutePosition.x + absoluteSize.x,
-                          absolutePosition.y + absoluteSize.y};
+                     absolutePosition.y + absoluteSize.y};
     if (clipRect == vec4(0.0f)) {
         return myBounds;
     }
-    return {max(clipRect.x, myBounds.x), max(clipRect.y, myBounds.y), min(clipRect.z, myBounds.z),
-            min(clipRect.w, myBounds.w)};
+    return {max(clipRect.x, myBounds.x), max(clipRect.y, myBounds.y), min(clipRect.z, myBounds.z), min(clipRect.w, myBounds.w)};
 }
 
 Window *UIObject::getWindow()

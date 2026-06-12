@@ -45,7 +45,13 @@ class DropdownItem {
   public:
     using Payload = std::variant<DropdownAction, DropdownToggle, DropdownSeparator, DropdownSubmenu, DropdownSelect>;
 
-    enum class Kind { ACTION, TOGGLE, SEPARATOR, SUBMENU, SELECT };
+    enum class Kind {
+        ACTION,
+        TOGGLE,
+        SEPARATOR,
+        SUBMENU,
+        SELECT
+    };
 
     std::string label;
     std::string shortcutHint;

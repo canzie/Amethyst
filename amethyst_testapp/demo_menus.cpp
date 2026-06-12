@@ -28,7 +28,7 @@ int main()
         return 1;
     }
 
-    VulkanInitInfo initInfo{};
+    AmVulkanInitInfo initInfo{};
     initInfo.device = ctx.device;
     initInfo.instance = ctx.instance;
     initInfo.physicalDevice = ctx.physicalDevice;
@@ -42,10 +42,10 @@ int main()
     initInfo.vertexShaderPath = AMETHYST_SHADER_DIR "/ui.vs.spv";
     initInfo.fragmentShaderPath = AMETHYST_SHADER_DIR "/ui.fs.spv";
 
-    GLFWInitInfo glfwInfo{};
+    AmGlfwInitInfo glfwInfo{};
     glfwInfo.window = ctx.window;
 
-    VkBackend backend;
+    AmVulkanBackend backend;
     backend.init(initInfo, glfwInfo);
 
     amCtx.init(backend);
@@ -177,9 +177,9 @@ int main()
 
         VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];
 
-        amCtx.sync(static_cast<void *>(cmd));
         amCtx.draw(window);
-        backend.record(cmd);
+        amCtx.sync(static_cast<void *>(cmd));
+        backend.record(cmd, amCtx.getDrawList());
         contextEndFrame(ctx, imageIndex);
 
         frameCount++;

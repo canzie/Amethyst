@@ -213,8 +213,7 @@ class TreeView : public UIObject {
     void ensurePoolCapacity(uint32_t count);
     void drawHeader(DrawContext &ctx, const vec4 &childClip);
     void drawSeparators(DrawContext &ctx, const vec4 &childClip);
-    void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y,
-                 const vec4 &childClip);
+    void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, const vec4 &childClip);
     void attachRowCells(uint32_t poolSlot, uint32_t logicalRow);
     void parkRowCells(DrawContext &ctx, uint32_t logicalRow);
     void hideSlot(DrawContext &ctx, uint32_t poolSlot);

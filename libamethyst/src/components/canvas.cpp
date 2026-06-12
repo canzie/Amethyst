@@ -6,8 +6,8 @@
 #include "rendering/geometry_registry.h"
 #include "rendering/instance_data.h"
 
-#include <algorithm>
 #include "math/math.h"
+#include <algorithm>
 
 namespace Amethyst {
 

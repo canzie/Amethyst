@@ -12,13 +12,13 @@
 
 #ifdef _WIN32
 #include <io.h>
-#define AM_ISATTY(fd) _isatty(fd)
-#define AM_FILENO(f) _fileno(f)
+#define AM_ISATTY(fd)       _isatty(fd)
+#define AM_FILENO(f)        _fileno(f)
 #define AM_LOCALTIME(tm, t) localtime_s(tm, t)
 #else
 #include <unistd.h>
-#define AM_ISATTY(fd) isatty(fd)
-#define AM_FILENO(f) fileno(f)
+#define AM_ISATTY(fd)       isatty(fd)
+#define AM_FILENO(f)        fileno(f)
 #define AM_LOCALTIME(tm, t) localtime_r(t, tm)
 #endif
 
@@ -38,12 +38,18 @@ static constexpr const char *LOG_PATH = "logs/amethyst.log";
 static const char *levelTag(LogLevel level)
 {
     switch (level) {
-        case LogLevel::TRACE:    return "trace";
-        case LogLevel::DEBUG:    return "debug";
-        case LogLevel::INFO:     return "info";
-        case LogLevel::WARN:     return "warn";
-        case LogLevel::ERR:      return "error";
-        case LogLevel::CRITICAL: return "critical";
+    case LogLevel::TRACE:
+        return "trace";
+    case LogLevel::DEBUG:
+        return "debug";
+    case LogLevel::INFO:
+        return "info";
+    case LogLevel::WARN:
+        return "warn";
+    case LogLevel::ERR:
+        return "error";
+    case LogLevel::CRITICAL:
+        return "critical";
     }
     return "?";
 }
@@ -51,12 +57,18 @@ static const char *levelTag(LogLevel level)
 static const char *levelColor(LogLevel level)
 {
     switch (level) {
-        case LogLevel::TRACE:    return "\033[37m";
-        case LogLevel::DEBUG:    return "\033[36m";
-        case LogLevel::INFO:     return "\033[32m";
-        case LogLevel::WARN:     return "\033[33m";
-        case LogLevel::ERR:      return "\033[31m";
-        case LogLevel::CRITICAL: return "\033[1;31m";
+    case LogLevel::TRACE:
+        return "\033[37m";
+    case LogLevel::DEBUG:
+        return "\033[36m";
+    case LogLevel::INFO:
+        return "\033[32m";
+    case LogLevel::WARN:
+        return "\033[33m";
+    case LogLevel::ERR:
+        return "\033[31m";
+    case LogLevel::CRITICAL:
+        return "\033[1;31m";
     }
     return "";
 }
@@ -113,7 +125,7 @@ void Log::WriteV(LogLevel level, std::string_view tag, std::string msg)
     auto tt = std::chrono::system_clock::to_time_t(now);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
 
-    struct tm timeinfo {};
+    struct tm timeinfo{};
     AM_LOCALTIME(&timeinfo, &tt);
 
     char shortTs[16];
@@ -122,18 +134,16 @@ void Log::WriteV(LogLevel level, std::string_view tag, std::string msg)
     const char *tag_s = levelTag(level);
 
     if (s_StderrColor) {
-        fprintf(stderr, "%s[%s.%03d] [%s] %s: %s\033[0m\n",
-            levelColor(level), shortTs, (int)ms.count(), tag_s, std::string(tag).c_str(), msg.c_str());
+        fprintf(stderr, "%s[%s.%03d] [%s] %s: %s\033[0m\n", levelColor(level), shortTs, (int)ms.count(), tag_s,
+                std::string(tag).c_str(), msg.c_str());
     } else {
-        fprintf(stderr, "[%s.%03d] [%s] %s: %s\n",
-            shortTs, (int)ms.count(), tag_s, std::string(tag).c_str(), msg.c_str());
+        fprintf(stderr, "[%s.%03d] [%s] %s: %s\n", shortTs, (int)ms.count(), tag_s, std::string(tag).c_str(), msg.c_str());
     }
 
     if (s_LogFile != nullptr) {
         char fullTs[32];
         strftime(fullTs, sizeof(fullTs), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        fprintf(s_LogFile, "[%s.%03d] [%s] %s: %s\n",
-            fullTs, (int)ms.count(), tag_s, std::string(tag).c_str(), msg.c_str());
+        fprintf(s_LogFile, "[%s.%03d] [%s] %s: %s\n", fullTs, (int)ms.count(), tag_s, std::string(tag).c_str(), msg.c_str());
         if (level >= LogLevel::INFO) {
             fflush(s_LogFile);
         }

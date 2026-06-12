@@ -10,8 +10,8 @@
 #ifndef AMETHYST__COLOR_H
 #define AMETHYST__COLOR_H
 
-#include <cstdint>
 #include "math/math.h"
+#include <cstdint>
 
 namespace Amethyst {
 
@@ -40,18 +40,11 @@ struct Color3 {
 
     inline Color3(const Color4 &c);
 
-    static Color3 fromRgb(uint8_t _r, uint8_t _g, uint8_t _b)
-    {
-        return Color3(_r / 255.0f, _g / 255.0f, _b / 255.0f);
-    }
+    static Color3 fromRgb(uint8_t _r, uint8_t _g, uint8_t _b) { return Color3(_r / 255.0f, _g / 255.0f, _b / 255.0f); }
 
     static Color3 fromHex(uint32_t hex)
     {
-        return Color3(
-            ((hex >> 16) & 0xFF) / 255.0f,
-            ((hex >> 8) & 0xFF) / 255.0f,
-            (hex & 0xFF) / 255.0f
-        );
+        return Color3(((hex >> 16) & 0xFF) / 255.0f, ((hex >> 8) & 0xFF) / 255.0f, (hex & 0xFF) / 255.0f);
     }
 
     constexpr operator vec3() const { return vec3(r, g, b); }
@@ -64,13 +57,27 @@ struct Color3 {
     Color3 operator*(float scalar) const { return fromLinear(r * scalar, g * scalar, b * scalar); }
     Color3 operator/(float scalar) const { return fromLinear(r / scalar, g / scalar, b / scalar); }
 
-    Color3 &operator+=(const Color3 &other) { r += other.r; g += other.g; b += other.b; return *this; }
-    Color3 &operator*=(float scalar) { r *= scalar; g *= scalar; b *= scalar; return *this; }
+    Color3 &operator+=(const Color3 &other)
+    {
+        r += other.r;
+        g += other.g;
+        b += other.b;
+        return *this;
+    }
+    Color3 &operator*=(float scalar)
+    {
+        r *= scalar;
+        g *= scalar;
+        b *= scalar;
+        return *this;
+    }
 
     static constexpr Color3 fromLinear(float _r, float _g, float _b)
     {
         Color3 c;
-        c.r = _r; c.g = _g; c.b = _b;
+        c.r = _r;
+        c.g = _g;
+        c.b = _b;
         return c;
     }
 };
@@ -80,8 +87,7 @@ struct Color4 {
 
     constexpr Color4() : r(0.0f), g(0.0f), b(0.0f), a(1.0f) {}
 
-    Color4(float _r, float _g, float _b, float _a = 1.0f)
-        : r(_r), g(_g), b(_b), a(_a) {}
+    Color4(float _r, float _g, float _b, float _a = 1.0f) : r(_r), g(_g), b(_b), a(_a) {}
 
     explicit Color4(float _v) : r(_v), g(_v), b(_v), a(1.0f) {}
 
@@ -97,19 +103,10 @@ struct Color4 {
     static Color4 fromHex(uint32_t hex, bool hasAlpha = false)
     {
         if (hasAlpha) {
-            return Color4(
-                ((hex >> 24) & 0xFF) / 255.0f,
-                ((hex >> 16) & 0xFF) / 255.0f,
-                ((hex >> 8) & 0xFF) / 255.0f,
-                (hex & 0xFF) / 255.0f
-            );
+            return Color4(((hex >> 24) & 0xFF) / 255.0f, ((hex >> 16) & 0xFF) / 255.0f, ((hex >> 8) & 0xFF) / 255.0f,
+                          (hex & 0xFF) / 255.0f);
         }
-        return Color4(
-            ((hex >> 16) & 0xFF) / 255.0f,
-            ((hex >> 8) & 0xFF) / 255.0f,
-            (hex & 0xFF) / 255.0f,
-            1.0f
-        );
+        return Color4(((hex >> 16) & 0xFF) / 255.0f, ((hex >> 8) & 0xFF) / 255.0f, (hex & 0xFF) / 255.0f, 1.0f);
     }
 
     constexpr operator vec4() const { return vec4(r, g, b, a); }
@@ -123,19 +120,42 @@ struct Color4 {
     Color4 operator*(float scalar) const { return fromLinear(r * scalar, g * scalar, b * scalar, a * scalar); }
     Color4 operator/(float scalar) const { return fromLinear(r / scalar, g / scalar, b / scalar, a / scalar); }
 
-    Color4 &operator+=(const Color4 &other) { r += other.r; g += other.g; b += other.b; a += other.a; return *this; }
-    Color4 &operator*=(float scalar) { r *= scalar; g *= scalar; b *= scalar; a *= scalar; return *this; }
+    Color4 &operator+=(const Color4 &other)
+    {
+        r += other.r;
+        g += other.g;
+        b += other.b;
+        a += other.a;
+        return *this;
+    }
+    Color4 &operator*=(float scalar)
+    {
+        r *= scalar;
+        g *= scalar;
+        b *= scalar;
+        a *= scalar;
+        return *this;
+    }
 
     static constexpr Color4 fromLinear(float _r, float _g, float _b, float _a)
     {
         Color4 c;
-        c.r = _r; c.g = _g; c.b = _b; c.a = _a;
+        c.r = _r;
+        c.g = _g;
+        c.b = _b;
+        c.a = _a;
         return c;
     }
 };
 
-inline Color3 operator*(float scalar, const Color3 &color) { return color * scalar; }
-inline Color4 operator*(float scalar, const Color4 &color) { return color * scalar; }
+inline Color3 operator*(float scalar, const Color3 &color)
+{
+    return color * scalar;
+}
+inline Color4 operator*(float scalar, const Color4 &color)
+{
+    return color * scalar;
+}
 
 inline Color3::Color3(const Color4 &c) : r(c.r), g(c.g), b(c.b) {}
 

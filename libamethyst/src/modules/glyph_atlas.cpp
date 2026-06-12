@@ -4,8 +4,7 @@
 
 namespace Amethyst {
 
-GlyphAtlas::GlyphAtlas(FontLoader *fontLoader)
-    : m_fontLoader(fontLoader), m_width(1024), m_height(1024), m_packer(1024, 1024)
+GlyphAtlas::GlyphAtlas(FontLoader *fontLoader) : m_fontLoader(fontLoader), m_width(1024), m_height(1024), m_packer(1024, 1024)
 {
     m_pixels.resize(m_width * m_height, 0);
 }

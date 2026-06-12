@@ -10,8 +10,8 @@
 #include "components/properties.h"
 #include "components/text_label.h"
 #include "components/ui_object.h"
-#include <functional>
 #include "math/math.h"
+#include <functional>
 
 namespace Amethyst {
 

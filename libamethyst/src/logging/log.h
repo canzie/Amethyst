@@ -47,7 +47,14 @@ inline std::string ExtractFunctionName(const char *prettyFunction)
     return func;
 }
 
-enum class LogLevel { TRACE, DEBUG, INFO, WARN, ERR, CRITICAL };
+enum class LogLevel {
+    TRACE,
+    DEBUG,
+    INFO,
+    WARN,
+    ERR,
+    CRITICAL
+};
 
 struct LogMessage {
     std::string message;
@@ -76,22 +83,17 @@ class Log {
 } // namespace Amethyst
 
 #define AM_LOG_TRACE(...) \
-    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::TRACE, \
-        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::TRACE, ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
 #define AM_LOG_DEBUG(...) \
-    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::DEBUG, \
-        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::DEBUG, ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
 #define AM_LOG_INFO(...) \
-    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::INFO, \
-        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::INFO, ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
 #define AM_LOG_WARN(...) \
-    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::WARN, \
-        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::WARN, ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
 #define AM_LOG_ERROR(...) \
-    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::ERR, \
-        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
-#define AM_LOG_CRITICAL(...) \
-    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::CRITICAL, \
-        ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::ERR, ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), std::format(__VA_ARGS__))
+#define AM_LOG_CRITICAL(...)                                                                                  \
+    ::Amethyst::Log::WriteV(::Amethyst::LogLevel::CRITICAL, ::Amethyst::ExtractFunctionName(AM_FUNCTION_SIG), \
+                            std::format(__VA_ARGS__))
 
 #endif // AMETHYST__LOG_H

@@ -5,10 +5,10 @@
 #ifndef AMETHYST__INSTANCE_H
 #define AMETHYST__INSTANCE_H
 
+#include "math/math.h"
 #include <concepts>
 #include <cstdint>
 #include <functional>
-#include "math/math.h"
 #include <memory>
 #include <string>
 #include <vector>

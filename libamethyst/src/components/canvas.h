@@ -69,8 +69,7 @@ class Canvas : public UIObject {
      * @param color Stroke color
      * @param thickness Stroke width in pixels
      */
-    void drawEllipseStroke(vec2 center, float semiMajor, float semiMinor, float rotationDeg, Color4 color,
-                           float thickness = 1.0f);
+    void drawEllipseStroke(vec2 center, float semiMajor, float semiMinor, float rotationDeg, Color4 color, float thickness = 1.0f);
 
     /**
      * @brief Draw text at a position in local canvas coordinates

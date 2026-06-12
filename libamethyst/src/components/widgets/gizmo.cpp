@@ -3,10 +3,10 @@
 #include "components/canvas.h"
 #include "components/window.h"
 
+#include "math/math.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
-#include "math/math.h"
 
 namespace Amethyst {
 
@@ -36,8 +36,7 @@ static vec2 s_worldToScreen(const vec3 &world, const mat4 &viewProj, vec2 vpPos,
     return vec2(vpPos.x + (ndc.x * 0.5f + 0.5f) * vpSize.x, vpPos.y + (1.0f - (ndc.y * 0.5f + 0.5f)) * vpSize.y);
 }
 
-static void s_screenToWorldRay(vec2 screen, const mat4 &invViewProj, vec2 vpPos, vec2 vpSize,
-                               vec3 &origin, vec3 &dir)
+static void s_screenToWorldRay(vec2 screen, const mat4 &invViewProj, vec2 vpPos, vec2 vpSize, vec3 &origin, vec3 &dir)
 {
     float ndcX = ((screen.x - vpPos.x) / vpSize.x) * 2.0f - 1.0f;
     float ndcY = 1.0f - ((screen.y - vpPos.y) / vpSize.y) * 2.0f;
@@ -52,8 +51,7 @@ static void s_screenToWorldRay(vec2 screen, const mat4 &invViewProj, vec2 vpPos,
     dir = normalize(vec3(farPt) - vec3(nearPt));
 }
 
-static float s_rayPlaneIntersect(const vec3 &rayOrigin, const vec3 &rayDir, const vec3 &planePoint,
-                                 const vec3 &planeNormal)
+static float s_rayPlaneIntersect(const vec3 &rayOrigin, const vec3 &rayDir, const vec3 &planePoint, const vec3 &planeNormal)
 {
     float denom = dot(planeNormal, rayDir);
     if (std::abs(denom) < 0.0001f) {
@@ -81,9 +79,7 @@ static float s_distanceToPoint2D(vec2 a, vec2 b)
 
 static bool s_pointInQuad2D(vec2 p, const vec2 quad[4])
 {
-    auto sign = [](vec2 p1, vec2 p2, vec2 p3) {
-        return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
-    };
+    auto sign = [](vec2 p1, vec2 p2, vec2 p3) { return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y); };
 
     float d1 = sign(p, quad[0], quad[1]);
     float d2 = sign(p, quad[1], quad[2]);
@@ -107,10 +103,14 @@ static bool s_pointInQuad2D(vec2 p, const vec2 quad[4])
 static vec3 s_getAxisVector(GizmoAxis axis)
 {
     switch (axis) {
-    case GizmoAxis::X: return vec3(1, 0, 0);
-    case GizmoAxis::Y: return vec3(0, 1, 0);
-    case GizmoAxis::Z: return vec3(0, 0, 1);
-    default: return vec3(0);
+    case GizmoAxis::X:
+        return vec3(1, 0, 0);
+    case GizmoAxis::Y:
+        return vec3(0, 1, 0);
+    case GizmoAxis::Z:
+        return vec3(0, 0, 1);
+    default:
+        return vec3(0);
     }
 }
 
@@ -118,13 +118,20 @@ static Color4 s_getAxisColor(GizmoAxis axis, bool hovered, bool active)
 {
     if (active) return COL_ACTIVE;
     switch (axis) {
-    case GizmoAxis::X: return hovered ? COL_X_HOVER : COL_X;
-    case GizmoAxis::Y: return hovered ? COL_Y_HOVER : COL_Y;
-    case GizmoAxis::Z: return hovered ? COL_Z_HOVER : COL_Z;
-    case GizmoAxis::XY: return hovered ? COL_Z_HOVER : COL_Z;
-    case GizmoAxis::XZ: return hovered ? COL_Y_HOVER : COL_Y;
-    case GizmoAxis::YZ: return hovered ? COL_X_HOVER : COL_X;
-    default: return COL_WHITE;
+    case GizmoAxis::X:
+        return hovered ? COL_X_HOVER : COL_X;
+    case GizmoAxis::Y:
+        return hovered ? COL_Y_HOVER : COL_Y;
+    case GizmoAxis::Z:
+        return hovered ? COL_Z_HOVER : COL_Z;
+    case GizmoAxis::XY:
+        return hovered ? COL_Z_HOVER : COL_Z;
+    case GizmoAxis::XZ:
+        return hovered ? COL_Y_HOVER : COL_Y;
+    case GizmoAxis::YZ:
+        return hovered ? COL_X_HOVER : COL_X;
+    default:
+        return COL_WHITE;
     }
 }
 
@@ -132,10 +139,14 @@ static Color4 s_getPlaneColor(GizmoAxis axis, bool hovered, bool active)
 {
     if (active) return Color4{1.0f, 0.863f, 0.251f, 0.588f};
     switch (axis) {
-    case GizmoAxis::XY: return hovered ? Color4{0.255f, 0.545f, 0.937f, 0.706f} : COL_PLANE_XY;
-    case GizmoAxis::XZ: return hovered ? Color4{0.525f, 0.788f, 0.247f, 0.706f} : COL_PLANE_XZ;
-    case GizmoAxis::YZ: return hovered ? Color4{0.929f, 0.282f, 0.357f, 0.706f} : COL_PLANE_YZ;
-    default: return COL_WHITE;
+    case GizmoAxis::XY:
+        return hovered ? Color4{0.255f, 0.545f, 0.937f, 0.706f} : COL_PLANE_XY;
+    case GizmoAxis::XZ:
+        return hovered ? Color4{0.525f, 0.788f, 0.247f, 0.706f} : COL_PLANE_XZ;
+    case GizmoAxis::YZ:
+        return hovered ? Color4{0.929f, 0.282f, 0.357f, 0.706f} : COL_PLANE_YZ;
+    default:
+        return COL_WHITE;
     }
 }
 
@@ -286,10 +297,14 @@ void Gizmo::Impl::updateOrientation(const mat4 &objectTransform, GizmoSpace spac
 vec3 Gizmo::Impl::getOrientedAxis(GizmoAxis axis) const
 {
     switch (axis) {
-    case GizmoAxis::X: return axisX;
-    case GizmoAxis::Y: return axisY;
-    case GizmoAxis::Z: return axisZ;
-    default: return vec3(0.0f);
+    case GizmoAxis::X:
+        return axisX;
+    case GizmoAxis::Y:
+        return axisY;
+    case GizmoAxis::Z:
+        return axisZ;
+    default:
+        return vec3(0.0f);
     }
 }
 
@@ -300,10 +315,20 @@ void Gizmo::Impl::getPlaneHandleQuad(GizmoAxis axis, vec3 corners[4])
 
     vec3 dir1, dir2;
     switch (axis) {
-    case GizmoAxis::XY: dir1 = axisX; dir2 = axisY; break;
-    case GizmoAxis::XZ: dir1 = axisX; dir2 = axisZ; break;
-    case GizmoAxis::YZ: dir1 = axisY; dir2 = axisZ; break;
-    default: return;
+    case GizmoAxis::XY:
+        dir1 = axisX;
+        dir2 = axisY;
+        break;
+    case GizmoAxis::XZ:
+        dir1 = axisX;
+        dir2 = axisZ;
+        break;
+    case GizmoAxis::YZ:
+        dir1 = axisY;
+        dir2 = axisZ;
+        break;
+    default:
+        return;
     }
 
     corners[0] = gizmoCenter + dir1 * offset + dir2 * offset;
@@ -342,9 +367,18 @@ GizmoAxis Gizmo::Impl::hitTestTranslate(vec2 mouse)
     float minDist = threshold;
     GizmoAxis result = GizmoAxis::NONE;
 
-    if (distX < minDist) { minDist = distX; result = GizmoAxis::X; }
-    if (distY < minDist) { minDist = distY; result = GizmoAxis::Y; }
-    if (distZ < minDist) { minDist = distZ; result = GizmoAxis::Z; }
+    if (distX < minDist) {
+        minDist = distX;
+        result = GizmoAxis::X;
+    }
+    if (distY < minDist) {
+        minDist = distY;
+        result = GizmoAxis::Y;
+    }
+    if (distZ < minDist) {
+        minDist = distZ;
+        result = GizmoAxis::Z;
+    }
 
     return result;
 }
@@ -393,9 +427,18 @@ GizmoAxis Gizmo::Impl::hitTestRotate(vec2 mouse)
     float minDist = threshold;
     GizmoAxis result = GizmoAxis::NONE;
 
-    if (distX < minDist) { minDist = distX; result = GizmoAxis::X; }
-    if (distY < minDist) { minDist = distY; result = GizmoAxis::Y; }
-    if (distZ < minDist) { minDist = distZ; result = GizmoAxis::Z; }
+    if (distX < minDist) {
+        minDist = distX;
+        result = GizmoAxis::X;
+    }
+    if (distY < minDist) {
+        minDist = distY;
+        result = GizmoAxis::Y;
+    }
+    if (distZ < minDist) {
+        minDist = distZ;
+        result = GizmoAxis::Z;
+    }
 
     return result;
 }
@@ -438,9 +481,18 @@ GizmoAxis Gizmo::Impl::hitTestScale(vec2 mouse)
     float minDist = threshold;
     GizmoAxis result = GizmoAxis::NONE;
 
-    if (distX < minDist) { minDist = distX; result = GizmoAxis::X; }
-    if (distY < minDist) { minDist = distY; result = GizmoAxis::Y; }
-    if (distZ < minDist) { minDist = distZ; result = GizmoAxis::Z; }
+    if (distX < minDist) {
+        minDist = distX;
+        result = GizmoAxis::X;
+    }
+    if (distY < minDist) {
+        minDist = distY;
+        result = GizmoAxis::Y;
+    }
+    if (distZ < minDist) {
+        minDist = distZ;
+        result = GizmoAxis::Z;
+    }
 
     return result;
 }
@@ -458,13 +510,27 @@ vec3 Gizmo::Impl::computeTranslationDelta(vec2 mouse)
 
     vec3 delta(0.0f);
     switch (activeAxis) {
-    case GizmoAxis::X: delta = axisX * dot(worldDelta, axisX); break;
-    case GizmoAxis::Y: delta = axisY * dot(worldDelta, axisY); break;
-    case GizmoAxis::Z: delta = axisZ * dot(worldDelta, axisZ); break;
-    case GizmoAxis::XY: delta = axisX * dot(worldDelta, axisX) + axisY * dot(worldDelta, axisY); break;
-    case GizmoAxis::XZ: delta = axisX * dot(worldDelta, axisX) + axisZ * dot(worldDelta, axisZ); break;
-    case GizmoAxis::YZ: delta = axisY * dot(worldDelta, axisY) + axisZ * dot(worldDelta, axisZ); break;
-    default: delta = worldDelta; break;
+    case GizmoAxis::X:
+        delta = axisX * dot(worldDelta, axisX);
+        break;
+    case GizmoAxis::Y:
+        delta = axisY * dot(worldDelta, axisY);
+        break;
+    case GizmoAxis::Z:
+        delta = axisZ * dot(worldDelta, axisZ);
+        break;
+    case GizmoAxis::XY:
+        delta = axisX * dot(worldDelta, axisX) + axisY * dot(worldDelta, axisY);
+        break;
+    case GizmoAxis::XZ:
+        delta = axisX * dot(worldDelta, axisX) + axisZ * dot(worldDelta, axisZ);
+        break;
+    case GizmoAxis::YZ:
+        delta = axisY * dot(worldDelta, axisY) + axisZ * dot(worldDelta, axisZ);
+        break;
+    default:
+        delta = worldDelta;
+        break;
     }
 
     if (shouldSnap()) {
@@ -518,26 +584,42 @@ vec3 Gizmo::Impl::computeScaleDelta(vec2 mouse)
 
     vec3 result(1.0f);
     switch (activeAxis) {
-    case GizmoAxis::X: result.x = scaleFactor; accumulatedScale.x *= scaleFactor; break;
-    case GizmoAxis::Y: result.y = scaleFactor; accumulatedScale.y *= scaleFactor; break;
-    case GizmoAxis::Z: result.z = scaleFactor; accumulatedScale.z *= scaleFactor; break;
+    case GizmoAxis::X:
+        result.x = scaleFactor;
+        accumulatedScale.x *= scaleFactor;
+        break;
+    case GizmoAxis::Y:
+        result.y = scaleFactor;
+        accumulatedScale.y *= scaleFactor;
+        break;
+    case GizmoAxis::Z:
+        result.z = scaleFactor;
+        accumulatedScale.z *= scaleFactor;
+        break;
     case GizmoAxis::XY:
-        result.x = scaleFactor; result.y = scaleFactor;
-        accumulatedScale.x *= scaleFactor; accumulatedScale.y *= scaleFactor;
+        result.x = scaleFactor;
+        result.y = scaleFactor;
+        accumulatedScale.x *= scaleFactor;
+        accumulatedScale.y *= scaleFactor;
         break;
     case GizmoAxis::XZ:
-        result.x = scaleFactor; result.z = scaleFactor;
-        accumulatedScale.x *= scaleFactor; accumulatedScale.z *= scaleFactor;
+        result.x = scaleFactor;
+        result.z = scaleFactor;
+        accumulatedScale.x *= scaleFactor;
+        accumulatedScale.z *= scaleFactor;
         break;
     case GizmoAxis::YZ:
-        result.y = scaleFactor; result.z = scaleFactor;
-        accumulatedScale.y *= scaleFactor; accumulatedScale.z *= scaleFactor;
+        result.y = scaleFactor;
+        result.z = scaleFactor;
+        accumulatedScale.y *= scaleFactor;
+        accumulatedScale.z *= scaleFactor;
         break;
     case GizmoAxis::XYZ:
         result = vec3(scaleFactor);
         accumulatedScale *= scaleFactor;
         break;
-    default: break;
+    default:
+        break;
     }
 
     return result;
@@ -585,8 +667,7 @@ static void s_drawScaleHandle(Canvas &c, vec2 pos, float size, Color4 color)
 {
     vec2 local = pos - c.absolutePosition;
     float hs = size * 0.5f;
-    c.drawQuadFilled(local + vec2(-hs, -hs), local + vec2(hs, -hs),
-                     local + vec2(hs, hs), local + vec2(-hs, hs), color);
+    c.drawQuadFilled(local + vec2(-hs, -hs), local + vec2(hs, -hs), local + vec2(hs, hs), local + vec2(-hs, hs), color);
 }
 
 static void s_drawValueLabel(Canvas &c, vec2 pos, const char *text, Color4 textColor)
@@ -596,9 +677,8 @@ static void s_drawValueLabel(Canvas &c, vec2 pos, const char *text, Color4 textC
     c.drawText(text, labelPos, 14.0f, textColor, 32);
 }
 
-static void s_draw3DRing(Canvas &c, const vec3 &center, const vec3 &axis, float radius,
-                         const mat4 &viewProj, vec2 vpPos, vec2 vpSize,
-                         Color4 color, float thickness)
+static void s_draw3DRing(Canvas &c, const vec3 &center, const vec3 &axis, float radius, const mat4 &viewProj, vec2 vpPos,
+                         vec2 vpSize, Color4 color, float thickness)
 {
     vec3 up = normalize(axis);
     vec3 right;
@@ -632,9 +712,8 @@ static void s_draw3DRing(Canvas &c, const vec3 &center, const vec3 &axis, float 
     c.drawEllipseStroke(local, semiMajor, semiMinor, angle * 180.0f / PI, color, thickness);
 }
 
-static void s_draw3DRotationArc(Canvas &c, const vec3 &center, const vec3 &axis, float radius,
-                                float startAngle, float deltaAngle, const mat4 &viewProj,
-                                vec2 vpPos, vec2 vpSize, Color4 fillColor)
+static void s_draw3DRotationArc(Canvas &c, const vec3 &center, const vec3 &axis, float radius, float startAngle, float deltaAngle,
+                                const mat4 &viewProj, vec2 vpPos, vec2 vpSize, Color4 fillColor)
 {
     if (std::abs(deltaAngle) < 0.001f) return;
 
@@ -695,9 +774,12 @@ void Gizmo::Impl::drawTranslate(GizmoAxis hovered, bool active, vec2 mouse)
     bool yActive = active && activeAxis == GizmoAxis::Y;
     bool zActive = active && activeAxis == GizmoAxis::Z;
 
-    s_drawArrow(*canvas, center, xScreen, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive), config.thickness, config.arrowSize);
-    s_drawArrow(*canvas, center, yScreen, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive), config.thickness, config.arrowSize);
-    s_drawArrow(*canvas, center, zScreen, s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive), config.thickness, config.arrowSize);
+    s_drawArrow(*canvas, center, xScreen, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive), config.thickness,
+                config.arrowSize);
+    s_drawArrow(*canvas, center, yScreen, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive), config.thickness,
+                config.arrowSize);
+    s_drawArrow(*canvas, center, zScreen, s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive), config.thickness,
+                config.arrowSize);
 
     if (active && activeOp == GizmoOperation::TRANSLATE) {
         char text[64];
@@ -746,8 +828,8 @@ void Gizmo::Impl::drawRotate(GizmoAxis hovered, bool active)
     if (active && std::abs(accumulatedRotation) > 0.001f) {
         vec3 axis = getOrientedAxis(activeAxis);
         Color4 arcColor = {1.0f, 0.863f, 0.251f, 0.471f};
-        s_draw3DRotationArc(*canvas, gizmoCenter, axis, ringRadius * 0.9f, dragStartAngle, accumulatedRotation,
-                            viewProjMatrix, vpPos(), vpSize(), arcColor);
+        s_draw3DRotationArc(*canvas, gizmoCenter, axis, ringRadius * 0.9f, dragStartAngle, accumulatedRotation, viewProjMatrix,
+                            vpPos(), vpSize(), arcColor);
 
         vec2 centerScreen = s_worldToScreen(gizmoCenter, viewProjMatrix, vpPos(), vpSize());
         float degrees = accumulatedRotation * 180.0f / PI;
@@ -791,9 +873,12 @@ void Gizmo::Impl::drawScale(GizmoAxis hovered, bool active, vec2 mouse)
 
     vec2 offset = canvas->absolutePosition;
 
-    canvas->drawLine(center - offset, xScreen - offset, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive), config.thickness);
-    canvas->drawLine(center - offset, yScreen - offset, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive), config.thickness);
-    canvas->drawLine(center - offset, zScreen - offset, s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive), config.thickness);
+    canvas->drawLine(center - offset, xScreen - offset, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive),
+                     config.thickness);
+    canvas->drawLine(center - offset, yScreen - offset, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive),
+                     config.thickness);
+    canvas->drawLine(center - offset, zScreen - offset, s_getAxisColor(GizmoAxis::Z, hovered == GizmoAxis::Z, zActive),
+                     config.thickness);
 
     s_drawScaleHandle(*canvas, xScreen, config.handleSize, s_getAxisColor(GizmoAxis::X, hovered == GizmoAxis::X, xActive));
     s_drawScaleHandle(*canvas, yScreen, config.handleSize, s_getAxisColor(GizmoAxis::Y, hovered == GizmoAxis::Y, yActive));
@@ -851,9 +936,18 @@ void Gizmo::reset()
     m_impl->accumulatedScale = vec3(1.0f);
 }
 
-Canvas &Gizmo::canvas() { return *m_impl->canvas; }
-GizmoConfig &Gizmo::config() { return m_impl->config; }
-const GizmoConfig &Gizmo::config() const { return m_impl->config; }
+Canvas &Gizmo::canvas()
+{
+    return *m_impl->canvas;
+}
+GizmoConfig &Gizmo::config()
+{
+    return m_impl->config;
+}
+const GizmoConfig &Gizmo::config() const
+{
+    return m_impl->config;
+}
 
 GizmoResult Gizmo::update(const GizmoParams &params)
 {
@@ -864,8 +958,7 @@ GizmoResult Gizmo::update(const GizmoParams &params)
         return result;
     }
 
-    bool hasInput = m_impl->canvas->mouseDown || m_impl->canvas->mouseUp ||
-                    m_impl->canvas->mousePos != m_impl->prevMousePos;
+    bool hasInput = m_impl->canvas->mouseDown || m_impl->canvas->mouseUp || m_impl->canvas->mousePos != m_impl->prevMousePos;
     bool paramsChanged = params != m_impl->prevParams;
 
     if (!hasInput && !paramsChanged && !m_impl->firstFrame && m_impl->state != Impl::State::DRAGGING) {
@@ -908,8 +1001,7 @@ GizmoResult Gizmo::update(const GizmoParams &params)
 
     vec2 vp = m_impl->vpPos();
     vec2 vs = m_impl->vpSize();
-    bool inViewport = mouse.x >= vp.x && mouse.x <= vp.x + vs.x &&
-                      mouse.y >= vp.y && mouse.y <= vp.y + vs.y;
+    bool inViewport = mouse.x >= vp.x && mouse.x <= vp.x + vs.x && mouse.y >= vp.y && mouse.y <= vp.y + vs.y;
 
     GizmoOperation op = params.operation;
 

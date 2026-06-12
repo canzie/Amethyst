@@ -6,8 +6,8 @@
 #ifndef AMETHYST_TTF_TYPES_H
 #define AMETHYST_TTF_TYPES_H
 
-#include <cstdint>
 #include "math/math.h"
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
 

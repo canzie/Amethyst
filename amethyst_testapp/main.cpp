@@ -34,7 +34,7 @@ int main()
         return 1;
     }
 
-    Amethyst::VulkanInitInfo initInfo{};
+    Amethyst::AmVulkanInitInfo initInfo{};
     initInfo.device = ctx.device;
     initInfo.instance = ctx.instance;
     initInfo.physicalDevice = ctx.physicalDevice;
@@ -48,10 +48,10 @@ int main()
     initInfo.vertexShaderPath = AMETHYST_SHADER_DIR "/ui.vs.spv";
     initInfo.fragmentShaderPath = AMETHYST_SHADER_DIR "/ui.fs.spv";
 
-    Amethyst::GLFWInitInfo glfwInfo{};
+    Amethyst::AmGlfwInitInfo glfwInfo{};
     glfwInfo.window = ctx.window;
 
-    Amethyst::VkBackend backend;
+    Amethyst::AmVulkanBackend backend;
     backend.init(initInfo, glfwInfo);
 
     amCtx.init(backend);
@@ -531,7 +531,7 @@ int main()
                                 });
                                 tabs.tab("Checkerboard", [&](Amethyst::FrameScope &f) {
                                     f.imageLabel({.base = {.size = Amethyst::UDim2::fromScale(1.0f, 1.0f)},
-                                                  .texture = backend.getAtlasTextureId()});
+                                                  .texture = amCtx.getGlyphAtlasTexture()});
                                 });
                             });
                         },
@@ -568,9 +568,9 @@ int main()
 
         VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];
 
-        amCtx.sync(static_cast<void *>(cmd));
         amCtx.draw(window);
-        backend.record(cmd);
+        amCtx.sync(static_cast<void *>(cmd));
+        backend.record(cmd, amCtx.getDrawList());
 
         contextEndFrame(ctx, imageIndex);
 

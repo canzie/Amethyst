@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <deque>
-#include <functional>
 #include <memory>
 #include <vector>
 
@@ -14,8 +13,6 @@ namespace Amethyst {
 
 class GeometryRegistry;
 class UILayer;
-
-using GeometryRegistryDestroyCb = std::function<void(GeometryRegistry *)>;
 
 struct GeometryAllocation {
     uint32_t slotId = UINT32_MAX;
@@ -46,12 +43,6 @@ class GeometryRegistry {
      * @brief Re-sort registries by owner displayOrder
      */
     static void resortRegistries();
-
-    /**
-     * @brief Set callback invoked when a registry is destroyed
-     * @param cb Callback receiving the destroyed registry pointer
-     */
-    static void setDestroyCb(GeometryRegistryDestroyCb cb);
 
     /**
      * @brief Submit new instance data
@@ -140,7 +131,6 @@ class GeometryRegistry {
 
   private:
     static std::vector<GeometryRegistry *> s_registries;
-    static GeometryRegistryDestroyCb s_onDestroyCb;
 
     UILayer *m_owningLayer = nullptr;
 

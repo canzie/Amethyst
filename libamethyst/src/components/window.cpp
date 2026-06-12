@@ -82,8 +82,8 @@ void Window::draw(DrawContext &ctx)
     m_overlayLayer->draw(layerCtx);
 }
 
-static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, const vec2 &point, UIObject **stack,
-                                      uint8_t &count, uint8_t capacity)
+static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, const vec2 &point, UIObject **stack, uint8_t &count,
+                                      uint8_t capacity)
 {
     std::vector<Instance *> sorted(instances.begin(), instances.end());
     std::stable_sort(sorted.begin(), sorted.end(), [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });

@@ -16,9 +16,10 @@ SvgAtlas::SvgAtlas(SvgAtlas &&) noexcept = default;
 SvgAtlas &SvgAtlas::operator=(SvgAtlas &&) noexcept = default;
 
 #define HASH_GOLDEN_RATIO 0x9e3779b9
-#define HASH_SHIFT_LEFT 6
-#define HASH_SHIFT_RIGHT 2
-#define HASH_COMBINE(h, val) ((h) ^ (std::hash<uint32_t>{}(val) + HASH_GOLDEN_RATIO + ((h) << HASH_SHIFT_LEFT) + ((h) >> HASH_SHIFT_RIGHT)))
+#define HASH_SHIFT_LEFT   6
+#define HASH_SHIFT_RIGHT  2
+#define HASH_COMBINE(h, val) \
+    ((h) ^ (std::hash<uint32_t>{}(val) + HASH_GOLDEN_RATIO + ((h) << HASH_SHIFT_LEFT) + ((h) >> HASH_SHIFT_RIGHT)))
 
 static SvgHash s_computeHash(const std::string &svgData, uint32_t width, uint32_t height)
 {

@@ -8,9 +8,9 @@
 #include "components/input_events.h"
 #include "components/overlay_layer.h"
 #include "components/ui_layer.h"
+#include "math/math.h"
 #include <array>
 #include <cstdint>
-#include "math/math.h"
 #include <memory>
 
 namespace Amethyst {

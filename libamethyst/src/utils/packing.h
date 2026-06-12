@@ -7,8 +7,8 @@
 
 #include "components/common.h"
 
-#include <cstdint>
 #include "math/math.h"
+#include <cstdint>
 
 namespace Amethyst {
 

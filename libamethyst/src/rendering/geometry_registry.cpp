@@ -1,16 +1,15 @@
 #include "geometry_registry.h"
 
 #include "components/ui_layer.h"
+#include "rendering/gpu_resource_hub.h"
 #include "utils/am_assert.h"
 #include "utils/profiling.h"
 #include <algorithm>
 #include <cstdint>
-#include <utility>
 
 namespace Amethyst {
 
 std::vector<GeometryRegistry *> GeometryRegistry::s_registries;
-GeometryRegistryDestroyCb GeometryRegistry::s_onDestroyCb;
 
 GeometryRegistry::GeometryRegistry(UILayer *owner) : m_owningLayer(owner)
 {
@@ -25,8 +24,8 @@ GeometryRegistry::GeometryRegistry(UILayer *owner) : m_owningLayer(owner)
 
 GeometryRegistry::~GeometryRegistry()
 {
-    if (s_onDestroyCb) {
-        s_onDestroyCb(this);
+    if (GpuResourceHub::active() != nullptr) {
+        GpuResourceHub::active()->onRegistryDestroyed(this);
     }
 
     auto it = std::find(s_registries.begin(), s_registries.end(), this);
@@ -61,11 +60,6 @@ void GeometryRegistry::resortRegistries()
     std::sort(s_registries.begin(), s_registries.end(), [](GeometryRegistry *a, GeometryRegistry *b) {
         return a->m_owningLayer->getDisplayOrder() < b->m_owningLayer->getDisplayOrder();
     });
-}
-
-void GeometryRegistry::setDestroyCb(GeometryRegistryDestroyCb cb)
-{
-    s_onDestroyCb = std::move(cb);
 }
 
 GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)

@@ -337,8 +337,8 @@ struct mat3 {
     vec3 &operator[](int c) { return cols[c]; }
     const vec3 &operator[](int c) const { return cols[c]; }
 
-    bool operator==(const mat3& o) const { return cols[0] == o.cols[0] && cols[1] == o.cols[1] && cols[2] == o.cols[2]; }
-    bool operator!=(const mat3& o) const { return !(*this == o); }
+    bool operator==(const mat3 &o) const { return cols[0] == o.cols[0] && cols[1] == o.cols[1] && cols[2] == o.cols[2]; }
+    bool operator!=(const mat3 &o) const { return !(*this == o); }
     mat3 operator*(const mat3 &b) const;
     vec3 operator*(vec3 v) const;
 };
@@ -377,8 +377,11 @@ struct mat4 {
     vec4 &operator[](int c) { return cols[c]; }
     const vec4 &operator[](int c) const { return cols[c]; }
 
-    bool operator==(const mat4& o) const { return cols[0] == o.cols[0] && cols[1] == o.cols[1] && cols[2] == o.cols[2] && cols[3] == o.cols[3]; }
-    bool operator!=(const mat4& o) const { return !(*this == o); }
+    bool operator==(const mat4 &o) const
+    {
+        return cols[0] == o.cols[0] && cols[1] == o.cols[1] && cols[2] == o.cols[2] && cols[3] == o.cols[3];
+    }
+    bool operator!=(const mat4 &o) const { return !(*this == o); }
     mat4 operator*(const mat4 &b) const;
     vec4 operator*(vec4 v) const;
 };

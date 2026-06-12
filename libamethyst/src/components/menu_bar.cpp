@@ -44,10 +44,8 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<DropdownItem> items)
     });
     entry->setBaseProperties({
         .layoutOrder = static_cast<LayoutOrder>(m_entries.size()),
-        .padding = {
-            UDim::fromOffset(m_mbProps.entryPaddingY), UDim::fromOffset(m_mbProps.entryPaddingX),
-            UDim::fromOffset(m_mbProps.entryPaddingY), UDim::fromOffset(m_mbProps.entryPaddingX)
-        },
+        .padding = {UDim::fromOffset(m_mbProps.entryPaddingY), UDim::fromOffset(m_mbProps.entryPaddingX),
+                    UDim::fromOffset(m_mbProps.entryPaddingY), UDim::fromOffset(m_mbProps.entryPaddingX)},
         .size = UDim2::fromOffset(estWidth, 0.0f),
     });
 

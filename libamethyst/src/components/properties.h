@@ -3,9 +3,9 @@
 
 #include "components/common.h"
 
+#include "math/math.h"
 #include <cmath>
 #include <cstdint>
-#include "math/math.h"
 #include <limits>
 #include <optional>
 #include <string>

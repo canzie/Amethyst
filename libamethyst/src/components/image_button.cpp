@@ -69,12 +69,8 @@ void ImageButton::resolveSvg(DrawContext &ctx)
     if (entry != nullptr) {
         float aw = static_cast<float>(ctx.svgAtlas->getWidth());
         float ah = static_cast<float>(ctx.svgAtlas->getHeight());
-        m_svgUvRect = {
-            entry->atlasX / aw,
-            entry->atlasY / ah,
-            (entry->atlasX + entry->width) / aw,
-            (entry->atlasY + entry->height) / ah
-        };
+        m_svgUvRect = {entry->atlasX / aw, entry->atlasY / ah, (entry->atlasX + entry->width) / aw,
+                       (entry->atlasY + entry->height) / ah};
         m_image = ctx.svgAtlas->getTextureId();
     }
 

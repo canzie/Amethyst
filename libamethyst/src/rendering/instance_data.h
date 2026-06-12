@@ -8,8 +8,8 @@
 #include "components/common.h"
 #include "utils/packing.h"
 
-#include <cstdint>
 #include "math/math.h"
+#include <cstdint>
 
 namespace Amethyst {
 
@@ -19,16 +19,16 @@ enum GpuInstanceFlags : uint32_t {
 };
 
 struct InstanceData {
-    alignas(8) vec2 translation;     // 8B position
-    alignas(8) vec2 scale;           // 8B size
-    alignas(16) vec4 clipRect;       // 16B clip rect (keep as float)
-    uint32_t fillColor = 0xFFFFFFFF;      // 4B packed RGBA
-    uint32_t borderColor = 0;             // 4B packed RGBA
-    uint32_t shapeData[4] = {0, 0, 0, 0}; // 16B packed half2 pairs for triangle/line/text UV
-    uint32_t rotationBorderThickness = 0; // 4B: rotation(16 bits) | borderThickness(16 bits half)
-    uint32_t cornerPrimitiveMode = 0;     // 4B: cornerRadius(16 bits half) | primitiveType(8) | borderMode(8)
-    uint32_t textureId = UINT32_MAX;      // 4B texture handle
-    int32_t zIndex = 0;                   // 4B z-index for sorting
+    alignas(8) vec2 translation;            // 8B position
+    alignas(8) vec2 scale;                  // 8B size
+    alignas(16) vec4 clipRect;              // 16B clip rect (keep as float)
+    uint32_t fillColor = 0xFFFFFFFF;        // 4B packed RGBA
+    uint32_t borderColor = 0;               // 4B packed RGBA
+    uint32_t shapeData[4] = {0, 0, 0, 0};   // 16B packed half2 pairs for triangle/line/text UV
+    uint32_t rotationBorderThickness = 0;   // 4B: rotation(16 bits) | borderThickness(16 bits half)
+    uint32_t cornerPrimitiveMode = 0;       // 4B: cornerRadius(16 bits half) | primitiveType(8) | borderMode(8)
+    uint32_t textureId = UINT32_MAX;        // 4B texture handle
+    int32_t zIndex = 0;                     // 4B z-index for sorting
     uint32_t flags = INSTANCE_FLAG_VISIBLE; // 4B: visible(1 bit) | padding(31 bits)
 
     void setFillColor(const Color4 &c) { fillColor = packColor(c); }
@@ -68,10 +68,7 @@ struct InstanceData {
         shapeData[1] = packHalf2x16(vec2(uvRect.z, uvRect.w));
     }
 
-    void setShapePoint(uint32_t index, vec2 point)
-    {
-        shapeData[index] = packHalf2x16(point);
-    }
+    void setShapePoint(uint32_t index, vec2 point) { shapeData[index] = packHalf2x16(point); }
 
     void setVisible(bool visible)
     {

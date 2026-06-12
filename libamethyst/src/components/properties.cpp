@@ -258,9 +258,9 @@ bool TreeViewStyleProperties::apply(const TreeViewStyleProperties &src)
 
 #undef AM_APPLY
 
-#define AM_DIFF(field) \
+#define AM_DIFF(field)         \
     if (field != base.field) { \
-        out.field = field; \
+        out.field = field;     \
     }
 
 BaseProperties BaseProperties::diff(const BaseProperties &base) const

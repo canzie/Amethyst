@@ -4,7 +4,7 @@
 
 namespace Amethyst {
 
-mat3 mat3::operator*(const mat3& b) const
+mat3 mat3::operator*(const mat3 &b) const
 {
     mat3 r;
     for (int c = 0; c < 3; c++) {
@@ -24,7 +24,7 @@ vec3 mat3::operator*(vec3 v) const
     };
 }
 
-mat4 mat4::operator*(const mat4& b) const
+mat4 mat4::operator*(const mat4 &b) const
 {
     mat4 r;
     for (int c = 0; c < 4; c++) {
@@ -46,14 +46,14 @@ vec4 mat4::operator*(vec4 v) const
     };
 }
 
-static float s_minor3(const mat4& m, int c0, int c1, int c2, int r0, int r1, int r2)
+static float s_minor3(const mat4 &m, int c0, int c1, int c2, int r0, int r1, int r2)
 {
-    return m[c0][r0] * (m[c1][r1] * m[c2][r2] - m[c2][r1] * m[c1][r2])
-         - m[c1][r0] * (m[c0][r1] * m[c2][r2] - m[c2][r1] * m[c0][r2])
-         + m[c2][r0] * (m[c0][r1] * m[c1][r2] - m[c1][r1] * m[c0][r2]);
+    return m[c0][r0] * (m[c1][r1] * m[c2][r2] - m[c2][r1] * m[c1][r2]) -
+           m[c1][r0] * (m[c0][r1] * m[c2][r2] - m[c2][r1] * m[c0][r2]) +
+           m[c2][r0] * (m[c0][r1] * m[c1][r2] - m[c1][r1] * m[c0][r2]);
 }
 
-mat4 inverse(const mat4& m)
+mat4 inverse(const mat4 &m)
 {
     static constexpr int excl[4][3] = {{1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2}};
 
@@ -61,8 +61,7 @@ mat4 inverse(const mat4& m)
     for (int c = 0; c < 4; c++) {
         for (int r = 0; r < 4; r++) {
             float sign = ((c + r) % 2 == 0) ? 1.0f : -1.0f;
-            cof[c][r] = sign * s_minor3(m, excl[c][0], excl[c][1], excl[c][2],
-                                            excl[r][0], excl[r][1], excl[r][2]);
+            cof[c][r] = sign * s_minor3(m, excl[c][0], excl[c][1], excl[c][2], excl[r][0], excl[r][1], excl[r][2]);
         }
     }
 

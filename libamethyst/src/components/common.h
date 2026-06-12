@@ -7,8 +7,9 @@
 
 #include "modules/color.h"
 
-#include <cstdint>
 #include "math/math.h"
+#include <cstddef>
+#include <cstdint>
 
 namespace Amethyst {
 
@@ -28,6 +29,44 @@ struct AmTextureId {
 };
 
 constexpr AmTextureId AM_INVALID_TEXTURE{UINT32_MAX};
+
+/**
+ * @brief Opaque buffer handle for backend GPU buffers.
+ * Backend provides these via createBuffer(), core passes them back into buffer ops.
+ */
+struct AmBufferId {
+    uint32_t id = UINT32_MAX;
+
+    bool isValid() const { return id != UINT32_MAX; }
+    bool operator==(const AmBufferId &) const = default;
+};
+
+enum class AmBufferUsage {
+    STORAGE,
+    INDEX
+};
+enum class AmBufferMemory {
+    DEVICE_LOCAL,
+    HOST_VISIBLE
+};
+enum class AmTextureFormat {
+    R8,
+    RGBA8
+};
+
+struct AmBufferDesc {
+    size_t initialCapacity = 0;
+    AmBufferUsage usage = AmBufferUsage::STORAGE;
+    AmBufferMemory memory = AmBufferMemory::HOST_VISIBLE;
+    uint32_t shaderBinding = UINT32_MAX; // descriptor slot, UINT32_MAX = not shader-visible
+};
+
+struct AmTextureDesc {
+    uint32_t width = 0;
+    uint32_t height = 0;
+    AmTextureFormat format = AmTextureFormat::R8;
+};
+
 using LayoutOrder = uint32_t;
 
 struct UnifiedDimension {
@@ -74,7 +113,7 @@ struct UnifiedDimension4 {
     vec4 resolve(vec2 parentSize) const
     {
         return vec4(top.resolve(parentSize.y), right.resolve(parentSize.x), bottom.resolve(parentSize.y),
-                         left.resolve(parentSize.x));
+                    left.resolve(parentSize.x));
     }
 
     bool operator==(const UnifiedDimension4 &) const = default;

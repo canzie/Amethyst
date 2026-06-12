@@ -6,8 +6,8 @@
 #ifndef AMETHYST__FONT_LOADER_H
 #define AMETHYST__FONT_LOADER_H
 
-#include <cstdint>
 #include "math/math.h"
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>

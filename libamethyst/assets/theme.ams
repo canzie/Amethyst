@@ -37,6 +37,10 @@ ui-label {
     border-pixel-size: 0px;
 }
 
+image-label {
+    background-transparency: 0.0;
+}
+
 scrolling-frame {
     background-color: #1d1d1d;
     scrollbar-color: #333333;

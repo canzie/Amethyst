@@ -5,8 +5,8 @@
 #ifndef AMETHYST__INPUT_EVENTS_H
 #define AMETHYST__INPUT_EVENTS_H
 
-#include <functional>
 #include "math/math.h"
+#include <functional>
 #include <variant>
 
 namespace Amethyst {

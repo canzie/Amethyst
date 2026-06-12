@@ -9,10 +9,7 @@ struct Font;
 
 class InvisibleButton : public UIButton {
   public:
-    InvisibleButton()
-    {
-        m_baseStyle.backgroundTransparency = 1.0f;
-    };
+    InvisibleButton() { m_baseStyle.backgroundTransparency = 1.0f; };
     virtual ~InvisibleButton();
 
     void draw(DrawContext &ctx) override;
