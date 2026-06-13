@@ -16,6 +16,7 @@ namespace Amethyst {
 enum GpuInstanceFlags : uint32_t {
     INSTANCE_FLAG_VISIBLE = 0x00000001,
     INSTANCE_FLAG_TEXT_RICH = 0x00000002,
+    INSTANCE_FLAG_GRADIENT = 0x00000004,
 };
 
 struct InstanceData {
@@ -31,7 +32,7 @@ struct InstanceData {
     int32_t zIndex = 0;                     // 4B z-index for sorting
     uint32_t flags = INSTANCE_FLAG_VISIBLE; // 4B: visible(1 bit) | padding(31 bits)
 
-    void setFillColor(const Color4 &c) { fillColor = packColor(c); }
+    void setFillColor(const Color4 &c);
     void setBorderColor(const Color4 &c) { borderColor = packColor(c); }
 
     void setRotation(float radians)
@@ -89,6 +90,12 @@ struct InstanceData {
     }
 
     void setGlyphSlice(uint32_t sliceHandle) { shapeData[0] = sliceHandle; }
+
+    void setGradientSlot(uint32_t slot)
+    {
+        shapeData[1] = slot;
+        flags |= INSTANCE_FLAG_GRADIENT;
+    }
 };
 
 } // namespace Amethyst

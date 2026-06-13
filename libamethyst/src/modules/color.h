@@ -11,9 +11,20 @@
 #define AMETHYST__COLOR_H
 
 #include "math/math.h"
+#include <array>
 #include <cstdint>
+#include <initializer_list>
+#include <memory>
+#include <utility>
 
 namespace Amethyst {
+
+constexpr uint32_t MAX_GRADIENT_STOPS = 8;
+
+enum class GradientType {
+    LINEAR,
+    RADIAL,
+};
 
 inline float srgbToLinear(float srgb)
 {
@@ -26,11 +37,14 @@ inline float linearToSrgb(float linear)
 }
 
 struct Color4;
+struct Gradient;
+
+bool gradientEqual(const Gradient &a, const Gradient &b);
 
 struct Color3 {
     float r, g, b;
 
-    constexpr Color3() : r(0.0f), g(0.0f), b(0.0f) {}
+    Color3() : r(0.0f), g(0.0f), b(0.0f) {}
 
     Color3(float _r, float _g, float _b) : r(_r), g(_g), b(_b) {}
 
@@ -47,9 +61,31 @@ struct Color3 {
         return Color3(((hex >> 16) & 0xFF) / 255.0f, ((hex >> 8) & 0xFF) / 255.0f, (hex & 0xFF) / 255.0f);
     }
 
-    constexpr operator vec3() const { return vec3(r, g, b); }
+    static Color3 fromGradient(std::shared_ptr<const Gradient> grad, const Color3 &tint = Color3(1.0f, 1.0f, 1.0f))
+    {
+        Color3 c = tint;
+        c.m_gradient = std::move(grad);
+        return c;
+    }
 
-    bool operator==(const Color3 &other) const { return r == other.r && g == other.g && b == other.b; }
+    const std::shared_ptr<const Gradient> &getGradient() const { return m_gradient; }
+    bool hasGradient() const { return m_gradient != nullptr; }
+
+    operator vec3() const { return vec3(r, g, b); }
+
+    bool operator==(const Color3 &other) const
+    {
+        if (r != other.r || g != other.g || b != other.b) {
+            return false;
+        }
+        if (m_gradient == other.m_gradient) {
+            return true;
+        }
+        if (m_gradient == nullptr || other.m_gradient == nullptr) {
+            return false;
+        }
+        return gradientEqual(*m_gradient, *other.m_gradient);
+    }
     bool operator!=(const Color3 &other) const { return !(*this == other); }
 
     Color3 operator+(const Color3 &other) const { return fromLinear(r + other.r, g + other.g, b + other.b); }
@@ -72,7 +108,7 @@ struct Color3 {
         return *this;
     }
 
-    static constexpr Color3 fromLinear(float _r, float _g, float _b)
+    static Color3 fromLinear(float _r, float _g, float _b)
     {
         Color3 c;
         c.r = _r;
@@ -80,18 +116,21 @@ struct Color3 {
         c.b = _b;
         return c;
     }
+
+  private:
+    std::shared_ptr<const Gradient> m_gradient;
 };
 
 struct Color4 {
     float r, g, b, a;
 
-    constexpr Color4() : r(0.0f), g(0.0f), b(0.0f), a(1.0f) {}
+    Color4() : r(0.0f), g(0.0f), b(0.0f), a(1.0f) {}
 
     Color4(float _r, float _g, float _b, float _a = 1.0f) : r(_r), g(_g), b(_b), a(_a) {}
 
     explicit Color4(float _v) : r(_v), g(_v), b(_v), a(1.0f) {}
 
-    constexpr Color4(const Color3 &c, float _a) : r(c.r), g(c.g), b(c.b), a(_a) {}
+    Color4(const Color3 &c, float _a) : r(c.r), g(c.g), b(c.b), a(_a), m_gradient(c.getGradient()) {}
 
     Color4(const vec4 &v) : r(v.r), g(v.g), b(v.b), a(v.a) {}
 
@@ -109,10 +148,32 @@ struct Color4 {
         return Color4(((hex >> 16) & 0xFF) / 255.0f, ((hex >> 8) & 0xFF) / 255.0f, (hex & 0xFF) / 255.0f, 1.0f);
     }
 
-    constexpr operator vec4() const { return vec4(r, g, b, a); }
-    constexpr operator vec3() const { return vec3(r, g, b); }
+    static Color4 fromGradient(std::shared_ptr<const Gradient> grad, const Color4 &tint = Color4(1.0f, 1.0f, 1.0f, 1.0f))
+    {
+        Color4 c = tint;
+        c.m_gradient = std::move(grad);
+        return c;
+    }
 
-    bool operator==(const Color4 &other) const { return r == other.r && g == other.g && b == other.b && a == other.a; }
+    const std::shared_ptr<const Gradient> &getGradient() const { return m_gradient; }
+    bool hasGradient() const { return m_gradient != nullptr; }
+
+    operator vec4() const { return vec4(r, g, b, a); }
+    operator vec3() const { return vec3(r, g, b); }
+
+    bool operator==(const Color4 &other) const
+    {
+        if (r != other.r || g != other.g || b != other.b || a != other.a) {
+            return false;
+        }
+        if (m_gradient == other.m_gradient) {
+            return true;
+        }
+        if (m_gradient == nullptr || other.m_gradient == nullptr) {
+            return false;
+        }
+        return gradientEqual(*m_gradient, *other.m_gradient);
+    }
     bool operator!=(const Color4 &other) const { return !(*this == other); }
 
     Color4 operator+(const Color4 &other) const { return fromLinear(r + other.r, g + other.g, b + other.b, a + other.a); }
@@ -137,7 +198,7 @@ struct Color4 {
         return *this;
     }
 
-    static constexpr Color4 fromLinear(float _r, float _g, float _b, float _a)
+    static Color4 fromLinear(float _r, float _g, float _b, float _a)
     {
         Color4 c;
         c.r = _r;
@@ -146,6 +207,9 @@ struct Color4 {
         c.a = _a;
         return c;
     }
+
+  private:
+    std::shared_ptr<const Gradient> m_gradient;
 };
 
 inline Color3 operator*(float scalar, const Color3 &color)
@@ -157,7 +221,49 @@ inline Color4 operator*(float scalar, const Color4 &color)
     return color * scalar;
 }
 
-inline Color3::Color3(const Color4 &c) : r(c.r), g(c.g), b(c.b) {}
+inline Color3::Color3(const Color4 &c) : r(c.r), g(c.g), b(c.b), m_gradient(c.getGradient()) {}
+
+/**
+ * @brief A pre-packed RGBA8 color and its position along the gradient axis, as stored inside a Gradient.
+ */
+struct GradientStop {
+    uint32_t color = 0;
+    float t = 0.0f;
+    bool operator==(const GradientStop &) const = default;
+};
+
+/**
+ * @brief Authoring form of a stop. Holds a real color and a position and is accepted by Gradient::linear.
+ */
+struct GradientColorStop {
+    float t;
+    Color4 color;
+
+    GradientColorStop(float _t, const Color4 &_color) : t(_t), color(_color) {}
+    GradientColorStop(float _t, const Color3 &_color) : t(_t), color(_color, 1.0f) {}
+};
+
+/**
+ * @brief Immutable gradient definition shared by every color that references it.
+ * Build it through the factories and never mutate it after construction.
+ */
+struct Gradient {
+    static constexpr uint32_t INVALID_SLOT = UINT32_MAX;
+
+    GradientType type = GradientType::LINEAR;
+    float angleDegrees = 0.0f;
+    std::array<GradientStop, MAX_GRADIENT_STOPS> stops{};
+    uint32_t stopCount = 0;
+    mutable uint32_t gpuSlot = INVALID_SLOT;
+
+    bool operator==(const Gradient &other) const
+    {
+        return type == other.type && angleDegrees == other.angleDegrees && stopCount == other.stopCount &&
+               stops == other.stops;
+    }
+
+    static std::shared_ptr<const Gradient> linear(float angle, std::initializer_list<GradientColorStop> stops);
+};
 
 } // namespace Amethyst
 

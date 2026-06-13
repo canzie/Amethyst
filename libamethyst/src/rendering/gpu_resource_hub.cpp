@@ -44,6 +44,7 @@ void GpuResourceHub::init(AmethystBackend &backend)
                  GrowthPolicy::doubleUntil(64 * lineBytes));
     m_slices.init(backend, {8 * sliceBytes, AmBufferUsage::STORAGE, AmBufferMemory::HOST_VISIBLE, 4},
                   GrowthPolicy::doubleUntil(64 * sliceBytes));
+    m_gradients.init(backend);
 
     constexpr uint32_t quadIndices[QUAD_INDEX_COUNT] = {0, 1, 2, 0, 2, 3};
     m_quadIndexBuffer = backend.createBuffer({sizeof(quadIndices), AmBufferUsage::INDEX, AmBufferMemory::DEVICE_LOCAL, UINT32_MAX});
@@ -60,6 +61,8 @@ void GpuResourceHub::sync(void *cmdBuffer)
     if (m_backend == nullptr) {
         return;
     }
+
+    m_gradients.sync(cmdBuffer);
 
     for (GeometryRegistry *registry : GeometryRegistry::getRegistries()) {
         UILayer *layer = registry->getOwningLayer();

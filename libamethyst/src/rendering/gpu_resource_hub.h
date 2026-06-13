@@ -6,6 +6,7 @@
 #ifndef AMETHYST__GPU_RESOURCE_HUB_H
 #define AMETHYST__GPU_RESOURCE_HUB_H
 
+#include "modules/gradient_buffer.h"
 #include "rendering/frame_draw_list.h"
 #include "rendering/gpu_arena.h"
 
@@ -47,6 +48,12 @@ class GpuResourceHub {
     const FrameDrawList &drawList() const { return m_drawList; }
 
     /**
+     * @brief The global gradient buffer, used to resolve gradient slots while building instances.
+     * @return Gradient buffer owned by this hub.
+     */
+    GradientBuffer &gradients() { return m_gradients; }
+
+    /**
      * @brief The hub registered by the most recent init(), used by registry destructors.
      * @return Active hub, or nullptr if no context has initialized one.
      */
@@ -83,6 +90,7 @@ class GpuResourceHub {
     GpuArena m_glyphs;
     GpuArena m_lines;
     GpuArena m_slices;
+    GradientBuffer m_gradients;
     AmBufferId m_quadIndexBuffer;
 
     std::unordered_map<GeometryRegistry *, GeometryBlocks> m_geometryBlocks;

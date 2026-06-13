@@ -53,6 +53,7 @@ layout(location = 13) out flat uint fragLineBase;
 layout(location = 14) out flat uint fragLineCount;
 layout(location = 15) out flat float fragLineHeight;
 layout(location = 16) out flat uint fragTextBatched;
+layout(location = 17) out flat uint fragGradientSlot;
 
 const vec2 positions[4] = vec2[](
     vec2(-0.5, -0.5),
@@ -73,6 +74,8 @@ const uint PRIMITIVE_SVG = 10;
 const float PI = 3.14159265359;
 const uint INSTANCE_FLAG_VISIBLE = 0x00000001u;
 const uint INSTANCE_FLAG_TEXT_RICH = 0x00000002u;
+const uint INSTANCE_FLAG_GRADIENT = 0x00000004u;
+const uint INVALID_GRADIENT = 0xFFFFFFFFu;
 
 vec3 srgbToLinear(vec3 c) {
     return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
@@ -165,4 +168,6 @@ void main()
     fragClipRect = inst.clipRect;
     fragWorldPos = worldPos;
     fragShapeData = uvec4(inst.shapeData[0], inst.shapeData[1], inst.shapeData[2], inst.shapeData[3]);
+
+    fragGradientSlot = ((inst.flags & INSTANCE_FLAG_GRADIENT) != 0u) ? inst.shapeData[1] : INVALID_GRADIENT;
 }

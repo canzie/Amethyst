@@ -18,6 +18,7 @@ layout(location = 13) in flat uint fragLineBase;
 layout(location = 14) in flat uint fragLineCount;
 layout(location = 15) in flat float fragLineHeight;
 layout(location = 16) in flat uint fragTextBatched;
+layout(location = 17) in flat uint fragGradientSlot;
 
 layout(set = 0, binding = 1) uniform sampler2D gTextures[];
 
@@ -41,9 +42,23 @@ layout(std430, binding = 3) readonly buffer LineBuffer {
     GlyphLine glyphLines[];
 };
 
+struct Gradient {
+    uint header;
+    float angle;
+    uint radialCenter;
+    float radialRadius;
+    uint stopT[4];
+    uint stopColor[8];
+};
+
+layout(std430, binding = 5) readonly buffer GradientBuffer {
+    Gradient gradients[];
+};
+
 layout(location = 0) out vec4 outColor;
 
 const uint INVALID_TEXTURE = 0xFFFFFFFF;
+const uint INVALID_GRADIENT = 0xFFFFFFFF;
 
 const uint PRIMITIVE_RECT = 0;
 const uint PRIMITIVE_CIRCLE = 1;
@@ -183,6 +198,53 @@ float sdEllipse(vec2 p, vec2 ab)
     return length(r - p) * sign(p.y - r.y);
 }
 
+vec3 gradientSrgbToLinear(vec3 c)
+{
+    return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+}
+
+float gradientStopT(Gradient grad, uint i)
+{
+    vec2 pair = unpackHalf2x16(grad.stopT[i >> 1u]);
+    return (i % 2u == 0u) ? pair.x : pair.y;
+}
+
+vec4 gradientStopColor(Gradient grad, uint i)
+{
+    vec4 c = unpackUnorm4x8(grad.stopColor[i]);
+    return vec4(gradientSrgbToLinear(c.rgb), c.a);
+}
+
+vec4 evalGradient(uint slot, vec2 uv)
+{
+    Gradient grad = gradients[slot];
+    uint stopCount = (grad.header >> 8u) & 0xFFu;
+    if (stopCount == 0u) {
+        return vec4(1.0);
+    }
+
+    float angle = radians(grad.angle);
+    vec2 dir = vec2(cos(angle), sin(angle));
+    float t = clamp(dot(uv - 0.5, dir) + 0.5, 0.0, 1.0);
+
+    vec4 prevColor = gradientStopColor(grad, 0u);
+    float prevT = gradientStopT(grad, 0u);
+    if (t <= prevT) {
+        return prevColor;
+    }
+
+    for (uint i = 1u; i < stopCount; i++) {
+        float curT = gradientStopT(grad, i);
+        vec4 curColor = gradientStopColor(grad, i);
+        if (t <= curT) {
+            return mix(prevColor, curColor, (t - prevT) / max(curT - prevT, 1e-5));
+        }
+        prevColor = curColor;
+        prevT = curT;
+    }
+    return prevColor;
+}
+
 void main()
 {
     if (fragClipRect.z > 0.0 && fragClipRect.w > 0.0) {
@@ -306,12 +368,18 @@ void main()
 
     float shapeAlpha = 1.0 - smoothstep(-aa, aa, dist - outerThreshold);
 
+    vec4 fillColor = fragFillColor;
+    if (fragGradientSlot != INVALID_GRADIENT) {
+        vec4 g = evalGradient(fragGradientSlot, fragUV);
+        fillColor = vec4(g.rgb * fragFillColor.rgb, g.a * fragFillColor.a);
+    }
+
     vec4 color;
     if (fragBorderThickness > 0.0) {
         float fillMask = 1.0 - smoothstep(-aa, aa, dist - innerThreshold);
-        color = mix(fragBorderColor, fragFillColor, fillMask);
+        color = mix(fragBorderColor, fillColor, fillMask);
     } else {
-        color = fragFillColor;
+        color = fillColor;
     }
 
     if (fragTextureId != INVALID_TEXTURE) {

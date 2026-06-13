@@ -84,7 +84,8 @@ int main()
                     .size = Amethyst::UDim2::fromOffset(300, 200),
                 },
                 .style = {
-                    .backgroundColor = {0.9f, 0.2f, 0.2f},
+                    .backgroundColor = Color3::fromGradient(
+                        Gradient::linear(45.0f, {{0.0f, Color3::fromHex(0xFF5555)}, {1.0f, Color3::fromHex(0x5555FF)}})),
                     .borderMode = Amethyst::BorderMode::INSET,
                     .borderPixelSize = 10.0f,
                     .borderColor = {1.0f, 1.0f, 1.0f},
