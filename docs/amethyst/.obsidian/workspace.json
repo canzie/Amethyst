@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "styling_system_plan.md",
+                "file": "color_picker_design_prompt.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "styling_system_plan"
+              "title": "color_picker_design_prompt"
             }
           }
         ]
@@ -185,6 +185,13 @@
   },
   "active": "158d6e3fd352897f",
   "lastOpenFiles": [
+    "color_picker_design_prompt.md.tmp.1572.101adf2c0366",
+    "color_picker_design_prompt.md.tmp.1572.9c3141daa61f",
+    "drag_slider_colorpicker_plan.md",
+    "gradients_plan.md",
+    "drag_slider_colorpicker_plan.md.tmp.1572.b5c1500a323c",
+    "dependency_removal_plan.md",
+    "styling_system_plan.md",
     "styling_system_plan.md.tmp.1702.3f3d34090eeb",
     "properties_split_plan.md",
     "properties_split_plan.md.tmp.1491.03c5fc538563",
@@ -194,11 +201,8 @@
     "properties_split_plan.md.tmp.1491.6c698ca9b2bd",
     "properties_split_plan.md.tmp.1491.c22acf66fe51",
     "properties_split_plan.md.tmp.1491.b3b88e61f1bd",
-    "properties_split_plan.md.tmp.1491.e563cfc19bf5",
-    "properties_split_plan.md.tmp.1491.0cd9ee9d865d",
     "treeview_redesign_v2.md",
     "components/TreeView.md",
-    "components/TreeView.md.tmp.32827.f3410dc2f83b",
     "Architecture.md",
     "Backend.md",
     "SVG Support Plan.md",
