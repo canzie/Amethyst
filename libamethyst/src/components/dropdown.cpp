@@ -3,17 +3,30 @@
 #include "components/dropdown_item.h"
 #include "components/extensions/ui_list_layout.h"
 #include "components/frame.h"
-#include "components/invisible_button.h"
 #include "components/overlay_layer.h"
+#include "components/popup.h"
 #include "components/scrolling_frame.h"
 #include "components/window.h"
-#include "rendering/draw_context.h"
 
 #include "math/math.h"
 #include <algorithm>
 #include <climits>
 
 namespace Amethyst {
+
+static PopupPlacement s_placementFor(DropdownDirection dir)
+{
+    switch (dir) {
+    case DropdownDirection::UP:
+        return PopupPlacement::ABOVE;
+    case DropdownDirection::LEFT:
+        return PopupPlacement::LEFT;
+    case DropdownDirection::RIGHT:
+        return PopupPlacement::RIGHT;
+    default:
+        return PopupPlacement::BELOW;
+    }
+}
 
 Dropdown::Dropdown()
 {
@@ -40,48 +53,63 @@ bool Dropdown::setDropdownProperties(const DropdownStyleProperties &props)
 
 Dropdown::~Dropdown()
 {
-    // TODO(C4): once a signal/event system is in place, unsubscribe from the
-    // overlay's destroy signal here so m_overlayPtr is guaranteed valid.
-    // For now m_overlayPtr may already be null if the Window destroyed its
-    // OverlayLayer before its children — actuallyClose() null-checks it.
-    if (m_state != State::CLOSED) {
-        onClosedCb = nullptr;
-        actuallyClose();
+    if (m_overlayPtr != nullptr) {
+        for (Popup *sub : m_submenuStack) {
+            if (sub != nullptr) {
+                m_overlayPtr->removeChild(sub);
+            }
+        }
+        if (m_popup != nullptr) {
+            m_overlayPtr->removeChild(m_popup);
+        }
     }
 }
 
 void Dropdown::setItems(std::vector<DropdownItem> items)
 {
-    if (m_state != State::CLOSED) {
-        actuallyClose();
+    if (m_open) {
+        requestClose();
     }
     m_items = std::move(items);
 }
 
 void Dropdown::open()
 {
-    if (m_state != State::CLOSED) {
+    if (m_open) {
         return;
     }
     Window *win = getWindow();
     if (win == nullptr) {
         return;
     }
-
     m_overlayPtr = win->getOverlayLayer();
+    if (m_overlayPtr == nullptr) {
+        return;
+    }
 
-    auto eater = std::make_unique<InvisibleButton>();
-    eater->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f), .zIndex = 0});
-    eater->onMouseButton1DownCb = [this](uint32_t, uint32_t) {
-        requestClose();
-        return EventResult::CONSUMED;
-    };
-    m_eater = static_cast<InvisibleButton *>(m_overlayPtr->addChild(std::move(eater)));
+    buildMainPopup();
 
-    buildMainPopup(m_overlayPtr);
+    if (!m_pressConn.connected()) {
+        m_pressConn = m_overlayPtr->onPressVote.connect([this](vec2 pos, PressVote &vote) {
+            if (!m_open) {
+                return;
+            }
+            bool inside = m_popup != nullptr && m_popup->containsPoint(pos);
+            for (size_t i = 0; !inside && i < m_submenuStack.size(); i++) {
+                if (m_submenuStack[i] != nullptr && m_submenuStack[i]->isOpen() && m_submenuStack[i]->containsPoint(pos)) {
+                    inside = true;
+                }
+            }
+            if (inside) {
+                vote.add(EventResult::PROPAGATE);
+                return;
+            }
+            vote.add(EventResult::CONSUMED);
+            requestClose();
+        });
+    }
 
-    m_state = State::OPEN;
-
+    m_open = true;
     if (onOpenedCb) {
         onOpenedCb();
     }
@@ -89,69 +117,38 @@ void Dropdown::open()
 
 void Dropdown::requestClose()
 {
-    if (m_state != State::OPEN) {
+    if (!m_open) {
         return;
     }
-    m_state = State::PENDING_CLOSE;
-    if (m_popup) {
-        m_popup->setBaseProperties({.visible = 0});
+    closeSubmenuFrom(0);
+    if (m_popup != nullptr) {
+        m_popup->close();
     }
-    for (auto *panel : m_submenuStack) {
-        panel->setBaseProperties({.visible = 0});
-    }
-    if (m_eater) {
-        m_eater->setBaseProperties({.interactable = 0, .visible = 0});
-    }
-}
-
-void Dropdown::closeImmediate()
-{
-    if (m_state == State::CLOSED) {
-        return;
-    }
-    actuallyClose();
-}
-
-void Dropdown::actuallyClose()
-{
-    if (m_overlayPtr) {
-        for (auto *panel : m_submenuStack) {
-            m_overlayPtr->removeChild(panel);
-        }
-        if (m_popup) {
-            m_overlayPtr->removeChild(m_popup);
-        }
-        if (m_eater) {
-            m_overlayPtr->removeChild(m_eater);
-        }
-        m_overlayPtr = nullptr;
-    }
-    m_submenuStack.clear();
-    m_submenuSourceRows.clear();
-    m_popup = nullptr;
-    m_eater = nullptr;
-    m_state = State::CLOSED;
-
+    m_open = false;
     if (onClosedCb) {
         onClosedCb();
     }
 }
 
+void Dropdown::closeImmediate()
+{
+    requestClose();
+}
+
 void Dropdown::closeSubmenuFrom(size_t depth)
 {
     for (size_t i = depth; i < m_submenuSourceRows.size(); i++) {
-        if (m_submenuSourceRows[i]) {
+        if (m_submenuSourceRows[i] != nullptr) {
             m_submenuSourceRows[i]->setBaseStyleProperties({.backgroundColor = m_ddProps.popupBackground});
         }
     }
     m_submenuSourceRows.resize(depth);
 
-    if (m_overlayPtr) {
-        for (size_t i = depth; i < m_submenuStack.size(); i++) {
-            m_overlayPtr->removeChild(m_submenuStack[i]);
+    for (size_t i = depth; i < m_submenuStack.size(); i++) {
+        if (m_submenuStack[i] != nullptr) {
+            m_submenuStack[i]->close();
         }
     }
-    m_submenuStack.resize(depth);
 }
 
 float Dropdown::computeTotalHeight(const std::vector<DropdownItem> &items) const
@@ -163,52 +160,36 @@ float Dropdown::computeTotalHeight(const std::vector<DropdownItem> &items) const
     return h;
 }
 
-void Dropdown::buildMainPopup(OverlayLayer *overlay)
+void Dropdown::buildMainPopup()
 {
     float totalHeight = computeTotalHeight(m_items);
     float visibleHeight = (m_ddProps.maxVisibleItems == INT_MAX)
                               ? totalHeight
                               : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
 
-    vec2 pos;
-    switch (m_ddProps.popupDirection) {
-    case DropdownDirection::UP:
-        pos = {absolutePosition.x, absolutePosition.y - visibleHeight};
-        break;
-    case DropdownDirection::LEFT:
-        pos = {absolutePosition.x - m_ddProps.popupWidth, absolutePosition.y};
-        break;
-    case DropdownDirection::RIGHT:
-        pos = {absolutePosition.x + absoluteSize.x, absolutePosition.y};
-        break;
-    default:
-        pos = {absolutePosition.x, absolutePosition.y + absoluteSize.y};
-        break;
-    }
-
-    vec2 viewport = m_overlayPtr->absoluteSize;
-    pos.x = std::min(pos.x, std::max(0.0f, viewport.x - m_ddProps.popupWidth));
-    pos.y = std::min(pos.y, std::max(0.0f, viewport.y - visibleHeight));
-
-    m_popup = buildPopupPanel(overlay, pos, totalHeight, visibleHeight, 1, {});
+    buildPopupPanel(m_popup, totalHeight, visibleHeight, 1, {});
+    m_popup->placement = s_placementFor(m_ddProps.popupDirection);
+    m_popup->open(this);
 }
 
-void Dropdown::buildSubmenuAtPath(OverlayLayer *overlay, const std::vector<size_t> &path, vec2 pos)
+void Dropdown::buildSubmenuAtPath(const std::vector<size_t> &path, UIObject *sourceRow)
 {
     size_t depth = path.size() - 1;
     closeSubmenuFrom(depth);
 
-    auto &subItems = itemsAtPath(path);
+    std::vector<DropdownItem> &subItems = itemsAtPath(path);
     float totalHeight = computeTotalHeight(subItems);
     float visibleHeight = (m_ddProps.maxVisibleItems == INT_MAX)
                               ? totalHeight
                               : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
 
-    vec2 viewport = overlay->absoluteSize;
-    pos.y = std::min(pos.y, std::max(0.0f, viewport.y - visibleHeight));
+    if (m_submenuStack.size() <= depth) {
+        m_submenuStack.resize(depth + 1, nullptr);
+    }
 
-    UIObject *panel = buildPopupPanel(overlay, pos, totalHeight, visibleHeight, 2 + static_cast<int>(depth), path);
-    m_submenuStack.push_back(panel);
+    buildPopupPanel(m_submenuStack[depth], totalHeight, visibleHeight, 2 + static_cast<int>(depth), path);
+    m_submenuStack[depth]->placement = PopupPlacement::RIGHT;
+    m_submenuStack[depth]->open(sourceRow);
 }
 
 std::vector<DropdownItem> &Dropdown::itemsAtPath(const std::vector<size_t> &path)
@@ -220,13 +201,30 @@ std::vector<DropdownItem> &Dropdown::itemsAtPath(const std::vector<size_t> &path
     return *items;
 }
 
-UIObject *Dropdown::buildPopupPanel(OverlayLayer *overlay, vec2 pos, float totalHeight, float visibleHeight, int zIdx,
-                                    const std::vector<size_t> &path)
+Popup *Dropdown::buildPopupPanel(Popup *&slot, float totalHeight, float visibleHeight, int zIdx, const std::vector<size_t> &path)
 {
-    UIObject *panel;
+    if (slot == nullptr) {
+        auto popup = std::make_unique<Popup>();
+        slot = static_cast<Popup *>(m_overlayPtr->addChild(std::move(popup)));
+        slot->closeOnClickOutside = false;
+    }
 
+    slot->removeAllChildren();
+    slot->setBaseStyleProperties({
+        .backgroundColor = m_ddProps.popupBackground,
+        .backgroundTransparency = 0.0f,
+        .borderPixelSize = 0.0f,
+    });
+    slot->setBaseProperties({
+        .clipsDescendants = true,
+        .size = UDim2::fromOffset(m_ddProps.popupWidth, visibleHeight),
+        .zIndex = zIdx,
+    });
+
+    UIObject *container = slot;
     if (totalHeight > visibleHeight + 0.5f) {
-        auto sf = std::make_unique<ScrollingFrame>();
+        slot->removeExtension<UIListLayout>();
+        auto *sf = slot->add<ScrollingFrame>();
         sf->setBaseStyleProperties({
             .backgroundColor = m_ddProps.popupBackground,
             .backgroundTransparency = 0.0f,
@@ -234,41 +232,25 @@ UIObject *Dropdown::buildPopupPanel(OverlayLayer *overlay, vec2 pos, float total
         });
         sf->setBaseProperties({
             .clipsDescendants = true,
-            .position = UDim2::fromOffset(pos.x, pos.y),
-            .size = UDim2::fromOffset(m_ddProps.popupWidth, visibleHeight),
-            .zIndex = zIdx,
+            .size = UDim2::fromScale(1.0f, 1.0f),
         });
         sf->setScrollingFrameProperties({
             .scrollAxis = ScrollAxis::Y,
             .scrollBarVisibility = ScrollBarVisibility::AUTO,
             .canvasSize = UDim2::fromOffset(m_ddProps.popupWidth, totalHeight),
         });
-        panel = static_cast<UIObject *>(overlay->addChild(std::move(sf)));
-    } else {
-        auto fr = std::make_unique<Frame>();
-        fr->setBaseStyleProperties({
-            .backgroundColor = m_ddProps.popupBackground,
-            .backgroundTransparency = 0.0f,
-            .borderPixelSize = 0.0f,
-        });
-        fr->setBaseProperties({
-            .clipsDescendants = true,
-            .position = UDim2::fromOffset(pos.x, pos.y),
-            .size = UDim2::fromOffset(m_ddProps.popupWidth, visibleHeight),
-            .zIndex = zIdx,
-        });
-        panel = static_cast<UIObject *>(overlay->addChild(std::move(fr)));
+        container = sf;
     }
 
-    auto *layout = panel->addExtension<UIListLayout>();
+    auto *layout = container->addExtension<UIListLayout>();
     layout->fillDirection = FillDirection::FILL_VERTICAL;
     layout->horizontalFlex = UiFlexAlignment::FILL;
     layout->innerPadding = UDim::fromOffset(0.0f);
     layout->sortOrder = SortOrder::SORT_LAYOUT_ORDER;
 
-    addItemRows(panel, zIdx + 1, path);
-    panel->markDirty();
-    return panel;
+    addItemRows(container, zIdx + 1, path);
+    slot->markDirty();
+    return slot;
 }
 
 void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size_t> &path)
@@ -337,20 +319,11 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
         if (item.kind() == DropdownItem::Kind::SUBMENU) {
             std::vector<size_t> fullPath = path;
             fullPath.push_back(idx);
-            size_t parentDepth = path.size();
-            row->onMouseEnterCb = [this, row, hoverBg, fullPath = std::move(fullPath), parentDepth]() {
+            row->onMouseEnterCb = [this, row, hoverBg, fullPath = std::move(fullPath)]() {
                 if (row->getBaseStyleProperties().backgroundColor != hoverBg) {
                     row->setBaseStyleProperties({.backgroundColor = hoverBg});
                 }
-                UIObject *parentPanel = parentDepth == 0 ? m_popup : m_submenuStack[parentDepth - 1];
-                float preferredX = parentPanel->absolutePosition.x + parentPanel->absoluteSize.x;
-                float altX = parentPanel->absolutePosition.x - m_ddProps.popupWidth;
-                float viewportW = m_overlayPtr->absoluteSize.x;
-                float subX = (preferredX + m_ddProps.popupWidth <= viewportW) ? preferredX
-                             : (altX >= 0.0f)                                 ? altX
-                                                                              : std::max(0.0f, viewportW - m_ddProps.popupWidth);
-                float subY = row->absolutePosition.y;
-                buildSubmenuAtPath(m_overlayPtr, fullPath, {subX, subY});
+                buildSubmenuAtPath(fullPath, row);
                 m_submenuSourceRows.push_back(row);
                 return EventResult::CONSUMED;
             };
@@ -413,22 +386,10 @@ std::string Dropdown::buildItemText(const DropdownItem &item) const
     return text;
 }
 
-void Dropdown::draw(DrawContext &ctx)
-{
-    // Safe to mutate here: Dropdown is a regular scene child drawn before
-    // the OverlayLayer, so removeChild on the overlay does not invalidate
-    // any in-progress overlay iteration.
-    // TODO(C17): move to a proper pre-draw tick once one exists.
-    if (m_state == State::PENDING_CLOSE) {
-        actuallyClose();
-    }
-    TextButton::draw(ctx);
-}
-
 EventResult Dropdown::onMouseButton1Down(uint32_t x, uint32_t y)
 {
     UIButton::onMouseButton1Down(x, y);
-    if (m_state == State::CLOSED) {
+    if (!m_open) {
         open();
     }
     return EventResult::CONSUMED;

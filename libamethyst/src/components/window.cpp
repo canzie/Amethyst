@@ -202,6 +202,15 @@ void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_
     }
 
     vec2 point(x, y);
+
+    if (input.state == InputState::BEGIN && m_overlayLayer != nullptr) {
+        PressVote vote{};
+        m_overlayLayer->onPressVote.fire(point, vote);
+        if (vote.result() == EventResult::CONSUMED) {
+            return;
+        }
+    }
+
     s_dispatchRecursive(getHittableInstances(), point, [&](UIObject *obj) -> EventResult {
         if (input.state == InputState::BEGIN) {
             return obj->onInputBegan(input);
