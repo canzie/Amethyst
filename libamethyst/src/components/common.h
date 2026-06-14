@@ -249,18 +249,9 @@ enum class ImageScaleType {
     CROP,
 };
 
-enum class LabelSide {
-    NONE,
-    LEFT,
-    RIGHT,
-    TOP,
-    BOTTOM,
-};
-
-enum class ValueControlLayout {
-    NONE,
-    SIDE_BY_SIDE, // components arranged horizontally
-    STACKED,      // components arranged vertically
+enum class ValueScale {
+    LINEAR,
+    LOGARITHMIC,
 };
 
 enum class ScrollBarVisibility {

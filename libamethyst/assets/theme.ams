@@ -9,8 +9,6 @@ ui-object {
     font-family: "default";
     font-size: 14px;
     text-color: #e5e5e5;
-    label-color: rgba(229, 229, 229, 255);
-    value-color: rgba(180, 180, 180, 255);
 }
 
 frame {
@@ -71,12 +69,10 @@ tree-view {
 }
 
 slider {
-    background-color: #282828;
-    slider-color: #3d3d3d;
+    background-color: #3d3d3d;
+    corner-radius: 2px;
     thumb-color: #4772b3;
-    track-corner-radius: 2px;
     thumb-corner-radius: 2px;
-    label-padding: 8px;
 }
 
 checkbox {

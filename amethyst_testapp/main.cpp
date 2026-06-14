@@ -71,9 +71,7 @@ int main()
     Amethyst::AmTextureId checkerboardId = backend.registerTexture(checkerboardTex.view, checkerboardTex.sampler);
 
     float sliderFloatValue = 50.0f;
-    int sliderIntValue = 25;
-    vec2 sliderVec2Value = vec2(50.0f, 75.0f);
-    vec3 sliderVec3Value = vec3(0.5f, 0.3f, 0.8f);
+    int sliderIntValue = 3;
 
     Amethyst::UIScope(window)
         // --- Draggable frames ---
@@ -204,75 +202,28 @@ int main()
                 textInput = &ti.component;
             })
         // --- Sliders ---
-        .sliderFloat(
-            {
-                .base = {
-                    .position = Amethyst::UDim2::fromOffset(10, 150),
-                    .size = Amethyst::UDim2::fromOffset(300, 40),
-                },
-                .style = {.backgroundColor = {0.9f, 0.9f, 0.9f}},
-                .slider = {.labelSide = Amethyst::LabelSide::LEFT},
-                .label = "Volume",
-                .valueSuffix = "%",
+        .sliderFloat({
+            .base = {
+                .position = Amethyst::UDim2::fromOffset(10, 150),
+                .size = Amethyst::UDim2::fromOffset(300, 40),
             },
-            [&](Amethyst::SliderFloatScope &s) {
-                s.component.name = "float slider";
-                s.component.min = 0.0f;
-                s.component.max = 100.0f;
-                s.component.speed = 1.0f;
-                s.component.valueRef = &sliderFloatValue;
-            })
-        .sliderInt(
-            {
-                .base = {
-                    .position = Amethyst::UDim2::fromOffset(10, 200),
-                    .size = Amethyst::UDim2::fromOffset(300, 40),
-                },
-                .style = {.backgroundColor = {0.1f, 0.1f, 0.1f}},
-                .slider = {.labelSide = Amethyst::LabelSide::LEFT},
-                .label = "Count",
+            .style = {.backgroundColor = {0.3f, 0.3f, 0.3f}},
+            .format = "%.1f%%",
+            .min = 0.0f,
+            .max = 100.0f,
+            .value = &sliderFloatValue,
+        })
+        .sliderInt({
+            .base = {
+                .position = Amethyst::UDim2::fromOffset(10, 200),
+                .size = Amethyst::UDim2::fromOffset(300, 40),
             },
-            [&](Amethyst::SliderIntScope &s) {
-                s.component.name = "int slider";
-                s.component.min = 0;
-                s.component.max = 50;
-                s.component.speed = 1.0f;
-                s.component.valueRef = &sliderIntValue;
-            })
-        .sliderVec2(
-            {
-                .base = {
-                    .position = Amethyst::UDim2::fromOffset(10, 250),
-                    .size = Amethyst::UDim2::fromOffset(300, 80),
-                },
-                .style = {.backgroundColor = {0.1f, 0.1f, 0.1f}},
-                .slider = {.labelSide = Amethyst::LabelSide::LEFT, .layout = Amethyst::ValueControlLayout::STACKED},
-                .label = "Position",
-            },
-            [&](Amethyst::SliderVec2Scope &s) {
-                s.component.name = "vec2 slider";
-                s.component.min = vec2(0.0f);
-                s.component.max = vec2(100.0f);
-                s.component.speed = 1.0f;
-                s.component.valueRef = &sliderVec2Value;
-            })
-        .sliderVec3(
-            {
-                .base = {
-                    .position = Amethyst::UDim2::fromOffset(10, 340),
-                    .size = Amethyst::UDim2::fromOffset(400, 40),
-                },
-                .style = {.backgroundColor = {0.1f, 0.1f, 0.1f}},
-                .slider = {.labelSide = Amethyst::LabelSide::LEFT, .layout = Amethyst::ValueControlLayout::SIDE_BY_SIDE},
-                .label = "Color",
-            },
-            [&](Amethyst::SliderVec3Scope &s) {
-                s.component.name = "vec3 slider";
-                s.component.min = vec3(0.0f);
-                s.component.max = vec3(1.0f);
-                s.component.speed = 0.01f;
-                s.component.valueRef = &sliderVec3Value;
-            })
+            .style = {.backgroundColor = {0.3f, 0.3f, 0.3f}},
+            .format = "%d",
+            .min = 0,
+            .max = 5,
+            .value = &sliderIntValue,
+        })
         // --- Scrolling frame with grid ---
         .scrollingFrame(
             {
@@ -355,18 +306,15 @@ int main()
                             });
                         });
                         r.cell([i](Amethyst::UIScope &cell) {
-                            cell.sliderFloat(
-                                {
-                                    .base = {
-                                        .position = Amethyst::UDim2::fromScale(0.025f, 0.1f),
-                                        .size = Amethyst::UDim2::fromScale(0.95f, 0.8f),
-                                    },
+                            cell.sliderFloat({
+                                .base = {
+                                    .position = Amethyst::UDim2::fromScale(0.025f, 0.1f),
+                                    .size = Amethyst::UDim2::fromScale(0.95f, 0.8f),
                                 },
-                                [i](Amethyst::SliderFloatScope &s) {
-                                    s.component.min = 0.0f;
-                                    s.component.max = 100.0f;
-                                    s.component.valueRef = &sliderVals[i];
-                                });
+                                .min = 0.0f,
+                                .max = 100.0f,
+                                .value = &sliderVals[i],
+                            });
                         });
                     });
                 }

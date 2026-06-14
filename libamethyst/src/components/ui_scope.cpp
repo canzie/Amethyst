@@ -37,8 +37,6 @@ CollapsibleHeaderScope::CollapsibleHeaderScope(CollapsibleHeader &ch) : UIScope(
 TextInputScope::TextInputScope(TextInput &ti) : UIScope(ti), component(ti) {}
 SliderFloatScope::SliderFloatScope(SliderFloat &s) : UIScope(s), component(s) {}
 SliderIntScope::SliderIntScope(SliderInt &s) : UIScope(s), component(s) {}
-SliderVec2Scope::SliderVec2Scope(SliderVec2 &s) : UIScope(s), component(s) {}
-SliderVec3Scope::SliderVec3Scope(SliderVec3 &s) : UIScope(s), component(s) {}
 TreeViewScope::TreeViewScope(TreeView &tv) : UIScope(tv), component(tv) {}
 TreeRowScope::TreeRowScope(TreeView &tv, uint16_t depth) : component(tv), depth(depth) {}
 
@@ -296,7 +294,7 @@ UIScope &UIScope::textInput(TextInputProperties props, std::function<void(TextIn
     return *this;
 }
 
-UIScope &UIScope::sliderFloat(SliderProperties props, std::function<void(SliderFloatScope &)> fn)
+UIScope &UIScope::sliderFloat(SliderFloatProperties props, std::function<void(SliderFloatScope &)> fn)
 {
     auto *s = m_parent->add<SliderFloat>();
     if (!props.classes.empty()) {
@@ -305,8 +303,13 @@ UIScope &UIScope::sliderFloat(SliderProperties props, std::function<void(SliderF
     s->setBaseProperties(props.base);
     s->setBaseStyleProperties(props.style);
     s->setSliderProperties(props.slider);
-    s->setLabel(std::move(props.label));
-    s->setValueSuffix(std::move(props.valueSuffix));
+    if (!props.format.empty()) {
+        s->setFormat(std::move(props.format));
+    }
+    s->scale = props.scale;
+    s->min = props.min;
+    s->max = props.max;
+    s->value = props.value;
     if (fn) {
         SliderFloatScope scope(*s);
         fn(scope);
@@ -314,7 +317,7 @@ UIScope &UIScope::sliderFloat(SliderProperties props, std::function<void(SliderF
     return *this;
 }
 
-UIScope &UIScope::sliderInt(SliderProperties props, std::function<void(SliderIntScope &)> fn)
+UIScope &UIScope::sliderInt(SliderIntProperties props, std::function<void(SliderIntScope &)> fn)
 {
     auto *s = m_parent->add<SliderInt>();
     if (!props.classes.empty()) {
@@ -323,46 +326,15 @@ UIScope &UIScope::sliderInt(SliderProperties props, std::function<void(SliderInt
     s->setBaseProperties(props.base);
     s->setBaseStyleProperties(props.style);
     s->setSliderProperties(props.slider);
-    s->setLabel(std::move(props.label));
-    s->setValueSuffix(std::move(props.valueSuffix));
+    if (!props.format.empty()) {
+        s->setFormat(std::move(props.format));
+    }
+    s->scale = props.scale;
+    s->min = props.min;
+    s->max = props.max;
+    s->value = props.value;
     if (fn) {
         SliderIntScope scope(*s);
-        fn(scope);
-    }
-    return *this;
-}
-
-UIScope &UIScope::sliderVec2(SliderProperties props, std::function<void(SliderVec2Scope &)> fn)
-{
-    auto *s = m_parent->add<SliderVec2>();
-    if (!props.classes.empty()) {
-        s->setClasses(props.classes);
-    }
-    s->setBaseProperties(props.base);
-    s->setBaseStyleProperties(props.style);
-    s->setSliderProperties(props.slider);
-    s->setLabel(std::move(props.label));
-    s->setValueSuffix(std::move(props.valueSuffix));
-    if (fn) {
-        SliderVec2Scope scope(*s);
-        fn(scope);
-    }
-    return *this;
-}
-
-UIScope &UIScope::sliderVec3(SliderProperties props, std::function<void(SliderVec3Scope &)> fn)
-{
-    auto *s = m_parent->add<SliderVec3>();
-    if (!props.classes.empty()) {
-        s->setClasses(props.classes);
-    }
-    s->setBaseProperties(props.base);
-    s->setBaseStyleProperties(props.style);
-    s->setSliderProperties(props.slider);
-    s->setLabel(std::move(props.label));
-    s->setValueSuffix(std::move(props.valueSuffix));
-    if (fn) {
-        SliderVec3Scope scope(*s);
         fn(scope);
     }
     return *this;

@@ -51,8 +51,8 @@ class Dropdown : public TextButton {
     void closeSubmenuFrom(size_t depth = 0);
     void buildMainPopup();
     void buildSubmenuAtPath(const std::vector<size_t> &path, UIObject *sourceRow);
-    Popup *buildPopupPanel(Popup *&slot, float totalHeight, float visibleHeight, int zIdx, const std::vector<size_t> &path);
-    void addItemRows(Instance *container, int zIdx, const std::vector<size_t> &path = {});
+    Popup *buildPopupPanel(Popup *&slot, float totalHeight, float visibleHeight, const std::vector<size_t> &path);
+    void addItemRows(Instance *container, const std::vector<size_t> &path = {});
     std::vector<DropdownItem> &itemsAtPath(const std::vector<size_t> &path);
     std::string buildItemText(const DropdownItem &item) const;
     float computeTotalHeight(const std::vector<DropdownItem> &items) const;

@@ -251,6 +251,10 @@ SliderStyleProperties Style::getSliderStyle(ComponentType type, std::span<const 
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_SLIDER_STYLE_FIELDS(X)
 #undef X
+    r.thumb.backgroundColor = std::get<Color3>(d[static_cast<size_t>(StyleProperty::THUMB_COLOR)]);
+    r.thumb.backgroundTransparency = std::get<float>(d[static_cast<size_t>(StyleProperty::THUMB_TRANSPARENCY)]);
+    r.thumb.cornerRadius = std::get<float>(d[static_cast<size_t>(StyleProperty::THUMB_CORNER_RADIUS)]);
+    r.text = getTextStyle(type, classes);
     return r;
 }
 

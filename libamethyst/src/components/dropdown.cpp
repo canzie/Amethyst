@@ -14,6 +14,8 @@
 
 namespace Amethyst {
 
+#define POPUP_ZINDEX 10
+
 static PopupPlacement s_placementFor(DropdownDirection dir)
 {
     switch (dir) {
@@ -167,7 +169,7 @@ void Dropdown::buildMainPopup()
                               ? totalHeight
                               : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
 
-    buildPopupPanel(m_popup, totalHeight, visibleHeight, 1, {});
+    buildPopupPanel(m_popup, totalHeight, visibleHeight, {});
     m_popup->placement = s_placementFor(m_ddProps.popupDirection);
     m_popup->open(this);
 }
@@ -187,7 +189,7 @@ void Dropdown::buildSubmenuAtPath(const std::vector<size_t> &path, UIObject *sou
         m_submenuStack.resize(depth + 1, nullptr);
     }
 
-    buildPopupPanel(m_submenuStack[depth], totalHeight, visibleHeight, 2 + static_cast<int>(depth), path);
+    buildPopupPanel(m_submenuStack[depth], totalHeight, visibleHeight, path);
     m_submenuStack[depth]->placement = PopupPlacement::RIGHT;
     m_submenuStack[depth]->open(sourceRow);
 }
@@ -201,7 +203,7 @@ std::vector<DropdownItem> &Dropdown::itemsAtPath(const std::vector<size_t> &path
     return *items;
 }
 
-Popup *Dropdown::buildPopupPanel(Popup *&slot, float totalHeight, float visibleHeight, int zIdx, const std::vector<size_t> &path)
+Popup *Dropdown::buildPopupPanel(Popup *&slot, float totalHeight, float visibleHeight, const std::vector<size_t> &path)
 {
     if (slot == nullptr) {
         auto popup = std::make_unique<Popup>();
@@ -218,7 +220,7 @@ Popup *Dropdown::buildPopupPanel(Popup *&slot, float totalHeight, float visibleH
     slot->setBaseProperties({
         .clipsDescendants = true,
         .size = UDim2::fromOffset(m_ddProps.popupWidth, visibleHeight),
-        .zIndex = zIdx,
+        .zIndex = POPUP_ZINDEX,
     });
 
     UIObject *container = slot;
@@ -248,12 +250,12 @@ Popup *Dropdown::buildPopupPanel(Popup *&slot, float totalHeight, float visibleH
     layout->innerPadding = UDim::fromOffset(0.0f);
     layout->sortOrder = SortOrder::SORT_LAYOUT_ORDER;
 
-    addItemRows(container, zIdx + 1, path);
+    addItemRows(container, path);
     slot->markDirty();
     return slot;
 }
 
-void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size_t> &path)
+void Dropdown::addItemRows(Instance *container, const std::vector<size_t> &path)
 {
     std::vector<DropdownItem> &items = itemsAtPath(path);
     size_t depth = path.size();
@@ -272,7 +274,7 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
                 .interactable = false,
                 .layoutOrder = static_cast<LayoutOrder>(idx * 100),
                 .size = UDim2::fromOffset(m_ddProps.popupWidth, 8.0f),
-                .zIndex = zIdx,
+                .zIndex = POPUP_ZINDEX,
             });
             continue;
         }
@@ -287,7 +289,7 @@ void Dropdown::addItemRows(Instance *container, int zIdx, const std::vector<size
             .layoutOrder = static_cast<LayoutOrder>(idx * 100),
             .padding = {UDim::fromOffset(0.0f), UDim::fromOffset(8.0f), UDim::fromOffset(0.0f), UDim::fromOffset(8.0f)},
             .size = UDim2::fromOffset(m_ddProps.popupWidth, m_ddProps.itemHeight),
-            .zIndex = zIdx,
+            .zIndex = POPUP_ZINDEX,
         });
         row->setButtonProperties({.autoButtonColor = false});
         row->setTextStyleProperties({

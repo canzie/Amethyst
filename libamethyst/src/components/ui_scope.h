@@ -26,8 +26,6 @@ class InvisibleButton;
 class ScrollingFrame;
 class SliderFloat;
 class SliderInt;
-class SliderVec2;
-class SliderVec3;
 class TabBar;
 class TextButton;
 class TextInput;
@@ -41,8 +39,6 @@ struct FrameScope;
 struct ScrollingFrameScope;
 struct SliderFloatScope;
 struct SliderIntScope;
-struct SliderVec2Scope;
-struct SliderVec3Scope;
 struct TabScope;
 struct TabBarScope;
 struct TextInputScope;
@@ -76,10 +72,8 @@ class UIScope {
     UIScope &tabBar(TabBarProperties props = {}, std::function<void(TabBarScope &)> fn = {});
     UIScope &table(TableProperties props = {}, std::function<void(TableScope &)> fn = {});
     UIScope &textInput(TextInputProperties props = {}, std::function<void(TextInputScope &)> fn = {});
-    UIScope &sliderFloat(SliderProperties props = {}, std::function<void(SliderFloatScope &)> fn = {});
-    UIScope &sliderInt(SliderProperties props = {}, std::function<void(SliderIntScope &)> fn = {});
-    UIScope &sliderVec2(SliderProperties props = {}, std::function<void(SliderVec2Scope &)> fn = {});
-    UIScope &sliderVec3(SliderProperties props = {}, std::function<void(SliderVec3Scope &)> fn = {});
+    UIScope &sliderFloat(SliderFloatProperties props = {}, std::function<void(SliderFloatScope &)> fn = {});
+    UIScope &sliderInt(SliderIntProperties props = {}, std::function<void(SliderIntScope &)> fn = {});
     UIScope &treeView(TreeViewProperties props = {}, std::function<void(TreeViewScope &)> fn = {});
 
     Instance &get() const { return *m_parent; }
@@ -184,16 +178,6 @@ struct SliderFloatScope : UIScope {
 struct SliderIntScope : UIScope {
     SliderInt &component;
     explicit SliderIntScope(SliderInt &s);
-};
-
-struct SliderVec2Scope : UIScope {
-    SliderVec2 &component;
-    explicit SliderVec2Scope(SliderVec2 &s);
-};
-
-struct SliderVec3Scope : UIScope {
-    SliderVec3 &component;
-    explicit SliderVec3Scope(SliderVec3 &s);
 };
 
 struct TreeRowScope {

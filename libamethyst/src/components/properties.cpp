@@ -214,18 +214,15 @@ bool TableStyleProperties::apply(const TableStyleProperties &src)
 bool SliderStyleProperties::apply(const SliderStyleProperties &src)
 {
     bool changed = false;
-    AM_APPLY(sliderColor)
-    AM_APPLY(sliderTransparency)
-    AM_APPLY(thumbColor)
-    AM_APPLY(thumbTransparency)
-    AM_APPLY(trackCornerRadius)
-    AM_APPLY(thumbCornerRadius)
-    AM_APPLY(labelColor)
-    AM_APPLY(labelSide)
-    AM_APPLY(labelPadding)
-    AM_APPLY(valueColor)
-    AM_APPLY(fontSize)
-    AM_APPLY(layout)
+    if (thumb.apply(src.thumb)) {
+        changed = true;
+    }
+    if (text.apply(src.text)) {
+        changed = true;
+    }
+    AM_APPLY(trackHeight)
+    AM_APPLY(thumbWidth)
+    AM_APPLY(thumbHeight)
     return changed;
 }
 
@@ -462,18 +459,11 @@ TableStyleProperties TableStyleProperties::diff(const TableStyleProperties &base
 SliderStyleProperties SliderStyleProperties::diff(const SliderStyleProperties &base) const
 {
     SliderStyleProperties out;
-    AM_DIFF(sliderColor)
-    AM_DIFF(sliderTransparency)
-    AM_DIFF(thumbColor)
-    AM_DIFF(thumbTransparency)
-    AM_DIFF(trackCornerRadius)
-    AM_DIFF(thumbCornerRadius)
-    AM_DIFF(labelColor)
-    AM_DIFF(labelSide)
-    AM_DIFF(labelPadding)
-    AM_DIFF(valueColor)
-    AM_DIFF(fontSize)
-    AM_DIFF(layout)
+    out.thumb = thumb.diff(base.thumb);
+    out.text = text.diff(base.text);
+    AM_DIFF(trackHeight)
+    AM_DIFF(thumbWidth)
+    AM_DIFF(thumbHeight)
     return out;
 }
 

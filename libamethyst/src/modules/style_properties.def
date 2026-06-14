@@ -48,18 +48,12 @@
     X(DISCLOSURE_TRIANGLE_SIZE, "disclosure-triangle-size", float, LENGTH, 10.0f)                             \
     X(DISCLOSURE_TRIANGLE_PADDING, "disclosure-triangle-padding", float, LENGTH, 4.0f)                        \
     X(DISCLOSURE_TRIANGLE_COLOR, "disclosure-triangle-color", Color4, COLOR4, Color4(0.7f, 0.7f, 0.7f, 1.0f)) \
-    X(SLIDER_COLOR, "slider-color", Color3, COLOR3, Color3(0.5f))                                             \
-    X(SLIDER_TRANSPARENCY, "slider-transparency", float, RATIO, 0.0f)                                         \
     X(THUMB_COLOR, "thumb-color", Color3, COLOR3, Color3(0.8f))                                               \
     X(THUMB_TRANSPARENCY, "thumb-transparency", float, RATIO, 0.0f)                                           \
-    X(TRACK_CORNER_RADIUS, "track-corner-radius", float, LENGTH, 0.0f)                                        \
     X(THUMB_CORNER_RADIUS, "thumb-corner-radius", float, LENGTH, 0.0f)                                        \
     X(CHECK_COLOR, "check-color", Color3, COLOR3, Color3(0.0f, 0.0f, 0.0f))                                   \
     X(CHECK_TRANSPARENCY, "check-transparency", float, RATIO, 0.0f)                                           \
     X(CHECKBOX_SIZE, "checkbox-size", float, LENGTH, 20.0f)                                                   \
-    X(LABEL_COLOR, "label-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                             \
-    X(LABEL_PADDING, "label-padding", UDim, UDIM, UDim::fromOffset(5.0f))                                     \
-    X(VALUE_COLOR, "value-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                             \
     X(HIGHLIGHT_COLOR, "highlight-color", Color3, COLOR3, Color3(0.7f, 0.7f, 0.9f))                           \
     X(HIGHLIGHT_TRANSPARENCY, "highlight-transparency", float, RATIO, 0.0f)                                   \
     X(TAB_WIDTH, "tab-width", float, LENGTH, 100.0f)                                                          \
@@ -75,7 +69,10 @@
     X(HEADER_CORNER_RADIUS, "header-corner-radius", float, LENGTH, 0.0f)                                      \
     X(INDICATOR_SIZE, "indicator-size", float, LENGTH, 10.0f)                                                 \
     X(INDICATOR_PADDING, "indicator-padding", float, LENGTH, 6.0f)                                            \
-    X(INDICATOR_COLOR, "indicator-color", Color4, COLOR4, Color4(0.7f, 0.7f, 0.7f, 1.0f))
+    X(INDICATOR_COLOR, "indicator-color", Color4, COLOR4, Color4(0.7f, 0.7f, 0.7f, 1.0f)) \
+    X(THUMB_WIDTH, "thumb-width", float, LENGTH, 12.0f) \
+    X(THUMB_HEIGHT, "thumb-height", float, LENGTH, 18.0f) \
+    X(TRACK_HEIGHT, "track-height", float, LENGTH, 8.0f)
 
 #define AM_BASE_STYLE_FIELDS(X)                               \
     X(BACKGROUND_COLOR, backgroundColor, Color3)              \
@@ -102,17 +99,10 @@
     X(SCROLLBAR_THUMB_COLOR, scrollBarThumbColor, Color3)   \
     X(SCROLLBAR_THUMB_TRANSPARENCY, scrollBarThumbTransparency, float)
 
-#define AM_SLIDER_STYLE_FIELDS(X)                 \
-    X(SLIDER_COLOR, sliderColor, Color3)          \
-    X(SLIDER_TRANSPARENCY, sliderTransparency, float) \
-    X(THUMB_COLOR, thumbColor, Color3)            \
-    X(THUMB_TRANSPARENCY, thumbTransparency, float) \
-    X(TRACK_CORNER_RADIUS, trackCornerRadius, float) \
-    X(THUMB_CORNER_RADIUS, thumbCornerRadius, float) \
-    X(LABEL_COLOR, labelColor, Color4)            \
-    X(LABEL_PADDING, labelPadding, UDim)          \
-    X(VALUE_COLOR, valueColor, Color4)            \
-    X(FONT_SIZE, fontSize, float)
+#define AM_SLIDER_STYLE_FIELDS(X)    \
+    X(TRACK_HEIGHT, trackHeight, float) \
+    X(THUMB_WIDTH, thumbWidth, float)   \
+    X(THUMB_HEIGHT, thumbHeight, float)
 
 #define AM_TAB_BAR_STYLE_FIELDS(X)                \
     X(BAR_THICKNESS, barThickness, float)         \

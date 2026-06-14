@@ -90,14 +90,6 @@ inline bool propIsSet(ImageScaleType v)
 {
     return v != ImageScaleType::NONE;
 }
-inline bool propIsSet(LabelSide v)
-{
-    return v != LabelSide::NONE;
-}
-inline bool propIsSet(ValueControlLayout v)
-{
-    return v != ValueControlLayout::NONE;
-}
 inline bool propIsSet(ScrollBarVisibility v)
 {
     return v != ScrollBarVisibility::NONE;
@@ -326,18 +318,11 @@ struct TableStyleProperties {
 };
 
 struct SliderStyleProperties {
-    Color3 sliderColor = Color3(PROP_UNSET_FLOAT);
-    float sliderTransparency = PROP_UNSET_FLOAT;
-    Color3 thumbColor = Color3(PROP_UNSET_FLOAT);
-    float thumbTransparency = PROP_UNSET_FLOAT;
-    float trackCornerRadius = PROP_UNSET_FLOAT;
-    float thumbCornerRadius = PROP_UNSET_FLOAT;
-    Color4 labelColor = Color4(PROP_UNSET_FLOAT);
-    LabelSide labelSide = LabelSide::NONE;
-    UDim labelPadding = {PROP_UNSET_FLOAT, 0};
-    Color4 valueColor = Color4(PROP_UNSET_FLOAT);
-    float fontSize = PROP_UNSET_FLOAT;
-    ValueControlLayout layout = ValueControlLayout::NONE;
+    BaseStyleProperties thumb{};
+    TextStyleProperties text{};
+    float trackHeight = PROP_UNSET_FLOAT;
+    float thumbWidth = PROP_UNSET_FLOAT;
+    float thumbHeight = PROP_UNSET_FLOAT;
 
     bool apply(const SliderStyleProperties &src);
     SliderStyleProperties diff(const SliderStyleProperties &base) const;
@@ -465,13 +450,28 @@ struct TextInputProperties {
     std::string placeholder{};
 };
 
-struct SliderProperties {
+struct SliderFloatProperties {
     std::vector<std::string> classes{};
     BaseProperties base{};
     BaseStyleProperties style{};
     SliderStyleProperties slider{};
-    std::string label{};
-    std::string valueSuffix{};
+    std::string format{};
+    ValueScale scale = ValueScale::LINEAR;
+    float min = 0.0f;
+    float max = 100.0f;
+    float *value = nullptr;
+};
+
+struct SliderIntProperties {
+    std::vector<std::string> classes{};
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    SliderStyleProperties slider{};
+    std::string format{};
+    ValueScale scale = ValueScale::LINEAR;
+    int min = 0;
+    int max = 100;
+    int *value = nullptr;
 };
 
 struct TreeViewProperties {

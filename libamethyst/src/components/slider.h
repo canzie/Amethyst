@@ -10,34 +10,48 @@
 #include "components/properties.h"
 #include "components/text_label.h"
 #include "components/ui_object.h"
-#include "math/math.h"
 #include <functional>
+#include <string>
 
 namespace Amethyst {
-
-class UIDragDetector;
 
 class Slider : public UIObject {
   public:
     Slider();
     virtual ~Slider() = default;
 
+    void draw(DrawContext &ctx) override;
+    std::vector<Instance *> getHittableInstances() override;
     void resolveStyle() override;
 
     bool setSliderProperties(const SliderStyleProperties &props);
     const SliderStyleProperties &getSliderProperties() const { return m_sProps; }
 
-    void setLabel(std::string label);
-    const std::string &getLabel() const { return m_label; }
+    void setFormat(std::string format);
+    const std::string &getFormat() const { return m_format; }
 
-    void setValueSuffix(std::string valueSuffix);
-    const std::string &getValueSuffix() const { return m_valueSuffix; }
+  public:
+    ValueScale scale = ValueScale::LINEAR;
 
   protected:
+    virtual void updateComponents() = 0;
+
+    /**
+     * @brief Lay out the track, thumb and value text, then (re)wire the drag detector
+     * @param normalizedPos Thumb position along the track in [0, 1]
+     * @param thumbWidth Resolved thumb width in pixels
+     * @param valueText Formatted value to display over the track
+     * @param applyNormalized Maps a [0, 1] cursor position back onto the bound value
+     */
+    void layoutTrack(float normalizedPos, float thumbWidth, const std::string &valueText,
+                     const std::function<void(float)> &applyNormalized);
+
     SliderStyleProperties m_sProps;
-    std::string m_label;
-    std::string m_valueSuffix;
-    TextLabel m_sideLabel;
+    std::string m_format;
+
+    Frame m_track;
+    Frame m_thumb;
+    TextLabel m_valueLabel;
 };
 
 class SliderFloat : public Slider {
@@ -45,24 +59,18 @@ class SliderFloat : public Slider {
     SliderFloat();
     virtual ~SliderFloat() = default;
 
-    void draw(DrawContext &ctx) override;
-    std::vector<Instance *> getHittableInstances() override;
-
   public:
-    float *valueRef = nullptr;
+    float *value = nullptr;
     std::function<void(float)> onValueChanged;
 
     float min = 0.0f;
     float max = 100.0f;
-    float speed = 1.0f;
+
+  protected:
+    void updateComponents() override;
 
   private:
-    void updateComponents();
     std::string formatValue() const;
-
-    Frame m_track;
-    Frame m_thumb;
-    TextLabel m_valueLabel;
 };
 
 class SliderInt : public Slider {
@@ -70,74 +78,18 @@ class SliderInt : public Slider {
     SliderInt();
     virtual ~SliderInt() = default;
 
-    void draw(DrawContext &ctx) override;
-    std::vector<Instance *> getHittableInstances() override;
-
   public:
-    int *valueRef = nullptr;
+    int *value = nullptr;
     std::function<void(int)> onValueChanged;
 
     int min = 0;
     int max = 100;
-    float speed = 1.0f;
+
+  protected:
+    void updateComponents() override;
 
   private:
-    void updateComponents();
     std::string formatValue() const;
-
-    Frame m_track;
-    Frame m_thumb;
-    TextLabel m_valueLabel;
-};
-
-class SliderVec2 : public Slider {
-  public:
-    SliderVec2();
-    virtual ~SliderVec2() = default;
-
-    void draw(DrawContext &ctx) override;
-    std::vector<Instance *> getHittableInstances() override;
-
-  public:
-    vec2 *valueRef = nullptr;
-    std::function<void(vec2)> onValueChanged;
-
-    vec2 min = vec2(0.0f);
-    vec2 max = vec2(100.0f);
-    float speed = 1.0f;
-
-  private:
-    void updateComponents();
-    std::string formatValue(int component) const;
-
-    Frame m_track[2];
-    Frame m_thumb[2];
-    TextLabel m_valueLabel[2];
-};
-
-class SliderVec3 : public Slider {
-  public:
-    SliderVec3();
-    virtual ~SliderVec3() = default;
-
-    void draw(DrawContext &ctx) override;
-    std::vector<Instance *> getHittableInstances() override;
-
-  public:
-    vec3 *valueRef = nullptr;
-    std::function<void(vec3)> onValueChanged;
-
-    vec3 min = vec3(0.0f);
-    vec3 max = vec3(100.0f);
-    float speed = 1.0f;
-
-  private:
-    void updateComponents();
-    std::string formatValue(int component) const;
-
-    Frame m_track[3];
-    Frame m_thumb[3];
-    TextLabel m_valueLabel[3];
 };
 
 } // namespace Amethyst
