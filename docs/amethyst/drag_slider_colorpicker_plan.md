@@ -156,5 +156,5 @@ strip, copy button) are **composition over the core**, so they live in
 ## Suggested order
 
 Popup/Portal + migrate Dropdown → HSV helpers → picker core (`Color3Picker` /
-`Color4Picker`, = minimal) → Standard / Extended widgets. (Slider refit + drags are
+`Color4Picker`, = minimal) → Standard / Extended widgets. (Slider refit is done; drags are
 independent and can slot in whenever.)

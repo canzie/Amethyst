@@ -6,6 +6,7 @@
 
 #include "components/input_events.h"
 #include "components/input_interface.h"
+#include "components/overlay_layer.h"
 #include "components/window.h"
 #include "modules/style.h"
 #include "modules/text_processor.h"
@@ -97,6 +98,20 @@ void TextInput::clearText()
     }
 }
 
+void TextInput::loseFocus()
+{
+    if (!m_focused) {
+        return;
+    }
+    m_focused = false;
+    m_cursorVisible = false;
+    m_pressConn.disconnect();
+    markDirty();
+    if (onFocusLost) {
+        onFocusLost();
+    }
+}
+
 EventResult TextInput::onInputBegan(const InputObject &input)
 {
     if (input.type != InputType::MOUSE_BUTTON_1) {
@@ -106,6 +121,18 @@ EventResult TextInput::onInputBegan(const InputObject &input)
     if (!m_focused) {
         m_focused = true;
         InputInterface::clearKeyEvents();
+
+        Window *win = getWindow();
+        OverlayLayer *overlay = win != nullptr ? win->getOverlayLayer() : nullptr;
+        if (overlay != nullptr && !m_pressConn.connected()) {
+            m_pressConn = overlay->onPressVote.connect([this](vec2 pos, PressVote &vote) {
+                (void)vote;
+                if (m_focused && !containsPoint(pos)) {
+                    loseFocus();
+                }
+            });
+        }
+
         if (onFocusGained) {
             onFocusGained();
         }
@@ -167,12 +194,7 @@ void TextInput::update(float deltaTime)
     }
 
     if (!isVisible()) {
-        m_focused = false;
-        m_cursorVisible = false;
-        markDirty();
-        if (onFocusLost) {
-            onFocusLost();
-        }
+        loseFocus();
         return;
     }
 

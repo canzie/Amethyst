@@ -6,7 +6,6 @@
 #include <map>
 #include <memory>
 
-#include "utils/am_assert.h"
 
 namespace Amethyst {
 
@@ -138,8 +137,12 @@ template <typename... Args> class EventSignal<void(Args...)> : public EventSigna
     void fire(Args... args)
     {
         m_firing = true;
-        for (auto &[id, slot] : m_slots) slot.func(args...);
-        std::erase_if(m_slots, [](const auto &pair) { return pair.second.once; });
+        for (auto &[id, slot] : m_slots) {
+            if (!slot.pendingRemove) {
+                slot.func(args...);
+            }
+        }
+        std::erase_if(m_slots, [](const auto &pair) { return pair.second.once || pair.second.pendingRemove; });
         m_firing = false;
     }
 
@@ -149,14 +152,21 @@ template <typename... Args> class EventSignal<void(Args...)> : public EventSigna
      */
     void removeConnection(uint32_t id) override
     {
-        AM_ASSERT(!m_firing, "Cannot disconnect from a signal while it is firing");
-        m_slots.erase(id);
+        if (m_firing) {
+            auto it = m_slots.find(id);
+            if (it != m_slots.end()) {
+                it->second.pendingRemove = true;
+            }
+        } else {
+            m_slots.erase(id);
+        }
     }
 
   private:
     struct Slot {
         std::function<void(Args...)> func;
-        bool once;
+        bool once = false;
+        bool pendingRemove = false;
     };
 
     std::map<uint32_t, Slot> m_slots;

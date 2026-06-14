@@ -7,6 +7,7 @@
 
 #include "components/properties.h"
 #include "components/ui_object.h"
+#include "modules/event_signal.h"
 #include "rendering/geometry_registry.h"
 
 #include <functional>
@@ -48,6 +49,8 @@ class TextInput : public UIObject {
     void setCursorPosition(size_t pos, bool select);
     size_t getCursorFromMouseX(uint32_t mouseX);
 
+    void loseFocus();
+
     void copy();
     void paste();
     void cut();
@@ -79,6 +82,8 @@ class TextInput : public UIObject {
     float m_cursorBlinkTimer = 0.0f;
     bool m_cursorVisible = true;
     bool m_draggingSelection = false;
+
+    EventConnection m_pressConn;
 
     GeometryAllocation *m_textAlloc = nullptr;
     GlyphSliceHandle m_glyphSlice;
