@@ -16,6 +16,8 @@ namespace Amethyst {
 
 class Canvas;
 class Checkbox;
+class Color3Picker;
+class Color4Picker;
 class Dropdown;
 class MenuBar;
 class CollapsibleHeader;
@@ -33,6 +35,8 @@ class TextLabel;
 class TreeView;
 
 struct CanvasScope;
+struct Color3PickerScope;
+struct Color4PickerScope;
 struct DropdownScope;
 struct MenuBarScope;
 struct FrameScope;
@@ -75,6 +79,8 @@ class UIScope {
     UIScope &sliderFloat(SliderFloatProperties props = {}, std::function<void(SliderFloatScope &)> fn = {});
     UIScope &sliderInt(SliderIntProperties props = {}, std::function<void(SliderIntScope &)> fn = {});
     UIScope &treeView(TreeViewProperties props = {}, std::function<void(TreeViewScope &)> fn = {});
+    UIScope &color3Picker(Color3PickerProperties props = {}, std::function<void(Color3PickerScope &)> fn = {});
+    UIScope &color4Picker(Color4PickerProperties props = {}, std::function<void(Color4PickerScope &)> fn = {});
 
     Instance &get() const { return *m_parent; }
 
@@ -178,6 +184,16 @@ struct SliderFloatScope : UIScope {
 struct SliderIntScope : UIScope {
     SliderInt &component;
     explicit SliderIntScope(SliderInt &s);
+};
+
+struct Color3PickerScope : UIScope {
+    Color3Picker &component;
+    explicit Color3PickerScope(Color3Picker &p);
+};
+
+struct Color4PickerScope : UIScope {
+    Color4Picker &component;
+    explicit Color4PickerScope(Color4Picker &p);
 };
 
 struct TreeRowScope {

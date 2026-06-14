@@ -3,6 +3,7 @@
 #include "components/canvas.h"
 #include "components/checkbox.h"
 #include "components/collapsible_header.h"
+#include "components/color_picker.h"
 #include "components/container.h"
 #include "components/dropdown.h"
 #include "components/frame.h"
@@ -37,6 +38,8 @@ CollapsibleHeaderScope::CollapsibleHeaderScope(CollapsibleHeader &ch) : UIScope(
 TextInputScope::TextInputScope(TextInput &ti) : UIScope(ti), component(ti) {}
 SliderFloatScope::SliderFloatScope(SliderFloat &s) : UIScope(s), component(s) {}
 SliderIntScope::SliderIntScope(SliderInt &s) : UIScope(s), component(s) {}
+Color3PickerScope::Color3PickerScope(Color3Picker &p) : UIScope(p), component(p) {}
+Color4PickerScope::Color4PickerScope(Color4Picker &p) : UIScope(p), component(p) {}
 TreeViewScope::TreeViewScope(TreeView &tv) : UIScope(tv), component(tv) {}
 TreeRowScope::TreeRowScope(TreeView &tv, uint16_t depth) : component(tv), depth(depth) {}
 
@@ -335,6 +338,44 @@ UIScope &UIScope::sliderInt(SliderIntProperties props, std::function<void(Slider
     s->value = props.value;
     if (fn) {
         SliderIntScope scope(*s);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::color3Picker(Color3PickerProperties props, std::function<void(Color3PickerScope &)> fn)
+{
+    auto *p = m_parent->add<Color3Picker>();
+    if (!props.classes.empty()) {
+        p->setClasses(props.classes);
+    }
+    p->setBaseProperties(props.base);
+    p->setBaseStyleProperties(props.style);
+    p->model = props.model;
+    p->shape = props.shape;
+    p->value = props.value;
+    p->syncFromValue();
+    if (fn) {
+        Color3PickerScope scope(*p);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::color4Picker(Color4PickerProperties props, std::function<void(Color4PickerScope &)> fn)
+{
+    auto *p = m_parent->add<Color4Picker>();
+    if (!props.classes.empty()) {
+        p->setClasses(props.classes);
+    }
+    p->setBaseProperties(props.base);
+    p->setBaseStyleProperties(props.style);
+    p->model = props.model;
+    p->shape = props.shape;
+    p->value = props.value;
+    p->syncFromValue();
+    if (fn) {
+        Color4PickerScope scope(*p);
         fn(scope);
     }
     return *this;

@@ -91,23 +91,45 @@ absolute position + high z-index. Extract this into reusable components.
   not ride on `Popup`. Menus / tooltips / combobox / color picker use `Popup`.
 - This makes user-defined popovers a first-class thing instead of a z-index hack.
 
-## Workstream 4 — Color pickers (`Color3Picker` / `Color4Picker`)
+## Workstream 4 — Color pickers (`Color3Picker` / `Color4Picker`) (CORE SHIPPED)
 
 Naming: `Color3Picker` edits a `Color3` (rgb), `Color4Picker` edits a `Color4` (rgba). The
 `3` / `4` belongs to the color, not the picker.
 
-These are **only the picker core** — a headless inline surface, no chrome, no popup of their
-own:
+Shipped: the minimal HSV square + bars core. Final shape diverged from the sketch below:
 
-- Surface = saturation/value square + hue bar (+ alpha bar for `Color4Picker`), each with a
-  draggable thumb. This is the "minimal" picker. An HSV triangle-in-hue-ring is an alternate
-  surface variant.
-- **Square vs triangle is a `ColorPickerSurface` enum on the core, not a separate component**
-  — both edit the same color / HSV state and differ only in surface geometry, exactly like
-  `SliderVec2`/`SliderVec3` use `ValueControlLayout` for stacked vs side-by-side. Keep one
-  class, one scope, one style struct; factor each surface's geometry / hit-test / thumb math
-  into a static helper (`s_buildSquareSurface` / `s_buildTriangleSurface`) and dispatch on
-  the enum in `draw` / `updateComponents`.
+- **`ColorPicker` base (`: UIObject`)** holds the shared channels (`m_hue`, `m_saturation`, and a
+  `union { m_value; m_lightness; }`) and the SV field; `Color3Picker` / `Color4Picker` add the RGB(A)
+  binding plus the `pullValue` / `pushValue` / `updateComponents` overrides. Alpha lives entirely in
+  `Color4Picker` (its own `m_alpha` + alpha bar) — the base is alpha-agnostic.
+- **Parts are real children** (`add<Frame>()` / `add<SliderFloat>()`): the SV field is two stacked
+  gradient `Frame`s (white→hue, transparent→black) + a ring `m_fieldThumb`; the hue / alpha **bars
+  reuse the `SliderFloat` component** (continuous, `setFormat("")` to hide the readout, track =
+  rainbow / alpha gradient). Default `getHittableInstances` + the child draw loop cover them.
+- **Two enums, values reserved** (non-shipped ones log a warning + fall back): `ColorModel { HSV, HSL }`
+  and `ColorPickerShape { SQUARE, TRIANGLE, WHEEL }`. `model` / `shape` / `fieldThumbRadius` are plain
+  public members (like slider's `scale`), **not** a style block. There is **no
+  `ColorPickerStyleProperties`** — bar styling is the slider's own `SliderStyleProperties`.
+- **The picker draws its own panel** via the inherited `m_geometryAlloc` (same retained pattern as
+  `Frame`) from its `BaseStyleProperties`, and lays children out in the **content** rect so
+  `base.padding` insets them. Thumbs take the color under them (field = selected, hue = pure hue,
+  alpha = color at its alpha) with a rounded white `OUTLINE` border.
+- HSV↔RGB helpers live in `color.h`. `SQUARE_BARS` needed zero shader work.
+- **Border-bleed shader fix (`ui.vs.glsl`):** outward border modes (`OUTLINE` / `MIDDLE`) were clipped
+  to the quad; the vertex shader now grows the quad by the outward extent + 1px AA and extends `fragUV`
+  so the shape still maps to UV `[0,1]` (gradients/textures unchanged, fragment stage untouched). The
+  thumb rings depend on this. Packed-field reads went through `INST_*` macros.
+- Builders `color3Picker` / `color4Picker` + `Color3PickerProperties` / `Color4PickerProperties`. Demo:
+  `amethyst_demo_color_picker`.
+
+Deferred: the HSL model, the triangle / hue-ring shapes (renderer notes below), and the Standard /
+Extended widgets.
+
+Original surface-variant sketch (for the deferred shapes):
+
+- **Square vs triangle is a `ColorPickerShape` enum on the core, not a separate component** — both edit
+  the same HSV state and differ only in surface geometry. Keep one class, one scope; factor each
+  surface's geometry / hit-test / thumb math into a static helper and dispatch on the enum.
 
 ### Renderer support — all three surfaces are cheap
 
@@ -155,6 +177,7 @@ strip, copy button) are **composition over the core**, so they live in
 
 ## Suggested order
 
-Popup/Portal + migrate Dropdown → HSV helpers → picker core (`Color3Picker` /
-`Color4Picker`, = minimal) → Standard / Extended widgets. (Slider refit is done; drags are
-independent and can slot in whenever.)
+Popup/Portal + migrate Dropdown (done) → HSV helpers + picker core (`Color3Picker` /
+`Color4Picker`, minimal) **(done)** → Standard / Extended widgets, HSL model, triangle / hue-ring
+shapes (remaining). Slider refit is done; drags (`DragFloat` / `DragInt`) are independent and not yet
+started.

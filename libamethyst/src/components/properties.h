@@ -328,6 +328,16 @@ struct SliderStyleProperties {
     SliderStyleProperties diff(const SliderStyleProperties &base) const;
 };
 
+struct ColorPickerStyleProperties {
+    SliderStyleProperties bar{};
+    float barHeight = PROP_UNSET_FLOAT;
+    float spacing = PROP_UNSET_FLOAT;
+    float fieldThumbSize = PROP_UNSET_FLOAT;
+
+    bool apply(const ColorPickerStyleProperties &src);
+    ColorPickerStyleProperties diff(const ColorPickerStyleProperties &base) const;
+};
+
 struct TreeViewStyleProperties {
     float rowHeight = PROP_UNSET_FLOAT;
     UDim4 cellPadding = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
@@ -472,6 +482,24 @@ struct SliderIntProperties {
     int min = 0;
     int max = 100;
     int *value = nullptr;
+};
+
+struct Color3PickerProperties {
+    std::vector<std::string> classes{};
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    ColorModel model = ColorModel::HSV;
+    ColorPickerShape shape = ColorPickerShape::SQUARE;
+    Color3 *value = nullptr;
+};
+
+struct Color4PickerProperties {
+    std::vector<std::string> classes{};
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    ColorModel model = ColorModel::HSV;
+    ColorPickerShape shape = ColorPickerShape::SQUARE;
+    Color4 *value = nullptr;
 };
 
 struct TreeViewProperties {

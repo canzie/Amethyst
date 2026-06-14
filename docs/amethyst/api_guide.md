@@ -97,11 +97,22 @@ runtime mutation. Nested builders parent into the enclosing scope automatically.
 
 `canvas`, `frame`, `scrollingFrame`, `textLabel`, `textButton`, `imageLabel`, `imageButton`,
 `invisibleButton`, `checkbox`, `collapsibleHeader`, `dropdown`, `menuBar`, `tabBar`, `table`,
-`textInput`, `treeView`, `sliderFloat`, `sliderInt`, `sliderVec2`, `sliderVec3`.
+`textInput`, `treeView`, `sliderFloat`, `sliderInt`, `color3Picker`, `color4Picker`.
 
 Container scopes add helpers: `TabBarScope::tab(...)`, `TableScope::column/row`, `TreeViewScope::column/row`,
 `DropdownScope::action/toggle/separator/submenu/items`, `MenuBarScope::menuItem`,
 `CollapsibleHeaderScope::header/indicator`, and `DockScope::split/panel` (via `DockScope(dockingLayer)`).
+
+### Color pickers
+
+`color3Picker` / `color4Picker` edit a bound `Color3*` / `Color4*` in place (the `3`/`4` is the color,
+not the picker). They are an inline styled core: a saturation/value square plus a hue bar (and an alpha
+bar for `Color4Picker`), each draggable. Set `value` to the bound color; the picker pulls it into HSV on
+build, drags write back through the pointer and fire `onValueChanged(const Color3&/Color4&)`. Plain
+members tune it: `model` (`ColorModel::HSV`; `HSL` reserved), `shape` (`ColorPickerShape::SQUARE`;
+`TRIANGLE`/`WHEEL` reserved), and `fieldThumbRadius`. The picker draws its own panel from `style`
+(`BaseStyleProperties`) and insets its contents by `base.padding`. If the bound color is changed
+externally, call `syncFromValue()` to re-sync and redraw.
 
 ## DTO model (the migration-sensitive part)
 
@@ -121,7 +132,9 @@ button    ButtonProperties           // button components only
 ```
 
 Exact composition per component is in `properties.h` (`FrameProperties`, `TextButtonProperties`, ...).
-The four sliders share one `SliderProperties`.
+`SliderFloat`/`SliderInt` take typed `SliderFloatProperties`/`SliderIntProperties` (each carries a typed
+`value` pointer). `Color3Picker`/`Color4Picker` take `Color3PickerProperties`/`Color4PickerProperties`,
+which bind a `Color3*`/`Color4*` and carry `model`/`shape` instead of a component style block.
 
 ### Sentinel semantics (important and convenient)
 

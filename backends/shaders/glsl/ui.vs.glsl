@@ -71,6 +71,12 @@ const vec2 uvs[4] = vec2[](
 
 const uint PRIMITIVE_TEXT = 4;
 const uint PRIMITIVE_SVG = 10;
+const uint BORDER_OUTLINE = 0u;
+const uint BORDER_MIDDLE = 1u;
+const uint BORDER_INSET = 2u;
+// Outward bleed for the outer-edge AA fringe (smoothstep over ~fwidth(dist), fwidth is
+// fragment-only so this must be a constant). 1px covers the typical ~1px fringe.
+const float BORDER_AA_PAD = 1.0;
 const float PI = 3.14159265359;
 const uint INSTANCE_FLAG_VISIBLE = 0x00000001u;
 const uint INSTANCE_FLAG_TEXT_RICH = 0x00000002u;
@@ -96,9 +102,11 @@ float unpackHalf(uint packed) {
     return unpackHalf2x16(packed).x;
 }
 
-float unpackRotation(uint packed) {
-    return float(packed) * (2.0 * PI / 65535.0);
-}
+#define INST_ROTATION(rbt)         (float((rbt) & 0xFFFFu) * (2.0 * PI / 65535.0))
+#define INST_BORDER_THICKNESS(rbt) unpackHalf((rbt) >> 16u)
+#define INST_PRIMITIVE_TYPE(cpm)   (((cpm) >> 16u) & 0xFFu)
+#define INST_BORDER_MODE(cpm)      (((cpm) >> 24u) & 0xFFu)
+#define INST_CORNER_RADIUS(cpm)    unpackHalf((cpm) & 0xFFFFu)
 
 void main()
 {
@@ -111,24 +119,36 @@ void main()
     }
 
     // Unpack rotation from lower 16 bits
-    uint rotationPacked = inst.rotationBorderThickness & 0xFFFFu;
-    float rotation = unpackRotation(rotationPacked);
+    float rotation = INST_ROTATION(inst.rotationBorderThickness);
     float c = cos(rotation);
     float s = sin(rotation);
 
+    float borderThickness = INST_BORDER_THICKNESS(inst.rotationBorderThickness);
+    uint borderMode = INST_BORDER_MODE(inst.cornerPrimitiveMode);
+
+    // Outward border modes draw outside the shape edge, but the quad is sized to the shape so
+    // they have no fragments to land on. Grow the quad by the outward extent (+ AA fringe) and
+    // extend fragUV by the same ratio so the shape still maps to UV [0,1].
+    float outward = (borderMode == BORDER_OUTLINE) ? borderThickness
+                  : (borderMode == BORDER_MIDDLE)  ? borderThickness * 0.5
+                                                   : 0.0;
+    float pad = (outward > 0.0) ? (outward + BORDER_AA_PAD) : 0.0;
+    vec2 paddedScale = inst.scale + 2.0 * pad;
+
     // Build transform: scale, rotate, translate
     vec2 localPos = positions[gl_VertexIndex];
-    vec2 scaled = localPos * inst.scale;
+    vec2 scaled = localPos * paddedScale;
     vec2 rotated = vec2(scaled.x * c - scaled.y * s, scaled.x * s + scaled.y * c);
     vec2 worldPos = rotated + inst.translation;
 
     vec2 ndc = (worldPos / pc.screenSize) * 2.0 - 1.0;
     gl_Position = vec4(ndc, 0.0, 1.0);
 
-    fragUV = uvs[gl_VertexIndex];
+    vec2 padRatio = (pad > 0.0) ? (vec2(pad) / inst.scale) : vec2(0.0);
+    fragUV = uvs[gl_VertexIndex] * (1.0 + 2.0 * padRatio) - padRatio;
 
     // Unpack primitive type from bits 16-23
-    uint primitiveType = (inst.cornerPrimitiveMode >> 16u) & 0xFFu;
+    uint primitiveType = INST_PRIMITIVE_TYPE(inst.cornerPrimitiveMode);
 
     bool textBatched = (primitiveType == PRIMITIVE_TEXT) && ((inst.flags & INSTANCE_FLAG_TEXT_RICH) == 0u);
     fragTextBatched = textBatched ? 1u : 0u;
@@ -154,15 +174,15 @@ void main()
     fragBorderColor = unpackColor(inst.borderColor);
 
     // Unpack border thickness from upper 16 bits as half float
-    fragBorderThickness = unpackHalf(inst.rotationBorderThickness >> 16u);
+    fragBorderThickness = borderThickness;
 
     // Unpack corner radius from lower 16 bits as half float
-    fragCornerRadius = unpackHalf(inst.cornerPrimitiveMode & 0xFFFFu);
+    fragCornerRadius = INST_CORNER_RADIUS(inst.cornerPrimitiveMode);
 
     fragSize = inst.scale;
 
     // Unpack border mode from bits 24-31
-    fragBorderMode = (inst.cornerPrimitiveMode >> 24u) & 0xFFu;
+    fragBorderMode = borderMode;
 
     fragTextureId = inst.textureId;
     fragClipRect = inst.clipRect;

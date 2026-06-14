@@ -224,6 +224,68 @@ inline Color4 operator*(float scalar, const Color4 &color)
 inline Color3::Color3(const Color4 &c) : r(c.r), g(c.g), b(c.b), m_gradient(c.getGradient()) {}
 
 /**
+ * @brief Convert an HSV triple to an RGB color.
+ * @param h Hue in [0, 1), wrapped if out of range
+ * @param s Saturation in [0, 1]
+ * @param v Value in [0, 1]
+ * @return The equivalent RGB color
+ */
+inline Color3 hsvToRgb(float h, float s, float v)
+{
+    h -= static_cast<float>(static_cast<int>(h));
+    if (h < 0.0f) {
+        h += 1.0f;
+    }
+    float sixth = h * 6.0f;
+    int sector = static_cast<int>(sixth);
+    float f = sixth - static_cast<float>(sector);
+    float p = v * (1.0f - s);
+    float q = v * (1.0f - f * s);
+    float t = v * (1.0f - (1.0f - f) * s);
+    switch (sector) {
+    case 0:
+        return Color3(v, t, p);
+    case 1:
+        return Color3(q, v, p);
+    case 2:
+        return Color3(p, v, t);
+    case 3:
+        return Color3(p, q, v);
+    case 4:
+        return Color3(t, p, v);
+    default:
+        return Color3(v, p, q);
+    }
+}
+
+/**
+ * @brief Convert an RGB color to its HSV triple.
+ * @param c The RGB color to convert
+ * @return A vec3 holding hue in [0, 1), saturation in [0, 1] and value in [0, 1]
+ */
+inline vec3 rgbToHsv(const Color3 &c)
+{
+    float r = c.r, g = c.g, b = c.b;
+    float mx = r > g ? (r > b ? r : b) : (g > b ? g : b);
+    float mn = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    float v = mx;
+    float d = mx - mn;
+    float s = mx <= 0.0f ? 0.0f : d / mx;
+    float h = 0.0f;
+    if (d > 0.0f) {
+        if (mx == r) {
+            h = (g - b) / d + (g < b ? 6.0f : 0.0f);
+        } else if (mx == g) {
+            h = (b - r) / d + 2.0f;
+        } else {
+            h = (r - g) / d + 4.0f;
+        }
+        h /= 6.0f;
+    }
+    return vec3(h, s, v);
+}
+
+/**
  * @brief A pre-packed RGBA8 color and its position along the gradient axis, as stored inside a Gradient.
  */
 struct GradientStop {
@@ -258,8 +320,7 @@ struct Gradient {
 
     bool operator==(const Gradient &other) const
     {
-        return type == other.type && angleDegrees == other.angleDegrees && stopCount == other.stopCount &&
-               stops == other.stops;
+        return type == other.type && angleDegrees == other.angleDegrees && stopCount == other.stopCount && stops == other.stops;
     }
 
     static std::shared_ptr<const Gradient> linear(float angle, std::initializer_list<GradientColorStop> stops);

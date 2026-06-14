@@ -254,6 +254,17 @@ enum class ValueScale {
     LOGARITHMIC,
 };
 
+enum class ColorModel {
+    HSV,
+    HSL,
+};
+
+enum class ColorPickerShape {
+    SQUARE,
+    TRIANGLE,
+    WHEEL,
+};
+
 enum class ScrollBarVisibility {
     NONE,
     ALWAYS,

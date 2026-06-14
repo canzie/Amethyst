@@ -5,6 +5,7 @@
 #include "amethyst/amethyst_context.h"
 #include "amethyst/icons.h"
 #include "components/collapsible_header.h"
+#include "components/color_picker.h"
 #include "components/common.h"
 #include "components/docking_layer.h"
 #include "components/dropdown.h"
