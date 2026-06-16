@@ -226,6 +226,15 @@ bool SliderStyleProperties::apply(const SliderStyleProperties &src)
     return changed;
 }
 
+bool DragStyleProperties::apply(const DragStyleProperties &src)
+{
+    bool changed = false;
+    if (text.apply(src.text)) {
+        changed = true;
+    }
+    return changed;
+}
+
 bool TreeViewStyleProperties::apply(const TreeViewStyleProperties &src)
 {
     bool changed = false;
@@ -464,6 +473,13 @@ SliderStyleProperties SliderStyleProperties::diff(const SliderStyleProperties &b
     AM_DIFF(trackHeight)
     AM_DIFF(thumbWidth)
     AM_DIFF(thumbHeight)
+    return out;
+}
+
+DragStyleProperties DragStyleProperties::diff(const DragStyleProperties &base) const
+{
+    DragStyleProperties out;
+    out.text = text.diff(base.text);
     return out;
 }
 

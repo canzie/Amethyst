@@ -18,6 +18,8 @@ class Canvas;
 class Checkbox;
 class Color3Picker;
 class Color4Picker;
+class DragFloat;
+class DragInt;
 class Dropdown;
 class MenuBar;
 class CollapsibleHeader;
@@ -25,6 +27,7 @@ class Frame;
 class ImageButton;
 class ImageLabel;
 class InvisibleButton;
+class NumberInput;
 class ScrollingFrame;
 class SliderFloat;
 class SliderInt;
@@ -43,9 +46,12 @@ struct FrameScope;
 struct ScrollingFrameScope;
 struct SliderFloatScope;
 struct SliderIntScope;
+struct DragFloatScope;
+struct DragIntScope;
 struct TabScope;
 struct TabBarScope;
 struct TextInputScope;
+struct NumberInputScope;
 struct TextLabelScope;
 struct TextButtonScope;
 struct ImageLabelScope;
@@ -76,8 +82,11 @@ class UIScope {
     UIScope &tabBar(TabBarProperties props = {}, std::function<void(TabBarScope &)> fn = {});
     UIScope &table(TableProperties props = {}, std::function<void(TableScope &)> fn = {});
     UIScope &textInput(TextInputProperties props = {}, std::function<void(TextInputScope &)> fn = {});
+    UIScope &numberInput(NumberInputProperties props = {}, std::function<void(NumberInputScope &)> fn = {});
     UIScope &sliderFloat(SliderFloatProperties props = {}, std::function<void(SliderFloatScope &)> fn = {});
     UIScope &sliderInt(SliderIntProperties props = {}, std::function<void(SliderIntScope &)> fn = {});
+    UIScope &dragFloat(DragFloatProperties props = {}, std::function<void(DragFloatScope &)> fn = {});
+    UIScope &dragInt(DragIntProperties props = {}, std::function<void(DragIntScope &)> fn = {});
     UIScope &treeView(TreeViewProperties props = {}, std::function<void(TreeViewScope &)> fn = {});
     UIScope &color3Picker(Color3PickerProperties props = {}, std::function<void(Color3PickerScope &)> fn = {});
     UIScope &color4Picker(Color4PickerProperties props = {}, std::function<void(Color4PickerScope &)> fn = {});
@@ -176,6 +185,11 @@ struct TextInputScope : UIScope {
     explicit TextInputScope(TextInput &ti);
 };
 
+struct NumberInputScope : UIScope {
+    NumberInput &component;
+    explicit NumberInputScope(NumberInput &ni);
+};
+
 struct SliderFloatScope : UIScope {
     SliderFloat &component;
     explicit SliderFloatScope(SliderFloat &s);
@@ -184,6 +198,16 @@ struct SliderFloatScope : UIScope {
 struct SliderIntScope : UIScope {
     SliderInt &component;
     explicit SliderIntScope(SliderInt &s);
+};
+
+struct DragFloatScope : UIScope {
+    DragFloat &component;
+    explicit DragFloatScope(DragFloat &d);
+};
+
+struct DragIntScope : UIScope {
+    DragInt &component;
+    explicit DragIntScope(DragInt &d);
 };
 
 struct Color3PickerScope : UIScope {

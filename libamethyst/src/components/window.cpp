@@ -301,6 +301,37 @@ void Window::releaseMouse(UIObject *object)
     }
 }
 
+void TickHandle::unregister()
+{
+    if (active()) {
+        window->unregisterTick(id);
+        window = nullptr;
+    }
+}
+
+TickHandle Window::registerTick(std::function<void(float)> callback)
+{
+    return TickHandle{this, m_tickCallbacks.insert(std::move(callback))};
+}
+
+void Window::unregisterTick(uint32_t id)
+{
+    m_tickCallbacks.erase(id);
+}
+
+void Window::tick(float deltaTime)
+{
+    // Copy each callback before invoking: a tick may unregister itself (e.g. an input losing
+    // focus), which frees its slot mid-iteration.
+    uint32_t slots = m_tickCallbacks.slotCount();
+    for (uint32_t i = 0; i < slots; ++i) {
+        if (auto *callback = m_tickCallbacks.tryGet(i)) {
+            std::function<void(float)> invoke = *callback;
+            invoke(deltaTime);
+        }
+    }
+}
+
 void Window::onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y)
 {
     AM_PROFILE_FUNCTION();

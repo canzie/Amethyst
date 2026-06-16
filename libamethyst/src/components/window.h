@@ -9,14 +9,32 @@
 #include "components/overlay_layer.h"
 #include "components/ui_layer.h"
 #include "math/math.h"
+#include "utils/free_list.h"
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <memory>
 
 namespace Amethyst {
 
 class Instance;
 class UIObject;
+class Window;
+
+/**
+ * @brief Opaque handle to a tick subscription; carries its own window so the holder need not.
+ */
+struct TickHandle {
+    Window *window = nullptr;
+    uint32_t id = 0;
+
+    bool active() const { return window != nullptr; }
+
+    /**
+     * @brief Drop the subscription and clear the handle. Safe to call when inactive.
+     */
+    void unregister();
+};
 
 class Window : public UILayer {
   public:
@@ -36,6 +54,25 @@ class Window : public UILayer {
     OverlayLayer *getOverlayLayer() { return m_overlayLayer.get(); }
     std::vector<Instance *> getHittableInstances() override;
 
+    /**
+     * @brief Subscribe a callback to per-frame ticks. Pair with unregisterTick on teardown.
+     * @param callback Invoked with the frame delta each time tick() runs
+     * @return Handle used to unsubscribe
+     */
+    TickHandle registerTick(std::function<void(float)> callback);
+
+    /**
+     * @brief Remove a tick subscription.
+     * @param id Id from the handle returned by registerTick
+     */
+    void unregisterTick(uint32_t id);
+
+    /**
+     * @brief Invoke every registered tick callback. Call once per frame.
+     * @param deltaTime Seconds since the previous tick
+     */
+    void tick(float deltaTime);
+
   private:
     Instance *findClickedObject(uint32_t x, uint32_t y);
     void purgeFromHoverStacks(Instance *dead);
@@ -52,6 +89,7 @@ class Window : public UILayer {
     HoverStack m_hoverPrevious;
     UIObject *m_mouseCapturedBy = nullptr;
     std::unique_ptr<OverlayLayer> m_overlayLayer;
+    FreeList<std::function<void(float)>> m_tickCallbacks;
 };
 
 } // namespace Amethyst

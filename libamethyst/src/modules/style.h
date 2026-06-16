@@ -118,6 +118,7 @@ enum class ComponentType {
     RADIO_BUTTON,
     COLLAPSIBLE_HEADER,
     TEXT_INPUT,
+    DRAG,
 };
 
 /**
@@ -203,6 +204,14 @@ class Style {
      * @return Fully-resolved slider style
      */
     SliderStyleProperties getSliderStyle(ComponentType type, std::span<const StyleKey> classes = {});
+
+    /**
+     * @brief Resolve the drag-widget style for a component type and class set.
+     * @param type Component type whose inheritance chain is walked
+     * @param classes Class hashes carried by the node, in any order
+     * @return Fully-resolved drag style
+     */
+    DragStyleProperties getDragStyle(ComponentType type, std::span<const StyleKey> classes = {});
 
     /**
      * @brief Resolve the tab-bar style for a component type and class set.

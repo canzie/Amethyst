@@ -328,6 +328,13 @@ struct SliderStyleProperties {
     SliderStyleProperties diff(const SliderStyleProperties &base) const;
 };
 
+struct DragStyleProperties {
+    TextStyleProperties text{};
+
+    bool apply(const DragStyleProperties &src);
+    DragStyleProperties diff(const DragStyleProperties &base) const;
+};
+
 struct ColorPickerStyleProperties {
     SliderStyleProperties bar{};
     float barHeight = PROP_UNSET_FLOAT;
@@ -460,6 +467,16 @@ struct TextInputProperties {
     std::string placeholder{};
 };
 
+struct NumberInputProperties {
+    std::vector<std::string> classes{};
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    TextInputStyleProperties textInput{};
+    std::string placeholder{};
+    bool allowDecimal = true;
+    bool allowNegative = true;
+};
+
 struct SliderFloatProperties {
     std::vector<std::string> classes{};
     BaseProperties base{};
@@ -482,6 +499,32 @@ struct SliderIntProperties {
     int min = 0;
     int max = 100;
     int *value = nullptr;
+};
+
+struct DragFloatProperties {
+    std::vector<std::string> classes{};
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    DragStyleProperties drag{};
+    std::string format{};
+    ValueScale scale = ValueScale::LINEAR;
+    double speed = 1.0;
+    double min = std::numeric_limits<double>::lowest();
+    double max = std::numeric_limits<double>::max();
+    double *value = nullptr;
+};
+
+struct DragIntProperties {
+    std::vector<std::string> classes{};
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    DragStyleProperties drag{};
+    std::string format{};
+    ValueScale scale = ValueScale::LINEAR;
+    int64_t speed = 1;
+    int64_t min = std::numeric_limits<int64_t>::min();
+    int64_t max = std::numeric_limits<int64_t>::max();
+    int64_t *value = nullptr;
 };
 
 struct Color3PickerProperties {

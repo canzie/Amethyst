@@ -5,12 +5,14 @@
 #include "components/collapsible_header.h"
 #include "components/color_picker.h"
 #include "components/container.h"
+#include "components/drag.h"
 #include "components/dropdown.h"
 #include "components/frame.h"
 #include "components/image_button.h"
 #include "components/image_label.h"
 #include "components/invisible_button.h"
 #include "components/menu_bar.h"
+#include "components/number_input.h"
 #include "components/scrolling_frame.h"
 #include "components/slider.h"
 #include "components/tab_bar.h"
@@ -36,8 +38,11 @@ InvisibleButtonScope::InvisibleButtonScope(InvisibleButton &ib) : UIScope(ib), c
 CheckboxScope::CheckboxScope(Checkbox &cb) : UIScope(cb), component(cb) {}
 CollapsibleHeaderScope::CollapsibleHeaderScope(CollapsibleHeader &ch) : UIScope(ch), component(ch) {}
 TextInputScope::TextInputScope(TextInput &ti) : UIScope(ti), component(ti) {}
+NumberInputScope::NumberInputScope(NumberInput &ni) : UIScope(ni), component(ni) {}
 SliderFloatScope::SliderFloatScope(SliderFloat &s) : UIScope(s), component(s) {}
 SliderIntScope::SliderIntScope(SliderInt &s) : UIScope(s), component(s) {}
+DragFloatScope::DragFloatScope(DragFloat &d) : UIScope(d), component(d) {}
+DragIntScope::DragIntScope(DragInt &d) : UIScope(d), component(d) {}
 Color3PickerScope::Color3PickerScope(Color3Picker &p) : UIScope(p), component(p) {}
 Color4PickerScope::Color4PickerScope(Color4Picker &p) : UIScope(p), component(p) {}
 TreeViewScope::TreeViewScope(TreeView &tv) : UIScope(tv), component(tv) {}
@@ -297,6 +302,25 @@ UIScope &UIScope::textInput(TextInputProperties props, std::function<void(TextIn
     return *this;
 }
 
+UIScope &UIScope::numberInput(NumberInputProperties props, std::function<void(NumberInputScope &)> fn)
+{
+    auto *ni = m_parent->add<NumberInput>();
+    if (!props.classes.empty()) {
+        ni->setClasses(props.classes);
+    }
+    ni->setBaseProperties(props.base);
+    ni->setBaseStyleProperties(props.style);
+    ni->setTextInputProperties(props.textInput);
+    ni->setPlaceholder(std::move(props.placeholder));
+    ni->allowDecimal = props.allowDecimal;
+    ni->allowNegative = props.allowNegative;
+    if (fn) {
+        NumberInputScope scope(*ni);
+        fn(scope);
+    }
+    return *this;
+}
+
 UIScope &UIScope::sliderFloat(SliderFloatProperties props, std::function<void(SliderFloatScope &)> fn)
 {
     auto *s = m_parent->add<SliderFloat>();
@@ -338,6 +362,54 @@ UIScope &UIScope::sliderInt(SliderIntProperties props, std::function<void(Slider
     s->value = props.value;
     if (fn) {
         SliderIntScope scope(*s);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::dragFloat(DragFloatProperties props, std::function<void(DragFloatScope &)> fn)
+{
+    auto *d = m_parent->add<DragFloat>();
+    if (!props.classes.empty()) {
+        d->setClasses(props.classes);
+    }
+    d->setBaseProperties(props.base);
+    d->setBaseStyleProperties(props.style);
+    d->setDragProperties(props.drag);
+    if (!props.format.empty()) {
+        d->setFormat(std::move(props.format));
+    }
+    d->scale = props.scale;
+    d->speed = props.speed;
+    d->min = props.min;
+    d->max = props.max;
+    d->value = props.value;
+    if (fn) {
+        DragFloatScope scope(*d);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::dragInt(DragIntProperties props, std::function<void(DragIntScope &)> fn)
+{
+    auto *d = m_parent->add<DragInt>();
+    if (!props.classes.empty()) {
+        d->setClasses(props.classes);
+    }
+    d->setBaseProperties(props.base);
+    d->setBaseStyleProperties(props.style);
+    d->setDragProperties(props.drag);
+    if (!props.format.empty()) {
+        d->setFormat(std::move(props.format));
+    }
+    d->scale = props.scale;
+    d->speed = props.speed;
+    d->min = props.min;
+    d->max = props.max;
+    d->value = props.value;
+    if (fn) {
+        DragIntScope scope(*d);
         fn(scope);
     }
     return *this;

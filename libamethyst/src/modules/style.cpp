@@ -258,6 +258,13 @@ SliderStyleProperties Style::getSliderStyle(ComponentType type, std::span<const 
     return r;
 }
 
+DragStyleProperties Style::getDragStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    DragStyleProperties r;
+    r.text = getTextStyle(type, classes);
+    return r;
+}
+
 TabBarStyleProperties Style::getTabBarStyle(ComponentType type, std::span<const StyleKey> classes)
 {
     const DenseSet &d = resolveSet(type, classes);
@@ -345,6 +352,7 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
                                                              ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 2> collapsibleHeader = {ComponentType::COLLAPSIBLE_HEADER, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 2> textInput = {ComponentType::TEXT_INPUT, ComponentType::UI_OBJECT};
+    static const std::array<ComponentType, 2> drag = {ComponentType::DRAG, ComponentType::UI_OBJECT};
 
     switch (type) {
     case ComponentType::UI_OBJECT:
@@ -385,6 +393,8 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
         return collapsibleHeader;
     case ComponentType::TEXT_INPUT:
         return textInput;
+    case ComponentType::DRAG:
+        return drag;
     }
     return uiObject;
 }
@@ -411,6 +421,7 @@ const std::unordered_map<std::string, ComponentType> &Style::getComponentTypeNam
         {"radio-button", ComponentType::RADIO_BUTTON},
         {"collapsible-header", ComponentType::COLLAPSIBLE_HEADER},
         {"text-input", ComponentType::TEXT_INPUT},
+        {"drag", ComponentType::DRAG},
     };
     return names;
 }

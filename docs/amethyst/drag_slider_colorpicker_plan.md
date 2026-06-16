@@ -58,20 +58,51 @@ Carries into Workstream 2: drags share `ValueScale`, the `format` string + `s_fo
 and the typed-per-type DTO/builder pattern — but **not** the track/thumb geometry or
 `UIDragDetector` (a Drag scrubs by mouse delta and has no physical thing to drag along).
 
-## Workstream 2 — `Drag*` family (`DragFloat` / `DragInt` / `DragVec2` / `DragVec3`)
+## Workstream 2 — `Drag*` family (`DragFloat` / `DragInt`) (SHIPPED)
 
-- Built on **`UIButton`**, using `onMouseButton1Down` / `onMouseMoved` /
-  `onMouseButton1Up` directly. **No `UIDragDetector`.**
-- Interaction: on press, capture mouse x and enter scrub mode. On each move while
-  scrubbing, add `(x - lastX) * speed` to the value, clamp to optional soft `min` / `max`
-  (unset = unbounded), update `lastX`, fire `onValueChanged`. On release, leave scrub mode.
-- Display is just a value box (label + formatted number) — no thumb, no fill track.
-  Double-click swaps the number for a `TextInput` to type an exact value.
-- `DragVec2` / `DragVec3` are N boxes side by side, each scrubbing its own component.
-- Shares value/format/style plumbing with the sliders, but a completely different input
-  model (no track geometry, no position-to-value mapping).
-- New: `DragStyleProperties`, the `Drag*` classes, `Drag*Scope` builders +
-  `ui_scope.h` registration + a `Style::getDragStyle` entry.
+Shipped `DragFloat` / `DragInt`; `DragVec2` / `DragVec3` deferred. Final shape diverged from
+the sketch below:
+
+- **`Drag : UIObject`** (not `UIButton` — it isn't a button), handling its own
+  `onInputBegan` / `onInputEnded` / `onMouseMoved` and capturing the mouse on press. **No
+  `UIDragDetector`.** A shared base owns the state machine, draw, and the edit field; the
+  subclasses only carry the typed value + scrub/commit/format hooks.
+- **Single-click vs drag, no double-click.** On press → `PENDING`; first move past a small px
+  threshold → `SCRUBBING` (`value` changes by `pixelDelta * speed`, `LINEAR` additive /
+  `LOGARITHMIC` multiplicative); release without crossing the threshold → `EDITING`. There is
+  no double-click event in the input system; deferred (would be synthesized at the
+  `InputInterface` boundary as a first-class `InputObject`, not sniffed in components).
+- **Typed values are `double` / `int64_t`** (no raw `int`/`float`); each subclass owns its own
+  `speed` (`double` / `int64_t`). `min` / `max` are **non-optional, defaulted to the type's
+  full range**, so clamping is unconditional and unbounded scrubbing can't overflow. The
+  `double→int64` conversion saturates (`s_saturateToInt64`); NaN is guarded; a debug
+  `AM_ASSERT(min <= max)`.
+- **The edit field is a single `NumberInput` child** that doubles as display (read-only,
+  non-interactable, centered) and editor (made editable + focused on click). `NumberInput`
+  only guarantees a valid numeric grammar (`acceptText`) and offers `asDouble()` / `asInt64()`;
+  it has no value/commit signal of its own. Commit happens on Enter / focus-loss.
+- New: `DragStyleProperties` (text only), the `Drag*` classes, `Drag*Scope` builders +
+  `ui_scope.h` registration, a `Style::getDragStyle` entry + `ComponentType::DRAG`
+  (`{DRAG, UI_OBJECT}`). Demo: `amethyst_demo_drag`.
+
+### Input refactor (prerequisite, SHIPPED)
+
+The edit field pulled in a clean split of the text-input core, plus a tick mechanism:
+
+- **`UIInput`** base owns all text-editing (caret, selection, clipboard, focus/blink,
+  rendering) behind a protected `drawInput()`; subclasses keep their own `draw()` /
+  `resolveStyle()` and override the `acceptText` / `displayText` / `onCommit` hooks.
+  `TextInput` is now a thin subclass; `NumberInput` adds the numeric grammar. Password / color
+  inputs would be further subclasses (display override / composition), not a mode enum.
+- **Tick subscription, not a tree walk** (draw only visits dirty nodes). On focus a `UIInput`
+  calls `Window::registerTick`, getting a `TickHandle { window, id }` it unregisters on
+  blur / destroy. `Window::tick(dt)` runs the (usually one) focused subscriber; the app calls
+  it once per frame. A `Drag`'s field registers itself, so `Drag` needs no update plumbing.
+- **`FreeList<T>`** (`utils/free_list.h`) backs the tick registry: vector + free list, stable
+  ids, no shifting on erase (slot-map / `std::hive` idea).
+
+Original sketch (kept for the deferred `DragVec2` / `DragVec3`): N boxes side by side, each
+scrubbing its own component; shares the value/format/style plumbing.
 
 ## Workstream 3 — Generic Popup (do before the color picker)
 

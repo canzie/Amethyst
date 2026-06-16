@@ -64,7 +64,6 @@ int main()
     window.setDisplayOrder(10);
 
     bool running = true;
-    Amethyst::TextInput *textInput = nullptr;
     Amethyst::DockingLayer *dockingLayer = nullptr;
 
     TextureInfo checkerboardTex = createCheckerboardTexture(ctx, 64, 8);
@@ -199,7 +198,6 @@ int main()
                 ti.component.name = "text input example";
                 ti.component.onTextChanged = [](const std::string &text) { AM_LOG_INFO("Text changed: '{}'", text); };
                 ti.component.onEnterPressed = []() { AM_LOG_INFO("Enter pressed!"); };
-                textInput = &ti.component;
             })
         // --- Sliders ---
         .sliderFloat({
@@ -343,10 +341,11 @@ int main()
     Amethyst::UIScope(window).frame(
         {
             .classes = {"card"},
-            .base = {
-                .position = Amethyst::UDim2::fromOffset(800, 100),
-                .size = Amethyst::UDim2::fromOffset(180, 244),
-            },
+            .base =
+                {
+                    .position = Amethyst::UDim2::fromOffset(800, 100),
+                    .size = Amethyst::UDim2::fromOffset(180, 244),
+                },
         },
         [](Amethyst::FrameScope &card) {
             card.component.name = "Class Card";
@@ -354,14 +353,16 @@ int main()
             auto styledButton = [&card](float y, std::vector<std::string> classes, const char *label) {
                 card.textButton({
                     .classes = std::move(classes),
-                    .base = {
-                        .position = Amethyst::UDim2(0.0f, 12.0f, 0.0f, y),
-                        .size = Amethyst::UDim2(1.0f, -24.0f, 0.0f, 44.0f),
-                    },
-                    .text = {
-                        .textXAlignment = Amethyst::TextXAlignment::CENTER,
-                        .textYAlignment = Amethyst::TextYAlignment::CENTER,
-                    },
+                    .base =
+                        {
+                            .position = Amethyst::UDim2(0.0f, 12.0f, 0.0f, y),
+                            .size = Amethyst::UDim2(1.0f, -24.0f, 0.0f, 44.0f),
+                        },
+                    .text =
+                        {
+                            .textXAlignment = Amethyst::TextXAlignment::CENTER,
+                            .textYAlignment = Amethyst::TextYAlignment::CENTER,
+                        },
                     .label = label,
                 });
             };
@@ -508,7 +509,7 @@ int main()
         float deltaTime = static_cast<float>(currentUpdateTime - lastUpdateTime);
         lastUpdateTime = currentUpdateTime;
 
-        textInput->update(deltaTime);
+        window.tick(deltaTime);
 
         uint32_t imageIndex;
         if (!contextBeginFrame(ctx, imageIndex)) {
