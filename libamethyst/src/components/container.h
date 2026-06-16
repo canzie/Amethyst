@@ -16,7 +16,7 @@ class Container : public UIObject {
   protected:
     EventResult onMouseEnter() override { return EventResult::PROPAGATE; }
     EventResult onMouseLeave() override { return EventResult::PROPAGATE; }
-    EventResult onMouseMoved(uint32_t, uint32_t) override { return EventResult::PROPAGATE; }
+    EventResult onMouseMoved(int32_t, int32_t) override { return EventResult::PROPAGATE; }
     EventResult onInputBegan(const InputObject &) override { return EventResult::PROPAGATE; }
     EventResult onInputChanged(const InputObject &) override { return EventResult::PROPAGATE; }
     EventResult onInputEnded(const InputObject &) override { return EventResult::PROPAGATE; }

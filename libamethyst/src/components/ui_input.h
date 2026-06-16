@@ -78,7 +78,7 @@ class UIInput : public UIObject {
 
     EventResult onInputBegan(const InputObject &input) override;
     EventResult onInputEnded(const InputObject &input) override;
-    EventResult onMouseMoved(uint32_t x, uint32_t y) override;
+    EventResult onMouseMoved(int32_t x, int32_t y) override;
     EventResult onMouseEnter() override;
     EventResult onMouseLeave() override;
 
@@ -112,7 +112,7 @@ class UIInput : public UIObject {
     void deleteSelection();
     void moveCursor(int delta, bool select);
     void setCursorPosition(size_t pos, bool select);
-    size_t getCursorFromMouseX(uint32_t mouseX);
+    size_t getCursorFromMouseX(int32_t mouseX);
 
     void copy();
     void paste();

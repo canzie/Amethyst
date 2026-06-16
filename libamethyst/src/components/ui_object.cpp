@@ -241,7 +241,7 @@ EventResult UIObject::onMouseLeave()
     return EventResult::CONSUMED;
 }
 
-EventResult UIObject::onMouseMoved(uint32_t x, uint32_t y)
+EventResult UIObject::onMouseMoved(int32_t x, int32_t y)
 {
     if (auto *drag = getExtension<UIDragDetector>()) {
         drag->handleMouseMove(x, y);
@@ -259,7 +259,7 @@ EventResult UIObject::onInputBegan(const InputObject &input)
 {
     if (input.type == InputType::MOUSE_BUTTON_1) {
         if (auto *drag = getExtension<UIDragDetector>()) {
-            drag->handleMouseDown(static_cast<uint32_t>(input.position.x), static_cast<uint32_t>(input.position.y));
+            drag->handleMouseDown(static_cast<int32_t>(input.position.x), static_cast<int32_t>(input.position.y));
         }
     }
     if (onInputBeganCb) {
@@ -280,7 +280,7 @@ EventResult UIObject::onInputEnded(const InputObject &input)
 {
     if (input.type == InputType::MOUSE_BUTTON_1) {
         if (auto *drag = getExtension<UIDragDetector>()) {
-            drag->handleMouseUp(static_cast<uint32_t>(input.position.x), static_cast<uint32_t>(input.position.y));
+            drag->handleMouseUp(static_cast<int32_t>(input.position.x), static_cast<int32_t>(input.position.y));
         }
     }
     if (onInputEndedCb) {

@@ -237,6 +237,12 @@ void AmVulkanBackend::init(const AmVulkanInitInfo &config, const AmGlfwInitInfo 
     allocateDescriptorSet();
 
     InputInterface::onCursorShapeChanged = [](CursorShape shape) { glfwSetCursor(g_glfwData.window, CURSOR_SHAPE_MAP[shape]); };
+    InputInterface::onCursorLockChanged = [](bool locked) {
+        glfwSetInputMode(g_glfwData.window, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+        if (glfwRawMouseMotionSupported()) {
+            glfwSetInputMode(g_glfwData.window, GLFW_RAW_MOUSE_MOTION, locked ? GLFW_TRUE : GLFW_FALSE);
+        }
+    };
     InputInterface::onSetClipboardText = [](const std::string &text) { glfwSetClipboardString(g_glfwData.window, text.c_str()); };
     InputInterface::onGetClipboardText = []() -> std::string {
         const char *text = glfwGetClipboardString(g_glfwData.window);
@@ -837,9 +843,25 @@ void AmVulkanBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
     if (g_glfwData.prevCursorPosCallback) {
         g_glfwData.prevCursorPosCallback(window, x, y);
     }
-    uint32_t scaledX = static_cast<uint32_t>(x * g_glfwData.contentScaleX);
-    uint32_t scaledY = static_cast<uint32_t>(y * g_glfwData.contentScaleY);
-    InputInterface::setMousePosition(scaledX, scaledY);
+
+    double scaledX = x * g_glfwData.contentScaleX;
+    double scaledY = y * g_glfwData.contentScaleY;
+
+    // While the cursor is locked (infinite drag) GLFW reports unbounded virtual positions, so
+    // pass them straight through. Otherwise GLFW keeps reporting positions outside the window
+    // while a button is held, and they go negative; a negative cast to uint32_t wraps to a
+    // huge value and wrecks delta math. GLFW has no cursor wrapping for the normal mode, so
+    // drop offscreen moves: the last valid position stands and the scrub holds.
+    if (!InputInterface::isCursorLocked()) {
+        int fbWidth = 0;
+        int fbHeight = 0;
+        glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+        if (scaledX < 0.0 || scaledY < 0.0 || scaledX >= fbWidth || scaledY >= fbHeight) {
+            return;
+        }
+    }
+
+    InputInterface::setMousePosition(static_cast<int32_t>(scaledX), static_cast<int32_t>(scaledY));
 }
 
 void AmVulkanBackend::scrollCallback(GLFWwindow *window, double xoffset, double yoffset)

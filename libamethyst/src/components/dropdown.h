@@ -45,7 +45,7 @@ class Dropdown : public TextButton {
   protected:
     DropdownStyleProperties m_ddProps;
 
-    EventResult onMouseButton1Down(uint32_t x, uint32_t y) override;
+    EventResult onMouseButton1Down(int32_t x, int32_t y) override;
 
   private:
     void closeSubmenuFrom(size_t depth = 0);

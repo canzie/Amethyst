@@ -68,7 +68,7 @@ class Drag : public UIObject {
 
     EventResult onInputBegan(const InputObject &input) override;
     EventResult onInputEnded(const InputObject &input) override;
-    EventResult onMouseMoved(uint32_t x, uint32_t y) override;
+    EventResult onMouseMoved(int32_t x, int32_t y) override;
 
     NumberInput *m_field = nullptr;
 

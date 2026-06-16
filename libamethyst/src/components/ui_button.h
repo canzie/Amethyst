@@ -24,29 +24,29 @@ class UIButton : public UIObject {
     EventResult onInputBegan(const InputObject &input) override;
     EventResult onInputEnded(const InputObject &input) override;
 
-    virtual EventResult onMouseButton1Down(uint32_t x, uint32_t y);
-    virtual EventResult onMouseButton1Up(uint32_t x, uint32_t y);
+    virtual EventResult onMouseButton1Down(int32_t x, int32_t y);
+    virtual EventResult onMouseButton1Up(int32_t x, int32_t y);
     virtual EventResult onMouseButton1Click();
-    virtual EventResult onMouseButton2Down(uint32_t x, uint32_t y);
-    virtual EventResult onMouseButton2Up(uint32_t x, uint32_t y);
+    virtual EventResult onMouseButton2Down(int32_t x, int32_t y);
+    virtual EventResult onMouseButton2Up(int32_t x, int32_t y);
     virtual EventResult onMouseButton2Click();
     EventResult onMouseEnter() override;
     EventResult onMouseLeave() override;
-    EventResult onMouseMoved(uint32_t x, uint32_t y) override;
+    EventResult onMouseMoved(int32_t x, int32_t y) override;
 
   protected:
     ButtonProperties m_btnProps;
 
   public:
     std::function<EventResult()> onMouseButton1ClickCb;
-    std::function<EventResult(uint32_t, uint32_t)> onMouseButton1DownCb;
-    std::function<EventResult(uint32_t, uint32_t)> onMouseButton1UpCb;
+    std::function<EventResult(int32_t, int32_t)> onMouseButton1DownCb;
+    std::function<EventResult(int32_t, int32_t)> onMouseButton1UpCb;
     std::function<EventResult()> onMouseButton2ClickCb;
-    std::function<EventResult(uint32_t, uint32_t)> onMouseButton2DownCb;
-    std::function<EventResult(uint32_t, uint32_t)> onMouseButton2UpCb;
+    std::function<EventResult(int32_t, int32_t)> onMouseButton2DownCb;
+    std::function<EventResult(int32_t, int32_t)> onMouseButton2UpCb;
     std::function<EventResult()> onMouseEnterCb;
     std::function<EventResult()> onMouseLeaveCb;
-    std::function<EventResult(uint32_t, uint32_t)> onMouseMovedCb;
+    std::function<EventResult(int32_t, int32_t)> onMouseMovedCb;
 };
 
 } // namespace Amethyst

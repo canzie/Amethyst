@@ -8,6 +8,7 @@
 namespace Amethyst {
 
 std::function<void(CursorShape)> InputInterface::onCursorShapeChanged;
+std::function<void(bool)> InputInterface::onCursorLockChanged;
 std::function<void(const std::string &)> InputInterface::onSetClipboardText;
 std::function<std::string()> InputInterface::onGetClipboardText;
 
@@ -26,7 +27,7 @@ void InputInterface::unregisterWindow(Window *window)
     }
 }
 
-void InputInterface::setMousePosition(uint32_t x, uint32_t y)
+void InputInterface::setMousePosition(int32_t x, int32_t y)
 {
     s_mouseX = x;
     s_mouseY = y;
@@ -62,6 +63,16 @@ void InputInterface::setCursorShape(CursorShape shape)
         s_currentCursorShape = shape;
         if (onCursorShapeChanged) {
             onCursorShapeChanged(s_currentCursorShape);
+        }
+    }
+}
+
+void InputInterface::setCursorLocked(bool locked)
+{
+    if (s_cursorLocked != locked) {
+        s_cursorLocked = locked;
+        if (onCursorLockChanged) {
+            onCursorLockChanged(s_cursorLocked);
         }
     }
 }

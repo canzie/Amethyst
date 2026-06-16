@@ -119,7 +119,7 @@ class UIObject : public UIBase2D {
     friend class Window;
     virtual EventResult onMouseEnter(void);
     virtual EventResult onMouseLeave(void);
-    virtual EventResult onMouseMoved(uint32_t x, uint32_t y);
+    virtual EventResult onMouseMoved(int32_t x, int32_t y);
     virtual EventResult onMouseScrollUp(void) { return EventResult::PROPAGATE; }
     virtual EventResult onMouseScrollDown(void) { return EventResult::PROPAGATE; }
 

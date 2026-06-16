@@ -21,7 +21,7 @@ class ImageLabel : public UILabel {
 
     void draw(DrawContext &ctx) override;
     void resolveStyle() override;
-    EventResult onMouseMoved(uint32_t, uint32_t) override { return EventResult::PROPAGATE; }
+    EventResult onMouseMoved(int32_t, int32_t) override { return EventResult::PROPAGATE; }
 
     void setSvg(std::string svgData);
     const std::string &getSvg() const { return m_svgData; }

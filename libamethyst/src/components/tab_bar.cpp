@@ -294,14 +294,14 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
         return EventResult::CONSUMED;
     };
 
-    tab.button->onMouseButton1DownCb = [this, tabPtr](uint32_t, uint32_t) {
+    tab.button->onMouseButton1DownCb = [this, tabPtr](int32_t, int32_t) {
         tabPtr->labelFrame->setBaseStyleProperties({.backgroundColor = m_tbProps.pressedTabColor});
         int32_t idx = findTabIndex(tabPtr);
         if (idx >= 0) select(idx);
         return EventResult::CONSUMED;
     };
 
-    tab.button->onMouseButton1UpCb = [this, tabPtr](uint32_t, uint32_t) {
+    tab.button->onMouseButton1UpCb = [this, tabPtr](int32_t, int32_t) {
         int32_t idx = findTabIndex(tabPtr);
         tabPtr->labelFrame->setBaseStyleProperties({
             .backgroundColor = (idx == m_selectedIndex) ? m_tbProps.focussedTabColor : m_tbProps.hoveredTabColor,

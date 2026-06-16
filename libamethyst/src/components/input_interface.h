@@ -35,7 +35,7 @@ class InputInterface {
     static void registerWindow(Window *window);
     static void unregisterWindow(Window *window);
 
-    static void setMousePosition(uint32_t x, uint32_t y);
+    static void setMousePosition(int32_t x, int32_t y);
     static void onMouseButton(int button, int action, int mods);
     static void onMouseScroll(float xoffset, float yoffset);
     static void onKey(int key, int scancode, int action, int mods);
@@ -44,6 +44,16 @@ class InputInterface {
     static void setCursorShape(CursorShape shape);
     static void setClipboardText(const std::string &text);
     static std::string getClipboardText();
+
+    /**
+     * @brief Hide and unlock the cursor for unbounded relative motion (infinite drag).
+     *
+     * While locked the backend reports continuous virtual positions (no edge clamping), so
+     * delta-based widgets can scrub without limit; turning it off restores the cursor.
+     * @param locked True to enter locked/hidden mode, false to restore
+     */
+    static void setCursorLocked(bool locked);
+    static bool isCursorLocked() { return s_cursorLocked; }
 
     static bool pollKeyEvent(KeyEvent &outEvent);
     static bool pollCharEvent(uint32_t &outCodepoint);
@@ -55,6 +65,7 @@ class InputInterface {
 
   public:
     static std::function<void(CursorShape)> onCursorShapeChanged;
+    static std::function<void(bool)> onCursorLockChanged;
     static std::function<void(const std::string &)> onSetClipboardText;
     static std::function<std::string()> onGetClipboardText;
 
@@ -63,10 +74,11 @@ class InputInterface {
     static constexpr size_t CHAR_BUFFER_SIZE = 256;
 
     static inline std::vector<Window *> s_windows;
-    static inline uint32_t s_mouseX = 0;
-    static inline uint32_t s_mouseY = 0;
+    static inline int32_t s_mouseX = 0;
+    static inline int32_t s_mouseY = 0;
     static inline int s_modifiers = 0;
     static inline CursorShape s_currentCursorShape = CursorShape::CURSOR_ARROW;
+    static inline bool s_cursorLocked = false;
     static inline bool isWindowFocussed = false;
 
     static inline std::array<KeyEvent, KEY_BUFFER_SIZE> s_keyBuffer;

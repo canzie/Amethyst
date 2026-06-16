@@ -137,7 +137,7 @@ EventResult UIInput::onInputBegan(const InputObject &input)
 
     focus();
 
-    size_t clickPos = getCursorFromMouseX(static_cast<uint32_t>(input.position.x));
+    size_t clickPos = getCursorFromMouseX(static_cast<int32_t>(input.position.x));
     setCursorPosition(clickPos, false);
     m_draggingSelection = true;
 
@@ -162,7 +162,7 @@ EventResult UIInput::onInputEnded(const InputObject &input)
     return EventResult::CONSUMED;
 }
 
-EventResult UIInput::onMouseMoved(uint32_t x, uint32_t y)
+EventResult UIInput::onMouseMoved(int32_t x, int32_t y)
 {
     (void)y;
     if (m_draggingSelection) {
@@ -428,7 +428,7 @@ void UIInput::setCursorPosition(size_t pos, bool select)
     markDirty();
 }
 
-size_t UIInput::getCursorFromMouseX(uint32_t mouseX)
+size_t UIInput::getCursorFromMouseX(int32_t mouseX)
 {
     if (m_charPositions.empty() || m_text.empty()) {
         return 0;

@@ -43,9 +43,9 @@ class Window : public UILayer {
 
     void draw(DrawContext &ctx) override;
 
-    void onMouseButton(int button, int action, int mods, uint32_t x, uint32_t y);
-    void onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y);
-    void onMouseMove(uint32_t x, uint32_t y);
+    void onMouseButton(int button, int action, int mods, int32_t x, int32_t y);
+    void onMouseScroll(float xoffset, float yoffset, int32_t x, int32_t y);
+    void onMouseMove(int32_t x, int32_t y);
 
     void captureMouse(UIObject *object);
     void releaseMouse(UIObject *object);
@@ -74,7 +74,7 @@ class Window : public UILayer {
     void tick(float deltaTime);
 
   private:
-    Instance *findClickedObject(uint32_t x, uint32_t y);
+    Instance *findClickedObject(int32_t x, int32_t y);
     void purgeFromHoverStacks(Instance *dead);
 
   private:

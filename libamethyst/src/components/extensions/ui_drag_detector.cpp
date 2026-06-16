@@ -6,7 +6,7 @@
 
 namespace Amethyst {
 
-void UIDragDetector::handleMouseDown(uint32_t x, uint32_t y)
+void UIDragDetector::handleMouseDown(int32_t x, int32_t y)
 {
     if (!enabled) {
         return;
@@ -35,7 +35,7 @@ void UIDragDetector::handleMouseDown(uint32_t x, uint32_t y)
     }
 }
 
-void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
+void UIDragDetector::handleMouseMove(int32_t x, int32_t y)
 {
     if (!m_isDragging) {
         return;
@@ -91,7 +91,7 @@ void UIDragDetector::handleMouseMove(uint32_t x, uint32_t y)
     }
 }
 
-void UIDragDetector::handleMouseUp(uint32_t x, uint32_t y)
+void UIDragDetector::handleMouseUp(int32_t x, int32_t y)
 {
     if (!m_isDragging) {
         return;

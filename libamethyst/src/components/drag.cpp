@@ -114,7 +114,7 @@ EventResult Drag::onInputBegan(const InputObject &input)
     return EventResult::CONSUMED;
 }
 
-EventResult Drag::onMouseMoved(uint32_t x, uint32_t y)
+EventResult Drag::onMouseMoved(int32_t x, int32_t y)
 {
     (void)y;
     if (m_state == State::PENDING && std::abs(static_cast<float>(x) - m_pressX) > SCRUB_THRESHOLD) {

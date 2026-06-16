@@ -156,7 +156,7 @@ template <typename Fn> static bool s_dispatchRecursive(const std::vector<Instanc
     return false;
 }
 
-Instance *Window::findClickedObject(uint32_t x, uint32_t y)
+Instance *Window::findClickedObject(int32_t x, int32_t y)
 {
     AM_PROFILE_FUNCTION();
     vec2 point(x, y);
@@ -168,7 +168,7 @@ Instance *Window::findClickedObject(uint32_t x, uint32_t y)
     return result;
 }
 
-void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_t y)
+void Window::onMouseButton(int button, int action, int mods, int32_t x, int32_t y)
 {
     AM_PROFILE_FUNCTION();
 
@@ -219,7 +219,7 @@ void Window::onMouseButton(int button, int action, int mods, uint32_t x, uint32_
     });
 }
 
-void Window::onMouseMove(uint32_t x, uint32_t y)
+void Window::onMouseMove(int32_t x, int32_t y)
 {
     AM_PROFILE_FUNCTION();
     if (m_mouseCapturedBy) {
@@ -332,7 +332,7 @@ void Window::tick(float deltaTime)
     }
 }
 
-void Window::onMouseScroll(float xoffset, float yoffset, uint32_t x, uint32_t y)
+void Window::onMouseScroll(float xoffset, float yoffset, int32_t x, int32_t y)
 {
     AM_PROFILE_FUNCTION();
     (void)xoffset;

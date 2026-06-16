@@ -159,7 +159,7 @@ class GizmoCanvas : public Canvas {
     bool mouseUp = false;
 
   protected:
-    EventResult onMouseMoved(uint32_t x, uint32_t y) override
+    EventResult onMouseMoved(int32_t x, int32_t y) override
     {
         mousePos = vec2(static_cast<float>(x), static_cast<float>(y));
         return EventResult::CONSUMED;

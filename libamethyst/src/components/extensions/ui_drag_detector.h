@@ -20,9 +20,9 @@ class UIDragDetector : public UIExtension {
     explicit UIDragDetector(UIObject *owner, UIObject *_dragZone) : UIExtension(owner), dragZone(_dragZone) {}
     virtual ~UIDragDetector() = default;
 
-    void handleMouseDown(uint32_t x, uint32_t y);
-    void handleMouseMove(uint32_t x, uint32_t y);
-    void handleMouseUp(uint32_t x, uint32_t y);
+    void handleMouseDown(int32_t x, int32_t y);
+    void handleMouseMove(int32_t x, int32_t y);
+    void handleMouseUp(int32_t x, int32_t y);
 
     bool isDragging() const { return m_isDragging; }
     bool isSoftLockBroken() const { return m_softLockBroken; }

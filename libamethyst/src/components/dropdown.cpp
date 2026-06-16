@@ -388,7 +388,7 @@ std::string Dropdown::buildItemText(const DropdownItem &item) const
     return text;
 }
 
-EventResult Dropdown::onMouseButton1Down(uint32_t x, uint32_t y)
+EventResult Dropdown::onMouseButton1Down(int32_t x, int32_t y)
 {
     UIButton::onMouseButton1Down(x, y);
     if (!m_open) {

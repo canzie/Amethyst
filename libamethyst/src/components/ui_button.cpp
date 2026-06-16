@@ -20,8 +20,8 @@ EventResult UIButton::onInputBegan(const InputObject &input)
 {
     UIObject::onInputBegan(input);
 
-    uint32_t x = static_cast<uint32_t>(input.position.x);
-    uint32_t y = static_cast<uint32_t>(input.position.y);
+    int32_t x = static_cast<int32_t>(input.position.x);
+    int32_t y = static_cast<int32_t>(input.position.y);
     switch (input.type) {
     case InputType::MOUSE_BUTTON_1:
         return onMouseButton1Down(x, y);
@@ -36,8 +36,8 @@ EventResult UIButton::onInputEnded(const InputObject &input)
 {
     UIObject::onInputEnded(input);
 
-    uint32_t x = static_cast<uint32_t>(input.position.x);
-    uint32_t y = static_cast<uint32_t>(input.position.y);
+    int32_t x = static_cast<int32_t>(input.position.x);
+    int32_t y = static_cast<int32_t>(input.position.y);
     bool over = containsPoint(vec2(input.position.x, input.position.y));
     switch (input.type) {
     case InputType::MOUSE_BUTTON_1: {
@@ -61,7 +61,7 @@ EventResult UIButton::onInputEnded(const InputObject &input)
     }
 }
 
-EventResult UIButton::onMouseButton1Down(uint32_t x, uint32_t y)
+EventResult UIButton::onMouseButton1Down(int32_t x, int32_t y)
 {
     if (onMouseButton1DownCb) {
         return onMouseButton1DownCb(x, y);
@@ -69,7 +69,7 @@ EventResult UIButton::onMouseButton1Down(uint32_t x, uint32_t y)
     return EventResult::CONSUMED;
 }
 
-EventResult UIButton::onMouseButton1Up(uint32_t x, uint32_t y)
+EventResult UIButton::onMouseButton1Up(int32_t x, int32_t y)
 {
     if (onMouseButton1UpCb) {
         return onMouseButton1UpCb(x, y);
@@ -85,7 +85,7 @@ EventResult UIButton::onMouseButton1Click()
     return EventResult::CONSUMED;
 }
 
-EventResult UIButton::onMouseButton2Down(uint32_t x, uint32_t y)
+EventResult UIButton::onMouseButton2Down(int32_t x, int32_t y)
 {
     if (onMouseButton2DownCb) {
         return onMouseButton2DownCb(x, y);
@@ -93,7 +93,7 @@ EventResult UIButton::onMouseButton2Down(uint32_t x, uint32_t y)
     return EventResult::CONSUMED;
 }
 
-EventResult UIButton::onMouseButton2Up(uint32_t x, uint32_t y)
+EventResult UIButton::onMouseButton2Up(int32_t x, int32_t y)
 {
     if (onMouseButton2UpCb) {
         return onMouseButton2UpCb(x, y);
@@ -127,7 +127,7 @@ EventResult UIButton::onMouseLeave()
     return EventResult::CONSUMED;
 }
 
-EventResult UIButton::onMouseMoved(uint32_t x, uint32_t y)
+EventResult UIButton::onMouseMoved(int32_t x, int32_t y)
 {
     UIObject::onMouseMoved(x, y);
     if (onMouseMovedCb) {
