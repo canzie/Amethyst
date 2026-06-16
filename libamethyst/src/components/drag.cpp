@@ -1,5 +1,6 @@
 #include "components/drag.h"
 
+#include "components/input_interface.h"
 #include "components/number_input.h"
 #include "components/window.h"
 #include "modules/style.h"
@@ -57,6 +58,13 @@ Drag::Drag()
     m_field->onEnterPressed = [this]() { m_field->loseFocus(); };
 
     resolveStyle();
+}
+
+Drag::~Drag()
+{
+    if (m_state == State::SCRUBBING) {
+        InputInterface::setCursorLocked(false);
+    }
 }
 
 void Drag::resolveStyle()
@@ -119,12 +127,23 @@ EventResult Drag::onMouseMoved(int32_t x, int32_t y)
     (void)y;
     if (m_state == State::PENDING && std::abs(static_cast<float>(x) - m_pressX) > SCRUB_THRESHOLD) {
         m_state = State::SCRUBBING;
+        // Hide and unlock the cursor for unbounded scrubbing. This switches the coordinate
+        // space starting with the next event, so skip this one and reseed the reference there
+        // rather than scrubbing a bogus jump across the switch.
+        InputInterface::setCursorLocked(true);
+        m_reseedScrub = true;
+        return EventResult::CONSUMED;
     }
     if (m_state == State::SCRUBBING) {
-        float delta = static_cast<float>(x) - m_lastX;
-        m_lastX = static_cast<float>(x);
-        if (delta != 0.0f) {
-            applyScrub(delta);
+        if (m_reseedScrub) {
+            m_lastX = static_cast<float>(x);
+            m_reseedScrub = false;
+        } else {
+            float delta = static_cast<float>(x) - m_lastX;
+            m_lastX = static_cast<float>(x);
+            if (delta != 0.0f) {
+                applyScrub(delta);
+            }
         }
     }
     return EventResult::CONSUMED;
@@ -141,6 +160,7 @@ EventResult Drag::onInputEnded(const InputObject &input)
     if (m_state == State::PENDING) {
         enterEdit();
     } else if (m_state == State::SCRUBBING) {
+        InputInterface::setCursorLocked(false);
         m_state = State::IDLE;
     }
     return EventResult::CONSUMED;

@@ -849,9 +849,8 @@ void AmVulkanBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
 
     // While the cursor is locked (infinite drag) GLFW reports unbounded virtual positions, so
     // pass them straight through. Otherwise GLFW keeps reporting positions outside the window
-    // while a button is held, and they go negative; a negative cast to uint32_t wraps to a
-    // huge value and wrecks delta math. GLFW has no cursor wrapping for the normal mode, so
-    // drop offscreen moves: the last valid position stands and the scrub holds.
+    // while a button is held; drop those offscreen moves so the last in-window position stands
+    // and a bounded scrub holds at the edge instead of running away.
     if (!InputInterface::isCursorLocked()) {
         int fbWidth = 0;
         int fbHeight = 0;

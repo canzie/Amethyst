@@ -21,7 +21,7 @@ class NumberInput;
 class Drag : public UIObject {
   public:
     Drag();
-    virtual ~Drag() = default;
+    virtual ~Drag();
 
     void draw(DrawContext &ctx) override;
     void resolveStyle() override;
@@ -89,6 +89,7 @@ class Drag : public UIObject {
     State m_state = State::IDLE;
     float m_pressX = 0.0f;
     float m_lastX = 0.0f;
+    bool m_reseedScrub = false;
 };
 
 class DragFloat : public Drag {
