@@ -74,6 +74,7 @@ bool Drag::setDragProperties(const DragStyleProperties &props)
         fieldStyle.text = m_dProps.text;
         fieldStyle.text.textXAlignment = TextXAlignment::CENTER;
         fieldStyle.text.textYAlignment = TextYAlignment::CENTER;
+        fieldStyle.cursorColor = m_dProps.text.textColor;
         m_field->setTextInputProperties(fieldStyle);
         markDirty();
     }
@@ -156,6 +157,7 @@ void Drag::enterEdit()
     m_field->setBaseProperties({.interactable = true});
     m_field->setText(formatValue());
     m_field->focus();
+    m_field->selectAll();
     markDirty();
 }
 

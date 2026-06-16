@@ -53,6 +53,11 @@ class UIInput : public UIObject {
 
     bool isFocused() const { return m_focused; }
 
+    /**
+     * @brief Select the entire buffer, as if the user pressed Ctrl+A.
+     */
+    void selectAll();
+
     bool setTextInputProperties(const TextInputStyleProperties &props);
     const TextInputStyleProperties &getTextInputProperties() const { return m_tiProps; }
 
@@ -112,7 +117,6 @@ class UIInput : public UIObject {
     void copy();
     void paste();
     void cut();
-    void selectAll();
 
     void releaseText(DrawContext &ctx);
     void drawText(DrawContext &ctx);
@@ -139,6 +143,7 @@ class UIInput : public UIObject {
     std::vector<float> m_charPositions;
     bool m_showingPlaceholder = false;
     float m_textBaselineY = 0.0f;
+    float m_textStartX = 0.0f;
 
     TickHandle m_tick;
 };

@@ -434,7 +434,7 @@ size_t UIInput::getCursorFromMouseX(uint32_t mouseX)
         return 0;
     }
 
-    float relativeX = static_cast<float>(mouseX) - absoluteContentPosition.x;
+    float relativeX = static_cast<float>(mouseX) - m_textStartX;
 
     if (relativeX <= m_charPositions[0]) {
         return 0;
@@ -520,6 +520,19 @@ void UIInput::drawText(DrawContext &ctx)
         break;
     }
 
+    auto alignStartX = [this](float textWidth) {
+        float slack = absoluteContentSize.x - textWidth;
+        switch (m_tiProps.text.textXAlignment) {
+        case TextXAlignment::CENTER:
+            return absoluteContentPosition.x + slack * 0.5f;
+        case TextXAlignment::RIGHT:
+            return absoluteContentPosition.x + slack;
+        default:
+            return absoluteContentPosition.x;
+        }
+    };
+    m_textStartX = alignStartX(0.0f);
+
     bool shouldShowPlaceholder = m_text.empty() && !m_placeholder.empty();
     m_showingPlaceholder = shouldShowPlaceholder;
 
@@ -584,6 +597,10 @@ void UIInput::drawText(DrawContext &ctx)
                 currentX += ctx.textProcessor->getCharAdvanceAtlas(static_cast<uint32_t>(shown[i]), pixelSize);
             }
         }
+
+        // Glyphs are aligned within the content box, so the caret origin must shift by the
+        // same amount; m_charPositions are measured from the text's own left edge.
+        m_textStartX = alignStartX(currentX);
     }
 }
 
@@ -594,7 +611,7 @@ void UIInput::drawSelection(DrawContext &ctx)
         size_t selEnd = std::max(m_cursorPosition, *m_selectionStart);
 
         if (selEnd > selStart && selStart < m_charPositions.size() && selEnd < m_charPositions.size()) {
-            vec2 selPos = {absoluteContentPosition.x + m_charPositions[selStart], m_textBaselineY};
+            vec2 selPos = {m_textStartX + m_charPositions[selStart], m_textBaselineY};
             vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], m_tiProps.text.fontSize * 1.2f};
             vec2 centerPos = selPos + selSize * 0.5f;
 
@@ -628,7 +645,7 @@ void UIInput::drawCursor(DrawContext &ctx)
             cursorX = (m_cursorPosition < m_charPositions.size()) ? m_charPositions[m_cursorPosition] : m_charPositions.back();
         }
 
-        vec2 cursorPos = {absoluteContentPosition.x + cursorX, m_textBaselineY};
+        vec2 cursorPos = {m_textStartX + cursorX, m_textBaselineY};
         vec2 cursorSize = {1.0f, m_tiProps.text.fontSize * 1.2f};
         vec2 centerPos = cursorPos + cursorSize * 0.5f;
 
