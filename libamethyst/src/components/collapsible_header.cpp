@@ -26,7 +26,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_chProps.headerTransparency = 0.0f;
     m_chProps.headerCornerRadius = 0.0f;
     m_chProps.showIndicator = true;
-    m_chProps.indicatorSize = 10.0f;
+    m_chProps.indicatorSize = 16.0f;
     m_chProps.indicatorPadding = 6.0f;
     m_chProps.indicatorColor = Color4{0.7f, 0.7f, 0.7f, 1.0f};
 
@@ -167,10 +167,14 @@ void CollapsibleHeader::draw(DrawContext &ctx)
         m_chProps.indicatorPadding + (showIndicator ? m_chProps.indicatorSize + m_chProps.indicatorPadding : 0.0f);
 
     m_indicator->setBaseStyleProperties({
-        .backgroundColor = Color3(m_chProps.indicatorColor),
-        .backgroundTransparency = 1.0f - m_chProps.indicatorColor.a,
+        .backgroundTransparency = 1.0f,
         .borderPixelSize = 0.0f,
     });
+    if (auto *imgLabel = m_indicator->as<ImageLabel>()) {
+        imgLabel->setImageStyleProperties({
+            .imageColor = m_chProps.indicatorColor,
+        });
+    }
     m_indicator->setBaseProperties({
         .anchorPoint = {0.5f, 0.5f},
         .position = UDim2(0.0f, m_chProps.indicatorPadding + m_chProps.indicatorSize * 0.5f, 0.5f, 0.0f),

@@ -97,7 +97,7 @@ int main()
                                   .headerHeight = 32.0f,
                                   .headerColor = {0.22f, 0.28f, 0.38f},
                                   .headerCornerRadius = 4.0f,
-                                  .indicatorColor = {0.8f, 0.85f, 1.0f, 1.0f}},
+                                  .indicatorColor = Color4::fromHex(0xffffffff)},
                        .title = "General Settings"},
                       [statusLabel](CollapsibleHeaderScope &ch) {
                           ch.component.onToggled = [statusLabel](bool exp) {
@@ -167,7 +167,7 @@ int main()
                                     .headerHeight = 32.0f,
                                     .headerColor = {0.2f, 0.32f, 0.25f},
                                     .headerCornerRadius = 4.0f,
-                                    .indicatorSize = 12.0f,
+                                    .indicatorSize = 24.0f,
                                     .indicatorColor = {0.6f, 1.0f, 0.7f, 1.0f}},
                          .title = "Graphics"},
                         [statusLabel](CollapsibleHeaderScope &ch) {

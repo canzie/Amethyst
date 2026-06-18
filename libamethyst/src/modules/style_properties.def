@@ -67,7 +67,7 @@
     X(HEADER_TRANSPARENCY, "header-transparency", float, RATIO, 0.0f)                                         \
     X(HEADER_HEIGHT, "header-height", float, LENGTH, 30.0f)                                                   \
     X(HEADER_CORNER_RADIUS, "header-corner-radius", float, LENGTH, 0.0f)                                      \
-    X(INDICATOR_SIZE, "indicator-size", float, LENGTH, 10.0f)                                                 \
+    X(INDICATOR_SIZE, "indicator-size", float, LENGTH, 16.0f)                                                 \
     X(INDICATOR_PADDING, "indicator-padding", float, LENGTH, 6.0f)                                            \
     X(INDICATOR_COLOR, "indicator-color", Color4, COLOR4, Color4(0.7f, 0.7f, 0.7f, 1.0f)) \
     X(THUMB_WIDTH, "thumb-width", float, LENGTH, 12.0f) \

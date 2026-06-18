@@ -11,8 +11,5 @@
 ### Checkbox
     - use svg for checkbox
 
-### Dragger?
-    - currently only have a slider but a DragFloat, Drag<type> needs to be implemented too
-
 ### Style system
 
