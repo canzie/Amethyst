@@ -5,6 +5,7 @@
 #include "components/slider.h"
 
 #include "components/extensions/ui_drag_detector.h"
+#include "components/instance.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
 
@@ -84,9 +85,9 @@ template <typename T> static std::string s_formatNumber(const std::string &forma
 
 Slider::Slider()
 {
-    m_track.parent = this;
-    m_thumb.parent = this;
-    m_valueLabel.parent = this;
+    m_track = add<Frame>();
+    m_thumb = add<Frame>();
+    m_valueLabel = add<TextLabel>();
     resolveStyle();
 }
 
@@ -122,17 +123,17 @@ void Slider::layoutTrack(float normalizedPos, float thumbWidth, const std::strin
 
     float trackHeight = m_sProps.trackHeight;
     float trackY = (boxHeight - trackHeight) * 0.5f;
-    s_setupTrack(m_track, 0.0f, trackY, boxWidth, trackHeight, this);
+    s_setupTrack(*m_track, 0.0f, trackY, boxWidth, trackHeight, this);
 
     float thumbHeight = std::min(m_sProps.thumbHeight, boxHeight);
     float clampedThumbWidth = std::clamp(thumbWidth, 0.0f, boxWidth);
     float thumbX = normalizedPos * (boxWidth - clampedThumbWidth);
     float thumbY = (boxHeight - thumbHeight) * 0.5f;
-    s_setupThumb(m_thumb, thumbX, thumbY, clampedThumbWidth, thumbHeight, this);
+    s_setupThumb(*m_thumb, thumbX, thumbY, clampedThumbWidth, thumbHeight, this);
 
-    UIDragDetector *drag = m_track.getExtension<UIDragDetector>();
+    UIDragDetector *drag = m_track->getExtension<UIDragDetector>();
     if (!drag) {
-        drag = m_track.addExtension<UIDragDetector>();
+        drag = m_track->addExtension<UIDragDetector>();
         drag->mode = DragMode::HORIZONTAL;
     }
 
@@ -145,7 +146,7 @@ void Slider::layoutTrack(float normalizedPos, float thumbWidth, const std::strin
     drag->onDragStart = [applyFromX](vec2 startPos) { applyFromX(startPos.x); };
     drag->onDragUpdate = [applyFromX](vec2, vec2 position) { applyFromX(position.x); };
 
-    s_setupValueLabel(m_valueLabel, this, valueText);
+    s_setupValueLabel(*m_valueLabel, this, valueText);
 }
 
 void Slider::draw(DrawContext &ctx)
@@ -159,13 +160,6 @@ void Slider::draw(DrawContext &ctx)
     }
 
     vec4 childClip = computeChildClipRect();
-
-    UIObject *parts[] = {&m_track, &m_thumb, &m_valueLabel};
-    for (auto *part : parts) {
-        part->clipRect = childClip;
-        part->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-        part->draw(ctx);
-    }
 
     for (auto &child : m_children) {
         if (auto *drawable = child->as<UIObject>()) {
@@ -181,7 +175,7 @@ void Slider::draw(DrawContext &ctx)
 std::vector<Instance *> Slider::getHittableInstances()
 {
     auto result = Instance::getHittableInstances();
-    result.push_back(&m_track);
+    result.push_back(m_track);
     return result;
 }
 

@@ -49,9 +49,9 @@ class Slider : public UIObject {
     SliderStyleProperties m_sProps;
     std::string m_format;
 
-    Frame m_track;
-    Frame m_thumb;
-    TextLabel m_valueLabel;
+    Frame *m_track = nullptr;
+    Frame *m_thumb = nullptr;
+    TextLabel *m_valueLabel = nullptr;
 };
 
 class SliderFloat : public Slider {
