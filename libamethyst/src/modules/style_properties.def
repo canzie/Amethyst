@@ -45,7 +45,7 @@
     X(ROW_HOVER_COLOR, "row-hover-color", Color4, COLOR4, Color4(0.3f, 0.3f, 0.35f, 1.0f))                    \
     X(ROW_SELECTED_COLOR, "row-selected-color", Color4, COLOR4, Color4(0.25f, 0.4f, 0.65f, 1.0f))             \
     X(INDENT_PER_LEVEL, "indent-per-level", float, LENGTH, 16.0f)                                             \
-    X(DISCLOSURE_TRIANGLE_SIZE, "disclosure-triangle-size", float, LENGTH, 10.0f)                             \
+    X(DISCLOSURE_TRIANGLE_SIZE, "disclosure-triangle-size", float, LENGTH, 16.0f)                             \
     X(DISCLOSURE_TRIANGLE_PADDING, "disclosure-triangle-padding", float, LENGTH, 4.0f)                        \
     X(DISCLOSURE_TRIANGLE_COLOR, "disclosure-triangle-color", Color4, COLOR4, Color4(0.7f, 0.7f, 0.7f, 1.0f)) \
     X(THUMB_COLOR, "thumb-color", Color3, COLOR3, Color3(0.8f))                                               \

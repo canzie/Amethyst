@@ -16,13 +16,13 @@ static constexpr float DEFAULT_ROW_HEIGHT = 24.0f;
 TreeView::TreeView()
 {
     m_tvProps.rowHeight = 0.0f;
-    m_tvProps.cellPadding = {};
+    m_tvProps.cellPadding = {0};
     m_tvProps.showColumnSeparators = 0;
     m_tvProps.columnSeparatorWidth = 1.0f;
     m_tvProps.columnSeparatorColor = {0.3f, 0.3f, 0.3f, 1.0f};
     m_tvProps.indentPerLevel = 16.0f;
     m_tvProps.showDisclosureTriangles = 1;
-    m_tvProps.disclosureTriangleSize = 10.0f;
+    m_tvProps.disclosureTriangleSize = 16.0f;
     m_tvProps.disclosureTrianglePadding = 4.0f;
     m_tvProps.disclosureTriangleColor = {0.7f, 0.7f, 0.7f, 1.0f};
     m_tvProps.rowBackgroundColor = {0.18f, 0.18f, 0.2f, 1.0f};
