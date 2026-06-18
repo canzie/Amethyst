@@ -20,6 +20,15 @@ static const char *SVG_GEAR = R"(
 </svg>
 )";
 
+static constexpr float SECTION_GAP = 10.0f;
+static constexpr float GENERAL_HEIGHT = 180.0f;
+static constexpr float AUDIO_HEIGHT = 150.0f;
+static constexpr float GRAPHICS_HEIGHT = 266.0f;
+static constexpr float CONTROLS_HEIGHT = 120.0f;
+static constexpr float SHADER_HEIGHT = 160.0f;
+static constexpr float CANVAS_HEIGHT =
+    GENERAL_HEIGHT + AUDIO_HEIGHT + GRAPHICS_HEIGHT + CONTROLS_HEIGHT + SHADER_HEIGHT + 4.0f * SECTION_GAP + 20.0f;
+
 int main()
 {
     Log::Init();
@@ -84,13 +93,16 @@ int main()
         .scrollingFrame(
             {.base = {.clipsDescendants = true, .position = UDim2::fromOffset(10.0f, 29.0f), .size = {1.0f, -20.0f, 1.0f, -34.0f}},
              .style = {.backgroundColor = Color3::fromHex(0x1A1A1E)},
-             .scroll = {.canvasSize = UDim2::fromOffset(880, 1200),
+             .scroll = {.canvasSize = UDim2::fromOffset(880, CANVAS_HEIGHT),
                         .scrollBarColor = {0.2f, 0.2f, 0.25f},
                         .scrollBarThumbColor = {0.45f, 0.45f, 0.55f}}},
             [statusLabel](ScrollingFrameScope &sf) {
+                auto *layout = sf.component.addExtension<UIListLayout>();
+                layout->innerPadding = UDim::fromOffset(SECTION_GAP);
+
                 // --- Section 1: General Settings ---
                 sf.collapsibleHeader(
-                      {.base = {.position = {0.0f, 0.0f, 0.0f, 0.0f}, .size = {1.0f, 0.0f, 0.0f, 180.0f}},
+                      {.base = {.layoutOrder = 0, .size = {1.0f, 0.0f, 0.0f, GENERAL_HEIGHT}},
                        .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                        .header = {.expanded = true,
                                   .titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
@@ -124,7 +136,7 @@ int main()
                       })
                     // --- Section 2: Audio (starts collapsed) ---
                     .collapsibleHeader(
-                        {.base = {.position = {0.0f, 0.0f, 0.0f, 190.0f}, .size = {1.0f, 0.0f, 0.0f, 150.0f}},
+                        {.base = {.layoutOrder = 1, .size = {1.0f, 0.0f, 0.0f, AUDIO_HEIGHT}},
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                          .header = {.expanded = false,
                                     .titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
@@ -161,7 +173,7 @@ int main()
                         })
                     // --- Section 3: Graphics (table inside) ---
                     .collapsibleHeader(
-                        {.base = {.position = {0.0f, 0.0f, 0.0f, 350.0f}, .size = {1.0f, 0.0f, 0.0f, 210.0f}},
+                        {.base = {.layoutOrder = 2, .size = {1.0f, 0.0f, 0.0f, GRAPHICS_HEIGHT}},
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                          .header = {.titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
                                     .headerHeight = 32.0f,
@@ -174,9 +186,9 @@ int main()
                             ch.component.onToggled = [statusLabel](bool exp) {
                                 statusLabel->setText(std::string("Graphics: ") + (exp ? "expanded" : "collapsed"));
                             };
-                            ch.table({.base = {.position = UDim2::fromOffset(5.0f, 5.0f), .size = {1.0f, -10.0f, 0.0f, 168.0f}},
+                            ch.table({.base = {.position = UDim2::fromOffset(5.0f, 5.0f), .size = {1.0f, -10.0f, 0.0f, 224.0f}},
                                       .table = {.rowHeight = 28.0f,
-                                                .cellPadding = {{2.0f, 0.0f}, {8.0f, 0.0f}, {2.0f, 0.0f}, {8.0f, 0.0f}},
+                                                .cellPadding = {{0.0f, 2.0f}, {0.0f, 8.0f}, {0.0f, 2.0f}, {0.0f, 8.0f}},
                                                 .showColumnSeparators = true,
                                                 .columnSeparatorColor = {0.3f, 0.3f, 0.35f, 0.5f},
                                                 .showHeader = true}},
@@ -192,6 +204,8 @@ int main()
                                              {"Texture Quality", "High"},    {"Draw Distance", "Far"},
                                              {"Ambient Occlusion", "HBAO+"}, {"Anisotropic", "16x"},
                                          };
+                                         static float brightnessValue = 50.0f;
+                                         static float fovValue = 90.0f;
 
                                          for (auto &row : graphicsRows) {
                                              t.row([&row](TableRowScope &r) {
@@ -213,11 +227,48 @@ int main()
                                                  });
                                              });
                                          }
+
+                                         t.row([](TableRowScope &r) {
+                                             r.cell([](UIScope &cell) {
+                                                 cell.textLabel({.base = {.size = UDim2::fromScale(1.0f, 1.0f)},
+                                                                 .style = {.backgroundTransparency = 1.0f},
+                                                                 .text = {.fontSize = 13.0f,
+                                                                          .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
+                                                                          .textYAlignment = TextYAlignment::CENTER},
+                                                                 .label = "Brightness"});
+                                             });
+                                             r.cell([](UIScope &cell) {
+                                                 cell.sliderFloat({.base = {.position = UDim2::fromScale(0.0f, 0.15f),
+                                                                            .size = UDim2::fromScale(1.0f, 0.7f)},
+                                                                   .format = "%.0f%%",
+                                                                   .min = 0.0f,
+                                                                   .max = 100.0f,
+                                                                   .value = &brightnessValue});
+                                             });
+                                         });
+                                         t.row([](TableRowScope &r) {
+                                             r.cell([](UIScope &cell) {
+                                                 cell.textLabel({.base = {.size = UDim2::fromScale(1.0f, 1.0f)},
+                                                                 .style = {.backgroundTransparency = 1.0f},
+                                                                 .text = {.fontSize = 13.0f,
+                                                                          .textColor = {0.7f, 0.7f, 0.7f, 1.0f},
+                                                                          .textYAlignment = TextYAlignment::CENTER},
+                                                                 .label = "Field of View"});
+                                             });
+                                             r.cell([](UIScope &cell) {
+                                                 cell.sliderFloat({.base = {.position = UDim2::fromScale(0.0f, 0.15f),
+                                                                            .size = UDim2::fromScale(1.0f, 0.7f)},
+                                                                   .format = "%.0f",
+                                                                   .min = 60.0f,
+                                                                   .max = 120.0f,
+                                                                   .value = &fovValue});
+                                             });
+                                         });
                                      });
                         })
                     // --- Section 4: No indicator ---
                     .collapsibleHeader(
-                        {.base = {.position = {0.0f, 0.0f, 0.0f, 560.0f}, .size = {1.0f, 0.0f, 0.0f, 120.0f}},
+                        {.base = {.layoutOrder = 3, .size = {1.0f, 0.0f, 0.0f, CONTROLS_HEIGHT}},
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                          .header = {.titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
                                     .headerHeight = 32.0f,
@@ -246,7 +297,7 @@ int main()
                         })
                     // --- Section 5: custom SVG indicator + custom header ---
                     .collapsibleHeader(
-                        {.base = {.position = {0.0f, 0.0f, 0.0f, 690.0f}, .size = {1.0f, 0.0f, 0.0f, 160.0f}},
+                        {.base = {.layoutOrder = 4, .size = {1.0f, 0.0f, 0.0f, SHADER_HEIGHT}},
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                          .header = {.headerHeight = 36.0f, .headerCornerRadius = 4.0f, .indicatorSize = 18.0f}},
                         [statusLabel](CollapsibleHeaderScope &ch) {

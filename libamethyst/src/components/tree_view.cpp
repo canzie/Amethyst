@@ -16,7 +16,7 @@ static constexpr float DEFAULT_ROW_HEIGHT = 24.0f;
 TreeView::TreeView()
 {
     m_tvProps.rowHeight = 0.0f;
-    m_tvProps.cellPadding = {0};
+    m_tvProps.cellPadding = {};
     m_tvProps.showColumnSeparators = 0;
     m_tvProps.columnSeparatorWidth = 1.0f;
     m_tvProps.columnSeparatorColor = {0.3f, 0.3f, 0.3f, 1.0f};

@@ -142,25 +142,16 @@ CollapsibleHeader &CollapsibleHeader::indicator(std::function<void(UIObject &)> 
     return *this;
 }
 
-void CollapsibleHeader::draw(DrawContext &ctx)
+void CollapsibleHeader::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation)
 {
-    AM_PROFILE_FUNCTION();
-    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
-        return;
+    UIObject::computeAbsolutes(parentSize, parentPos, parentRotation);
+    if (!static_cast<bool>(m_chProps.expanded)) {
+        absoluteSize.y = m_chProps.headerHeight;
     }
+}
 
-    if (flags & FLAG_DIRTY) {
-        InstanceData data = createInstanceData();
-        data.setPrimitiveType(PRIMITIVE_RECT);
-
-        if (m_geometryAlloc == nullptr) {
-            m_geometryAlloc = ctx.geometry->submit(data);
-        } else {
-            ctx.geometry->update(*m_geometryAlloc, data);
-        }
-    }
-
-    vec4 childClip = computeChildClipRect();
+void CollapsibleHeader::drawHeaderBar(DrawContext &ctx, const vec4 &childClip)
+{
     bool expanded = static_cast<bool>(m_chProps.expanded);
     bool showIndicator = static_cast<bool>(m_chProps.showIndicator);
     float contentOffset =
@@ -220,6 +211,30 @@ void CollapsibleHeader::draw(DrawContext &ctx)
     m_headerButton->markDirty();
     m_headerButton->computeAbsolutes({absoluteSize.x, m_chProps.headerHeight}, absolutePosition, absoluteRotation);
     m_headerButton->draw(ctx);
+}
+
+void CollapsibleHeader::draw(DrawContext &ctx)
+{
+    AM_PROFILE_FUNCTION();
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
+    if (flags & FLAG_DIRTY) {
+        InstanceData data = createInstanceData();
+        data.setPrimitiveType(PRIMITIVE_RECT);
+
+        if (m_geometryAlloc == nullptr) {
+            m_geometryAlloc = ctx.geometry->submit(data);
+        } else {
+            ctx.geometry->update(*m_geometryAlloc, data);
+        }
+    }
+
+    vec4 childClip = computeChildClipRect();
+    drawHeaderBar(ctx, childClip);
+
+    bool expanded = static_cast<bool>(m_chProps.expanded);
 
     if (expanded) {
         if (auto *gridLayout = getExtension<UIGridLayout>()) {
@@ -227,30 +242,24 @@ void CollapsibleHeader::draw(DrawContext &ctx)
         } else if (auto *listLayout = getExtension<UIListLayout>()) {
             listLayout->apply(m_children);
         }
+    }
 
-        vec2 contentPos = absoluteContentPosition + vec2(0.0f, m_chProps.headerHeight);
-        vec2 contentSize = {absoluteContentSize.x, max(absoluteContentSize.y - m_chProps.headerHeight, 0.0f)};
+    vec2 contentPos = absoluteContentPosition + vec2(0.0f, m_chProps.headerHeight);
+    vec2 contentSize = {absoluteContentSize.x, max(absoluteContentSize.y - m_chProps.headerHeight, 0.0f)};
 
-        for (auto &child : m_children) {
-            if (auto *drawable = child->as<UIObject>()) {
-                drawable->clipRect = childClip;
-                drawable->computeAbsolutes(contentSize, contentPos, absoluteRotation);
-                drawable->draw(ctx);
-            } else if (auto *layer = child->as<UILayer>()) {
-                layer->draw(ctx);
-            }
-        }
-    } else {
-        for (auto &child : m_children) {
-            if (auto *drawable = child->as<UIObject>()) {
-                int8_t originalVisible = drawable->getBaseProperties().visible;
-                drawable->setBaseProperties({.visible = false});
-                drawable->markDirty();
-                drawable->clipRect = childClip;
-                drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
-                drawable->draw(ctx);
-                drawable->setBaseProperties({.visible = originalVisible});
-            }
+    for (auto &child : m_children) {
+        if (auto *drawable = child->as<UIObject>()) {
+            am_bool localVisible = drawable->getBaseProperties().visible;
+            drawable->clipRect = childClip;
+            drawable->computeAbsolutes(contentSize, contentPos, absoluteRotation);
+            drawable->setBaseProperties({.visible = static_cast<am_bool>(static_cast<bool>(localVisible) && expanded)});
+            drawable->draw(ctx);
+            drawable->setBaseProperties({.visible = localVisible});
+        } else if (auto *layer = child->as<UILayer>()) {
+            bool localVisible = layer->visible;
+            layer->visible = localVisible && expanded;
+            layer->draw(ctx);
+            layer->visible = localVisible;
         }
     }
 

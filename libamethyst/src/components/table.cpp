@@ -54,6 +54,9 @@ Table::~Table()
     for (auto &lbl : m_headerLabels) {
         lbl->parent = nullptr;
     }
+    for (auto &sep : m_separators) {
+        sep->parent = nullptr;
+    }
 }
 
 void Table::resizeColumns(uint32_t newCount)
@@ -258,6 +261,7 @@ void Table::updateSeparators()
         float xPos = m_columnPositions[i + 1];
 
         auto sep = std::make_unique<Frame>();
+        sep->parent = this;
         sep->setBaseStyleProperties({
             .backgroundColor = Color3(m_tProps.columnSeparatorColor),
             .backgroundTransparency = 1.0f - m_tProps.columnSeparatorColor.a,
