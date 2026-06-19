@@ -414,8 +414,8 @@ void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex,
             .zIndex = getZIndex(),
         });
         bg->clipRect = childClip;
-        bg->markDirty()
-            h bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + vec2(0.0f, y), absoluteRotation);
+        bg->markDirty();
+        bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + vec2(0.0f, y), absoluteRotation);
         bg->draw(ctx);
     }
 
@@ -455,6 +455,14 @@ void Table::draw(DrawContext &ctx)
     m_computedRowHeight = m_tProps.rowHeight > 0.0f ? m_tProps.rowHeight : FALLBACK_ROW_HEIGHT;
 
     if (flags & FLAG_DIRTY) {
+        InstanceData data = createInstanceData();
+        data.setPrimitiveType(PRIMITIVE_RECT);
+        if (m_geometryAlloc == nullptr) {
+            m_geometryAlloc = ctx.geometry->submit(data);
+        } else {
+            ctx.geometry->update(*m_geometryAlloc, data);
+        }
+
         rebuildColumnPositions();
         updateSeparators();
         m_resolvedPadding = m_tProps.cellPadding.resolve(absoluteSize);
