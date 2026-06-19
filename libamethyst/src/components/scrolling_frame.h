@@ -35,9 +35,10 @@ class ScrollingFrame : public UIObject {
     ScrollingFrameStyleProperties m_sfProps;
 
   private:
-    void drawScrollbars(DrawContext &ctx, vec2 absCanvasSize);
+    void drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 viewport, bool needsVertical, bool needsHorizontal);
 
     vec2 m_scrollOffset = {0.0f, 0.0f};
+    vec2 m_maxScroll = {0.0f, 0.0f};
     std::unique_ptr<Frame> m_verticalBar;
     std::unique_ptr<Frame> m_verticalThumb;
     std::unique_ptr<Frame> m_horizontalBar;
