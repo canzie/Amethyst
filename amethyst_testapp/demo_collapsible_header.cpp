@@ -189,8 +189,8 @@ int main()
                             ch.table({.base = {.position = UDim2::fromOffset(5.0f, 5.0f), .size = {1.0f, -10.0f, 0.0f, 224.0f}},
                                       .table = {.rowHeight = 28.0f,
                                                 .cellPadding = {{0.0f, 2.0f}, {0.0f, 8.0f}, {0.0f, 2.0f}, {0.0f, 8.0f}},
-                                                .showColumnSeparators = true,
-                                                .columnSeparatorColor = {0.3f, 0.3f, 0.35f, 0.5f},
+                                                .separatorMode = TableSeparatorMode::COLUMNS,
+                                                .separatorColor = {0.3f, 0.3f, 0.35f, 0.5f},
                                                 .showHeader = true}},
                                      [](TableScope &t) {
                                          t.column("Setting", 0.55f).column("Value", 0.45f);

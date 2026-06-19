@@ -38,8 +38,8 @@
     X(CELL_PADDING_RIGHT, "cell-padding-right", UDim, UDIM, UDim{})                                           \
     X(CELL_PADDING_BOTTOM, "cell-padding-bottom", UDim, UDIM, UDim{})                                         \
     X(CELL_PADDING_LEFT, "cell-padding-left", UDim, UDIM, UDim{})                                             \
-    X(COLUMN_SEPARATOR_WIDTH, "column-separator-width", float, LENGTH, 1.0f)                                  \
-    X(COLUMN_SEPARATOR_COLOR, "column-separator-color", Color4, COLOR4, Color4(0.3f, 0.3f, 0.3f, 1.0f))       \
+    X(SEPARATOR_WIDTH, "separator-width", float, LENGTH, 1.0f)                                                \
+    X(SEPARATOR_COLOR, "separator-color", Color4, COLOR4, Color4(0.3f, 0.3f, 0.3f, 1.0f))                     \
     X(ROW_BACKGROUND_COLOR, "row-background-color", Color4, COLOR4, Color4(0.18f, 0.18f, 0.2f, 1.0f))         \
     X(ROW_ALTERNATE_COLOR, "row-alternate-color", Color4, COLOR4, Color4(0.22f, 0.22f, 0.24f, 1.0f))          \
     X(ROW_HOVER_COLOR, "row-hover-color", Color4, COLOR4, Color4(0.3f, 0.3f, 0.35f, 1.0f))                    \
@@ -115,14 +115,12 @@
 
 #define AM_TABLE_STYLE_FIELDS(X)                       \
     X(ROW_HEIGHT, rowHeight, float)                    \
-    X(COLUMN_SEPARATOR_WIDTH, columnSeparatorWidth, float) \
-    X(COLUMN_SEPARATOR_COLOR, columnSeparatorColor, Color4) \
+    X(SEPARATOR_WIDTH, separatorWidth, float)          \
+    X(SEPARATOR_COLOR, separatorColor, Color4)         \
     X(HEADER_HEIGHT, headerHeight, float)              \
     X(HEADER_COLOR, headerColor, Color3)               \
     X(ROW_BACKGROUND_COLOR, rowBackgroundColor, Color4) \
-    X(ROW_ALTERNATE_COLOR, rowAlternateColor, Color4)  \
-    X(ROW_HOVER_COLOR, rowHoverColor, Color4)          \
-    X(ROW_SELECTED_COLOR, rowSelectedColor, Color4)
+    X(ROW_ALTERNATE_COLOR, rowAlternateColor, Color4)
 
 #define AM_TREE_VIEW_STYLE_FIELDS(X)                   \
     X(ROW_HEIGHT, rowHeight, float)                    \

@@ -8,12 +8,24 @@
 
 namespace Amethyst {
 
+static constexpr float FALLBACK_ROW_HEIGHT = 24.0f;
+
+static bool s_showColumnSeparators(TableSeparatorMode mode)
+{
+    return mode == TableSeparatorMode::COLUMNS || mode == TableSeparatorMode::BOTH;
+}
+
+static bool s_showRowSeparators(TableSeparatorMode mode)
+{
+    return mode == TableSeparatorMode::ROWS || mode == TableSeparatorMode::BOTH;
+}
+
 Table::Table()
 {
     m_tProps.cellPadding = UDim4{};
-    m_tProps.showColumnSeparators = 1;
-    m_tProps.columnSeparatorWidth = 1.0f;
-    m_tProps.columnSeparatorColor = Color4{0.3f, 0.3f, 0.3f, 1.0f};
+    m_tProps.separatorMode = TableSeparatorMode::COLUMNS;
+    m_tProps.separatorWidth = 1.0f;
+    m_tProps.separatorColor = Color4{0.3f, 0.3f, 0.3f, 1.0f};
     m_tProps.showHeader = 1;
     m_tProps.headerHeight = 28.0f;
     m_tProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
@@ -21,8 +33,6 @@ Table::Table()
     m_tProps.header.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
     m_tProps.rowBackgroundColor = Color4{0.18f, 0.18f, 0.2f, 1.0f};
     m_tProps.rowAlternateColor = Color4{0.22f, 0.22f, 0.24f, 1.0f};
-    m_tProps.rowHoverColor = Color4{0.3f, 0.3f, 0.35f, 1.0f};
-    m_tProps.rowSelectedColor = Color4{0.25f, 0.4f, 0.65f, 1.0f};
 
     resolveStyle();
 }
@@ -41,22 +51,6 @@ bool Table::setTableProperties(const TableStyleProperties &props)
         markDirty();
     }
     return changed;
-}
-
-Table::~Table()
-{
-    for (auto &bg : m_rowBackgrounds) {
-        bg->parent = nullptr;
-    }
-    if (m_headerBackground) {
-        m_headerBackground->parent = nullptr;
-    }
-    for (auto &lbl : m_headerLabels) {
-        lbl->parent = nullptr;
-    }
-    for (auto &sep : m_separators) {
-        sep->parent = nullptr;
-    }
 }
 
 void Table::resizeColumns(uint32_t newCount)
@@ -137,7 +131,7 @@ Instance *Table::nextCell(std::unique_ptr<Instance> child)
 
     uint32_t idx = m_cursorRow * cols + m_cursorCol;
 
-    if (m_cells[idx]) {
+    if (m_cells[idx] != nullptr) {
         removeChild(m_cells[idx]);
         m_cells[idx] = nullptr;
     }
@@ -165,7 +159,7 @@ void Table::setCell(uint32_t row, uint32_t col, std::unique_ptr<Instance> child)
     uint32_t idx = row * cols + col;
     AM_ASSERT(idx < m_cells.size(), "Row index out of bounds");
 
-    if (m_cells[idx]) {
+    if (m_cells[idx] != nullptr) {
         removeChild(m_cells[idx]);
     }
 
@@ -192,7 +186,7 @@ void Table::removeRow(uint32_t row)
 
     for (uint32_t col = 0; col < cols; col++) {
         uint32_t idx = row * cols + col;
-        if (m_cells[idx]) {
+        if (m_cells[idx] != nullptr) {
             removeChild(m_cells[idx]);
             m_cells[idx] = nullptr;
         }
@@ -205,7 +199,15 @@ void Table::removeRow(uint32_t row)
 
 void Table::clear()
 {
-    m_children.clear();
+    for (Instance *cell : m_cells) {
+        if (cell != nullptr) {
+            removeChild(cell);
+        }
+    }
+    for (Frame *bg : m_rowBackgrounds) {
+        removeChild(bg);
+    }
+
     m_cells.clear();
     m_displayOrder.clear();
     m_rowFreelist.clear();
@@ -249,30 +251,71 @@ void Table::rebuildColumnPositions()
     }
 }
 
+void Table::ensureColumnSeparatorCapacity(uint32_t count)
+{
+    while (m_columnSeparators.size() < count) {
+        m_columnSeparators.push_back(add<Frame>());
+    }
+}
+
+void Table::ensureRowSeparatorCapacity(uint32_t count)
+{
+    while (m_rowSeparators.size() < count) {
+        m_rowSeparators.push_back(add<Frame>());
+    }
+}
+
 void Table::updateSeparators()
 {
-    m_separators.clear();
     uint32_t cols = columnCount();
-    if (!m_tProps.showColumnSeparators || cols <= 1) {
-        return;
-    }
+    uint32_t neededColumnSeps = (s_showColumnSeparators(m_tProps.separatorMode) && cols > 1) ? cols - 1 : 0;
+    ensureColumnSeparatorCapacity(neededColumnSeps);
 
-    for (uint32_t i = 0; i < cols - 1; i++) {
+    for (uint32_t i = 0; i < static_cast<uint32_t>(m_columnSeparators.size()); i++) {
+        Frame *sep = m_columnSeparators[i];
+        if (i >= neededColumnSeps) {
+            sep->setBaseProperties({.visible = false});
+            continue;
+        }
+
         float xPos = m_columnPositions[i + 1];
-
-        auto sep = std::make_unique<Frame>();
-        sep->parent = this;
         sep->setBaseStyleProperties({
-            .backgroundColor = Color3(m_tProps.columnSeparatorColor),
-            .backgroundTransparency = 1.0f - m_tProps.columnSeparatorColor.a,
+            .backgroundColor = Color3(m_tProps.separatorColor),
+            .backgroundTransparency = 1.0f - m_tProps.separatorColor.a,
         });
         sep->setBaseProperties({
-            .position = UDim2(0.0f, xPos - m_tProps.columnSeparatorWidth / 2.0f, 0.0f, 0.0f),
-            .size = UDim2(0.0f, m_tProps.columnSeparatorWidth, 1.0f, 0.0f),
+            .position = UDim2(0.0f, xPos - m_tProps.separatorWidth / 2.0f, 0.0f, 0.0f),
+            .size = UDim2(0.0f, m_tProps.separatorWidth, 1.0f, 0.0f),
+            .visible = true,
             .zIndex = getZIndex() + 1,
         });
-        sep->markDirty();
-        m_separators.push_back(std::move(sep));
+    }
+
+    uint32_t rows = rowCount();
+    uint32_t neededRowSeps = (s_showRowSeparators(m_tProps.separatorMode) && rows > 1) ? rows - 1 : 0;
+    ensureRowSeparatorCapacity(neededRowSeps);
+
+    float dataStartY = m_tProps.showHeader ? m_tProps.headerHeight : 0.0f;
+    float rowStride = m_computedRowHeight + m_tProps.separatorWidth;
+
+    for (uint32_t i = 0; i < static_cast<uint32_t>(m_rowSeparators.size()); i++) {
+        Frame *sep = m_rowSeparators[i];
+        if (i >= neededRowSeps) {
+            sep->setBaseProperties({.visible = false});
+            continue;
+        }
+
+        float yPos = dataStartY + static_cast<float>(i) * rowStride + m_computedRowHeight;
+        sep->setBaseStyleProperties({
+            .backgroundColor = Color3(m_tProps.separatorColor),
+            .backgroundTransparency = 1.0f - m_tProps.separatorColor.a,
+        });
+        sep->setBaseProperties({
+            .position = UDim2(0.0f, 0.0f, 0.0f, yPos),
+            .size = UDim2(1.0f, 0.0f, 0.0f, m_tProps.separatorWidth),
+            .visible = true,
+            .zIndex = getZIndex() + 1,
+        });
     }
 }
 
@@ -280,24 +323,19 @@ void Table::ensureHeaderCapacity()
 {
     uint32_t cols = columnCount();
 
-    if (!m_headerBackground) {
-        m_headerBackground = std::make_unique<Frame>();
-        m_headerBackground->parent = this;
+    if (m_headerBackground == nullptr) {
+        m_headerBackground = add<Frame>();
     }
 
     while (m_headerLabels.size() < cols) {
-        auto lbl = std::make_unique<TextLabel>();
-        lbl->parent = this;
-        m_headerLabels.push_back(std::move(lbl));
+        m_headerLabels.push_back(add<TextLabel>());
     }
 }
 
 void Table::ensureRowBackgroundCapacity(uint32_t count)
 {
     while (m_rowBackgrounds.size() < count) {
-        auto frame = std::make_unique<Frame>();
-        frame->parent = this;
-        m_rowBackgrounds.push_back(std::move(frame));
+        m_rowBackgrounds.push_back(add<Frame>());
     }
 }
 
@@ -317,7 +355,7 @@ void Table::drawHeader(DrawContext &ctx, const vec4 &childClip)
     m_headerBackground->draw(ctx);
 
     for (uint32_t col = 0; col < cols; col++) {
-        TextLabel *lbl = m_headerLabels[col].get();
+        TextLabel *lbl = m_headerLabels[col];
         lbl->setBaseStyleProperties({.backgroundTransparency = 1.0f});
         lbl->setBaseProperties({
             .size = UDim2::fromScale(1.0f, 1.0f),
@@ -343,48 +381,52 @@ void Table::drawHeader(DrawContext &ctx, const vec4 &childClip)
 
 void Table::drawSeparators(DrawContext &ctx, const vec4 &childClip)
 {
-    for (auto &sep : m_separators) {
+    for (Frame *sep : m_columnSeparators) {
+        sep->clipRect = childClip;
+        sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+        sep->draw(ctx);
+    }
+    for (Frame *sep : m_rowSeparators) {
         sep->clipRect = childClip;
         sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
         sep->draw(ctx);
     }
 }
 
-void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip)
+void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip,
+                    bool drawBackground)
 {
     uint32_t cols = columnCount();
 
-    Frame *bg = m_rowBackgrounds[visualIndex].get();
-    Color4 bgColor = m_tProps.rowBackgroundColor;
-    if (static_cast<int32_t>(logicalRow) == selectedRow) {
-        bgColor = m_tProps.rowSelectedColor;
-    } else if (static_cast<int32_t>(logicalRow) == hoveredRow) {
-        bgColor = m_tProps.rowHoverColor;
-    } else if (visualIndex % 2 == 1 && m_tProps.rowAlternateColor.a > 0.0f) {
-        bgColor = m_tProps.rowAlternateColor;
-    }
+    if (drawBackground) {
+        Frame *bg = m_rowBackgrounds[visualIndex];
+        Color4 bgColor = m_tProps.rowBackgroundColor;
+        if (visualIndex % 2 == 1 && m_tProps.rowAlternateColor.a > 0.0f) {
+            bgColor = m_tProps.rowAlternateColor;
+        }
 
-    bg->setBaseStyleProperties({
-        .backgroundColor = Color3(bgColor),
-        .backgroundTransparency = 1.0f - bgColor.a,
-    });
-    bg->setBaseProperties({
-        .size = UDim2::fromScale(1.0f, 1.0f),
-        .zIndex = getZIndex(),
-    });
-    bg->clipRect = childClip;
-    bg->markDirty();
-    bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + vec2(0.0f, y), absoluteRotation);
-    bg->draw(ctx);
+        bg->setBaseStyleProperties({
+            .backgroundColor = Color3(bgColor),
+            .backgroundTransparency = 1.0f - bgColor.a,
+        });
+        bg->setBaseProperties({
+            .size = UDim2::fromScale(1.0f, 1.0f),
+            .zIndex = getZIndex(),
+        });
+        bg->clipRect = childClip;
+        bg->markDirty()
+            h bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + vec2(0.0f, y), absoluteRotation);
+        bg->draw(ctx);
+    }
 
     for (uint32_t col = 0; col < cols; col++) {
         Instance *cell = m_cells[logicalRow * cols + col];
-        if (!cell) {
+        if (cell == nullptr) {
             continue;
         }
 
         auto *drawable = cell->as<UIObject>();
-        if (!drawable) {
+        if (drawable == nullptr) {
             continue;
         }
 
@@ -410,16 +452,17 @@ void Table::draw(DrawContext &ctx)
         return;
     }
 
+    m_computedRowHeight = m_tProps.rowHeight > 0.0f ? m_tProps.rowHeight : FALLBACK_ROW_HEIGHT;
+
     if (flags & FLAG_DIRTY) {
         rebuildColumnPositions();
         updateSeparators();
         m_resolvedPadding = m_tProps.cellPadding.resolve(absoluteSize);
     }
 
-    m_computedRowHeight = m_tProps.rowHeight > 0.0f ? m_tProps.rowHeight : 24.0f;
-
     vec4 childClip = computeChildClipRect();
     float dataStartY = m_tProps.showHeader ? m_tProps.headerHeight : 0.0f;
+    float rowStride = m_computedRowHeight + (s_showRowSeparators(m_tProps.separatorMode) ? m_tProps.separatorWidth : 0.0f);
 
     if (m_tProps.showHeader) {
         drawHeader(ctx, childClip);
@@ -427,16 +470,18 @@ void Table::draw(DrawContext &ctx)
 
     drawSeparators(ctx, childClip);
 
+    bool showRowBackgrounds = m_tProps.rowBackgroundColor.a > 0.0f || m_tProps.rowAlternateColor.a > 0.0f;
     uint32_t visibleCount = static_cast<uint32_t>(m_displayOrder.size());
-    ensureRowBackgroundCapacity(visibleCount);
+    uint32_t neededBackgrounds = showRowBackgrounds ? visibleCount : 0;
+    ensureRowBackgroundCapacity(neededBackgrounds);
 
     for (uint32_t vi = 0; vi < visibleCount; vi++) {
-        float rowY = dataStartY + static_cast<float>(vi) * m_computedRowHeight;
-        drawRow(ctx, m_displayOrder[vi], vi, rowY, childClip);
+        float rowY = dataStartY + static_cast<float>(vi) * rowStride;
+        drawRow(ctx, m_displayOrder[vi], vi, rowY, childClip, showRowBackgrounds);
     }
 
-    for (uint32_t i = visibleCount; i < m_rowBackgrounds.size(); i++) {
-        Frame *bg = m_rowBackgrounds[i].get();
+    for (uint32_t i = neededBackgrounds; i < m_rowBackgrounds.size(); i++) {
+        Frame *bg = m_rowBackgrounds[i];
         bg->setBaseProperties({.visible = false});
         bg->draw(ctx);
     }
@@ -447,13 +492,27 @@ void Table::draw(DrawContext &ctx)
 std::vector<Instance *> Table::getHittableInstances()
 {
     std::vector<Instance *> result;
-    result.reserve(m_rowBackgrounds.size() + m_children.size());
+    result.reserve(m_children.size());
 
-    for (auto &bg : m_rowBackgrounds) {
-        result.push_back(bg.get());
+    for (Frame *bg : m_rowBackgrounds) {
+        result.push_back(bg);
     }
-    for (auto &child : m_children) {
-        result.push_back(child.get());
+    if (m_headerBackground != nullptr) {
+        result.push_back(m_headerBackground);
+    }
+    for (TextLabel *lbl : m_headerLabels) {
+        result.push_back(lbl);
+    }
+    for (Frame *sep : m_columnSeparators) {
+        result.push_back(sep);
+    }
+    for (Frame *sep : m_rowSeparators) {
+        result.push_back(sep);
+    }
+    for (Instance *cell : m_cells) {
+        if (cell != nullptr) {
+            result.push_back(cell);
+        }
     }
 
     return result;

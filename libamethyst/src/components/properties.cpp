@@ -195,16 +195,14 @@ bool TableStyleProperties::apply(const TableStyleProperties &src)
     bool changed = false;
     AM_APPLY(rowHeight)
     AM_APPLY(cellPadding)
-    AM_APPLY(showColumnSeparators)
-    AM_APPLY(columnSeparatorWidth)
-    AM_APPLY(columnSeparatorColor)
+    AM_APPLY(separatorMode)
+    AM_APPLY(separatorWidth)
+    AM_APPLY(separatorColor)
     AM_APPLY(showHeader)
     AM_APPLY(headerHeight)
     AM_APPLY(headerColor)
     AM_APPLY(rowBackgroundColor)
     AM_APPLY(rowAlternateColor)
-    AM_APPLY(rowHoverColor)
-    AM_APPLY(rowSelectedColor)
     if (header.apply(src.header)) {
         changed = true;
     }
@@ -451,16 +449,14 @@ TableStyleProperties TableStyleProperties::diff(const TableStyleProperties &base
     TableStyleProperties out;
     AM_DIFF(rowHeight)
     AM_DIFF(cellPadding)
-    AM_DIFF(showColumnSeparators)
-    AM_DIFF(columnSeparatorWidth)
-    AM_DIFF(columnSeparatorColor)
+    AM_DIFF(separatorMode)
+    AM_DIFF(separatorWidth)
+    AM_DIFF(separatorColor)
     AM_DIFF(showHeader)
     AM_DIFF(headerHeight)
     AM_DIFF(headerColor)
     AM_DIFF(rowBackgroundColor)
     AM_DIFF(rowAlternateColor)
-    AM_DIFF(rowHoverColor)
-    AM_DIFF(rowSelectedColor)
     out.header = header.diff(base.header);
     return out;
 }

@@ -15,6 +15,8 @@ namespace Amethyst {
 
 using Degrees = float;
 using am_bool = int8_t;
+static_assert(static_cast<bool>(am_bool{0}) == false, "am_bool: 0 must convert to false");
+static_assert(static_cast<bool>(am_bool{1}) == true, "am_bool: a positive value must convert to true");
 
 /**
  * @brief Opaque texture handle for bindless textures.
@@ -323,6 +325,14 @@ enum class DragMode {
     VERTICAL,
     SOFT_HORIZONTAL,
     SOFT_VERTICAL,
+};
+
+enum class TableSeparatorMode {
+    NONE,
+    OFF,
+    ROWS,
+    COLUMNS,
+    BOTH,
 };
 
 /**

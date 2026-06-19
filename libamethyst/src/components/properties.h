@@ -122,6 +122,10 @@ inline bool propIsSet(DragMode v)
 {
     return v != DragMode::NONE;
 }
+inline bool propIsSet(TableSeparatorMode v)
+{
+    return v != TableSeparatorMode::NONE;
+}
 
 struct BaseProperties {
     am_bool active = PROP_UNSET_BOOL;
@@ -301,17 +305,15 @@ struct TextInputStyleProperties {
 struct TableStyleProperties {
     float rowHeight = PROP_UNSET_FLOAT;
     UDim4 cellPadding = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
-    am_bool showColumnSeparators = PROP_UNSET_BOOL;
-    float columnSeparatorWidth = PROP_UNSET_FLOAT;
-    Color4 columnSeparatorColor = Color4(PROP_UNSET_FLOAT);
+    TableSeparatorMode separatorMode = TableSeparatorMode::NONE;
+    float separatorWidth = PROP_UNSET_FLOAT;
+    Color4 separatorColor = Color4(PROP_UNSET_FLOAT);
     am_bool showHeader = PROP_UNSET_BOOL;
     float headerHeight = PROP_UNSET_FLOAT;
     Color3 headerColor = Color3(PROP_UNSET_FLOAT);
     TextStyleProperties header{};
     Color4 rowBackgroundColor = Color4(PROP_UNSET_FLOAT);
     Color4 rowAlternateColor = Color4(PROP_UNSET_FLOAT);
-    Color4 rowHoverColor = Color4(PROP_UNSET_FLOAT);
-    Color4 rowSelectedColor = Color4(PROP_UNSET_FLOAT);
 
     bool apply(const TableStyleProperties &src);
     TableStyleProperties diff(const TableStyleProperties &base) const;

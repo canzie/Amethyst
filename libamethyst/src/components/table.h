@@ -40,7 +40,6 @@ struct TableColumn {
 class Table : public UIObject {
   public:
     Table();
-    virtual ~Table();
 
     void draw(DrawContext &ctx) override;
     void resolveStyle() override;
@@ -135,19 +134,13 @@ class Table : public UIObject {
     void sort(std::function<bool(uint32_t rowA, uint32_t rowB)> comparator);
 
     /**
-     * @brief Collect all hittable instances (row backgrounds, header, cells)
+     * @brief Collect hittable instances with cells last, so they win z-index ties against the row background
      * @return Vector of non-owning pointers to hittable instances
      */
     std::vector<Instance *> getHittableInstances() override;
 
     bool setTableProperties(const TableStyleProperties &props);
     const TableStyleProperties &getTableProperties() const { return m_tProps; }
-
-  public:
-    int32_t hoveredRow = -1;
-    int32_t selectedRow = -1;
-
-    std::function<void(uint32_t row)> onRowClicked;
 
   protected:
     TableStyleProperties m_tProps;
@@ -157,9 +150,11 @@ class Table : public UIObject {
     void updateSeparators();
     void ensureHeaderCapacity();
     void ensureRowBackgroundCapacity(uint32_t count);
+    void ensureColumnSeparatorCapacity(uint32_t count);
+    void ensureRowSeparatorCapacity(uint32_t count);
     void drawHeader(DrawContext &ctx, const vec4 &childClip);
     void drawSeparators(DrawContext &ctx, const vec4 &childClip);
-    void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip);
+    void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip, bool drawBackground);
 
     std::vector<TableColumn> m_columns;
 
@@ -180,10 +175,11 @@ class Table : public UIObject {
     vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f};
     std::vector<float> m_columnPositions;
 
-    std::vector<std::unique_ptr<Frame>> m_separators;
-    std::vector<std::unique_ptr<Frame>> m_rowBackgrounds;
-    std::unique_ptr<Frame> m_headerBackground;
-    std::vector<std::unique_ptr<TextLabel>> m_headerLabels;
+    std::vector<Frame *> m_columnSeparators;
+    std::vector<Frame *> m_rowSeparators;
+    std::vector<Frame *> m_rowBackgrounds;
+    Frame *m_headerBackground = nullptr;
+    std::vector<TextLabel *> m_headerLabels;
 };
 
 } // namespace Amethyst

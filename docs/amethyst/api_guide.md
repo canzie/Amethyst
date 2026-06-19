@@ -234,7 +234,7 @@ Type names (kebab, singular): `ui-object` (the global/base), `ui-button`, `ui-la
 border-mode, corner-radius, padding (+ -top/-right/-bottom/-left), font-family, font-size, text-color,
 text-x-alignment, text-y-alignment, line-height, stroke-thickness, stroke-color, scrollbar-color,
 scrollbar-transparency, scrollbar-thickness, scrollbar-thumb-color, scrollbar-thumb-transparency,
-row-height, cell-padding (+ sides), column-separator-width, column-separator-color,
+row-height, cell-padding (+ sides), separator-width, separator-color,
 row-background-color, row-alternate-color, row-hover-color, row-selected-color, indent-per-level,
 disclosure-triangle-size, disclosure-triangle-padding, disclosure-triangle-color, slider-color,
 slider-transparency, thumb-color, thumb-transparency, track-corner-radius, thumb-corner-radius,
