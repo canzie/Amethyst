@@ -11,9 +11,7 @@ namespace Amethyst {
 
 Instance::~Instance()
 {
-    if (onDestroy) {
-        onDestroy(this);
-    }
+    onDestroy.fire(this);
     for (auto &child : m_children) {
         child->parent = nullptr;
     }

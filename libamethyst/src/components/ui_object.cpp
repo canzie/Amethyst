@@ -32,7 +32,7 @@ UIObject::UIObject()
     m_uiObjProps.rotation = 0.0f;
     m_uiObjProps.visible = true;
     m_uiObjProps.zIndex = 1;
-    m_uiObjProps.zindexBehavior = ZIndexBehavior::SIBLING;
+    m_uiObjProps.zindexBehavior = ZIndexBehavior::GLOBAL;
 
     m_baseStyle.backgroundColor = Color3{1.0f, 1.0f, 1.0f};
     m_baseStyle.backgroundTransparency = 0.0f;

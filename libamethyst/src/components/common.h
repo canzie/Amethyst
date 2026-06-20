@@ -289,6 +289,13 @@ enum class DropdownDirection {
     RIGHT,
 };
 
+enum class PopupPlacement {
+    BELOW,
+    ABOVE,
+    LEFT,
+    RIGHT,
+};
+
 enum class TabBarMode {
     NONE,
     INSIDE,

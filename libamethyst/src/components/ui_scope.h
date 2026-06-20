@@ -28,6 +28,7 @@ class ImageButton;
 class ImageLabel;
 class InvisibleButton;
 class NumberInput;
+class Popup;
 class ScrollingFrame;
 class SliderFloat;
 class SliderInt;
@@ -43,6 +44,7 @@ struct Color4PickerScope;
 struct DropdownScope;
 struct MenuBarScope;
 struct FrameScope;
+struct PopupScope;
 struct ScrollingFrameScope;
 struct SliderFloatScope;
 struct SliderIntScope;
@@ -71,6 +73,7 @@ class UIScope {
     UIScope &dropdown(DropdownProperties props = {}, std::function<void(DropdownScope &)> fn = {});
     UIScope &menuBar(MenuBarProperties props = {}, std::function<void(MenuBarScope &)> fn = {});
     UIScope &frame(FrameProperties props = {}, std::function<void(FrameScope &)> fn = {});
+    UIScope &popup(PopupProperties props = {}, std::function<void(PopupScope &)> fn = {});
     UIScope &scrollingFrame(ScrollingFrameProperties props = {}, std::function<void(ScrollingFrameScope &)> fn = {});
     UIScope &textLabel(TextLabelProperties props = {}, std::function<void(TextLabelScope &)> fn = {});
     UIScope &textButton(TextButtonProperties props = {}, std::function<void(TextButtonScope &)> fn = {});
@@ -105,6 +108,11 @@ struct CanvasScope : UIScope {
 struct FrameScope : UIScope {
     Frame &component;
     explicit FrameScope(Frame &f);
+};
+
+struct PopupScope : UIScope {
+    Popup &component;
+    explicit PopupScope(Popup &p);
 };
 
 struct ScrollingFrameScope : UIScope {

@@ -5,6 +5,7 @@
 #ifndef AMETHYST__POPUP_H
 #define AMETHYST__POPUP_H
 
+#include "components/common.h"
 #include "components/frame.h"
 #include "math/math.h"
 #include "modules/event_signal.h"
@@ -12,13 +13,6 @@
 #include <functional>
 
 namespace Amethyst {
-
-enum class PopupPlacement {
-    BELOW,
-    ABOVE,
-    LEFT,
-    RIGHT,
-};
 
 class Popup : public Frame {
   public:

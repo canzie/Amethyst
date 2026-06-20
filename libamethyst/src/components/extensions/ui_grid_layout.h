@@ -31,6 +31,10 @@ class UIGridLayout : public UIExtension {
     StartCorner startCorner;
     uint32_t fillDirectionMaxCells = 0; // 0=auto,
 
+    bool flexCells = false;
+    float maxCellWidth = 0.0f;
+    float cellAspectRatio = 0.0f;
+
   private:
     vec2 m_absoluteCellSize;
 };

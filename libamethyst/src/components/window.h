@@ -9,6 +9,7 @@
 #include "components/overlay_layer.h"
 #include "components/ui_layer.h"
 #include "math/math.h"
+#include "modules/event_signal.h"
 #include "utils/free_list.h"
 #include <array>
 #include <cstdint>
@@ -88,6 +89,7 @@ class Window : public UILayer {
     HoverStack m_hoverCurrent;
     HoverStack m_hoverPrevious;
     UIObject *m_mouseCapturedBy = nullptr;
+    EventConnection m_mouseCapturedByConn;
     std::unique_ptr<OverlayLayer> m_overlayLayer;
     FreeList<std::function<void(float)>> m_tickCallbacks;
 };

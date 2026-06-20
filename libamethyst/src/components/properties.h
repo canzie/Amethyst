@@ -432,9 +432,20 @@ struct InvisibleButtonProperties {
     BaseProperties base{};
 };
 
+struct PopupProperties {
+    std::vector<std::string> classes{};
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    PopupPlacement placement = PopupPlacement::BELOW;
+    vec2 offset = vec2(0.0f);
+    bool matchAnchorWidth = false;
+    bool closeOnClickOutside = true;
+};
+
 struct CheckboxProperties {
     std::vector<std::string> classes{};
     BaseProperties base{};
+    BaseStyleProperties style{};
     CheckboxStyleProperties checkbox{};
     bool *value = nullptr;
 };

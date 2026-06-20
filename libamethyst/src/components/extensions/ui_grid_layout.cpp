@@ -9,26 +9,28 @@ namespace Amethyst {
 
 void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
 {
-    std::vector<Instance *> sortedChildren;
-    sortedChildren.reserve(children.size());
-    for (auto &c : children) sortedChildren.push_back(c.get());
-    std::sort(sortedChildren.begin(), sortedChildren.end(), [this](Instance *a, Instance *b) {
-        auto *aObj = a->as<UIObject>();
-        auto *bObj = b->as<UIObject>();
-
-        if (aObj && bObj) {
-            switch (sortOrder) {
-            case SortOrder::SORT_LAYOUT_ORDER:
-                return aObj->getBaseProperties().layoutOrder < bObj->getBaseProperties().layoutOrder;
-            case SortOrder::SORT_NAME:
-                return a->name < b->name;
-            };
+    std::vector<UIObject *> items;
+    items.reserve(children.size());
+    for (auto &c : children) {
+        auto *obj = c->as<UIObject>();
+        if (obj != nullptr && obj->getBaseProperties().visible != 0) {
+            items.push_back(obj);
         }
+    }
 
+    if (items.empty()) return;
+
+    std::sort(items.begin(), items.end(), [this](UIObject *a, UIObject *b) {
+        switch (sortOrder) {
+        case SortOrder::SORT_LAYOUT_ORDER:
+            return a->getBaseProperties().layoutOrder < b->getBaseProperties().layoutOrder;
+        case SortOrder::SORT_NAME:
+            return a->name < b->name;
+        }
         return false;
     });
 
-    if (sortedChildren.empty()) return;
+    uint32_t visibleCount = static_cast<uint32_t>(items.size());
 
     vec2 containerSize = m_owner->absoluteContentSize;
     m_absoluteCellSize = cellSize.resolve(containerSize);
@@ -52,11 +54,27 @@ void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
         if (maxCells == 0) maxCells = 1;
     }
 
-    size_t childIndex = 0;
-    for (auto child : sortedChildren) {
-        auto *obj = child->as<UIObject>();
-        if (obj == nullptr) continue;
-        if (obj->getBaseProperties().visible == 0) continue;
+    if (flexCells && !isVertical) {
+        float minW = m_absoluteCellSize.x;
+        uint32_t cols = std::max(1u, maxCells);
+        float cellW = (containerSize.x - (cols - 1) * absCellPadding.x) / cols;
+        if (maxCellWidth > 0.0f) {
+            while (cellW > maxCellWidth) {
+                float next = (containerSize.x - cols * absCellPadding.x) / (cols + 1);
+                if (next < minW) break;
+                cols++;
+                cellW = next;
+            }
+        }
+        maxCells = cols;
+        m_absoluteCellSize.x = cellW;
+        if (cellAspectRatio > 0.0f) {
+            m_absoluteCellSize.y = cellW / cellAspectRatio;
+        }
+    }
+
+    for (size_t childIndex = 0; childIndex < items.size(); childIndex++) {
+        UIObject *obj = items[childIndex];
 
         uint32_t mainIndex = childIndex % maxCells;
         uint32_t crossIndex = childIndex / maxCells;
@@ -94,9 +112,14 @@ void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
         switch (horizontalAlignment) {
         case HorizontalAlignment::ALIGN_LEFT:
             break;
-        case HorizontalAlignment::ALIGN_CENTER_H:
-            alignOffsetX = (m_owner->absoluteContentSize.x - m_absoluteCellSize.x) / 2.0f;
+        case HorizontalAlignment::ALIGN_CENTER_H: {
+            // Center the whole row block, not a single cell, so leftover space splits evenly
+            // instead of pooling on the right.
+            uint32_t cellsInRow = isVertical ? 1u : std::min<uint32_t>(maxCells, visibleCount - crossIndex * maxCells);
+            float rowWidth = cellsInRow * m_absoluteCellSize.x + (cellsInRow > 1 ? cellsInRow - 1 : 0) * absCellPadding.x;
+            alignOffsetX = (containerSize.x - rowWidth) / 2.0f;
             break;
+        }
         case HorizontalAlignment::ALIGN_RIGHT:
             alignOffsetX = m_owner->absoluteContentSize.x - m_absoluteCellSize.x;
             break;
@@ -106,9 +129,7 @@ void UIGridLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
             .position = UDim2::fromOffset(cellX + alignOffsetX, cellY + alignOffsetY),
             .size = UDim2::fromOffset(m_absoluteCellSize.x, m_absoluteCellSize.y),
         });
-        child->markDirty();
-
-        childIndex++;
+        obj->markDirty();
     }
 }
 

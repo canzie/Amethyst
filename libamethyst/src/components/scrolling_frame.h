@@ -20,6 +20,7 @@ class ScrollingFrame : public UIObject {
     virtual ~ScrollingFrame() = default;
 
     void draw(DrawContext &ctx) override;
+    void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation) override;
     void resolveStyle() override;
     Instance *addChild(std::unique_ptr<Instance> child) override;
     std::unique_ptr<Instance> removeChild(Instance *child) override;

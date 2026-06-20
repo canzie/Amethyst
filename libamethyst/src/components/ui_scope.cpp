@@ -13,6 +13,7 @@
 #include "components/invisible_button.h"
 #include "components/menu_bar.h"
 #include "components/number_input.h"
+#include "components/popup.h"
 #include "components/scrolling_frame.h"
 #include "components/slider.h"
 #include "components/tab_bar.h"
@@ -27,6 +28,7 @@ CanvasScope::CanvasScope(Canvas &c) : UIScope(c), component(c) {}
 DropdownScope::DropdownScope(Dropdown &d) : component(d) {}
 MenuBarScope::MenuBarScope(MenuBar &mb) : UIScope(mb), component(mb) {}
 FrameScope::FrameScope(Frame &f) : UIScope(f), component(f) {}
+PopupScope::PopupScope(Popup &p) : UIScope(p), component(p) {}
 TabScope::TabScope(Frame &lf, Frame &cf) : labelFrame(lf), contentFrame(cf) {}
 ScrollingFrameScope::ScrollingFrameScope(ScrollingFrame &sf) : UIScope(sf), component(sf) {}
 TabBarScope::TabBarScope(TabBar &tb) : UIScope(tb), component(tb) {}
@@ -107,6 +109,25 @@ UIScope &UIScope::frame(FrameProperties props, std::function<void(FrameScope &)>
     f->setBaseStyleProperties(props.style);
     if (fn) {
         FrameScope scope(*f);
+        fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::popup(PopupProperties props, std::function<void(PopupScope &)> fn)
+{
+    auto *p = m_parent->add<Popup>();
+    if (!props.classes.empty()) {
+        p->setClasses(props.classes);
+    }
+    p->setBaseProperties(props.base);
+    p->setBaseStyleProperties(props.style);
+    p->placement = props.placement;
+    p->offset = props.offset;
+    p->matchAnchorWidth = props.matchAnchorWidth;
+    p->closeOnClickOutside = props.closeOnClickOutside;
+    if (fn) {
+        PopupScope scope(*p);
         fn(scope);
     }
     return *this;
@@ -229,6 +250,7 @@ UIScope &UIScope::checkbox(CheckboxProperties props, std::function<void(Checkbox
         cb->setClasses(props.classes);
     }
     cb->setBaseProperties(props.base);
+    cb->setBaseStyleProperties(props.style);
     cb->setCheckboxProperties(props.checkbox);
     cb->value = props.value;
     if (fn) {

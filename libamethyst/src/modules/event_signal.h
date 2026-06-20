@@ -6,7 +6,6 @@
 #include <map>
 #include <memory>
 
-
 namespace Amethyst {
 
 template <typename> class EventSignal;
@@ -127,6 +126,17 @@ template <typename... Args> class EventSignal<void(Args...)> : public EventSigna
         uint32_t id = m_nextId++;
         m_slots.emplace(id, Slot{std::move(func), true});
         return EventConnection(this, id, m_alive);
+    }
+
+    /**
+     * @brief Subscribes a one-shot callback owned by the signal. No connection is
+     * returned to manage; the slot is removed after it fires or when the signal dies.
+     * Use when the subscriber has no safe lifetime to hold an EventConnection.
+     * @param func The callback to subscribe.
+     */
+    void detachedOnce(std::function<void(Args...)> func)
+    {
+        m_slots.emplace(m_nextId++, Slot{std::move(func), true});
     }
 
     /**

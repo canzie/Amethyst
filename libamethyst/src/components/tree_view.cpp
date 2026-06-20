@@ -402,7 +402,7 @@ void TreeView::drawHeader(DrawContext &ctx, const vec4 &childClip)
         .backgroundColor = m_tvProps.headerColor,
         .backgroundTransparency = 0.0f,
     });
-    m_headerBackground->setBaseProperties({.zIndex = getZIndex()});
+    m_headerBackground->setBaseProperties({.visible = true, .zIndex = getZIndex()});
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_tvProps.headerHeight}, absolutePosition, absoluteRotation);
@@ -413,6 +413,7 @@ void TreeView::drawHeader(DrawContext &ctx, const vec4 &childClip)
         lbl->setBaseStyleProperties({.backgroundTransparency = 1.0f});
         lbl->setBaseProperties({
             .size = UDim2::fromScale(1.0f, 1.0f),
+            .visible = true,
             .zIndex = getZIndex() + 1,
         });
         lbl->setTextStyleProperties({
@@ -436,6 +437,7 @@ void TreeView::drawHeader(DrawContext &ctx, const vec4 &childClip)
 void TreeView::drawSeparators(DrawContext &ctx, const vec4 &childClip)
 {
     for (auto &sep : m_separators) {
+        sep->setBaseProperties({.visible = true});
         sep->clipRect = childClip;
         sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
         sep->draw(ctx);
@@ -556,6 +558,27 @@ void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot,
 
 void TreeView::draw(DrawContext &ctx)
 {
+    if (!isVisible()) {
+        for (uint32_t slot = 0; slot < m_rowBackgrounds.size(); slot++) {
+            hideSlot(ctx, slot);
+        }
+        if (m_headerBackground != nullptr && m_headerBackground->setBaseProperties({.visible = false})) {
+            m_headerBackground->draw(ctx);
+        }
+        for (auto &lbl : m_headerLabels) {
+            if (lbl->setBaseProperties({.visible = false})) {
+                lbl->draw(ctx);
+            }
+        }
+        for (auto &sep : m_separators) {
+            if (sep->setBaseProperties({.visible = false})) {
+                sep->draw(ctx);
+            }
+        }
+        flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+        return;
+    }
+
     if (absolutePosition != m_lastAbsolutePosition || absoluteSize != m_lastAbsoluteSize) {
         flags |= FLAG_DIRTY;
         m_lastAbsolutePosition = absolutePosition;

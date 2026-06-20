@@ -6,6 +6,7 @@
 #define AMETHYST__INSTANCE_H
 
 #include "math/math.h"
+#include "modules/event_signal.h"
 #include <concepts>
 #include <cstdint>
 #include <functional>
@@ -79,7 +80,7 @@ class Instance {
     uint8_t flags = FLAG_NONE;
     std::string name;
     Instance *parent = nullptr;
-    std::function<void(Instance *)> onDestroy;
+    EventSignal<void(Instance *)> onDestroy;
 
   protected:
     std::vector<std::unique_ptr<Instance>> m_children;

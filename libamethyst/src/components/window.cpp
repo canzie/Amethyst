@@ -1,7 +1,3 @@
-/*
- * Window implementation
- */
-
 #include "components/window.h"
 
 #include <algorithm>
@@ -244,16 +240,12 @@ void Window::onMouseMove(int32_t x, int32_t y)
     for (int i = m_hoverPrevious.count - 1; i >= common; --i) {
         UIObject *obj = m_hoverPrevious.items[i];
         obj->onMouseLeave();
-        if (obj != m_mouseCapturedBy) {
-            obj->onDestroy = nullptr;
-        }
     }
 
     for (uint8_t i = common; i < m_hoverCurrent.count; ++i) {
         UIObject *obj = m_hoverCurrent.items[i];
         if (obj != m_mouseCapturedBy) {
-            // TODO: replace with signal connection when signal/event system is implemented
-            obj->onDestroy = [this](Instance *dead) { this->purgeFromHoverStacks(dead); };
+            obj->onDestroy.detachedOnce([this](Instance *dead) { this->purgeFromHoverStacks(dead); });
         }
         obj->onMouseEnter();
     }
@@ -267,36 +259,27 @@ void Window::onMouseMove(int32_t x, int32_t y)
 
 void Window::captureMouse(UIObject *object)
 {
-    if (m_mouseCapturedBy) {
-        m_mouseCapturedBy->onDestroy = nullptr;
+    if (m_mouseCapturedBy == object) {
+        return;
     }
 
+    m_mouseCapturedByConn.disconnect();
     m_mouseCapturedBy = object;
 
-    if (m_mouseCapturedBy) {
-        // TODO: replace with signal connection when signal/event system is implemented
-        m_mouseCapturedBy->onDestroy = [this](Instance *dead) {
+    if (object != nullptr) {
+        m_mouseCapturedByConn = object->onDestroy.once([this](Instance *dead) {
             if (this->m_mouseCapturedBy == dead) {
                 this->m_mouseCapturedBy = nullptr;
             }
             this->purgeFromHoverStacks(dead);
-        };
+        });
     }
 }
 
 void Window::releaseMouse(UIObject *object)
 {
     if (m_mouseCapturedBy == object) {
-        if (m_mouseCapturedBy) {
-            m_mouseCapturedBy->onDestroy = nullptr;
-            for (uint8_t i = 0; i < m_hoverCurrent.count; ++i) {
-                if (m_hoverCurrent.items[i] == object) {
-                    // TODO: replace with signal connection when signal/event system is implemented
-                    object->onDestroy = [this](Instance *dead) { this->purgeFromHoverStacks(dead); };
-                    break;
-                }
-            }
-        }
+        m_mouseCapturedByConn.disconnect();
         m_mouseCapturedBy = nullptr;
     }
 }
