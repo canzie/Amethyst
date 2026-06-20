@@ -1,6 +1,7 @@
 #include "amethyst/Amethyst.h"
 #include "amethyst__vk13_glfw.h"
 #include "components/canvas.h"
+#include "components/checkbox.h"
 #include "components/common.h"
 #include "components/tree_view.h"
 #include "components/ui_scope.h"
@@ -71,6 +72,7 @@ int main()
 
     float sliderFloatValue = 50.0f;
     int sliderIntValue = 3;
+    bool checkboxValue = true;
 
     Amethyst::UIScope(window)
         // --- Draggable frames ---
@@ -221,6 +223,28 @@ int main()
             .min = 0,
             .max = 5,
             .value = &sliderIntValue,
+        })
+        // --- Checkbox ---
+        .checkbox(
+            {
+                .base = {
+                    .position = Amethyst::UDim2::fromOffset(10, 250),
+                    .size = Amethyst::UDim2::fromOffset(24, 24),
+                },
+                .value = &checkboxValue,
+            },
+            [&](Amethyst::CheckboxScope &cb) {
+                cb.component.name = "Enable Feature";
+                cb.component.onValueChanged = [](bool v) { AM_LOG_INFO("Enabled: {}", v); };
+            })
+        .textLabel({
+            .base = {
+                .position = Amethyst::UDim2::fromOffset(44, 250),
+                .size = Amethyst::UDim2::fromOffset(200, 24),
+            },
+            .style = {.backgroundTransparency = 1.0f},
+            .text = {.fontSize = 14.0f, .textColor = {0.9f, 0.9f, 0.9f, 1.0f}, .textYAlignment = Amethyst::TextYAlignment::CENTER},
+            .label = "Enable Feature",
         })
         // --- Scrolling frame with grid ---
         .scrollingFrame(

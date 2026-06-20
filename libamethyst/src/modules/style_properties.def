@@ -51,9 +51,7 @@
     X(THUMB_COLOR, "thumb-color", Color3, COLOR3, Color3(0.8f))                                               \
     X(THUMB_TRANSPARENCY, "thumb-transparency", float, RATIO, 0.0f)                                           \
     X(THUMB_CORNER_RADIUS, "thumb-corner-radius", float, LENGTH, 0.0f)                                        \
-    X(CHECK_COLOR, "check-color", Color3, COLOR3, Color3(0.0f, 0.0f, 0.0f))                                   \
-    X(CHECK_TRANSPARENCY, "check-transparency", float, RATIO, 0.0f)                                           \
-    X(CHECKBOX_SIZE, "checkbox-size", float, LENGTH, 20.0f)                                                   \
+    X(CHECK_COLOR, "check-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                                   \
     X(HIGHLIGHT_COLOR, "highlight-color", Color3, COLOR3, Color3(0.7f, 0.7f, 0.9f))                           \
     X(HIGHLIGHT_TRANSPARENCY, "highlight-transparency", float, RATIO, 0.0f)                                   \
     X(TAB_WIDTH, "tab-width", float, LENGTH, 100.0f)                                                          \
@@ -134,9 +132,7 @@
     X(ROW_SELECTED_COLOR, rowSelectedColor, Color4)
 
 #define AM_CHECKBOX_STYLE_FIELDS(X)         \
-    X(CHECK_COLOR, checkColor, Color3)      \
-    X(CHECK_TRANSPARENCY, checkTransparency, float) \
-    X(CHECKBOX_SIZE, checkboxSize, float)
+    X(CHECK_COLOR, checkColor, Color4)      \
 
 #define AM_COLLAPSIBLE_HEADER_STYLE_FIELDS(X)          \
     X(HEADER_HEIGHT, headerHeight, float)              \

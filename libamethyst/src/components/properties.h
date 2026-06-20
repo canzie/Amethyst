@@ -216,9 +216,7 @@ struct ScrollingFrameStyleProperties {
 };
 
 struct CheckboxStyleProperties {
-    Color3 checkColor = Color3(PROP_UNSET_FLOAT);
-    float checkTransparency = PROP_UNSET_FLOAT;
-    float checkboxSize = PROP_UNSET_FLOAT;
+    Color4 checkColor = Color4(PROP_UNSET_FLOAT);
 
     bool apply(const CheckboxStyleProperties &src);
     CheckboxStyleProperties diff(const CheckboxStyleProperties &base) const;
@@ -438,6 +436,7 @@ struct CheckboxProperties {
     std::vector<std::string> classes{};
     BaseProperties base{};
     CheckboxStyleProperties checkbox{};
+    bool *value = nullptr;
 };
 
 struct CollapsibleHeaderProperties {
@@ -458,6 +457,7 @@ struct TabBarProperties {
 struct TableProperties {
     std::vector<std::string> classes{};
     BaseProperties base{};
+    BaseStyleProperties style{};
     TableStyleProperties table{};
 };
 

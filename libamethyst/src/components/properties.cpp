@@ -103,8 +103,6 @@ bool CheckboxStyleProperties::apply(const CheckboxStyleProperties &src)
 {
     bool changed = false;
     AM_APPLY(checkColor)
-    AM_APPLY(checkTransparency)
-    AM_APPLY(checkboxSize)
     return changed;
 }
 
@@ -361,8 +359,6 @@ CheckboxStyleProperties CheckboxStyleProperties::diff(const CheckboxStylePropert
 {
     CheckboxStyleProperties out;
     AM_DIFF(checkColor)
-    AM_DIFF(checkTransparency)
-    AM_DIFF(checkboxSize)
     return out;
 }
 

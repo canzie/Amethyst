@@ -230,6 +230,7 @@ UIScope &UIScope::checkbox(CheckboxProperties props, std::function<void(Checkbox
     }
     cb->setBaseProperties(props.base);
     cb->setCheckboxProperties(props.checkbox);
+    cb->value = props.value;
     if (fn) {
         CheckboxScope scope(*cb);
         fn(scope);
@@ -277,6 +278,7 @@ UIScope &UIScope::table(TableProperties props, std::function<void(TableScope &)>
         t->setClasses(props.classes);
     }
     t->setBaseProperties(props.base);
+    t->setBaseStyleProperties(props.style);
     t->setTableProperties(props.table);
     if (fn) {
         TableScope scope(*t);
