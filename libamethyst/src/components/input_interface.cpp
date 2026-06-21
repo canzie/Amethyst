@@ -39,6 +39,21 @@ void InputInterface::setMousePosition(int32_t x, int32_t y)
 
 void InputInterface::onMouseButton(int button, int action, int mods)
 {
+    if (action == MOUSE_ACTION_PRESS) {
+        auto now = std::chrono::steady_clock::now();
+        vec2 pos(static_cast<float>(s_mouseX), static_cast<float>(s_mouseY));
+        float elapsedMs = std::chrono::duration<float, std::milli>(now - s_lastClickTime).count();
+        if (button == s_lastClickButton && elapsedMs <= s_doubleClickIntervalMs &&
+            length(pos - s_lastClickPos) <= DOUBLE_CLICK_DISTANCE) {
+            mods |= MOD_DOUBLE_CLICK;
+            s_lastClickButton = -1;
+        } else {
+            s_lastClickButton = button;
+        }
+        s_lastClickTime = now;
+        s_lastClickPos = pos;
+    }
+
     s_modifiers = mods;
     for (Window *window : s_windows) {
         window->onMouseButton(button, action, mods, s_mouseX, s_mouseY);

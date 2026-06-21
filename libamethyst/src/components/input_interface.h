@@ -6,7 +6,9 @@
 #define AMETHYST__INPUT_INTERFACE_H
 
 #include "components/input_events.h"
+#include "math/math.h"
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -55,6 +57,14 @@ class InputInterface {
     static void setCursorLocked(bool locked);
     static bool isCursorLocked() { return s_cursorLocked; }
 
+    /**
+     * @brief Set the maximum time between two presses of the same mouse button for them to
+     * count as a double click.
+     * @param milliseconds Maximum gap between presses to count as a double click
+     */
+    static void setDoubleClickInterval(float milliseconds) { s_doubleClickIntervalMs = milliseconds; }
+    static float getDoubleClickInterval() { return s_doubleClickIntervalMs; }
+
     static bool pollKeyEvent(KeyEvent &outEvent);
     static bool pollCharEvent(uint32_t &outCodepoint);
     static void clearKeyEvents();
@@ -72,6 +82,7 @@ class InputInterface {
   private:
     static constexpr size_t KEY_BUFFER_SIZE = 256;
     static constexpr size_t CHAR_BUFFER_SIZE = 256;
+    static constexpr float DOUBLE_CLICK_DISTANCE = 4.0f;
 
     static inline std::vector<Window *> s_windows;
     static inline int32_t s_mouseX = 0;
@@ -80,6 +91,11 @@ class InputInterface {
     static inline CursorShape s_currentCursorShape = CursorShape::CURSOR_ARROW;
     static inline bool s_cursorLocked = false;
     static inline bool isWindowFocussed = false;
+
+    static inline float s_doubleClickIntervalMs = 300.0f;
+    static inline std::chrono::steady_clock::time_point s_lastClickTime{};
+    static inline vec2 s_lastClickPos{};
+    static inline int s_lastClickButton = -1;
 
     static inline std::array<KeyEvent, KEY_BUFFER_SIZE> s_keyBuffer;
     static inline size_t s_keyBufferHead = 0;

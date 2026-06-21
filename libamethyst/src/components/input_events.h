@@ -57,6 +57,7 @@ enum KeyModifier {
     MOD_CONTROL = 0x0002,
     MOD_ALT = 0x0004,
     MOD_SUPER = 0x0008,
+    MOD_DOUBLE_CLICK = 0x0010,
 };
 
 struct MouseEvent {
@@ -121,7 +122,7 @@ struct InputObject {
     vec3 position{0.0f, 0.0f, 0.0f};
     vec3 delta{0.0f, 0.0f, 0.0f};
     int keyCode = 0;
-    int modifiers = 0; // bitmask of KeyModifier (MOD_SHIFT/MOD_CONTROL/MOD_ALT/MOD_SUPER)
+    int modifiers = 0; // bitmask of KeyModifier (MOD_SHIFT/MOD_CONTROL/MOD_ALT/MOD_SUPER/MOD_DOUBLE_CLICK)
 };
 
 } // namespace Amethyst
