@@ -177,7 +177,7 @@ void ContextMenu::buildContent(Popup *popup, const std::vector<size_t> &path)
         .zIndex = POPUP_ZINDEX,
     });
 
-    Instance *container = popup;
+    UIObject *container = popup;
     if (totalHeight > visibleHeight + 0.5f) {
         popup->removeExtension<UIListLayout>();
         auto *sf = popup->add<ScrollingFrame>();

@@ -1,34 +1,8 @@
 #include "components/dropdown.h"
 
-#include "components/context_menu_item.h"
-#include "components/extensions/ui_list_layout.h"
-#include "components/frame.h"
-#include "components/overlay_layer.h"
-#include "components/popup.h"
-#include "components/scrolling_frame.h"
-#include "components/window.h"
-
-#include "math/math.h"
-#include <algorithm>
 #include <climits>
 
 namespace Amethyst {
-
-#define POPUP_ZINDEX 10
-
-static PopupPlacement s_placementFor(DropdownDirection dir)
-{
-    switch (dir) {
-    case DropdownDirection::UP:
-        return PopupPlacement::ABOVE;
-    case DropdownDirection::LEFT:
-        return PopupPlacement::LEFT;
-    case DropdownDirection::RIGHT:
-        return PopupPlacement::RIGHT;
-    default:
-        return PopupPlacement::BELOW;
-    }
-}
 
 Dropdown::Dropdown()
 {
@@ -48,6 +22,9 @@ bool Dropdown::setDropdownProperties(const DropdownStyleProperties &props)
 {
     bool changed = m_ddProps.apply(props);
     if (changed) {
+        if (m_contextMenu != nullptr) {
+            syncContextMenu();
+        }
         markDirty();
     }
     return changed;
@@ -55,328 +32,120 @@ bool Dropdown::setDropdownProperties(const DropdownStyleProperties &props)
 
 void Dropdown::setItems(std::vector<ContextMenuItem> items)
 {
-    if (m_open) {
-        requestClose();
+    if (isOpen()) {
+        close();
     }
-    m_items = std::move(items);
+    if (m_contextMenu != nullptr) {
+        m_contextMenu->setItems(std::move(items));
+    } else {
+        m_items = std::move(items);
+    }
+}
+
+std::vector<ContextMenuItem> &Dropdown::items()
+{
+    if (m_contextMenu != nullptr) {
+        return m_contextMenu->items();
+    }
+    return m_items;
+}
+
+bool Dropdown::isOpen() const
+{
+    return m_contextMenu != nullptr && m_contextMenu->isOpen();
 }
 
 void Dropdown::open()
 {
-    if (m_open) {
-        return;
-    }
-    Window *win = getWindow();
-    if (win == nullptr) {
-        return;
-    }
-    m_overlayPtr = win->getOverlayLayer();
-    if (m_overlayPtr == nullptr) {
+    if (isOpen()) {
         return;
     }
 
-    buildMainPopup();
-
-    if (!m_pressConn.connected()) {
-        m_pressConn = m_overlayPtr->onPressVote.connect([this](vec2 pos, PressVote &vote) {
-            if (!m_open) {
-                return;
-            }
-            bool inside = m_popup != nullptr && m_popup->containsPoint(pos);
-            for (size_t i = 0; !inside && i < m_submenuStack.size(); i++) {
-                if (m_submenuStack[i] != nullptr && m_submenuStack[i]->isOpen() && m_submenuStack[i]->containsPoint(pos)) {
-                    inside = true;
-                }
-            }
-            if (inside) {
-                vote.add(EventResult::PROPAGATE);
-                return;
-            }
-            vote.add(EventResult::CONSUMED);
-            requestClose();
-        });
+    if (m_contextMenu == nullptr) {
+        m_contextMenu = add<ContextMenu>();
     }
 
-    m_open = true;
+    if (!m_items.empty()) {
+        m_contextMenu->setItems(std::move(m_items));
+        m_items.clear();
+    }
+    syncContextMenu();
+
+    m_contextMenu->show(this);
+
+    if (!m_contextMenu->onClosedCb) {
+        m_contextMenu->onClosedCb = [this]() {
+            if (onClosedCb) {
+                onClosedCb();
+            }
+        };
+    }
+
     if (onOpenedCb) {
         onOpenedCb();
     }
 }
 
-void Dropdown::requestClose()
+void Dropdown::close()
 {
-    if (!m_open) {
+    if (!isOpen()) {
         return;
     }
-    closeSubmenuFrom(0);
-    if (m_popup != nullptr) {
-        m_popup->close();
-    }
-    m_open = false;
+    m_contextMenu->hide();
     if (onClosedCb) {
         onClosedCb();
     }
 }
 
-void Dropdown::closeImmediate()
+void Dropdown::syncContextMenu()
 {
-    requestClose();
-}
-
-void Dropdown::closeSubmenuFrom(size_t depth)
-{
-    for (size_t i = depth; i < m_submenuSourceRows.size(); i++) {
-        if (m_submenuSourceRows[i] != nullptr) {
-            m_submenuSourceRows[i]->setBaseStyleProperties({.backgroundColor = m_ddProps.popupBackground});
-        }
-    }
-    m_submenuSourceRows.resize(depth);
-
-    for (size_t i = depth; i < m_submenuStack.size(); i++) {
-        if (m_submenuStack[i] != nullptr) {
-            m_submenuStack[i]->close();
-        }
-    }
-}
-
-float Dropdown::computeTotalHeight(const std::vector<ContextMenuItem> &items) const
-{
-    float h = 0.0f;
-    for (auto &item : items) {
-        h += (item.kind() == ContextMenuItem::Kind::SEPARATOR) ? 8.0f : m_ddProps.itemHeight;
-    }
-    return h;
-}
-
-void Dropdown::buildMainPopup()
-{
-    float totalHeight = computeTotalHeight(m_items);
-    float visibleHeight = (m_ddProps.maxVisibleItems == INT_MAX)
-                              ? totalHeight
-                              : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
-
-    buildPopupPanel(m_popup, totalHeight, visibleHeight, {});
-    m_popup->placement = s_placementFor(m_ddProps.popupDirection);
-    m_popup->open(this);
-}
-
-void Dropdown::buildSubmenuAtPath(const std::vector<size_t> &path, UIObject *sourceRow)
-{
-    size_t depth = path.size() - 1;
-    closeSubmenuFrom(depth);
-
-    std::vector<ContextMenuItem> &subItems = itemsAtPath(path);
-    float totalHeight = computeTotalHeight(subItems);
-    float visibleHeight = (m_ddProps.maxVisibleItems == INT_MAX)
-                              ? totalHeight
-                              : std::min(totalHeight, static_cast<float>(m_ddProps.maxVisibleItems) * m_ddProps.itemHeight);
-
-    if (m_submenuStack.size() <= depth) {
-        m_submenuStack.resize(depth + 1, nullptr);
+    if (m_contextMenu == nullptr) {
+        return;
     }
 
-    buildPopupPanel(m_submenuStack[depth], totalHeight, visibleHeight, path);
-    m_submenuStack[depth]->placement = PopupPlacement::RIGHT;
-    m_submenuStack[depth]->open(sourceRow);
-}
+    ContextMenuStyleProperties cmProps;
+    cmProps.itemHoverBackground = m_ddProps.itemHoverBackground;
+    cmProps.separatorColor = m_ddProps.separatorColor;
+    m_contextMenu->setContextMenuProperties(cmProps);
 
-std::vector<ContextMenuItem> &Dropdown::itemsAtPath(const std::vector<size_t> &path)
-{
-    std::vector<ContextMenuItem> *items = &m_items;
-    for (size_t idx : path) {
-        items = &std::get<ContextMenuSubmenu>((*items)[idx].payload).items;
-    }
-    return *items;
-}
+    TextStyleProperties textProps;
+    textProps.fontSize = m_ddProps.itemFontSize;
+    textProps.textColor = m_ddProps.itemTextColor;
+    textProps.textXAlignment = TextXAlignment::LEFT;
+    textProps.textYAlignment = TextYAlignment::CENTER;
+    textProps.textWrapped = false;
+    m_contextMenu->setTextStyleProperties(textProps);
 
-Popup *Dropdown::buildPopupPanel(Popup *&slot, float totalHeight, float visibleHeight, const std::vector<size_t> &path)
-{
-    if (slot == nullptr) {
-        slot = add<Popup>();
-        slot->closeOnClickOutside = false;
-    }
+    m_contextMenu->maxVisibleItems = m_ddProps.maxVisibleItems;
+    m_contextMenu->itemHeight = m_ddProps.itemHeight;
+    m_contextMenu->popupWidth = m_ddProps.popupWidth;
 
-    slot->removeAllChildren();
-    slot->setBaseStyleProperties({
+    m_contextMenu->setBaseStyleProperties({
         .backgroundColor = m_ddProps.popupBackground,
         .backgroundTransparency = 0.0f,
         .borderPixelSize = 0.0f,
     });
-    slot->setBaseProperties({
-        .clipsDescendants = true,
-        .size = UDim2::fromOffset(m_ddProps.popupWidth, visibleHeight),
-        .zIndex = POPUP_ZINDEX,
-    });
 
-    UIObject *container = slot;
-    if (totalHeight > visibleHeight + 0.5f) {
-        slot->removeExtension<UIListLayout>();
-        auto *sf = slot->add<ScrollingFrame>();
-        sf->setBaseStyleProperties({
-            .backgroundColor = m_ddProps.popupBackground,
-            .backgroundTransparency = 0.0f,
-            .borderPixelSize = 0.0f,
-        });
-        sf->setBaseProperties({
-            .clipsDescendants = true,
-            .size = UDim2::fromScale(1.0f, 1.0f),
-        });
-        sf->setScrollingFrameProperties({
-            .scrollAxis = ScrollAxis::Y,
-            .scrollBarVisibility = ScrollBarVisibility::AUTO,
-            .canvasSize = UDim2::fromOffset(m_ddProps.popupWidth, totalHeight),
-        });
-        container = sf;
+    switch (m_ddProps.popupDirection) {
+    case DropdownDirection::UP:
+        m_contextMenu->placement = PopupPlacement::ABOVE;
+        break;
+    case DropdownDirection::LEFT:
+        m_contextMenu->placement = PopupPlacement::LEFT;
+        break;
+    case DropdownDirection::RIGHT:
+        m_contextMenu->placement = PopupPlacement::RIGHT;
+        break;
+    default:
+        m_contextMenu->placement = PopupPlacement::BELOW;
+        break;
     }
-
-    auto *layout = container->addExtension<UIListLayout>();
-    layout->fillDirection = FillDirection::FILL_VERTICAL;
-    layout->horizontalFlex = UiFlexAlignment::FILL;
-    layout->innerPadding = UDim::fromOffset(0.0f);
-    layout->sortOrder = SortOrder::SORT_LAYOUT_ORDER;
-
-    addItemRows(container, path);
-    slot->markDirty();
-    return slot;
-}
-
-void Dropdown::addItemRows(Instance *container, const std::vector<size_t> &path)
-{
-    std::vector<ContextMenuItem> &items = itemsAtPath(path);
-    size_t depth = path.size();
-
-    for (size_t idx = 0; idx < items.size(); idx++) {
-        ContextMenuItem &item = items[idx];
-
-        if (item.kind() == ContextMenuItem::Kind::SEPARATOR) {
-            auto *sep = container->add<Frame>();
-            sep->setBaseStyleProperties({
-                .backgroundColor = m_ddProps.separatorColor,
-                .backgroundTransparency = 0.5f,
-                .borderPixelSize = 0.0f,
-            });
-            sep->setBaseProperties({
-                .interactable = false,
-                .layoutOrder = static_cast<LayoutOrder>(idx * 100),
-                .size = UDim2::fromOffset(m_ddProps.popupWidth, 8.0f),
-                .zIndex = POPUP_ZINDEX,
-            });
-            continue;
-        }
-
-        auto *row = container->add<TextButton>();
-        row->setBaseStyleProperties({
-            .backgroundColor = m_ddProps.popupBackground,
-            .backgroundTransparency = 0.0f,
-            .borderPixelSize = 0.0f,
-        });
-        row->setBaseProperties({
-            .layoutOrder = static_cast<LayoutOrder>(idx * 100),
-            .padding = {UDim::fromOffset(0.0f), UDim::fromOffset(8.0f), UDim::fromOffset(0.0f), UDim::fromOffset(8.0f)},
-            .size = UDim2::fromOffset(m_ddProps.popupWidth, m_ddProps.itemHeight),
-            .zIndex = POPUP_ZINDEX,
-        });
-        row->setButtonProperties({.autoButtonColor = false});
-        row->setTextStyleProperties({
-            .fontSize = m_ddProps.itemFontSize,
-            .textColor = item.enabled ? m_ddProps.itemTextColor : m_ddProps.itemDisabledColor,
-            .textXAlignment = TextXAlignment::LEFT,
-            .textYAlignment = TextYAlignment::CENTER,
-            .textWrapped = false,
-        });
-        row->setText(buildItemText(item));
-
-        if (!item.enabled) {
-            row->setBaseProperties({.interactable = false});
-            continue;
-        }
-
-        Color3 hoverBg = m_ddProps.itemHoverBackground;
-        Color3 normalBg = m_ddProps.popupBackground;
-
-        row->onMouseLeaveCb = [this, row, normalBg, hoverBg, depth]() {
-            bool isSubmenuSource = depth < m_submenuSourceRows.size() && m_submenuSourceRows[depth] == row;
-            Color3 newBg = isSubmenuSource ? hoverBg : normalBg;
-            if (row->getBaseStyleProperties().backgroundColor != newBg) {
-                row->setBaseStyleProperties({.backgroundColor = newBg});
-            }
-            return EventResult::CONSUMED;
-        };
-
-        if (item.kind() == ContextMenuItem::Kind::SUBMENU) {
-            std::vector<size_t> fullPath = path;
-            fullPath.push_back(idx);
-            row->onMouseEnterCb = [this, row, hoverBg, fullPath = std::move(fullPath)]() {
-                if (row->getBaseStyleProperties().backgroundColor != hoverBg) {
-                    row->setBaseStyleProperties({.backgroundColor = hoverBg});
-                }
-                buildSubmenuAtPath(fullPath, row);
-                m_submenuSourceRows.push_back(row);
-                return EventResult::CONSUMED;
-            };
-            row->onMouseButton1ClickCb = []() { return EventResult::CONSUMED; };
-        } else {
-            row->onMouseEnterCb = [this, row, hoverBg, depth]() {
-                if (row->getBaseStyleProperties().backgroundColor != hoverBg) {
-                    row->setBaseStyleProperties({.backgroundColor = hoverBg});
-                }
-                closeSubmenuFrom(depth);
-                return EventResult::CONSUMED;
-            };
-        }
-
-        if (item.kind() == ContextMenuItem::Kind::ACTION) {
-            std::function<void()> cb = std::get<ContextMenuAction>(item.payload).onActivate;
-            row->onMouseButton1ClickCb = [this, cb]() {
-                if (cb) {
-                    cb();
-                }
-                requestClose();
-                return EventResult::CONSUMED;
-            };
-        } else if (item.kind() == ContextMenuItem::Kind::SELECT) {
-            std::string label = item.label;
-            row->onMouseButton1ClickCb = [this, label]() {
-                if (onItemSelected) {
-                    onItemSelected(label);
-                }
-                requestClose();
-                return EventResult::CONSUMED;
-            };
-        } else if (item.kind() == ContextMenuItem::Kind::TOGGLE) {
-            ContextMenuItem *itemPtr = &items[idx];
-            row->onMouseButton1ClickCb = [this, row, itemPtr]() {
-                std::get<ContextMenuToggle>(itemPtr->payload).toggle();
-                row->setText(buildItemText(*itemPtr));
-                return EventResult::CONSUMED;
-            };
-        }
-    }
-}
-
-std::string Dropdown::buildItemText(const ContextMenuItem &item) const
-{
-    std::string text;
-    text.reserve(item.label.size() + item.shortcutHint.size() + 8);
-    if (item.kind() == ContextMenuItem::Kind::TOGGLE) {
-        const auto &t = std::get<ContextMenuToggle>(item.payload);
-        text.append(t.currentState() ? "\xe2\x9c\x93 " : "  ");
-    }
-    text.append(item.label);
-    if (item.kind() == ContextMenuItem::Kind::SUBMENU) {
-        text.append(" \xe2\x96\xb6");
-    }
-    if (!item.shortcutHint.empty()) {
-        text.append("    ");
-        text.append(item.shortcutHint);
-    }
-    return text;
 }
 
 EventResult Dropdown::onMouseButton1Down(int32_t x, int32_t y)
 {
     UIButton::onMouseButton1Down(x, y);
-    if (!m_open) {
+    if (!isOpen()) {
         open();
     }
     return EventResult::CONSUMED;

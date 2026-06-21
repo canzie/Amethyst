@@ -85,7 +85,7 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items
 void MenuBar::clear()
 {
     for (auto *e : m_entries) {
-        if (e->isOpen()) e->requestClose();
+        if (e->isOpen()) e->close();
     }
     removeAllChildren();
     m_entries.clear();
@@ -96,7 +96,7 @@ void MenuBar::clear()
 void MenuBar::onEntryHovered(Dropdown *entry)
 {
     if (m_openEntry && m_openEntry != entry) {
-        m_openEntry->closeImmediate();
+        m_openEntry->close();
         entry->open();
     }
 }

@@ -28,7 +28,7 @@ class ContextMenu : public Popup {
     bool setContextMenuProperties(const ContextMenuStyleProperties &props);
     const ContextMenuStyleProperties &getContextMenuProperties() const { return m_cmProps; }
 
-    void setTextStyleProperties(const TextStyleProperties &props);
+    bool setTextStyleProperties(const TextStyleProperties &props);
     const TextStyleProperties &getTextStyleProperties() const { return m_textProps; }
 
     std::function<void(std::string_view)> onItemSelected;

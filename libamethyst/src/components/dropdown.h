@@ -5,6 +5,7 @@
 #ifndef AMETHYST__DROPDOWN_H
 #define AMETHYST__DROPDOWN_H
 
+#include "components/context_menu.h"
 #include "components/context_menu_item.h"
 #include "components/properties.h"
 #include "components/text_button.h"
@@ -17,22 +18,16 @@
 
 namespace Amethyst {
 
-class Instance;
-class OverlayLayer;
-class Popup;
-class UIObject;
-
 class Dropdown : public TextButton {
   public:
     Dropdown();
 
     void setItems(std::vector<ContextMenuItem> items);
-    std::vector<ContextMenuItem> &items() { return m_items; }
+    std::vector<ContextMenuItem> &items();
 
     void open();
-    void requestClose();
-    void closeImmediate();
-    bool isOpen() const { return m_open; }
+    void close();
+    bool isOpen() const;
 
     bool setDropdownProperties(const DropdownStyleProperties &props);
     const DropdownStyleProperties &getDropdownProperties() const { return m_ddProps; }
@@ -47,23 +42,10 @@ class Dropdown : public TextButton {
     EventResult onMouseButton1Down(int32_t x, int32_t y) override;
 
   private:
-    void closeSubmenuFrom(size_t depth = 0);
-    void buildMainPopup();
-    void buildSubmenuAtPath(const std::vector<size_t> &path, UIObject *sourceRow);
-    Popup *buildPopupPanel(Popup *&slot, float totalHeight, float visibleHeight, const std::vector<size_t> &path);
-    void addItemRows(Instance *container, const std::vector<size_t> &path = {});
-    std::vector<ContextMenuItem> &itemsAtPath(const std::vector<size_t> &path);
-    std::string buildItemText(const ContextMenuItem &item) const;
-    float computeTotalHeight(const std::vector<ContextMenuItem> &items) const;
+    void syncContextMenu();
 
     std::vector<ContextMenuItem> m_items;
-    bool m_open = false;
-
-    Popup *m_popup = nullptr;
-    std::vector<Popup *> m_submenuStack;
-    std::vector<TextButton *> m_submenuSourceRows;
-    OverlayLayer *m_overlayPtr = nullptr;
-    EventConnection m_pressConn;
+    ContextMenu *m_contextMenu = nullptr;
 };
 
 } // namespace Amethyst
