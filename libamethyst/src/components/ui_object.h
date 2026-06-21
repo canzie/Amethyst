@@ -10,6 +10,7 @@
 #include "components/input_events.h"
 #include "components/properties.h"
 #include "components/ui_base_2d.h"
+#include "modules/event_signal.h"
 #include "modules/style.h"
 #include "rendering/instance_data.h"
 #include <cstdint>
@@ -62,6 +63,32 @@ class UIObject : public UIBase2D {
     int32_t getZIndex() const override;
     bool isHitTestVisible() const override { return m_uiObjProps.visible && m_uiObjProps.interactable; }
     bool getClipsDescendants() const override { return static_cast<bool>(m_uiObjProps.clipsDescendants); }
+
+    /**
+     * @brief Sets the propagate flag for the given category.
+     * @param cat The interaction category to set.
+     */
+    void propagate(InteractionCategory cat);
+
+    /**
+     * @brief Sets the consume flag for the given category.
+     * @param cat The interaction category to set.
+     */
+    void consume(InteractionCategory cat);
+
+    /**
+     * @brief Returns whether the consume flag is set for the given category.
+     * @param cat The interaction category to query.
+     * @return True if the consume flag is set.
+     */
+    bool consumes(InteractionCategory cat) const;
+
+    /**
+     * @brief Returns whether the propagate flag is set for the given category.
+     * @param cat The interaction category to query.
+     * @return True if the propagate flag is set.
+     */
+    bool propagates(InteractionCategory cat) const;
 
     bool setBaseProperties(BaseProperties props);
     const BaseProperties &getBaseProperties() const { return m_uiObjProps; }
@@ -140,6 +167,7 @@ class UIObject : public UIBase2D {
 
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;
+    uint8_t m_eventConsumptionFlags;
 };
 
 } // namespace Amethyst

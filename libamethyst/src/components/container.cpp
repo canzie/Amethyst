@@ -4,6 +4,11 @@
 
 namespace Amethyst {
 
+Container::Container()
+{
+    propagate(INTERACTION_CATEGORY_ALL);
+}
+
 std::vector<Instance *> Container::getHittableInstances()
 {
     std::vector<Instance *> result;

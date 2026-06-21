@@ -97,6 +97,16 @@ struct ClickEvent {
 
 using ClickCallback = std::function<void(const ClickEvent &)>;
 
+enum InteractionCategory {
+    INTERACTION_CATEGORY_NONE   = 0,
+    INTERACTION_CATEGORY_HOVER  = 1 << 0,
+    INTERACTION_CATEGORY_CLICK  = 1 << 1,
+    INTERACTION_CATEGORY_SCROLL = 1 << 2,
+    INTERACTION_CATEGORY_MOVE   = 1 << 3,
+    INTERACTION_CATEGORY_KEY    = 1 << 4,
+    INTERACTION_CATEGORY_ALL    = (1 << 8) - 1,
+};
+
 enum class InputType {
     NONE,
     MOUSE_BUTTON_1,

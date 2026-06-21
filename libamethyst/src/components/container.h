@@ -9,7 +9,7 @@ namespace Amethyst {
 
 class Container : public UIObject {
   public:
-    Container() = default;
+    Container();
     void draw(DrawContext &ctx) override;
     std::vector<Instance *> getHittableInstances() override;
 

@@ -11,6 +11,7 @@ namespace Amethyst {
 
 ScrollingFrame::ScrollingFrame()
 {
+    consume(INTERACTION_CATEGORY_SCROLL);
     m_sfProps.scrollAxis = ScrollAxis::Y;
     m_sfProps.scrollBarVisibility = ScrollBarVisibility::AUTO;
     m_sfProps.canvasSize = UDim2::fromScale(1.0f, 1.0f);

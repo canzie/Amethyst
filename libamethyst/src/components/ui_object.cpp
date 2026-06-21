@@ -15,6 +15,7 @@
 namespace Amethyst {
 
 UIObject::UIObject()
+    : m_eventConsumptionFlags(INTERACTION_CATEGORY_HOVER | INTERACTION_CATEGORY_CLICK | INTERACTION_CATEGORY_MOVE)
 {
     // sane defaults so we can compare to the default struct
     // otherwise we need to force the user to copy the current struct all the time, or use optionals everywhere?
@@ -177,6 +178,11 @@ vec4 UIObject::computeChildClipRect() const
     }
     return {max(clipRect.x, myBounds.x), max(clipRect.y, myBounds.y), min(clipRect.z, myBounds.z), min(clipRect.w, myBounds.w)};
 }
+
+void UIObject::propagate(InteractionCategory cat) { m_eventConsumptionFlags &= ~cat; }
+void UIObject::consume(InteractionCategory cat) { m_eventConsumptionFlags |= cat; }
+bool UIObject::consumes(InteractionCategory cat) const { return m_eventConsumptionFlags & cat; }
+bool UIObject::propagates(InteractionCategory cat) const { return !(m_eventConsumptionFlags & cat); }
 
 Window *UIObject::getWindow()
 {
