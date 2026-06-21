@@ -124,6 +124,14 @@ bool CollapsibleHeaderStyleProperties::apply(const CollapsibleHeaderStylePropert
     return changed;
 }
 
+bool ContextMenuStyleProperties::apply(const ContextMenuStyleProperties &src)
+{
+    bool changed = false;
+    AM_APPLY(itemHoverBackground)
+    AM_APPLY(separatorColor)
+    return changed;
+}
+
 bool DropdownStyleProperties::apply(const DropdownStyleProperties &src)
 {
     bool changed = false;
@@ -375,6 +383,14 @@ CollapsibleHeaderStyleProperties CollapsibleHeaderStyleProperties::diff(const Co
     AM_DIFF(indicatorPadding)
     AM_DIFF(indicatorColor)
     out.titleStyle = titleStyle.diff(base.titleStyle);
+    return out;
+}
+
+ContextMenuStyleProperties ContextMenuStyleProperties::diff(const ContextMenuStyleProperties &base) const
+{
+    ContextMenuStyleProperties out;
+    AM_DIFF(itemHoverBackground)
+    AM_DIFF(separatorColor)
     return out;
 }
 

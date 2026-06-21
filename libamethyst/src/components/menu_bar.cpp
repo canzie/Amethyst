@@ -21,7 +21,7 @@ MenuBar::MenuBar()
     layout->sortOrder = SortOrder::SORT_LAYOUT_ORDER;
 }
 
-Dropdown *MenuBar::addMenu(std::string label, std::vector<DropdownItem> items)
+Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items)
 {
     auto *entry = add<Dropdown>();
     entry->setItems(std::move(items));

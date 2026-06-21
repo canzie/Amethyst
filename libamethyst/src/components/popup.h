@@ -14,6 +14,8 @@
 
 namespace Amethyst {
 
+class OverlayLayer;
+
 class Popup : public Frame {
   public:
     Popup();
@@ -43,11 +45,15 @@ class Popup : public Frame {
     std::function<void()> onClosed;
 
   private:
+    void attachToOverlay();
     void ensureConnected();
     vec2 resolvePlacement(vec2 anchorPos, vec2 anchorSize, vec2 contentSize, vec2 viewport) const;
 
     bool m_open = false;
+    Instance *m_logicalOwner = nullptr;
+    OverlayLayer *m_overlay = nullptr;
     EventConnection m_pressConn;
+    EventConnection m_ownerDestroyConn;
 };
 
 } // namespace Amethyst

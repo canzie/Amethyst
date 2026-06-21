@@ -8,10 +8,6 @@
 ### Style System
     - Add more stuff to ams
 
-### Input
-    - add support for double clicking in the backend/bridge layer
-        - it should be possible for a component to check the type/modifier/... for if its a double click or not
-
 ### Components
     - The popup should do its overlay layer stuff automatically
     - Scroling frame click and drag the scrollbar instead of only mouse wheel.

@@ -5,6 +5,7 @@
 #include "components/popup.h"
 
 #include "components/overlay_layer.h"
+#include "components/window.h"
 
 #include <algorithm>
 
@@ -15,16 +16,35 @@ Popup::Popup()
     setBaseProperties({.visible = false});
 }
 
+void Popup::attachToOverlay()
+{
+    if (m_overlay != nullptr) {
+        return;
+    }
+
+    Window *window = getWindow();
+    if (window == nullptr) {
+        return;
+    }
+    m_overlay = window->getOverlayLayer();
+    if (m_overlay == nullptr || parent == m_overlay) {
+        return;
+    }
+
+    m_logicalOwner = parent;
+    reparent(m_overlay);
+    m_ownerDestroyConn = m_logicalOwner->onDestroy.once([this](Instance *) {
+        close();
+        m_overlay->removeChild(this);
+    });
+}
+
 void Popup::ensureConnected()
 {
-    if (!closeOnClickOutside || m_pressConn.connected()) {
+    if (!closeOnClickOutside || m_pressConn.connected() || m_overlay == nullptr) {
         return;
     }
-    OverlayLayer *overlay = parent != nullptr ? parent->as<OverlayLayer>() : nullptr;
-    if (overlay == nullptr) {
-        return;
-    }
-    m_pressConn = overlay->onPressVote.connect([this](vec2 pos, PressVote &vote) {
+    m_pressConn = m_overlay->onPressVote.connect([this](vec2 pos, PressVote &vote) {
         if (!m_open) {
             return;
         }
@@ -62,12 +82,16 @@ vec2 Popup::resolvePlacement(vec2 anchorPos, vec2 anchorSize, vec2 contentSize, 
 
 void Popup::open(UIObject *anchor)
 {
-    OverlayLayer *overlay = parent != nullptr ? parent->as<OverlayLayer>() : nullptr;
-    if (overlay == nullptr || anchor == nullptr) {
+    if (anchor == nullptr) {
         return;
     }
 
-    vec2 viewport = overlay->absoluteSize;
+    attachToOverlay();
+    if (m_overlay == nullptr) {
+        return;
+    }
+
+    vec2 viewport = m_overlay->absoluteSize;
     vec2 contentSize = getBaseProperties().size.resolve(viewport);
     if (matchAnchorWidth) {
         contentSize.x = anchor->absoluteSize.x;
@@ -94,12 +118,12 @@ void Popup::open(UIObject *anchor)
 
 void Popup::openAt(vec2 absolutePoint)
 {
-    OverlayLayer *overlay = parent != nullptr ? parent->as<OverlayLayer>() : nullptr;
-    if (overlay == nullptr) {
+    attachToOverlay();
+    if (m_overlay == nullptr) {
         return;
     }
 
-    vec2 viewport = overlay->absoluteSize;
+    vec2 viewport = m_overlay->absoluteSize;
     vec2 contentSize = getBaseProperties().size.resolve(viewport);
     vec2 pos = absolutePoint + offset;
     pos.x = std::clamp(pos.x, 0.0f, std::max(0.0f, viewport.x - contentSize.x));

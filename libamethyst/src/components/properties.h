@@ -238,6 +238,14 @@ struct CollapsibleHeaderStyleProperties {
     CollapsibleHeaderStyleProperties diff(const CollapsibleHeaderStyleProperties &base) const;
 };
 
+struct ContextMenuStyleProperties {
+    Color3 itemHoverBackground = Color3(PROP_UNSET_FLOAT);
+    Color3 separatorColor = Color3(PROP_UNSET_FLOAT);
+
+    bool apply(const ContextMenuStyleProperties &src);
+    ContextMenuStyleProperties diff(const ContextMenuStyleProperties &base) const;
+};
+
 struct DropdownStyleProperties {
     DropdownDirection popupDirection = DropdownDirection::NONE;
     int32_t maxVisibleItems = PROP_UNSET_INT32;
@@ -562,6 +570,17 @@ struct TreeViewProperties {
     std::vector<std::string> classes{};
     BaseProperties base{};
     TreeViewStyleProperties treeView{};
+};
+
+struct ContextMenuProperties {
+    std::vector<std::string> classes{};
+    BaseProperties base{};
+    BaseStyleProperties style{};
+    TextStyleProperties text{};
+    ContextMenuStyleProperties contextMenu{};
+    int32_t maxVisibleItems = 8;
+    float itemHeight = 24.0f;
+    float popupWidth = 180.0f;
 };
 
 struct DropdownProperties {

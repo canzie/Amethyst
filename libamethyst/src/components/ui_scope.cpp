@@ -5,6 +5,7 @@
 #include "components/collapsible_header.h"
 #include "components/color_picker.h"
 #include "components/container.h"
+#include "components/context_menu.h"
 #include "components/drag.h"
 #include "components/dropdown.h"
 #include "components/frame.h"
@@ -25,6 +26,7 @@
 namespace Amethyst {
 
 CanvasScope::CanvasScope(Canvas &c) : UIScope(c), component(c) {}
+ContextMenuScope::ContextMenuScope(ContextMenu &cm) : component(cm) {}
 DropdownScope::DropdownScope(Dropdown &d) : component(d) {}
 MenuBarScope::MenuBarScope(MenuBar &mb) : UIScope(mb), component(mb) {}
 FrameScope::FrameScope(Frame &f) : UIScope(f), component(f) {}
@@ -60,6 +62,27 @@ UIScope &UIScope::canvas(CanvasProperties props, std::function<void(CanvasScope 
     if (fn) {
         CanvasScope scope(*c);
         fn(scope);
+    }
+    return *this;
+}
+
+UIScope &UIScope::contextMenu(ContextMenuProperties props, std::function<void(ContextMenuScope &)> fn)
+{
+    auto *cm = m_parent->add<ContextMenu>();
+    if (!props.classes.empty()) {
+        cm->setClasses(props.classes);
+    }
+    cm->setBaseProperties(props.base);
+    cm->setBaseStyleProperties(props.style);
+    cm->setContextMenuProperties(props.contextMenu);
+    cm->setTextStyleProperties(props.text);
+    cm->maxVisibleItems = props.maxVisibleItems;
+    cm->itemHeight = props.itemHeight;
+    cm->popupWidth = props.popupWidth;
+    if (fn) {
+        ContextMenuScope scope(*cm);
+        fn(scope);
+        cm->setItems(std::move(scope.pendingItems));
     }
     return *this;
 }
@@ -668,19 +691,19 @@ TreeViewScope &TreeViewScope::row(std::function<void(TreeRowScope &)> rowFn)
 
 DropdownScope &DropdownScope::action(std::string label, std::function<void()> onSelect)
 {
-    pendingItems.emplace_back(DropdownItem::action(std::move(label), std::move(onSelect)));
+    pendingItems.emplace_back(ContextMenuItem::action(std::move(label), std::move(onSelect)));
     return *this;
 }
 
 DropdownScope &DropdownScope::toggle(std::string label, std::function<void(bool)> onToggle)
 {
-    pendingItems.emplace_back(DropdownItem::toggle(std::move(label), std::move(onToggle)));
+    pendingItems.emplace_back(ContextMenuItem::toggle(std::move(label), std::move(onToggle)));
     return *this;
 }
 
 DropdownScope &DropdownScope::separator()
 {
-    pendingItems.emplace_back(DropdownItem::separator());
+    pendingItems.emplace_back(ContextMenuItem::separator());
     return *this;
 }
 
@@ -688,16 +711,16 @@ DropdownScope &DropdownScope::submenu(std::string label, std::function<void(Drop
 {
     DropdownScope sub(component);
     fn(sub);
-    pendingItems.emplace_back(DropdownItem::submenu(std::move(label), std::move(sub.pendingItems)));
+    pendingItems.emplace_back(ContextMenuItem::submenu(std::move(label), std::move(sub.pendingItems)));
     return *this;
 }
 
 DropdownScope &DropdownScope::items(std::vector<std::string> labels)
 {
     for (auto &lbl : labels) {
-        DropdownItem item;
+        ContextMenuItem item;
         item.label = lbl;
-        item.payload = DropdownSelect{};
+        item.payload = ContextMenuSelect{};
         pendingItems.emplace_back(std::move(item));
     }
     return *this;
@@ -711,6 +734,43 @@ MenuBarScope &MenuBarScope::menuItem(std::string label, std::function<void(Dropd
         fn(scope);
         entry->setItems(std::move(scope.pendingItems));
     }
+    return *this;
+}
+
+ContextMenuScope &ContextMenuScope::action(std::string label, std::function<void()> onSelect)
+{
+    pendingItems.emplace_back(ContextMenuItem::action(std::move(label), std::move(onSelect)));
+    return *this;
+}
+
+ContextMenuScope &ContextMenuScope::toggle(std::string label, std::function<void(bool)> onToggle)
+{
+    pendingItems.emplace_back(ContextMenuItem::toggle(std::move(label), std::move(onToggle)));
+    return *this;
+}
+
+ContextMenuScope &ContextMenuScope::separator()
+{
+    pendingItems.emplace_back(ContextMenuItem::separator());
+    return *this;
+}
+
+ContextMenuScope &ContextMenuScope::items(std::vector<std::string> labels)
+{
+    for (auto &lbl : labels) {
+        ContextMenuItem item;
+        item.label = lbl;
+        item.payload = ContextMenuSelect{};
+        pendingItems.emplace_back(std::move(item));
+    }
+    return *this;
+}
+
+ContextMenuScope &ContextMenuScope::submenu(std::string label, std::function<void(ContextMenuScope &)> fn)
+{
+    ContextMenuScope sub(component);
+    fn(sub);
+    pendingItems.emplace_back(ContextMenuItem::submenu(std::move(label), std::move(sub.pendingItems)));
     return *this;
 }
 

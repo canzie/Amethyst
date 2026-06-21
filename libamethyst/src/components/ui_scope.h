@@ -1,8 +1,8 @@
 #ifndef AMETHYST__UI_SCOPE_H
 #define AMETHYST__UI_SCOPE_H
 
+#include "components/context_menu_item.h"
 #include "components/docking_layer.h"
-#include "components/dropdown_item.h"
 #include "components/instance.h"
 #include "components/properties.h"
 #include "components/table.h"
@@ -18,6 +18,7 @@ class Canvas;
 class Checkbox;
 class Color3Picker;
 class Color4Picker;
+class ContextMenu;
 class DragFloat;
 class DragInt;
 class Dropdown;
@@ -41,6 +42,7 @@ class TreeView;
 struct CanvasScope;
 struct Color3PickerScope;
 struct Color4PickerScope;
+struct ContextMenuScope;
 struct DropdownScope;
 struct MenuBarScope;
 struct FrameScope;
@@ -70,6 +72,7 @@ class UIScope {
     explicit UIScope(Instance &parent) : m_parent(&parent) {}
 
     UIScope &canvas(CanvasProperties props = {}, std::function<void(CanvasScope &)> fn = {});
+    UIScope &contextMenu(ContextMenuProperties props = {}, std::function<void(ContextMenuScope &)> fn = {});
     UIScope &dropdown(DropdownProperties props = {}, std::function<void(DropdownScope &)> fn = {});
     UIScope &menuBar(MenuBarProperties props = {}, std::function<void(MenuBarScope &)> fn = {});
     UIScope &frame(FrameProperties props = {}, std::function<void(FrameScope &)> fn = {});
@@ -249,7 +252,7 @@ struct TreeViewScope : UIScope {
 
 struct DropdownScope {
     Dropdown &component;
-    std::vector<DropdownItem> pendingItems;
+    std::vector<ContextMenuItem> pendingItems;
 
     explicit DropdownScope(Dropdown &d);
 
@@ -258,6 +261,19 @@ struct DropdownScope {
     DropdownScope &separator();
     DropdownScope &submenu(std::string label, std::function<void(DropdownScope &)> fn);
     DropdownScope &items(std::vector<std::string> labels);
+};
+
+struct ContextMenuScope {
+    ContextMenu &component;
+    std::vector<ContextMenuItem> pendingItems;
+
+    explicit ContextMenuScope(ContextMenu &cm);
+
+    ContextMenuScope &action(std::string label, std::function<void()> onSelect = {});
+    ContextMenuScope &toggle(std::string label, std::function<void(bool)> onToggle);
+    ContextMenuScope &separator();
+    ContextMenuScope &submenu(std::string label, std::function<void(ContextMenuScope &)> fn);
+    ContextMenuScope &items(std::vector<std::string> labels);
 };
 
 struct MenuBarScope : UIScope {
