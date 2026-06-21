@@ -7,6 +7,7 @@
 #include "components/properties.h"
 #include "components/table.h"
 #include "components/tree_view.h"
+#include "modules/event_signal.h"
 
 #include <functional>
 #include <string_view>
@@ -98,6 +99,12 @@ class UIScope {
     UIScope &color4Picker(Color4PickerProperties props = {}, std::function<void(Color4PickerScope &)> fn = {});
 
     Instance &get() const { return *m_parent; }
+
+    /**
+     * @brief Adopts an EventConnection, tying its lifetime to the UIObject this scope wraps.
+     * @param conn The connection to keep alive.
+     */
+    void track(EventConnection conn);
 
   protected:
     Instance *m_parent;

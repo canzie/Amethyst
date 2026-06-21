@@ -42,6 +42,13 @@ class UIObject : public UIBase2D {
 
     vec4 computeChildClipRect() const;
 
+    /**
+     * @brief Adopts an EventConnection, tying its lifetime to this object.
+     * The connection is disconnected automatically when this object is destroyed.
+     * @param conn The connection to keep alive.
+     */
+    void track(EventConnection conn) { m_connections.push_back(std::move(conn)); }
+
     template <typename T> T *getExtension()
     {
         auto it = m_extensions.find(std::type_index(typeid(T)));
@@ -168,6 +175,7 @@ class UIObject : public UIBase2D {
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;
     uint8_t m_eventConsumptionFlags;
+    std::vector<EventConnection> m_connections;
 };
 
 } // namespace Amethyst

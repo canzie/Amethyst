@@ -22,8 +22,17 @@
 #include "components/text_input.h"
 #include "components/text_label.h"
 #include "components/tree_view.h"
+#include "components/ui_object.h"
+#include "utils/am_assert.h"
 
 namespace Amethyst {
+
+void UIScope::track(EventConnection conn)
+{
+    auto *obj = m_parent->as<UIObject>();
+    AM_ASSERT(obj != nullptr, "UIScope::track requires a UIObject-derived scope");
+    obj->track(std::move(conn));
+}
 
 CanvasScope::CanvasScope(Canvas &c) : UIScope(c), component(c) {}
 ContextMenuScope::ContextMenuScope(ContextMenu &cm) : component(cm) {}
