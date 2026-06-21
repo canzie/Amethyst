@@ -17,7 +17,7 @@ class Frame;
 class ScrollingFrame : public UIObject {
   public:
     ScrollingFrame();
-    virtual ~ScrollingFrame() = default;
+    virtual ~ScrollingFrame();
 
     void draw(DrawContext &ctx) override;
     void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation) override;

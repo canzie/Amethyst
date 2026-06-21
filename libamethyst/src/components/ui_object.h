@@ -155,10 +155,10 @@ class UIObject : public UIBase2D {
     virtual EventResult onInputEnded(const InputObject &input);
 
   public:
-    std::function<void(bool hovered)> onHoverChanged;
-    std::function<EventResult(const InputObject &)> onInputBeganCb;
-    std::function<EventResult(const InputObject &)> onInputChangedCb;
-    std::function<EventResult(const InputObject &)> onInputEndedCb;
+    EventSignal<void(bool hovered)> onHoverChanged;
+    EventSignal<void(const InputObject &)> onInputBeganCb;
+    EventSignal<void(const InputObject &)> onInputChangedCb;
+    EventSignal<void(const InputObject &)> onInputEndedCb;
 
   protected:
     BaseProperties m_uiObjProps;

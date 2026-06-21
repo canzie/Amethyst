@@ -13,6 +13,8 @@
 
 namespace Amethyst {
 
+static constexpr int32_t Z_HEADER_BUTTON = 3;
+
 CollapsibleHeader::CollapsibleHeader() : CollapsibleHeader(nullptr, nullptr) {}
 
 CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, std::unique_ptr<UIObject> customHeader)
@@ -172,14 +174,12 @@ void CollapsibleHeader::drawHeaderBar(DrawContext &ctx, const vec4 &childClip)
         .size = UDim2::fromOffset(m_chProps.indicatorSize, m_chProps.indicatorSize),
         .rotation = expanded ? 90.0f : 0.0f,
         .visible = m_chProps.showIndicator,
-        .zIndex = getZIndex() + 2,
     });
 
     m_headerContent->setBaseProperties({
         .position = UDim2(0.0f, contentOffset, 0.0f, 0.0f),
         .size = UDim2(1.0f, -(contentOffset + m_chProps.indicatorPadding), 1.0f, 0.0f),
         .visible = true,
-        .zIndex = getZIndex() + 2,
     });
 
     if (auto *label = m_headerContent->as<TextLabel>()) {
@@ -200,13 +200,12 @@ void CollapsibleHeader::drawHeaderBar(DrawContext &ctx, const vec4 &childClip)
         .borderPixelSize = 0.0f,
         .cornerRadius = m_chProps.headerCornerRadius,
     });
-    m_headerBackground->setBaseProperties({.zIndex = getZIndex() + 1});
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_chProps.headerHeight}, absolutePosition, absoluteRotation);
     m_headerBackground->draw(ctx);
 
-    m_headerButton->setBaseProperties({.zIndex = getZIndex() + 3});
+    m_headerButton->setBaseProperties({.zIndex = Z_HEADER_BUTTON});
     m_headerButton->clipRect = childClip;
     m_headerButton->markDirty();
     m_headerButton->computeAbsolutes({absoluteSize.x, m_chProps.headerHeight}, absolutePosition, absoluteRotation);

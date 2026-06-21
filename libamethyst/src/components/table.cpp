@@ -10,6 +10,9 @@ namespace Amethyst {
 
 static constexpr float FALLBACK_ROW_HEIGHT = 24.0f;
 
+static constexpr int32_t Z_ROW_BG = 0;
+static constexpr int32_t Z_ABOVE_CONTENT = 2;
+
 static bool s_showColumnSeparators(TableSeparatorMode mode)
 {
     return mode == TableSeparatorMode::COLUMNS || mode == TableSeparatorMode::BOTH;
@@ -287,7 +290,7 @@ void Table::updateSeparators()
             .position = UDim2(0.0f, xPos - m_tProps.separatorWidth / 2.0f, 0.0f, 0.0f),
             .size = UDim2(0.0f, m_tProps.separatorWidth, 1.0f, 0.0f),
             .visible = true,
-            .zIndex = getZIndex() + 1,
+            .zIndex = Z_ABOVE_CONTENT,
         });
     }
 
@@ -314,7 +317,7 @@ void Table::updateSeparators()
             .position = UDim2(0.0f, 0.0f, 0.0f, yPos),
             .size = UDim2(1.0f, 0.0f, 0.0f, m_tProps.separatorWidth),
             .visible = true,
-            .zIndex = getZIndex() + 1,
+            .zIndex = Z_ABOVE_CONTENT,
         });
     }
 }
@@ -348,7 +351,6 @@ void Table::drawHeader(DrawContext &ctx, const vec4 &childClip)
         .backgroundColor = m_tProps.headerColor,
         .backgroundTransparency = 0.0f,
     });
-    m_headerBackground->setBaseProperties({.zIndex = getZIndex()});
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_tProps.headerHeight}, absolutePosition, absoluteRotation);
@@ -359,7 +361,7 @@ void Table::drawHeader(DrawContext &ctx, const vec4 &childClip)
         lbl->setBaseStyleProperties({.backgroundTransparency = 1.0f});
         lbl->setBaseProperties({
             .size = UDim2::fromScale(1.0f, 1.0f),
-            .zIndex = getZIndex() + 1,
+            .zIndex = Z_ABOVE_CONTENT,
         });
         lbl->setTextStyleProperties({
             .fontSize = m_tProps.header.fontSize,
@@ -411,7 +413,7 @@ void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex,
         });
         bg->setBaseProperties({
             .size = UDim2::fromScale(1.0f, 1.0f),
-            .zIndex = getZIndex(),
+            .zIndex = Z_ROW_BG,
         });
         bg->clipRect = childClip;
         bg->markDirty();

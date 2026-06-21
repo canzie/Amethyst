@@ -14,12 +14,6 @@ class Container : public UIObject {
     std::vector<Instance *> getHittableInstances() override;
 
   protected:
-    EventResult onMouseEnter() override { return EventResult::PROPAGATE; }
-    EventResult onMouseLeave() override { return EventResult::PROPAGATE; }
-    EventResult onMouseMoved(int32_t, int32_t) override { return EventResult::PROPAGATE; }
-    EventResult onInputBegan(const InputObject &) override { return EventResult::PROPAGATE; }
-    EventResult onInputChanged(const InputObject &) override { return EventResult::PROPAGATE; }
-    EventResult onInputEnded(const InputObject &) override { return EventResult::PROPAGATE; }
     EventResult onMouseScrollUp() override { return EventResult::PROPAGATE; }
     EventResult onMouseScrollDown() override { return EventResult::PROPAGATE; }
 };

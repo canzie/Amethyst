@@ -9,6 +9,9 @@
 
 namespace Amethyst {
 
+static constexpr int32_t Z_SCROLLBAR = 100;
+static constexpr int32_t Z_SCROLLBAR_THUMB = 101;
+
 ScrollingFrame::ScrollingFrame()
 {
     consume(INTERACTION_CATEGORY_SCROLL);
@@ -25,6 +28,22 @@ ScrollingFrame::ScrollingFrame()
     m_sfProps.elasticScrolling = 0;
 
     resolveStyle();
+}
+
+ScrollingFrame::~ScrollingFrame()
+{
+    if (m_verticalBar != nullptr) {
+        m_verticalBar->parent = nullptr;
+    }
+    if (m_verticalThumb != nullptr) {
+        m_verticalThumb->parent = nullptr;
+    }
+    if (m_horizontalBar != nullptr) {
+        m_horizontalBar->parent = nullptr;
+    }
+    if (m_horizontalThumb != nullptr) {
+        m_horizontalThumb->parent = nullptr;
+    }
 }
 
 void ScrollingFrame::resolveStyle()
@@ -162,13 +181,15 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 v
     if (needsVertical) {
         if (m_verticalBar == nullptr) {
             m_verticalBar = std::make_unique<Frame>();
+            m_verticalBar->parent = this;
             m_verticalBar->name = "vertical bar";
-            m_verticalBar->setBaseProperties({.zIndex = getZIndex() + 1});
+            m_verticalBar->setBaseProperties({.zIndex = Z_SCROLLBAR});
             m_verticalBar->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
         }
         if (m_verticalThumb == nullptr) {
             m_verticalThumb = std::make_unique<Frame>();
-            m_verticalThumb->setBaseProperties({.zIndex = getZIndex() + 2});
+            m_verticalThumb->parent = this;
+            m_verticalThumb->setBaseProperties({.zIndex = Z_SCROLLBAR_THUMB});
             m_verticalThumb->name = "vertical thumb";
             m_verticalThumb->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
         }
@@ -208,13 +229,15 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 v
     if (needsHorizontal) {
         if (m_horizontalBar == nullptr) {
             m_horizontalBar = std::make_unique<Frame>();
+            m_horizontalBar->parent = this;
             m_horizontalBar->name = "Horizontal Bar";
-            m_horizontalBar->setBaseProperties({.zIndex = getZIndex() + 1});
+            m_horizontalBar->setBaseProperties({.zIndex = Z_SCROLLBAR});
             m_horizontalBar->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
         }
         if (m_horizontalThumb == nullptr) {
             m_horizontalThumb = std::make_unique<Frame>();
-            m_horizontalThumb->setBaseProperties({.zIndex = getZIndex() + 2});
+            m_horizontalThumb->parent = this;
+            m_horizontalThumb->setBaseProperties({.zIndex = Z_SCROLLBAR_THUMB});
             m_horizontalThumb->name = "Horizontal Thumb";
             m_horizontalThumb->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
         }

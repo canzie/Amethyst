@@ -13,6 +13,9 @@ namespace Amethyst {
 
 static constexpr float DEFAULT_ROW_HEIGHT = 24.0f;
 
+static constexpr int32_t Z_ABOVE_CONTENT = 2;
+static constexpr int32_t Z_TOP = 3;
+
 TreeView::TreeView()
 {
     m_tvProps.rowHeight = 0.0f;
@@ -56,6 +59,9 @@ TreeView::~TreeView()
     }
     for (auto &lbl : m_headerLabels) {
         lbl->parent = nullptr;
+    }
+    for (auto &sep : m_separators) {
+        sep->parent = nullptr;
     }
 }
 
@@ -200,6 +206,8 @@ void TreeView::clear()
     m_rowBackgrounds.clear();
     m_disclosures.clear();
     m_rowBySlot.clear();
+    m_rowHoverConns.clear();
+    m_rowInputConns.clear();
     m_cursorRow = 0;
     m_cursorCol = 0;
     markDirty();
@@ -336,6 +344,9 @@ void TreeView::rebuildColumnPositions()
 
 void TreeView::updateSeparators()
 {
+    for (auto &sep : m_separators) {
+        sep->parent = nullptr;
+    }
     m_separators.clear();
     uint32_t cols = columnCount();
     if (!static_cast<bool>(m_tvProps.showColumnSeparators) || cols <= 1) {
@@ -346,6 +357,7 @@ void TreeView::updateSeparators()
         float xPos = m_columnPositions[i + 1];
 
         auto sep = std::make_unique<Frame>();
+        sep->parent = this;
         sep->setBaseStyleProperties({
             .backgroundColor = Color3(m_tvProps.columnSeparatorColor),
             .backgroundTransparency = 1.0f - m_tvProps.columnSeparatorColor.a,
@@ -353,7 +365,7 @@ void TreeView::updateSeparators()
         sep->setBaseProperties({
             .position = UDim2(0.0f, xPos - m_tvProps.columnSeparatorWidth / 2.0f, 0.0f, 0.0f),
             .size = UDim2(0.0f, m_tvProps.columnSeparatorWidth, 1.0f, 0.0f),
-            .zIndex = getZIndex() + 1,
+            .zIndex = Z_TOP,
         });
         sep->markDirty();
         m_separators.push_back(std::move(sep));
@@ -387,6 +399,28 @@ void TreeView::ensurePoolCapacity(uint32_t count)
         m_disclosures.push_back(disc.get());
         frame->addChild(std::move(disc));
 
+        uint32_t poolSlot = static_cast<uint32_t>(m_rowBackgrounds.size());
+        m_rowHoverConns.push_back(frame->onHoverChanged.connect([this, poolSlot](bool hovered) {
+            uint32_t logicalRow = m_rowBySlot[poolSlot];
+            if (hovered) {
+                hoveredRow = static_cast<int32_t>(logicalRow);
+            } else if (hoveredRow == static_cast<int32_t>(logicalRow)) {
+                hoveredRow = -1;
+            }
+            markDirty();
+        }));
+        m_rowInputConns.push_back(frame->onInputBeganCb.connect([this, poolSlot](const InputObject &io) {
+            if (io.type != InputType::MOUSE_BUTTON_1) {
+                return;
+            }
+            uint32_t logicalRow = m_rowBySlot[poolSlot];
+            selectedRow = static_cast<int32_t>(logicalRow);
+            if (onRowClicked) {
+                onRowClicked(logicalRow);
+            }
+            markDirty();
+        }));
+
         m_rowBackgrounds.push_back(std::move(frame));
         m_rowBySlot.push_back(INVALID_ROW);
     }
@@ -402,7 +436,7 @@ void TreeView::drawHeader(DrawContext &ctx, const vec4 &childClip)
         .backgroundColor = m_tvProps.headerColor,
         .backgroundTransparency = 0.0f,
     });
-    m_headerBackground->setBaseProperties({.visible = true, .zIndex = getZIndex()});
+    m_headerBackground->setBaseProperties({.visible = true});
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_tvProps.headerHeight}, absolutePosition, absoluteRotation);
@@ -414,7 +448,7 @@ void TreeView::drawHeader(DrawContext &ctx, const vec4 &childClip)
         lbl->setBaseProperties({
             .size = UDim2::fromScale(1.0f, 1.0f),
             .visible = true,
-            .zIndex = getZIndex() + 1,
+            .zIndex = Z_ABOVE_CONTENT,
         });
         lbl->setTextStyleProperties({
             .fontSize = m_tvProps.header.fontSize,
@@ -470,30 +504,10 @@ void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot,
         .position = UDim2(0.0f, 0.0f, 0.0f, y),
         .size = UDim2(1.0f, 0.0f, 0.0f, m_rowHeightPx),
         .visible = true,
-        .zIndex = getZIndex(),
     });
     bg->clipRect = childClip;
     bg->markDirty();
     bg->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-
-    bg->onHoverChanged = [this, logicalRow](bool hovered) {
-        if (hovered) {
-            hoveredRow = static_cast<int32_t>(logicalRow);
-        } else if (hoveredRow == static_cast<int32_t>(logicalRow)) {
-            hoveredRow = -1;
-        }
-        markDirty();
-    };
-    bg->onInputBeganCb = [this, logicalRow](const InputObject &io) {
-        if (io.type == InputType::MOUSE_BUTTON_1) {
-            selectedRow = static_cast<int32_t>(logicalRow);
-            if (onRowClicked) {
-                onRowClicked(logicalRow);
-            }
-            markDirty();
-        }
-        return EventResult::CONSUMED;
-    };
 
     ImageButton *disc = m_disclosures[poolSlot];
     if (!static_cast<bool>(m_tvProps.showDisclosureTriangles) || !m_rows[logicalRow].hasChildren) {
@@ -510,7 +524,7 @@ void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot,
             .size = UDim2::fromOffset(triSize, triSize),
             .rotation = m_rows[logicalRow].expanded ? 90.0f : 0.0f,
             .visible = true,
-            .zIndex = getZIndex() + 2,
+            .zIndex = Z_ABOVE_CONTENT,
         });
         disc->setImageStyleProperties({.imageColor = m_tvProps.disclosureTriangleColor});
         disc->onMouseButton1ClickCb = [this, logicalRow]() {

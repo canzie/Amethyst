@@ -196,11 +196,9 @@ Window *UIObject::getWindow()
 
 EventResult UIObject::onMouseEnter()
 {
-    if (onHoverChanged) {
-        onHoverChanged(true);
-        markDirty();
-    }
-    return EventResult::CONSUMED;
+    onHoverChanged.fire(true);
+    markDirty();
+    return consumes(INTERACTION_CATEGORY_HOVER) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 bool UIObject::isVisible() const
@@ -240,11 +238,9 @@ int32_t UIObject::getZIndex() const
 
 EventResult UIObject::onMouseLeave()
 {
-    if (onHoverChanged) {
-        onHoverChanged(false);
-        markDirty();
-    }
-    return EventResult::CONSUMED;
+    onHoverChanged.fire(false);
+    markDirty();
+    return consumes(INTERACTION_CATEGORY_HOVER) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 EventResult UIObject::onMouseMoved(int32_t x, int32_t y)
@@ -268,18 +264,14 @@ EventResult UIObject::onInputBegan(const InputObject &input)
             drag->handleMouseDown(static_cast<int32_t>(input.position.x), static_cast<int32_t>(input.position.y));
         }
     }
-    if (onInputBeganCb) {
-        return onInputBeganCb(input);
-    }
-    return EventResult::CONSUMED;
+    onInputBeganCb.fire(input);
+    return consumes(INTERACTION_CATEGORY_CLICK) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 EventResult UIObject::onInputChanged(const InputObject &input)
 {
-    if (onInputChangedCb) {
-        return onInputChangedCb(input);
-    }
-    return EventResult::CONSUMED;
+    onInputChangedCb.fire(input);
+    return consumes(INTERACTION_CATEGORY_MOVE) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 EventResult UIObject::onInputEnded(const InputObject &input)
@@ -289,10 +281,8 @@ EventResult UIObject::onInputEnded(const InputObject &input)
             drag->handleMouseUp(static_cast<int32_t>(input.position.x), static_cast<int32_t>(input.position.y));
         }
     }
-    if (onInputEndedCb) {
-        return onInputEndedCb(input);
-    }
-    return EventResult::CONSUMED;
+    onInputEndedCb.fire(input);
+    return consumes(INTERACTION_CATEGORY_CLICK) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 } // namespace Amethyst

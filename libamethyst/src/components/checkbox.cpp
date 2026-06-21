@@ -57,7 +57,7 @@ void Checkbox::draw(DrawContext &ctx)
 
     bool checked = value != nullptr && *value;
     m_checkIcon->setImageStyleProperties({.imageColor = m_cbProps.checkColor});
-    m_checkIcon->setBaseProperties({.visible = checked, .zIndex = getZIndex() + 1});
+    m_checkIcon->setBaseProperties({.visible = checked});
     m_checkIcon->clipRect = computeChildClipRect();
     m_checkIcon->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
     m_checkIcon->draw(ctx);

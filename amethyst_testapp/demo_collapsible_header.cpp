@@ -93,7 +93,7 @@ int main()
         .scrollingFrame(
             {.base = {.clipsDescendants = true, .position = UDim2::fromOffset(10.0f, 29.0f), .size = {1.0f, -20.0f, 1.0f, -34.0f}},
              .style = {.backgroundColor = Color3::fromHex(0x1A1A1E)},
-             .scroll = {.canvasSize = UDim2::fromOffset(880, CANVAS_HEIGHT),
+             .scroll = {.canvasSize = UDim2(1.0f, 0.0f, 0.0f, CANVAS_HEIGHT),
                         .scrollBarColor = {0.2f, 0.2f, 0.25f},
                         .scrollBarThumbColor = {0.45f, 0.45f, 0.55f}}},
             [statusLabel](ScrollingFrameScope &sf) {

@@ -20,6 +20,7 @@
 #include "components/properties.h"
 #include "components/text_label.h"
 #include "components/ui_object.h"
+#include "modules/event_signal.h"
 
 #include <cstdint>
 #include <functional>
@@ -237,6 +238,8 @@ class TreeView : public UIObject {
     std::vector<std::unique_ptr<Frame>> m_rowBackgrounds;
     std::vector<ImageButton *> m_disclosures;
     std::vector<uint32_t> m_rowBySlot;
+    std::vector<EventConnection> m_rowHoverConns;
+    std::vector<EventConnection> m_rowInputConns;
 
     std::unique_ptr<Frame> m_headerBackground;
     std::vector<std::unique_ptr<TextLabel>> m_headerLabels;
