@@ -12,6 +12,21 @@
 
 namespace Amethyst {
 
+static GeometryAllocation *s_pushData(GeometryRegistry *registry, GeometryAllocation *&alloc, const InstanceData &data)
+{
+    if (alloc == nullptr) {
+        alloc = registry->submit(data);
+    } else if (alloc->registry != registry) {
+        if (alloc->isValid() && alloc->owning) {
+            alloc->registry->release(*alloc);
+        }
+        alloc = registry->submit(data);
+    } else {
+        registry->update(*alloc, data);
+    }
+    return alloc;
+}
+
 TextLabel::TextLabel()
 {
     m_textStyle.textColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
@@ -75,11 +90,7 @@ void TextLabel::draw(DrawContext &ctx)
         InstanceData data = createInstanceData();
         data.setPrimitiveType(PRIMITIVE_RECT);
 
-        if (m_geometryAlloc == nullptr) {
-            m_geometryAlloc = ctx.geometry->submit(data);
-        } else {
-            ctx.geometry->update(*m_geometryAlloc, data);
-        }
+        pushData(ctx.geometry, data);
 
         updateTextGeometry(ctx);
     }
@@ -130,7 +141,8 @@ void TextLabel::updateTextGeometry(DrawContext &ctx)
     next.wrap = static_cast<bool>(m_textStyle.textWrapped);
     next.origin = absoluteContentPosition;
 
-    if (m_textLayout.matches(next)) {
+    bool registryChanged = m_textAlloc != nullptr && m_textAlloc->registry != ctx.geometry;
+    if (m_textLayout.matches(next) && !registryChanged) {
         repositionGlyphs(ctx, next.origin - m_textLayout.origin, glyphVisible);
     } else {
         reshapeGlyphs(ctx, effectiveFontSize, glyphZIndex, glyphVisible);
@@ -181,6 +193,13 @@ void TextLabel::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t
         return;
     }
 
+    if (m_glyphSlice.isValid() && m_textAlloc != nullptr && m_textAlloc->registry != ctx.geometry) {
+        if (GlyphBuffer *oldBuffer = m_textAlloc->registry->getGlyphBuffer()) {
+            oldBuffer->destroySlice(m_glyphSlice);
+        }
+        m_glyphSlice = GlyphSliceHandle{};
+    }
+
     GlyphBuffer &glyphBuffer = ctx.geometry->glyphBuffer();
     if (!m_glyphSlice.isValid()) {
         m_glyphSlice = glyphBuffer.createSlice();
@@ -199,11 +218,7 @@ void TextLabel::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t
     inst.clipRect = clipRect;
     inst.setVisible(visible);
 
-    if (m_textAlloc == nullptr) {
-        m_textAlloc = ctx.geometry->submit(inst);
-    } else {
-        ctx.geometry->update(*m_textAlloc, inst);
-    }
+    s_pushData(ctx.geometry, m_textAlloc, inst);
 }
 
 void TextLabel::releaseText(DrawContext &ctx)

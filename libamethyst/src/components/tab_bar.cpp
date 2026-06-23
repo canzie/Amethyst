@@ -599,11 +599,7 @@ void TabBar::draw(DrawContext &ctx)
         InstanceData data = createInstanceData();
         data.setPrimitiveType(PRIMITIVE_RECT);
 
-        if (m_geometryAlloc == nullptr) {
-            m_geometryAlloc = ctx.geometry->submit(data);
-        } else {
-            ctx.geometry->update(*m_geometryAlloc, data);
-        }
+        pushData(ctx.geometry, data);
     }
 
     vec4 childClip = computeChildClipRect();

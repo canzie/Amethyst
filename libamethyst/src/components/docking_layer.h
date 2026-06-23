@@ -89,6 +89,16 @@ class DockingLayer : public UILayer {
      */
     TabBar *obtainLeafTabBar(int32_t nodeIndex);
 
+    /**
+     * @brief Dock a fresh empty region into the layer and return its TabBar.
+     *
+     * If the layer is empty the region fills the whole layer. Otherwise the current
+     * root is wrapped under a new split and the region is placed on the given zone.
+     * @param zone Side of the layer the new region is placed on.
+     * @return TabBar of the new region. Never null.
+     */
+    TabBar *dockNewRegion(DockZone zone);
+
   private:
     int32_t createNode();
     void swapAndRemoveNode(int32_t nodeIndex);

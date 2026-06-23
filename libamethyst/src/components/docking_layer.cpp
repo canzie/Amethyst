@@ -683,6 +683,44 @@ TabBar *DockingLayer::obtainLeafTabBar(int32_t nodeIndex)
     return m_nodes[nodeIndex].content;
 }
 
+TabBar *DockingLayer::dockNewRegion(DockZone zone)
+{
+    if (isEmpty()) {
+        int32_t root = createLeaf();
+        return obtainLeafTabBar(root);
+    }
+
+    int32_t oldRoot = m_rootNode;
+    int32_t newParent = createNode();
+    int32_t newLeaf = createNode();
+
+    auto newTabBar = std::make_unique<TabBar>();
+    newTabBar->parent = this;
+    setupTabBarCallbacks(newTabBar.get());
+    newTabBar->setTabBarProperties({.tabTearOffEnabled = true});
+    TabBar *result = newTabBar.get();
+
+    m_nodes[newLeaf].content = result;
+    m_nodes[newLeaf].parentNode = newParent;
+    m_tabBars.push_back(std::move(newTabBar));
+
+    m_nodes[oldRoot].parentNode = newParent;
+
+    bool newFirst = (zone == DockZone::LEFT || zone == DockZone::TOP);
+    DockNode &parent = m_nodes[newParent];
+    parent.parentNode = -1;
+    parent.firstChild = newFirst ? newLeaf : oldRoot;
+    parent.secondChild = newFirst ? oldRoot : newLeaf;
+    parent.axis = (zone == DockZone::LEFT || zone == DockZone::RIGHT) ? SplitAxis::VERTICAL : SplitAxis::HORIZONTAL;
+    parent.ratio = newFirst ? 0.3f : 0.7f;
+
+    m_rootNode = newParent;
+
+    setupResizeHandle(newParent, absoluteSize, absolutePosition);
+    markDirty();
+    return result;
+}
+
 static int32_t s_saveNode(const std::vector<DockNode> &nodes, int32_t nodeIndex, DockLayoutConfig &cfg)
 {
     if (nodeIndex < 0 || nodeIndex >= static_cast<int32_t>(nodes.size())) return -1;

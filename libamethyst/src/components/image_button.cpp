@@ -101,11 +101,7 @@ void ImageButton::draw(DrawContext &ctx)
             data.textureId = m_image.id;
         }
 
-        if (m_geometryAlloc == nullptr) {
-            m_geometryAlloc = ctx.geometry->submit(data);
-        } else {
-            ctx.geometry->update(*m_geometryAlloc, data);
-        }
+        pushData(ctx.geometry, data);
     }
 
     vec4 childClip = computeChildClipRect();

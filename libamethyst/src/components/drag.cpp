@@ -217,11 +217,7 @@ void Drag::draw(DrawContext &ctx)
 
         InstanceData bgData = createInstanceData();
         bgData.setPrimitiveType(PRIMITIVE_RECT);
-        if (m_geometryAlloc == nullptr) {
-            m_geometryAlloc = ctx.geometry->submit(bgData);
-        } else {
-            ctx.geometry->update(*m_geometryAlloc, bgData);
-        }
+        pushData(ctx.geometry, bgData);
     }
 
     vec4 childClip = computeChildClipRect();

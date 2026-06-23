@@ -35,6 +35,9 @@ class UIBase2D : public Instance {
 
     void setProperties(UIBase2DProperties props);
 
+  protected:
+    GeometryAllocation *pushData(GeometryRegistry *registry, const InstanceData &data);
+
   public:
     vec2 absolutePosition = vec2(0.0f);
     vec2 absoluteContentPosition = vec2(0.0f);

@@ -242,6 +242,21 @@ void Canvas::draw(DrawContext &ctx)
         return;
     }
 
+    if (m_registry != nullptr && m_registry != ctx.geometry) {
+        for (GeometryAllocation *a : m_allocations) {
+            if (a->isValid()) {
+                a->registry->release(*a);
+            }
+        }
+        m_allocations.clear();
+        for (GeometryAllocation *a : m_textAllocations) {
+            if (a->isValid()) {
+                a->registry->release(*a);
+            }
+        }
+        m_textAllocations.clear();
+    }
+
     m_registry = ctx.geometry;
 
     size_t newCount = m_commands.size();

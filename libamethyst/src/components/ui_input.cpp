@@ -13,6 +13,21 @@
 
 namespace Amethyst {
 
+static GeometryAllocation *s_pushData(GeometryRegistry *registry, GeometryAllocation *&alloc, const InstanceData &data)
+{
+    if (alloc == nullptr) {
+        alloc = registry->submit(data);
+    } else if (alloc->registry != registry) {
+        if (alloc->isValid() && alloc->owning) {
+            alloc->registry->release(*alloc);
+        }
+        alloc = registry->submit(data);
+    } else {
+        registry->update(*alloc, data);
+    }
+    return alloc;
+}
+
 UIInput::UIInput()
 {
     m_tiProps.placeholderColor = Color4{0.5f, 0.5f, 0.5f, 1.0f};
@@ -559,6 +574,13 @@ void UIInput::drawText(DrawContext &ctx)
     if (batched.glyphs.empty()) {
         releaseText(ctx);
     } else {
+        if (m_glyphSlice.isValid() && m_textAlloc != nullptr && m_textAlloc->registry != ctx.geometry) {
+            if (GlyphBuffer *oldBuffer = m_textAlloc->registry->getGlyphBuffer()) {
+                oldBuffer->destroySlice(m_glyphSlice);
+            }
+            m_glyphSlice = GlyphSliceHandle{};
+        }
+
         GlyphBuffer &glyphBuffer = ctx.geometry->glyphBuffer();
         if (!m_glyphSlice.isValid()) {
             m_glyphSlice = glyphBuffer.createSlice();
@@ -577,11 +599,7 @@ void UIInput::drawText(DrawContext &ctx)
         inst.clipRect = clipRect;
         inst.setVisible(isVisible());
 
-        if (m_textAlloc == nullptr) {
-            m_textAlloc = ctx.geometry->submit(inst);
-        } else {
-            ctx.geometry->update(*m_textAlloc, inst);
-        }
+        s_pushData(ctx.geometry, m_textAlloc, inst);
     }
 
     m_charPositions.clear();
@@ -622,11 +640,7 @@ void UIInput::drawSelection(DrawContext &ctx)
             data.setPrimitiveType(PRIMITIVE_RECT);
             data.zIndex = getZIndex();
 
-            if (m_selectionAlloc == nullptr) {
-                m_selectionAlloc = ctx.geometry->submit(data);
-            } else {
-                ctx.geometry->update(*m_selectionAlloc, data);
-            }
+            s_pushData(ctx.geometry, m_selectionAlloc, data);
             return;
         }
     }
@@ -656,11 +670,7 @@ void UIInput::drawCursor(DrawContext &ctx)
         data.setPrimitiveType(PRIMITIVE_RECT);
         data.zIndex = getZIndex();
 
-        if (m_cursorAlloc == nullptr) {
-            m_cursorAlloc = ctx.geometry->submit(data);
-        } else {
-            ctx.geometry->update(*m_cursorAlloc, data);
-        }
+        s_pushData(ctx.geometry, m_cursorAlloc, data);
         return;
     }
 
@@ -679,11 +689,7 @@ void UIInput::drawInput(DrawContext &ctx)
     if (flags & FLAG_DIRTY) {
         InstanceData bgData = createInstanceData();
         bgData.setPrimitiveType(PRIMITIVE_RECT);
-        if (m_geometryAlloc == nullptr) {
-            m_geometryAlloc = ctx.geometry->submit(bgData);
-        } else {
-            ctx.geometry->update(*m_geometryAlloc, bgData);
-        }
+        pushData(ctx.geometry, bgData);
 
         drawText(ctx);
         drawSelection(ctx);

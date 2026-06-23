@@ -459,11 +459,7 @@ void Table::draw(DrawContext &ctx)
     if (flags & FLAG_DIRTY) {
         InstanceData data = createInstanceData();
         data.setPrimitiveType(PRIMITIVE_RECT);
-        if (m_geometryAlloc == nullptr) {
-            m_geometryAlloc = ctx.geometry->submit(data);
-        } else {
-            ctx.geometry->update(*m_geometryAlloc, data);
-        }
+        pushData(ctx.geometry, data);
 
         rebuildColumnPositions();
         updateSeparators();
