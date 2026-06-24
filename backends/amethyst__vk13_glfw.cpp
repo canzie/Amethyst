@@ -13,6 +13,7 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <unordered_map>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -26,21 +27,9 @@ static inline size_t alignUp(size_t size, size_t alignment)
     return (size + alignment - 1) & ~(alignment - 1);
 }
 
-struct Amethyst_glfw_Data {
-    GLFWwindow *window;
-    GLFWmousebuttonfun prevMouseButtonCallback = nullptr;
-    GLFWcursorposfun prevCursorPosCallback = nullptr;
-    GLFWscrollfun prevScrollCallback = nullptr;
-    GLFWkeyfun prevKeyCallback = nullptr;
-    GLFWcharfun prevCharCallback = nullptr;
-    GLFWwindowcontentscalefun prevContentScaleCallback = nullptr;
-    float contentScaleX = 1.0f;
-    float contentScaleY = 1.0f;
-};
-
 static GLFWcursor *CURSOR_SHAPE_MAP[CURSOR_COUNT];
 
-static Amethyst_glfw_Data g_glfwData;
+static std::unordered_map<GLFWwindow *, AmVulkanBackend *> s_backendForWindow;
 
 static GLFWcursor *createCursorFromMask(int size, const bool *fill)
 {
@@ -236,22 +225,32 @@ void AmVulkanBackend::init(const AmVulkanInitInfo &config, const AmGlfwInitInfo 
     createPipeline();
     allocateDescriptorSet();
 
-    InputInterface::onCursorShapeChanged = [](CursorShape shape) { glfwSetCursor(g_glfwData.window, CURSOR_SHAPE_MAP[shape]); };
-    InputInterface::onCursorLockChanged = [](bool locked) {
-        glfwSetInputMode(g_glfwData.window, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    GLFWwindow *glfwWindow = static_cast<GLFWwindow *>(m_glfwInfo.window);
+    InputInterface::onCursorShapeChanged = [glfwWindow](CursorShape shape) {
+        glfwSetCursor(glfwWindow, CURSOR_SHAPE_MAP[shape]);
+    };
+    InputInterface::onCursorLockChanged = [glfwWindow](bool locked) {
+        glfwSetInputMode(glfwWindow, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
         if (glfwRawMouseMotionSupported()) {
-            glfwSetInputMode(g_glfwData.window, GLFW_RAW_MOUSE_MOTION, locked ? GLFW_TRUE : GLFW_FALSE);
+            glfwSetInputMode(glfwWindow, GLFW_RAW_MOUSE_MOTION, locked ? GLFW_TRUE : GLFW_FALSE);
         }
     };
-    InputInterface::onSetClipboardText = [](const std::string &text) { glfwSetClipboardString(g_glfwData.window, text.c_str()); };
-    InputInterface::onGetClipboardText = []() -> std::string {
-        const char *text = glfwGetClipboardString(g_glfwData.window);
+    InputInterface::onSetClipboardText = [glfwWindow](const std::string &text) {
+        glfwSetClipboardString(glfwWindow, text.c_str());
+    };
+    InputInterface::onGetClipboardText = [glfwWindow]() -> std::string {
+        const char *text = glfwGetClipboardString(glfwWindow);
         return text ? std::string(text) : "";
     };
 }
 
 void AmVulkanBackend::shutdown()
 {
+    GLFWwindow *glfwWindow = static_cast<GLFWwindow *>(m_glfwInfo.window);
+    if (glfwWindow != nullptr) {
+        s_backendForWindow.erase(glfwWindow);
+    }
+
     VkDevice device = m_info.device;
     vkDeviceWaitIdle(device);
 
@@ -832,20 +831,39 @@ static int s_translateModifiers(int glfwMods)
 
 void AmVulkanBackend::mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 {
-    if (g_glfwData.prevMouseButtonCallback) {
-        g_glfwData.prevMouseButtonCallback(window, button, action, mods);
+    auto it = s_backendForWindow.find(window);
+    if (it == s_backendForWindow.end()) {
+        return;
     }
-    InputInterface::onMouseButton(button, action, s_translateModifiers(mods));
+    AmVulkanBackend *self = it->second;
+
+    if (self->m_prevMouseButtonCallback != nullptr) {
+        self->m_prevMouseButtonCallback(window, button, action, mods);
+    }
+
+    double x = 0.0;
+    double y = 0.0;
+    glfwGetCursorPos(window, &x, &y);
+    int32_t scaledX = static_cast<int32_t>(x * self->m_contentScaleX);
+    int32_t scaledY = static_cast<int32_t>(y * self->m_contentScaleY);
+
+    InputInterface::onMouseButton(self->m_glfwInfo.uiWindow, button, action, s_translateModifiers(mods), scaledX, scaledY);
 }
 
 void AmVulkanBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
 {
-    if (g_glfwData.prevCursorPosCallback) {
-        g_glfwData.prevCursorPosCallback(window, x, y);
+    auto it = s_backendForWindow.find(window);
+    if (it == s_backendForWindow.end()) {
+        return;
+    }
+    AmVulkanBackend *self = it->second;
+
+    if (self->m_prevCursorPosCallback != nullptr) {
+        self->m_prevCursorPosCallback(window, x, y);
     }
 
-    double scaledX = x * g_glfwData.contentScaleX;
-    double scaledY = y * g_glfwData.contentScaleY;
+    double scaledX = x * self->m_contentScaleX;
+    double scaledY = y * self->m_contentScaleY;
 
     // While the cursor is locked (infinite drag) GLFW reports unbounded virtual positions, so
     // pass them straight through. Otherwise GLFW keeps reporting positions outside the window
@@ -860,55 +878,87 @@ void AmVulkanBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
         }
     }
 
-    InputInterface::setMousePosition(static_cast<int32_t>(scaledX), static_cast<int32_t>(scaledY));
+    InputInterface::onMouseMove(self->m_glfwInfo.uiWindow, static_cast<int32_t>(scaledX), static_cast<int32_t>(scaledY));
 }
 
 void AmVulkanBackend::scrollCallback(GLFWwindow *window, double xoffset, double yoffset)
 {
-    if (g_glfwData.prevScrollCallback) {
-        g_glfwData.prevScrollCallback(window, xoffset, yoffset);
+    auto it = s_backendForWindow.find(window);
+    if (it == s_backendForWindow.end()) {
+        return;
     }
-    InputInterface::onMouseScroll(static_cast<float>(xoffset), static_cast<float>(yoffset));
+    AmVulkanBackend *self = it->second;
+
+    if (self->m_prevScrollCallback != nullptr) {
+        self->m_prevScrollCallback(window, xoffset, yoffset);
+    }
+
+    double x = 0.0;
+    double y = 0.0;
+    glfwGetCursorPos(window, &x, &y);
+    int32_t scaledX = static_cast<int32_t>(x * self->m_contentScaleX);
+    int32_t scaledY = static_cast<int32_t>(y * self->m_contentScaleY);
+
+    InputInterface::onMouseScroll(self->m_glfwInfo.uiWindow, static_cast<float>(xoffset), static_cast<float>(yoffset), scaledX,
+                                  scaledY);
 }
 
 void AmVulkanBackend::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-    if (g_glfwData.prevKeyCallback) {
-        g_glfwData.prevKeyCallback(window, key, scancode, action, mods);
+    auto it = s_backendForWindow.find(window);
+    if (it == s_backendForWindow.end()) {
+        return;
+    }
+    AmVulkanBackend *self = it->second;
+
+    if (self->m_prevKeyCallback != nullptr) {
+        self->m_prevKeyCallback(window, key, scancode, action, mods);
     }
     InputInterface::onKey(key, scancode, action, s_translateModifiers(mods));
 }
 
 void AmVulkanBackend::charCallback(GLFWwindow *window, unsigned int codepoint)
 {
-    if (g_glfwData.prevCharCallback) {
-        g_glfwData.prevCharCallback(window, codepoint);
+    auto it = s_backendForWindow.find(window);
+    if (it == s_backendForWindow.end()) {
+        return;
+    }
+    AmVulkanBackend *self = it->second;
+
+    if (self->m_prevCharCallback != nullptr) {
+        self->m_prevCharCallback(window, codepoint);
     }
     InputInterface::onChar(codepoint);
 }
 
 void AmVulkanBackend::contentScaleCallback(GLFWwindow *window, float xscale, float yscale)
 {
-    if (g_glfwData.prevContentScaleCallback) {
-        g_glfwData.prevContentScaleCallback(window, xscale, yscale);
+    auto it = s_backendForWindow.find(window);
+    if (it == s_backendForWindow.end()) {
+        return;
     }
-    g_glfwData.contentScaleX = xscale;
-    g_glfwData.contentScaleY = yscale;
+    AmVulkanBackend *self = it->second;
+
+    if (self->m_prevContentScaleCallback != nullptr) {
+        self->m_prevContentScaleCallback(window, xscale, yscale);
+    }
+    self->m_contentScaleX = xscale;
+    self->m_contentScaleY = yscale;
 }
 
 void AmVulkanBackend::setupGLFWCallbacks()
 {
     GLFWwindow *window = static_cast<GLFWwindow *>(m_glfwInfo.window);
-    g_glfwData.window = window;
+    s_backendForWindow[window] = this;
 
-    glfwGetWindowContentScale(window, &g_glfwData.contentScaleX, &g_glfwData.contentScaleY);
+    glfwGetWindowContentScale(window, &m_contentScaleX, &m_contentScaleY);
 
-    g_glfwData.prevMouseButtonCallback = glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    g_glfwData.prevCursorPosCallback = glfwSetCursorPosCallback(window, cursorPosCallback);
-    g_glfwData.prevScrollCallback = glfwSetScrollCallback(window, scrollCallback);
-    g_glfwData.prevKeyCallback = glfwSetKeyCallback(window, keyCallback);
-    g_glfwData.prevCharCallback = glfwSetCharCallback(window, charCallback);
-    g_glfwData.prevContentScaleCallback = glfwSetWindowContentScaleCallback(window, contentScaleCallback);
+    m_prevMouseButtonCallback = glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    m_prevCursorPosCallback = glfwSetCursorPosCallback(window, cursorPosCallback);
+    m_prevScrollCallback = glfwSetScrollCallback(window, scrollCallback);
+    m_prevKeyCallback = glfwSetKeyCallback(window, keyCallback);
+    m_prevCharCallback = glfwSetCharCallback(window, charCallback);
+    m_prevContentScaleCallback = glfwSetWindowContentScaleCallback(window, contentScaleCallback);
 }
 
 AmTextureId AmVulkanBackend::registerTexture(VkImageView imageView, VkSampler sampler)

@@ -19,6 +19,10 @@ void InputInterface::registerWindow(Window *window)
 
 void InputInterface::unregisterWindow(Window *window)
 {
+    if (s_lastClickWindow == window) {
+        s_lastClickWindow = nullptr;
+    }
+
     for (auto it = s_windows.begin(); it != s_windows.end(); ++it) {
         if (*it == window) {
             s_windows.erase(it);
@@ -27,23 +31,24 @@ void InputInterface::unregisterWindow(Window *window)
     }
 }
 
-void InputInterface::setMousePosition(int32_t x, int32_t y)
+void InputInterface::onMouseMove(Window *target, int32_t x, int32_t y)
 {
-    s_mouseX = x;
-    s_mouseY = y;
-
-    for (Window *window : s_windows) {
-        window->onMouseMove(s_mouseX, s_mouseY);
+    if (target != nullptr) {
+        target->onMouseMove(x, y);
     }
 }
 
-void InputInterface::onMouseButton(int button, int action, int mods)
+void InputInterface::onMouseButton(Window *target, int button, int action, int mods, int32_t x, int32_t y)
 {
+    if (target == nullptr) {
+        return;
+    }
+
     if (action == MOUSE_ACTION_PRESS) {
         auto now = std::chrono::steady_clock::now();
-        vec2 pos(static_cast<float>(s_mouseX), static_cast<float>(s_mouseY));
+        vec2 pos(static_cast<float>(x), static_cast<float>(y));
         float elapsedMs = std::chrono::duration<float, std::milli>(now - s_lastClickTime).count();
-        if (button == s_lastClickButton && elapsedMs <= s_doubleClickIntervalMs &&
+        if (target == s_lastClickWindow && button == s_lastClickButton && elapsedMs <= s_doubleClickIntervalMs &&
             length(pos - s_lastClickPos) <= DOUBLE_CLICK_DISTANCE) {
             mods |= MOD_DOUBLE_CLICK;
             s_lastClickButton = -1;
@@ -52,18 +57,17 @@ void InputInterface::onMouseButton(int button, int action, int mods)
         }
         s_lastClickTime = now;
         s_lastClickPos = pos;
+        s_lastClickWindow = target;
     }
 
     s_modifiers = mods;
-    for (Window *window : s_windows) {
-        window->onMouseButton(button, action, mods, s_mouseX, s_mouseY);
-    }
+    target->onMouseButton(button, action, mods, x, y);
 }
 
-void InputInterface::onMouseScroll(float xoffset, float yoffset)
+void InputInterface::onMouseScroll(Window *target, float xoffset, float yoffset, int32_t x, int32_t y)
 {
-    for (Window *window : s_windows) {
-        window->onMouseScroll(xoffset, yoffset, s_mouseX, s_mouseY);
+    if (target != nullptr) {
+        target->onMouseScroll(xoffset, yoffset, x, y);
     }
 }
 

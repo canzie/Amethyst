@@ -49,8 +49,11 @@ int main()
     initInfo.vertexShaderPath = AMETHYST_SHADER_DIR "/ui.vs.spv";
     initInfo.fragmentShaderPath = AMETHYST_SHADER_DIR "/ui.fs.spv";
 
+    Amethyst::Window window;
+
     Amethyst::AmGlfwInitInfo glfwInfo{};
     glfwInfo.window = ctx.window;
+    glfwInfo.uiWindow = &window;
 
     Amethyst::AmVulkanBackend backend;
     backend.init(initInfo, glfwInfo);
@@ -59,7 +62,6 @@ int main()
 
     vec2 screenSize = {static_cast<float>(ctx.swapchainExtent.width), static_cast<float>(ctx.swapchainExtent.height)};
 
-    Amethyst::Window window;
     window.absoluteSize = screenSize;
     window.absoluteRotation = 0.0f;
     window.setDisplayOrder(10);

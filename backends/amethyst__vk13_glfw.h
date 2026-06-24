@@ -17,8 +17,11 @@ constexpr uint32_t MAX_BINDLESS_TEXTURES = 1024;
 
 namespace Amethyst {
 
+class Window;
+
 struct AmGlfwInitInfo {
     void *window;
+    Window *uiWindow = nullptr;
 };
 
 struct AmVulkanInitInfo {
@@ -115,6 +118,16 @@ class AmVulkanBackend : public AmethystBackend {
 
     std::vector<uint32_t> m_textureFreeList;
     uint32_t m_nextTextureSlot = 0;
+
+    // Per-window GLFW input state: chained-from callbacks and this window's content scale.
+    GLFWmousebuttonfun m_prevMouseButtonCallback = nullptr;
+    GLFWcursorposfun m_prevCursorPosCallback = nullptr;
+    GLFWscrollfun m_prevScrollCallback = nullptr;
+    GLFWkeyfun m_prevKeyCallback = nullptr;
+    GLFWcharfun m_prevCharCallback = nullptr;
+    GLFWwindowcontentscalefun m_prevContentScaleCallback = nullptr;
+    float m_contentScaleX = 1.0f;
+    float m_contentScaleY = 1.0f;
 };
 
 } // namespace Amethyst

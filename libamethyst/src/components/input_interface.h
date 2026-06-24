@@ -37,9 +37,9 @@ class InputInterface {
     static void registerWindow(Window *window);
     static void unregisterWindow(Window *window);
 
-    static void setMousePosition(int32_t x, int32_t y);
-    static void onMouseButton(int button, int action, int mods);
-    static void onMouseScroll(float xoffset, float yoffset);
+    static void onMouseMove(Window *target, int32_t x, int32_t y);
+    static void onMouseButton(Window *target, int button, int action, int mods, int32_t x, int32_t y);
+    static void onMouseScroll(Window *target, float xoffset, float yoffset, int32_t x, int32_t y);
     static void onKey(int key, int scancode, int action, int mods);
     static void onChar(uint32_t codepoint);
 
@@ -85,8 +85,6 @@ class InputInterface {
     static constexpr float DOUBLE_CLICK_DISTANCE = 4.0f;
 
     static inline std::vector<Window *> s_windows;
-    static inline int32_t s_mouseX = 0;
-    static inline int32_t s_mouseY = 0;
     static inline int s_modifiers = 0;
     static inline CursorShape s_currentCursorShape = CursorShape::CURSOR_ARROW;
     static inline bool s_cursorLocked = false;
@@ -96,6 +94,7 @@ class InputInterface {
     static inline std::chrono::steady_clock::time_point s_lastClickTime{};
     static inline vec2 s_lastClickPos{};
     static inline int s_lastClickButton = -1;
+    static inline Window *s_lastClickWindow = nullptr;
 
     static inline std::array<KeyEvent, KEY_BUFFER_SIZE> s_keyBuffer;
     static inline size_t s_keyBufferHead = 0;

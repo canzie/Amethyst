@@ -74,8 +74,11 @@ int main()
     initInfo.vertexShaderPath = AMETHYST_SHADER_DIR "/ui.vs.spv";
     initInfo.fragmentShaderPath = AMETHYST_SHADER_DIR "/ui.fs.spv";
 
+    Window window;
+
     AmGlfwInitInfo glfwInfo{};
     glfwInfo.window = ctx.window;
+    glfwInfo.uiWindow = &window;
 
     AmVulkanBackend backend;
     backend.init(initInfo, glfwInfo);
@@ -87,7 +90,6 @@ int main()
         static_cast<float>(ctx.swapchainExtent.height),
     };
 
-    Window window;
     window.absoluteSize = screenSize;
     window.absoluteRotation = 0.0f;
     window.setDisplayOrder(10);
