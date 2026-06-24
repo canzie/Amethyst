@@ -57,18 +57,18 @@ void ContextMenu::setItems(std::vector<ContextMenuItem> items)
     m_items = std::move(items);
 }
 
-void ContextMenu::show(UIObject *anchor)
+bool ContextMenu::prepareShow()
 {
     if (isOpen()) {
-        return;
+        return false;
     }
     Window *win = getWindow();
     if (win == nullptr) {
-        return;
+        return false;
     }
     m_overlayPtr = win->getOverlayLayer();
     if (m_overlayPtr == nullptr) {
-        return;
+        return false;
     }
 
     buildMainContent();
@@ -93,7 +93,28 @@ void ContextMenu::show(UIObject *anchor)
         });
     }
 
+    return true;
+}
+
+void ContextMenu::show(UIObject *anchor)
+{
+    if (!prepareShow()) {
+        return;
+    }
+
     Popup::open(anchor);
+    if (onOpenedCb) {
+        onOpenedCb();
+    }
+}
+
+void ContextMenu::showAt(vec2 pos)
+{
+    if (!prepareShow()) {
+        return;
+    }
+
+    Popup::openAt(pos);
     if (onOpenedCb) {
         onOpenedCb();
     }

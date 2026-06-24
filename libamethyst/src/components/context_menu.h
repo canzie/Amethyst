@@ -23,6 +23,7 @@ class ContextMenu : public Popup {
     std::vector<ContextMenuItem> &items() { return m_items; }
 
     void show(UIObject *anchor);
+    void showAt(vec2 pos);
     void hide();
 
     bool setContextMenuProperties(const ContextMenuStyleProperties &props);
@@ -36,6 +37,7 @@ class ContextMenu : public Popup {
     std::function<void()> onClosedCb;
 
   private:
+    bool prepareShow();
     void closeSubmenuFrom(size_t depth = 0);
     void buildMainContent();
     void buildSubmenuAtPath(const std::vector<size_t> &path, UIObject *sourceRow);
