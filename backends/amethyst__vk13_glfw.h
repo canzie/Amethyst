@@ -67,8 +67,7 @@ class AmVulkanBackend : public AmethystBackend {
   public:
     void beginFrame();
     void endFrame();
-    void record(VkCommandBuffer cmd, const FrameDrawList &drawList);
-    void onResize(Amethyst::vec2 extent);
+    void record(VkCommandBuffer cmd, const FrameDrawList &drawList, VkExtent2D extent);
 
     AmBufferId createBuffer(const AmBufferDesc &desc) override;
     bool growBuffer(AmBufferId id, size_t newCapacity) override;

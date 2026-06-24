@@ -377,8 +377,9 @@ int main()
         VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];
 
         amCtx.draw(window);
-        amCtx.sync(static_cast<void *>(cmd));
-        backend.record(cmd, amCtx.getDrawList());
+        amCtx.syncShared(static_cast<void *>(cmd));
+        amCtx.syncWindow(static_cast<void *>(cmd), window);
+        backend.record(cmd, amCtx.getDrawList(window), ctx.swapchainExtent);
         contextEndFrame(ctx, imageIndex);
 
         frameCount++;

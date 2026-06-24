@@ -2,6 +2,7 @@
 
 #include "amethyst/amethyst_backend.h"
 #include "components/ui_layer.h"
+#include "components/window.h"
 #include "logging/log.h"
 #include "modules/glyph_buffer.h"
 #include "rendering/geometry_registry.h"
@@ -12,6 +13,15 @@
 #include <cstdint>
 
 namespace Amethyst {
+
+static Window *s_findOwningWindow(UILayer *layer)
+{
+    Instance *node = layer;
+    while (node->parent != nullptr) {
+        node = node->parent;
+    }
+    return node->as<Window>();
+}
 
 GpuResourceHub *GpuResourceHub::s_active = nullptr;
 
@@ -49,24 +59,37 @@ void GpuResourceHub::init(AmethystBackend &backend)
     constexpr uint32_t quadIndices[QUAD_INDEX_COUNT] = {0, 1, 2, 0, 2, 3};
     m_quadIndexBuffer = backend.createBuffer({sizeof(quadIndices), AmBufferUsage::INDEX, AmBufferMemory::DEVICE_LOCAL, UINT32_MAX});
     backend.uploadBufferRange(nullptr, m_quadIndexBuffer, quadIndices, 0, sizeof(quadIndices));
-
-    m_drawList.indexBuffer = m_quadIndexBuffer;
 }
 
-void GpuResourceHub::sync(void *cmdBuffer)
+void GpuResourceHub::syncShared(void *cmdBuffer)
 {
     AM_PROFILE_FUNCTION();
-    m_drawList.entries.clear();
 
     if (m_backend == nullptr) {
         return;
     }
 
     m_gradients.sync(cmdBuffer);
+}
+
+void GpuResourceHub::syncWindow(void *cmdBuffer, Window *targetWindow)
+{
+    AM_PROFILE_FUNCTION();
+
+    if (m_backend == nullptr) {
+        return;
+    }
+
+    FrameDrawList &drawList = m_drawLists[targetWindow];
+    drawList.entries.clear();
+    drawList.indexBuffer = m_quadIndexBuffer;
 
     for (GeometryRegistry *registry : GeometryRegistry::getRegistries()) {
         UILayer *layer = registry->getOwningLayer();
         if (layer == nullptr || !layer->isVisible()) {
+            continue;
+        }
+        if (s_findOwningWindow(layer) != targetWindow) {
             continue;
         }
 
@@ -93,9 +116,16 @@ void GpuResourceHub::sync(void *cmdBuffer)
                 entry.lineBase = static_cast<uint32_t>(text->line.offset / sizeof(GlyphLine));
                 entry.sliceBase = static_cast<uint32_t>(text->slice.offset / sizeof(GlyphSlice));
             }
-            m_drawList.entries.push_back(entry);
+            drawList.entries.push_back(entry);
         }
     }
+}
+
+const FrameDrawList &GpuResourceHub::drawList(Window *targetWindow) const
+{
+    static const FrameDrawList s_empty;
+    auto it = m_drawLists.find(targetWindow);
+    return it != m_drawLists.end() ? it->second : s_empty;
 }
 
 void GpuResourceHub::onRegistryDestroyed(GeometryRegistry *registry)

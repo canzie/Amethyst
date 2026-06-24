@@ -27,7 +27,7 @@ void AmethystContext::init(AmethystBackend &backend)
     m_resourceHub.init(backend);
 }
 
-void AmethystContext::sync(void *cmdBuffer)
+void AmethystContext::syncShared(void *cmdBuffer)
 {
     if (m_backend == nullptr) {
         return;
@@ -43,7 +43,16 @@ void AmethystContext::sync(void *cmdBuffer)
         m_svgAtlas.clearDirty();
     }
 
-    m_resourceHub.sync(cmdBuffer);
+    m_resourceHub.syncShared(cmdBuffer);
+}
+
+void AmethystContext::syncWindow(void *cmdBuffer, Window &window)
+{
+    if (m_backend == nullptr) {
+        return;
+    }
+
+    m_resourceHub.syncWindow(cmdBuffer, &window);
 }
 
 void AmethystContext::draw(UIBase2D &root)

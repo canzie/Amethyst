@@ -19,6 +19,7 @@
 namespace Amethyst {
 
 class UIBase2D;
+class Window;
 
 class AmethystContext {
   public:
@@ -30,14 +31,30 @@ class AmethystContext {
 
     bool loadFont(const std::string &path);
     void init(AmethystBackend &backend);
-    void sync(void *cmdBuffer);
+
+    /**
+     * @brief Flush the glyph/SVG atlas textures and the shared gradient buffer.
+     *
+     * Call once per frame, before syncWindow() for any of that frame's windows.
+     * @param cmdBuffer Backend-native command buffer, forwarded to upload calls.
+     */
+    void syncShared(void *cmdBuffer);
+
+    /**
+     * @brief Flush dirty registry/text data for one window and rebuild its draw list.
+     * @param cmdBuffer Backend-native command buffer, forwarded to upload calls.
+     * @param window Window whose registries to flush.
+     */
+    void syncWindow(void *cmdBuffer, Window &window);
+
     void draw(UIBase2D &root);
 
     /**
-     * @brief The draw list built by the last sync(), consumed by the backend's record pass.
+     * @brief The draw list built by the last syncWindow() for a given window.
+     * @param window Window whose draw list to return.
      * @return Per-registry draw entries plus the shared index buffer handle.
      */
-    const FrameDrawList &getDrawList() const { return m_resourceHub.drawList(); }
+    const FrameDrawList &getDrawList(Window &window) const { return m_resourceHub.drawList(&window); }
 
     /**
      * @brief Bindless texture id of the glyph atlas, e.g. for debug visualization.

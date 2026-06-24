@@ -289,20 +289,15 @@ void AmVulkanBackend::beginFrame() {}
 
 void AmVulkanBackend::endFrame() {}
 
-void AmVulkanBackend::onResize(vec2 extent)
-{
-    m_info.extent = VkExtent2D(extent.x, extent.y);
-}
-
-void AmVulkanBackend::record(VkCommandBuffer cmd, const FrameDrawList &drawList)
+void AmVulkanBackend::record(VkCommandBuffer cmd, const FrameDrawList &drawList, VkExtent2D extent)
 {
     AM_PROFILE_FUNCTION();
 
     VkViewport viewport = {
         .x = 0.0f,
         .y = 0.0f,
-        .width = static_cast<float>(m_info.extent.width),
-        .height = static_cast<float>(m_info.extent.height),
+        .width = static_cast<float>(extent.width),
+        .height = static_cast<float>(extent.height),
         .minDepth = 0.0f,
         .maxDepth = 1.0f,
     };
@@ -310,7 +305,7 @@ void AmVulkanBackend::record(VkCommandBuffer cmd, const FrameDrawList &drawList)
 
     VkRect2D scissor = {
         .offset = {0, 0},
-        .extent = m_info.extent,
+        .extent = extent,
     };
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
@@ -323,7 +318,7 @@ void AmVulkanBackend::record(VkCommandBuffer cmd, const FrameDrawList &drawList)
     vkCmdBindIndexBuffer(cmd, m_buffers[drawList.indexBuffer.id].buffer, 0, VK_INDEX_TYPE_UINT32);
 
     PushConstants pc = {
-        .screenSize = {static_cast<float>(m_info.extent.width), static_cast<float>(m_info.extent.height)},
+        .screenSize = {static_cast<float>(extent.width), static_cast<float>(extent.height)},
         .glyphOffset = 0,
         .lineOffset = 0,
         .sliceOffset = 0,

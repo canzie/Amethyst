@@ -17,6 +17,7 @@ namespace Amethyst {
 class AmethystBackend;
 class GeometryRegistry;
 class GlyphBuffer;
+class Window;
 
 /**
  * @brief Core-side policy layer over the backend's generic buffer primitives.
@@ -36,16 +37,24 @@ class GpuResourceHub {
     void init(AmethystBackend &backend);
 
     /**
-     * @brief Flush all dirty registry and text data to the GPU and rebuild the draw list.
+     * @brief Flush the shared gradient buffer. Call once per frame, before any window's syncWindow().
      * @param cmdBuffer Backend-native command buffer, forwarded to upload calls.
      */
-    void sync(void *cmdBuffer);
+    void syncShared(void *cmdBuffer);
 
     /**
-     * @brief The draw list built by the last sync().
+     * @brief Flush dirty registry and text data for one window's registries and rebuild its draw list.
+     * @param cmdBuffer Backend-native command buffer, forwarded to upload calls.
+     * @param targetWindow Only registries rooted under this window are included in the draw list.
+     */
+    void syncWindow(void *cmdBuffer, Window *targetWindow);
+
+    /**
+     * @brief The draw list built by the last syncWindow() for a given window.
+     * @param targetWindow Window whose draw list to return.
      * @return Per-registry draw entries plus the shared index buffer handle.
      */
-    const FrameDrawList &drawList() const { return m_drawList; }
+    const FrameDrawList &drawList(Window *targetWindow) const;
 
     /**
      * @brief The global gradient buffer, used to resolve gradient slots while building instances.
@@ -96,7 +105,7 @@ class GpuResourceHub {
     std::unordered_map<GeometryRegistry *, GeometryBlocks> m_geometryBlocks;
     std::unordered_map<GeometryRegistry *, TextBlocks> m_textBlocks;
 
-    FrameDrawList m_drawList;
+    std::unordered_map<Window *, FrameDrawList> m_drawLists;
 };
 
 } // namespace Amethyst
