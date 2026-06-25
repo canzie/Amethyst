@@ -1,9 +1,8 @@
 #include "components/image_label.h"
 
+#include "components/ui_image.h"
 #include "modules/style.h"
-#include "modules/svg_atlas.h"
 #include "rendering/draw_context.h"
-#include "rendering/geometry_registry.h"
 
 namespace Amethyst {
 
@@ -11,16 +10,19 @@ ImageLabel::ImageLabel()
 {
     propagate(INTERACTION_CATEGORY_MOVE);
     resolveStyle();
+    m_image = add<UIImage>();
+    m_image->setBaseProperties({.interactable = false, .position = UDim2::fromScale(0.0f), .size = UDim2::fromScale(1.0f, 1.0f)});
+    m_image->setBaseStyleProperties({.backgroundTransparency = 0.0f});
 }
 
-ImageLabel::ImageLabel(const std::string &svgData) : m_svgData(svgData)
+ImageLabel::ImageLabel(const std::string &svgData)
 {
     propagate(INTERACTION_CATEGORY_MOVE);
-    m_imgStyle.imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    m_imgStyle.imageTransparency = 0.0f;
-    m_imgStyle.scaleType = ImageScaleType::STRETCH;
-    m_imgStyle.tileSize = {1.0f, 1.0f};
     resolveStyle();
+    m_image = add<UIImage>();
+    m_image->setBaseProperties({.interactable = false, .position = UDim2::fromScale(0.0f), .size = UDim2::fromScale(1.0f, 1.0f)});
+    m_image->setBaseStyleProperties({.backgroundTransparency = 0.0f});
+    m_image->setSvg(svgData);
 }
 
 void ImageLabel::resolveStyle()
@@ -28,55 +30,34 @@ void ImageLabel::resolveStyle()
     setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::IMAGE_LABEL, getClasses()));
 }
 
-bool ImageLabel::setImageStyleProperties(const ImageStyleProperties &props)
-{
-    bool changed = m_imgStyle.apply(props);
-    if (changed) {
-        markDirty();
-    }
-    return changed;
-}
-
 void ImageLabel::setSvg(std::string svgData)
 {
-    if (m_svgData == svgData) {
-        return;
-    }
-    m_svgData = std::move(svgData);
-    m_svgResolved = false;
-    markDirty();
+    m_image->setSvg(std::move(svgData));
+}
+
+const std::string &ImageLabel::getSvg() const
+{
+    return m_image->getSvg();
 }
 
 void ImageLabel::setImage(AmTextureId image)
 {
-    if (m_image.id != image.id) {
-        m_image = image;
-        markDirty();
-    }
+    m_image->setImage(image);
 }
 
-void ImageLabel::resolveSvg(DrawContext &ctx)
+AmTextureId ImageLabel::getImage() const
 {
-    if (m_svgResolved || m_svgData.empty() || ctx.svgAtlas == nullptr) {
-        return;
-    }
+    return m_image->getImage();
+}
 
-    uint32_t w = static_cast<uint32_t>(absoluteSize.x);
-    uint32_t h = static_cast<uint32_t>(absoluteSize.y);
-    if (w == 0 || h == 0) {
-        return;
-    }
+bool ImageLabel::setImageStyleProperties(const ImageStyleProperties &props)
+{
+    return m_image->setImageStyleProperties(props);
+}
 
-    const SvgEntry *entry = ctx.svgAtlas->loadFromData(m_svgData, w, h);
-    if (entry != nullptr) {
-        float aw = static_cast<float>(ctx.svgAtlas->getWidth());
-        float ah = static_cast<float>(ctx.svgAtlas->getHeight());
-        m_svgUvRect = {entry->atlasX / aw, entry->atlasY / ah, (entry->atlasX + entry->width) / aw,
-                       (entry->atlasY + entry->height) / ah};
-        m_image = ctx.svgAtlas->getTextureId();
-    }
-
-    m_svgResolved = true;
+const ImageStyleProperties &ImageLabel::getImageStyleProperties() const
+{
+    return m_image->getImageStyleProperties();
 }
 
 void ImageLabel::draw(DrawContext &ctx)
@@ -86,18 +67,8 @@ void ImageLabel::draw(DrawContext &ctx)
     }
 
     if (flags & FLAG_DIRTY) {
-        resolveSvg(ctx);
-
         InstanceData data = createInstanceData();
-        data.textureId = m_image.id;
-
-        if (m_svgResolved && !m_svgData.empty()) {
-            data.setPrimitiveType(PRIMITIVE_SVG);
-            data.setUvRect(m_svgUvRect);
-            data.setFillColor(m_imgStyle.imageColor);
-        } else {
-            data.setPrimitiveType(PRIMITIVE_RECT);
-        }
+        data.setPrimitiveType(PRIMITIVE_RECT);
 
         pushData(ctx.geometry, data);
     }

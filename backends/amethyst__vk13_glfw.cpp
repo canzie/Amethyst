@@ -29,7 +29,19 @@ static inline size_t alignUp(size_t size, size_t alignment)
 
 static GLFWcursor *CURSOR_SHAPE_MAP[CURSOR_COUNT];
 
-static std::unordered_map<GLFWwindow *, AmVulkanBackend *> s_backendForWindow;
+struct GlfwWindowInput {
+    Window *uiWindow = nullptr;
+    float contentScaleX = 1.0f;
+    float contentScaleY = 1.0f;
+    GLFWmousebuttonfun prevMouseButton = nullptr;
+    GLFWcursorposfun prevCursorPos = nullptr;
+    GLFWscrollfun prevScroll = nullptr;
+    GLFWkeyfun prevKey = nullptr;
+    GLFWcharfun prevChar = nullptr;
+    GLFWwindowcontentscalefun prevContentScale = nullptr;
+};
+
+static std::unordered_map<GLFWwindow *, GlfwWindowInput> gGlfwWindowInputs;
 
 static GLFWcursor *createCursorFromMask(int size, const bool *fill)
 {
@@ -226,9 +238,7 @@ void AmVulkanBackend::init(const AmVulkanInitInfo &config, const AmGlfwInitInfo 
     allocateDescriptorSet();
 
     GLFWwindow *glfwWindow = static_cast<GLFWwindow *>(m_glfwInfo.window);
-    InputInterface::onCursorShapeChanged = [glfwWindow](CursorShape shape) {
-        glfwSetCursor(glfwWindow, CURSOR_SHAPE_MAP[shape]);
-    };
+    InputInterface::onCursorShapeChanged = [glfwWindow](CursorShape shape) { glfwSetCursor(glfwWindow, CURSOR_SHAPE_MAP[shape]); };
     InputInterface::onCursorLockChanged = [glfwWindow](bool locked) {
         glfwSetInputMode(glfwWindow, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
         if (glfwRawMouseMotionSupported()) {
@@ -247,9 +257,6 @@ void AmVulkanBackend::init(const AmVulkanInitInfo &config, const AmGlfwInitInfo 
 void AmVulkanBackend::shutdown()
 {
     GLFWwindow *glfwWindow = static_cast<GLFWwindow *>(m_glfwInfo.window);
-    if (glfwWindow != nullptr) {
-        s_backendForWindow.erase(glfwWindow);
-    }
 
     VkDevice device = m_info.device;
     vkDeviceWaitIdle(device);
@@ -826,39 +833,39 @@ static int s_translateModifiers(int glfwMods)
 
 void AmVulkanBackend::mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 {
-    auto it = s_backendForWindow.find(window);
-    if (it == s_backendForWindow.end()) {
+    auto it = gGlfwWindowInputs.find(window);
+    if (it == gGlfwWindowInputs.end()) {
         return;
     }
-    AmVulkanBackend *self = it->second;
+    GlfwWindowInput &input = it->second;
 
-    if (self->m_prevMouseButtonCallback != nullptr) {
-        self->m_prevMouseButtonCallback(window, button, action, mods);
+    if (input.prevMouseButton != nullptr) {
+        input.prevMouseButton(window, button, action, mods);
     }
 
     double x = 0.0;
     double y = 0.0;
     glfwGetCursorPos(window, &x, &y);
-    int32_t scaledX = static_cast<int32_t>(x * self->m_contentScaleX);
-    int32_t scaledY = static_cast<int32_t>(y * self->m_contentScaleY);
+    int32_t scaledX = static_cast<int32_t>(x * input.contentScaleX);
+    int32_t scaledY = static_cast<int32_t>(y * input.contentScaleY);
 
-    InputInterface::onMouseButton(self->m_glfwInfo.uiWindow, button, action, s_translateModifiers(mods), scaledX, scaledY);
+    InputInterface::onMouseButton(input.uiWindow, button, action, s_translateModifiers(mods), scaledX, scaledY);
 }
 
 void AmVulkanBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
 {
-    auto it = s_backendForWindow.find(window);
-    if (it == s_backendForWindow.end()) {
+    auto it = gGlfwWindowInputs.find(window);
+    if (it == gGlfwWindowInputs.end()) {
         return;
     }
-    AmVulkanBackend *self = it->second;
+    GlfwWindowInput &input = it->second;
 
-    if (self->m_prevCursorPosCallback != nullptr) {
-        self->m_prevCursorPosCallback(window, x, y);
+    if (input.prevCursorPos != nullptr) {
+        input.prevCursorPos(window, x, y);
     }
 
-    double scaledX = x * self->m_contentScaleX;
-    double scaledY = y * self->m_contentScaleY;
+    double scaledX = x * input.contentScaleX;
+    double scaledY = y * input.contentScaleY;
 
     // While the cursor is locked (infinite drag) GLFW reports unbounded virtual positions, so
     // pass them straight through. Otherwise GLFW keeps reporting positions outside the window
@@ -873,87 +880,95 @@ void AmVulkanBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
         }
     }
 
-    InputInterface::onMouseMove(self->m_glfwInfo.uiWindow, static_cast<int32_t>(scaledX), static_cast<int32_t>(scaledY));
+    InputInterface::onMouseMove(input.uiWindow, static_cast<int32_t>(scaledX), static_cast<int32_t>(scaledY));
 }
 
 void AmVulkanBackend::scrollCallback(GLFWwindow *window, double xoffset, double yoffset)
 {
-    auto it = s_backendForWindow.find(window);
-    if (it == s_backendForWindow.end()) {
+    auto it = gGlfwWindowInputs.find(window);
+    if (it == gGlfwWindowInputs.end()) {
         return;
     }
-    AmVulkanBackend *self = it->second;
+    GlfwWindowInput &input = it->second;
 
-    if (self->m_prevScrollCallback != nullptr) {
-        self->m_prevScrollCallback(window, xoffset, yoffset);
+    if (input.prevScroll != nullptr) {
+        input.prevScroll(window, xoffset, yoffset);
     }
 
     double x = 0.0;
     double y = 0.0;
     glfwGetCursorPos(window, &x, &y);
-    int32_t scaledX = static_cast<int32_t>(x * self->m_contentScaleX);
-    int32_t scaledY = static_cast<int32_t>(y * self->m_contentScaleY);
+    int32_t scaledX = static_cast<int32_t>(x * input.contentScaleX);
+    int32_t scaledY = static_cast<int32_t>(y * input.contentScaleY);
 
-    InputInterface::onMouseScroll(self->m_glfwInfo.uiWindow, static_cast<float>(xoffset), static_cast<float>(yoffset), scaledX,
-                                  scaledY);
+    InputInterface::onMouseScroll(input.uiWindow, static_cast<float>(xoffset), static_cast<float>(yoffset), scaledX, scaledY);
 }
 
 void AmVulkanBackend::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-    auto it = s_backendForWindow.find(window);
-    if (it == s_backendForWindow.end()) {
+    auto it = gGlfwWindowInputs.find(window);
+    if (it == gGlfwWindowInputs.end()) {
         return;
     }
-    AmVulkanBackend *self = it->second;
-
-    if (self->m_prevKeyCallback != nullptr) {
-        self->m_prevKeyCallback(window, key, scancode, action, mods);
+    if (it->second.prevKey != nullptr) {
+        it->second.prevKey(window, key, scancode, action, mods);
     }
     InputInterface::onKey(key, scancode, action, s_translateModifiers(mods));
 }
 
 void AmVulkanBackend::charCallback(GLFWwindow *window, unsigned int codepoint)
 {
-    auto it = s_backendForWindow.find(window);
-    if (it == s_backendForWindow.end()) {
+    auto it = gGlfwWindowInputs.find(window);
+    if (it == gGlfwWindowInputs.end()) {
         return;
     }
-    AmVulkanBackend *self = it->second;
-
-    if (self->m_prevCharCallback != nullptr) {
-        self->m_prevCharCallback(window, codepoint);
+    if (it->second.prevChar != nullptr) {
+        it->second.prevChar(window, codepoint);
     }
     InputInterface::onChar(codepoint);
 }
 
 void AmVulkanBackend::contentScaleCallback(GLFWwindow *window, float xscale, float yscale)
 {
-    auto it = s_backendForWindow.find(window);
-    if (it == s_backendForWindow.end()) {
+    auto it = gGlfwWindowInputs.find(window);
+    if (it == gGlfwWindowInputs.end()) {
         return;
     }
-    AmVulkanBackend *self = it->second;
-
-    if (self->m_prevContentScaleCallback != nullptr) {
-        self->m_prevContentScaleCallback(window, xscale, yscale);
+    if (it->second.prevContentScale != nullptr) {
+        it->second.prevContentScale(window, xscale, yscale);
     }
-    self->m_contentScaleX = xscale;
-    self->m_contentScaleY = yscale;
+    it->second.contentScaleX = xscale;
+    it->second.contentScaleY = yscale;
 }
 
 void AmVulkanBackend::setupGLFWCallbacks()
 {
-    GLFWwindow *window = static_cast<GLFWwindow *>(m_glfwInfo.window);
-    s_backendForWindow[window] = this;
+    registerWindow(m_glfwInfo.window, m_glfwInfo.uiWindow);
+}
 
-    glfwGetWindowContentScale(window, &m_contentScaleX, &m_contentScaleY);
+void AmVulkanBackend::registerWindow(void *glfwWindow, Window *uiWindow)
+{
+    GLFWwindow *window = static_cast<GLFWwindow *>(glfwWindow);
+    if (window == nullptr) {
+        return;
+    }
 
-    m_prevMouseButtonCallback = glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    m_prevCursorPosCallback = glfwSetCursorPosCallback(window, cursorPosCallback);
-    m_prevScrollCallback = glfwSetScrollCallback(window, scrollCallback);
-    m_prevKeyCallback = glfwSetKeyCallback(window, keyCallback);
-    m_prevCharCallback = glfwSetCharCallback(window, charCallback);
-    m_prevContentScaleCallback = glfwSetWindowContentScaleCallback(window, contentScaleCallback);
+    GlfwWindowInput input;
+    input.uiWindow = uiWindow;
+    glfwGetWindowContentScale(window, &input.contentScaleX, &input.contentScaleY);
+    input.prevMouseButton = glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    input.prevCursorPos = glfwSetCursorPosCallback(window, cursorPosCallback);
+    input.prevScroll = glfwSetScrollCallback(window, scrollCallback);
+    input.prevKey = glfwSetKeyCallback(window, keyCallback);
+    input.prevChar = glfwSetCharCallback(window, charCallback);
+    input.prevContentScale = glfwSetWindowContentScaleCallback(window, contentScaleCallback);
+
+    gGlfwWindowInputs[window] = input;
+}
+
+void AmVulkanBackend::unregisterWindow(void *glfwWindow)
+{
+    gGlfwWindowInputs.erase(static_cast<GLFWwindow *>(glfwWindow));
 }
 
 AmTextureId AmVulkanBackend::registerTexture(VkImageView imageView, VkSampler sampler)

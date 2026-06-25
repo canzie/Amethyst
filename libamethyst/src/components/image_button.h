@@ -5,7 +5,6 @@
 #ifndef AMETHYST__IMAGE_BUTTON_H
 #define AMETHYST__IMAGE_BUTTON_H
 
-#include "components/instance.h"
 #include "components/properties.h"
 #include "components/ui_button.h"
 
@@ -13,37 +12,28 @@
 
 namespace Amethyst {
 
+class UIImage;
+
 class ImageButton : public UIButton {
   public:
     ImageButton();
     explicit ImageButton(const std::string &svgData);
-    virtual ~ImageButton() = default;
+    ~ImageButton() override = default;
 
     void draw(DrawContext &ctx) override;
     void resolveStyle() override;
 
     void setSvg(std::string svgData);
-    const std::string &getSvg() const { return m_svgData; }
+    const std::string &getSvg() const;
 
     void setImage(AmTextureId image);
-    AmTextureId getImage() const { return m_image; }
+    AmTextureId getImage() const;
 
     bool setImageStyleProperties(const ImageStyleProperties &props);
-    const ImageStyleProperties &getImageStyleProperties() const { return m_imgStyle; }
-
-  public:
-    AmTextureId hoverImage;
-
-  protected:
-    ImageStyleProperties m_imgStyle;
-    AmTextureId m_image;
+    const ImageStyleProperties &getImageStyleProperties() const;
 
   private:
-    void resolveSvg(DrawContext &ctx);
-
-    std::string m_svgData;
-    bool m_svgResolved = false;
-    vec4 m_svgUvRect = {0.0f, 0.0f, 1.0f, 1.0f};
+    UIImage *m_image = nullptr;
 };
 
 } // namespace Amethyst

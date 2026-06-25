@@ -1,7 +1,7 @@
 #include "components/image_button.h"
 
+#include "components/ui_image.h"
 #include "modules/style.h"
-#include "modules/svg_atlas.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 
@@ -10,15 +10,20 @@ namespace Amethyst {
 ImageButton::ImageButton()
 {
     resolveStyle();
+    m_image = add<UIImage>();
+    m_image->setBaseProperties({.interactable = false, .position = UDim2::fromScale(0.0f),
+                                .size = UDim2::fromScale(1.0f, 1.0f)});
+    m_image->setBaseStyleProperties({.backgroundTransparency = 1.0f});
 }
 
-ImageButton::ImageButton(const std::string &svgData) : m_svgData(svgData)
+ImageButton::ImageButton(const std::string &svgData)
 {
-    m_imgStyle.imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    m_imgStyle.imageTransparency = 0.0f;
-    m_imgStyle.scaleType = ImageScaleType::STRETCH;
-    m_imgStyle.tileSize = {1.0f, 1.0f};
     resolveStyle();
+    m_image = add<UIImage>();
+    m_image->setBaseProperties({.interactable = false, .position = UDim2::fromScale(0.0f),
+                                .size = UDim2::fromScale(1.0f, 1.0f)});
+    m_image->setBaseStyleProperties({.backgroundTransparency = 1.0f});
+    m_image->setSvg(svgData);
 }
 
 void ImageButton::resolveStyle()
@@ -26,55 +31,34 @@ void ImageButton::resolveStyle()
     setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::IMAGE_BUTTON, getClasses()));
 }
 
-bool ImageButton::setImageStyleProperties(const ImageStyleProperties &props)
-{
-    bool changed = m_imgStyle.apply(props);
-    if (changed) {
-        markDirty();
-    }
-    return changed;
-}
-
 void ImageButton::setSvg(std::string svgData)
 {
-    if (m_svgData == svgData) {
-        return;
-    }
-    m_svgData = std::move(svgData);
-    m_svgResolved = false;
-    markDirty();
+    m_image->setSvg(std::move(svgData));
+}
+
+const std::string &ImageButton::getSvg() const
+{
+    return m_image->getSvg();
 }
 
 void ImageButton::setImage(AmTextureId image)
 {
-    if (m_image.id != image.id) {
-        m_image = image;
-        markDirty();
-    }
+    m_image->setImage(image);
 }
 
-void ImageButton::resolveSvg(DrawContext &ctx)
+AmTextureId ImageButton::getImage() const
 {
-    if (m_svgResolved || m_svgData.empty() || ctx.svgAtlas == nullptr) {
-        return;
-    }
+    return m_image->getImage();
+}
 
-    uint32_t w = static_cast<uint32_t>(absoluteSize.x);
-    uint32_t h = static_cast<uint32_t>(absoluteSize.y);
-    if (w == 0 || h == 0) {
-        return;
-    }
+bool ImageButton::setImageStyleProperties(const ImageStyleProperties &props)
+{
+    return m_image->setImageStyleProperties(props);
+}
 
-    const SvgEntry *entry = ctx.svgAtlas->loadFromData(m_svgData, w, h);
-    if (entry != nullptr) {
-        float aw = static_cast<float>(ctx.svgAtlas->getWidth());
-        float ah = static_cast<float>(ctx.svgAtlas->getHeight());
-        m_svgUvRect = {entry->atlasX / aw, entry->atlasY / ah, (entry->atlasX + entry->width) / aw,
-                       (entry->atlasY + entry->height) / ah};
-        m_image = ctx.svgAtlas->getTextureId();
-    }
-
-    m_svgResolved = true;
+const ImageStyleProperties &ImageButton::getImageStyleProperties() const
+{
+    return m_image->getImageStyleProperties();
 }
 
 void ImageButton::draw(DrawContext &ctx)
@@ -84,22 +68,8 @@ void ImageButton::draw(DrawContext &ctx)
     }
 
     if (flags & FLAG_DIRTY) {
-        resolveSvg(ctx);
-
         InstanceData data = createInstanceData();
-
-        if (m_uiObjProps.guiState == GuiState::HOVER && hoverImage.isValid()) {
-            data.setPrimitiveType(PRIMITIVE_RECT);
-            data.textureId = hoverImage.id;
-        } else if (m_svgResolved && !m_svgData.empty()) {
-            data.setPrimitiveType(PRIMITIVE_SVG);
-            data.setUvRect(m_svgUvRect);
-            data.setFillColor(m_imgStyle.imageColor);
-            data.textureId = m_image.id;
-        } else {
-            data.setPrimitiveType(PRIMITIVE_RECT);
-            data.textureId = m_image.id;
-        }
+        data.setPrimitiveType(PRIMITIVE_RECT);
 
         pushData(ctx.geometry, data);
     }

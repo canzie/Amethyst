@@ -35,8 +35,12 @@ ui-label {
     border-pixel-size: 0px;
 }
 
+image-button {
+    background-transparency: 1.0;
+}
+
 image-label {
-    background-transparency: 0.0;
+    background-transparency: 1.0;
 }
 
 scrolling-frame {
