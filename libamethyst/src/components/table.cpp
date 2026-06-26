@@ -215,8 +215,10 @@ void Table::clear()
     m_displayOrder.clear();
     m_rowFreelist.clear();
     m_rowBackgrounds.clear();
+    m_rowBgInputConns.clear();
     m_cursorRow = 0;
     m_cursorCol = 0;
+    m_selectedDisplayIndex = -1;
     markDirty();
 }
 
