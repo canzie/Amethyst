@@ -15,6 +15,7 @@
 #include "components/properties.h"
 #include "components/text_label.h"
 #include "components/ui_object.h"
+#include "modules/event_signal.h"
 
 #include <cstdint>
 #include <functional>
@@ -142,6 +143,8 @@ class Table : public UIObject {
     bool setTableProperties(const TableStyleProperties &props);
     const TableStyleProperties &getTableProperties() const { return m_tProps; }
 
+    std::function<void(uint32_t)> onRowSelected;
+
   protected:
     TableStyleProperties m_tProps;
 
@@ -171,6 +174,8 @@ class Table : public UIObject {
     uint32_t m_cursorRow = 0;
     uint32_t m_cursorCol = 0;
 
+    int32_t m_selectedDisplayIndex = -1;
+
     float m_computedRowHeight = 0.0f;
     vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f};
     std::vector<float> m_columnPositions;
@@ -178,6 +183,7 @@ class Table : public UIObject {
     std::vector<Frame *> m_columnSeparators;
     std::vector<Frame *> m_rowSeparators;
     std::vector<Frame *> m_rowBackgrounds;
+    std::vector<EventConnection> m_rowBgInputConns;
     Frame *m_headerBackground = nullptr;
     std::vector<TextLabel *> m_headerLabels;
 };

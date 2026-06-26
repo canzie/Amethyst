@@ -338,7 +338,21 @@ void Table::ensureHeaderCapacity()
 void Table::ensureRowBackgroundCapacity(uint32_t count)
 {
     while (m_rowBackgrounds.size() < count) {
-        m_rowBackgrounds.push_back(add<Frame>());
+        uint32_t slot = static_cast<uint32_t>(m_rowBackgrounds.size());
+        Frame *bg = add<Frame>();
+        m_rowBgInputConns.push_back(bg->onInputBeganCb.connect([this, slot](const InputObject &io) {
+            if (io.type != InputType::MOUSE_BUTTON_1) {
+                return;
+            }
+            m_selectedDisplayIndex = static_cast<int32_t>(slot);
+            if (onRowSelected) {
+                onRowSelected(slot);
+            }
+            if (m_tProps.selectedRowColor.a > 0.0f) {
+                markDirty();
+            }
+        }));
+        m_rowBackgrounds.push_back(bg);
     }
 }
 
@@ -405,6 +419,9 @@ void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex,
         Color4 bgColor = m_tProps.rowBackgroundColor;
         if (visualIndex % 2 == 1 && m_tProps.rowAlternateColor.a > 0.0f) {
             bgColor = m_tProps.rowAlternateColor;
+        }
+        if (static_cast<int32_t>(visualIndex) == m_selectedDisplayIndex && m_tProps.selectedRowColor.a > 0.0f) {
+            bgColor = m_tProps.selectedRowColor;
         }
 
         bg->setBaseStyleProperties({

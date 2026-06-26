@@ -208,6 +208,7 @@ bool TableStyleProperties::apply(const TableStyleProperties &src)
     AM_APPLY(headerColor)
     AM_APPLY(rowBackgroundColor)
     AM_APPLY(rowAlternateColor)
+    AM_APPLY(selectedRowColor)
     if (header.apply(src.header)) {
         changed = true;
     }
@@ -467,6 +468,7 @@ TableStyleProperties TableStyleProperties::diff(const TableStyleProperties &base
     AM_DIFF(headerColor)
     AM_DIFF(rowBackgroundColor)
     AM_DIFF(rowAlternateColor)
+    AM_DIFF(selectedRowColor)
     out.header = header.diff(base.header);
     return out;
 }

@@ -290,9 +290,15 @@ int main()
                     .position = Amethyst::UDim2::fromOffset(10, 400),
                     .size = Amethyst::UDim2::fromOffset(500, 160),
                 },
+                .table = {
+                    .selectedRowColor = Amethyst::Color4{0.3f, 0.5f, 0.9f, 0.4f},
+                },
             },
             [](Amethyst::TableScope &t) {
                 t.component.name = "Test Table";
+                t.component.onRowSelected = [](uint32_t displayIndex) {
+                    AM_LOG_INFO("Table row selected: {}", displayIndex);
+                };
                 t.column("Label", 0.3f).column("Color", 0.2f).column("Slider", 0.5f);
 
                 struct Row {

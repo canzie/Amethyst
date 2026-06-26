@@ -319,6 +319,7 @@ struct TableStyleProperties {
     TextStyleProperties header{};
     Color4 rowBackgroundColor = Color4(PROP_UNSET_FLOAT);
     Color4 rowAlternateColor = Color4(PROP_UNSET_FLOAT);
+    Color4 selectedRowColor = Color4(PROP_UNSET_FLOAT);
 
     bool apply(const TableStyleProperties &src);
     TableStyleProperties diff(const TableStyleProperties &base) const;
