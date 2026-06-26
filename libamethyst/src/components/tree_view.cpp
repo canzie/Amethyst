@@ -396,6 +396,7 @@ void TreeView::ensurePoolCapacity(uint32_t count)
 
         auto disc = std::make_unique<ImageButton>();
         disc->setSvg(Icons::ARROW);
+        disc->setBaseStyleProperties({.backgroundTransparency = 1.0f});
         m_disclosures.push_back(disc.get());
         frame->addChild(std::move(disc));
 

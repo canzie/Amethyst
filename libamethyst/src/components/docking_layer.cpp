@@ -106,12 +106,13 @@ std::vector<Instance *> DockingLayer::getHittableInstances()
 
 void DockingLayer::swapAndRemoveNode(int32_t nodeIndex)
 {
-    int32_t lastIndex = static_cast<int32_t>(m_nodes.size()) - 1;
+    int32_t nodeCount = static_cast<int32_t>(m_nodes.size());
+    int32_t lastIndex = nodeCount - 1;
     if (nodeIndex != lastIndex) {
         std::swap(m_nodes[nodeIndex], m_nodes[lastIndex]);
         DockNode &swapped = m_nodes[nodeIndex];
 
-        if (swapped.parentNode >= 0) {
+        if (swapped.parentNode >= 0 && swapped.parentNode < nodeCount) {
             DockNode &p = m_nodes[swapped.parentNode];
             if (p.firstChild == lastIndex) {
                 p.firstChild = nodeIndex;
@@ -119,10 +120,10 @@ void DockingLayer::swapAndRemoveNode(int32_t nodeIndex)
                 p.secondChild = nodeIndex;
             }
         }
-        if (swapped.firstChild >= 0) {
+        if (swapped.firstChild >= 0 && swapped.firstChild < nodeCount) {
             m_nodes[swapped.firstChild].parentNode = nodeIndex;
         }
-        if (swapped.secondChild >= 0) {
+        if (swapped.secondChild >= 0 && swapped.secondChild < nodeCount) {
             m_nodes[swapped.secondChild].parentNode = nodeIndex;
         }
         if (m_rootNode == lastIndex) {

@@ -181,7 +181,6 @@ struct TextStyleProperties {
 
 struct ImageStyleProperties {
     Color4 imageColor = Color4(PROP_UNSET_FLOAT);
-    float imageTransparency = PROP_UNSET_FLOAT;
     ImageScaleType scaleType = ImageScaleType::NONE;
     vec2 tileSize = vec2(PROP_UNSET_FLOAT);
 

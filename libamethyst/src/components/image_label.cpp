@@ -1,6 +1,5 @@
 #include "components/image_label.h"
 
-#include "components/ui_image.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
 
@@ -10,19 +9,13 @@ ImageLabel::ImageLabel()
 {
     propagate(INTERACTION_CATEGORY_MOVE);
     resolveStyle();
-    m_image = add<UIImage>();
-    m_image->setBaseProperties({.interactable = false, .position = UDim2::fromScale(0.0f), .size = UDim2::fromScale(1.0f, 1.0f)});
-    m_image->setBaseStyleProperties({.backgroundTransparency = 0.0f});
 }
 
 ImageLabel::ImageLabel(const std::string &svgData)
 {
     propagate(INTERACTION_CATEGORY_MOVE);
     resolveStyle();
-    m_image = add<UIImage>();
-    m_image->setBaseProperties({.interactable = false, .position = UDim2::fromScale(0.0f), .size = UDim2::fromScale(1.0f, 1.0f)});
-    m_image->setBaseStyleProperties({.backgroundTransparency = 0.0f});
-    m_image->setSvg(svgData);
+    m_image.setSvg(svgData);
 }
 
 void ImageLabel::resolveStyle()
@@ -32,32 +25,40 @@ void ImageLabel::resolveStyle()
 
 void ImageLabel::setSvg(std::string svgData)
 {
-    m_image->setSvg(std::move(svgData));
+    if (m_image.setSvg(std::move(svgData))) {
+        markDirty();
+    }
 }
 
 const std::string &ImageLabel::getSvg() const
 {
-    return m_image->getSvg();
+    return m_image.getSvg();
 }
 
 void ImageLabel::setImage(AmTextureId image)
 {
-    m_image->setImage(image);
+    if (m_image.setImage(image)) {
+        markDirty();
+    }
 }
 
 AmTextureId ImageLabel::getImage() const
 {
-    return m_image->getImage();
+    return m_image.getImage();
 }
 
 bool ImageLabel::setImageStyleProperties(const ImageStyleProperties &props)
 {
-    return m_image->setImageStyleProperties(props);
+    bool changed = m_image.setImageStyleProperties(props);
+    if (changed) {
+        markDirty();
+    }
+    return changed;
 }
 
 const ImageStyleProperties &ImageLabel::getImageStyleProperties() const
 {
-    return m_image->getImageStyleProperties();
+    return m_image.getImageStyleProperties();
 }
 
 void ImageLabel::draw(DrawContext &ctx)
@@ -69,8 +70,9 @@ void ImageLabel::draw(DrawContext &ctx)
     if (flags & FLAG_DIRTY) {
         InstanceData data = createInstanceData();
         data.setPrimitiveType(PRIMITIVE_RECT);
-
         pushData(ctx.geometry, data);
+
+        m_image.drawImage(ctx, absoluteSize, createInstanceData());
     }
 
     vec4 childClip = computeChildClipRect();

@@ -1,59 +1,59 @@
 #include "components/ui_image.h"
 
-#include "modules/style.h"
 #include "modules/svg_atlas.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
+#include "rendering/instance_data.h"
 
 namespace Amethyst {
 
-UIImage::UIImage()
+static GeometryAllocation *s_pushData(GeometryRegistry *registry, GeometryAllocation *&alloc, const InstanceData &data)
 {
-    resolveStyle();
+    if (alloc == nullptr) {
+        alloc = registry->submit(data);
+    } else if (alloc->registry != registry) {
+        if (alloc->isValid() && alloc->owning) {
+            alloc->registry->release(*alloc);
+        }
+        alloc = registry->submit(data);
+    } else {
+        registry->update(*alloc, data);
+    }
+    return alloc;
 }
 
-UIImage::UIImage(const std::string &svgData) : m_svgData(svgData)
+UIImage::~UIImage()
 {
-    m_imgStyle.imageColor = {1.0f, 1.0f, 1.0f, 1.0f};
-    m_imgStyle.imageTransparency = 0.0f;
-    m_imgStyle.scaleType = ImageScaleType::STRETCH;
-    m_imgStyle.tileSize = {1.0f, 1.0f};
-    resolveStyle();
-}
-
-void UIImage::resolveStyle()
-{
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::IMAGE_LABEL, getClasses()));
+    if (m_alloc != nullptr && m_alloc->isValid() && m_alloc->owning) {
+        m_alloc->registry->release(*m_alloc);
+    }
 }
 
 bool UIImage::setImageStyleProperties(const ImageStyleProperties &props)
 {
-    bool changed = m_imgStyle.apply(props);
-    if (changed) {
-        markDirty();
-    }
-    return changed;
+    return m_imgStyle.apply(props);
 }
 
-void UIImage::setSvg(std::string svgData)
+bool UIImage::setSvg(std::string svgData)
 {
     if (m_svgData == svgData) {
-        return;
+        return false;
     }
     m_svgData = std::move(svgData);
     m_svgResolved = false;
-    markDirty();
+    return true;
 }
 
-void UIImage::setImage(AmTextureId image)
+bool UIImage::setImage(AmTextureId image)
 {
-    if (m_image.id != image.id) {
-        m_image = image;
-        markDirty();
+    if (m_image.id == image.id) {
+        return false;
     }
+    m_image = image;
+    return true;
 }
 
-void UIImage::resolveSvg(DrawContext &ctx)
+void UIImage::resolveSvg(DrawContext &ctx, vec2 absoluteSize)
 {
     if (m_svgResolved || m_svgData.empty() || ctx.svgAtlas == nullptr) {
         return;
@@ -77,40 +77,21 @@ void UIImage::resolveSvg(DrawContext &ctx)
     m_svgResolved = true;
 }
 
-void UIImage::draw(DrawContext &ctx)
+void UIImage::drawImage(DrawContext &ctx, vec2 absoluteSize, InstanceData base)
 {
-    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
-        return;
+    resolveSvg(ctx, absoluteSize);
+
+    base.textureId = m_image.id;
+
+    if (m_svgResolved && !m_svgData.empty()) {
+        base.setPrimitiveType(PRIMITIVE_SVG);
+        base.setUvRect(m_svgUvRect);
+        base.setFillColor(m_imgStyle.imageColor);
+    } else {
+        base.setPrimitiveType(PRIMITIVE_RECT);
     }
 
-    if (flags & FLAG_DIRTY) {
-        resolveSvg(ctx);
-
-        InstanceData data = createInstanceData();
-        data.textureId = m_image.id;
-
-        if (m_svgResolved && !m_svgData.empty()) {
-            data.setPrimitiveType(PRIMITIVE_SVG);
-            data.setUvRect(m_svgUvRect);
-            data.setFillColor(m_imgStyle.imageColor);
-        } else {
-            data.setPrimitiveType(PRIMITIVE_RECT);
-        }
-
-        pushData(ctx.geometry, data);
-    }
-
-    vec4 childClip = computeChildClipRect();
-
-    for (auto &child : m_children) {
-        if (auto *drawable = child->as<UIObject>()) {
-            drawable->clipRect = childClip;
-            drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
-            drawable->draw(ctx);
-        }
-    }
-
-    flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+    s_pushData(ctx.geometry, m_alloc, base);
 }
 
 } // namespace Amethyst

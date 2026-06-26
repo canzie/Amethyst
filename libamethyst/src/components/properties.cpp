@@ -67,7 +67,6 @@ bool ImageStyleProperties::apply(const ImageStyleProperties &src)
 {
     bool changed = false;
     AM_APPLY(imageColor)
-    AM_APPLY(imageTransparency)
     AM_APPLY(scaleType)
     AM_APPLY(tileSize)
     return changed;
@@ -331,7 +330,6 @@ ImageStyleProperties ImageStyleProperties::diff(const ImageStyleProperties &base
 {
     ImageStyleProperties out;
     AM_DIFF(imageColor)
-    AM_DIFF(imageTransparency)
     AM_DIFF(scaleType)
     AM_DIFF(tileSize)
     return out;

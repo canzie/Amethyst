@@ -6,13 +6,12 @@
 #define AMETHYST__IMAGE_LABEL_H
 
 #include "components/properties.h"
+#include "components/ui_image.h"
 #include "components/ui_label.h"
 
 #include <string>
 
 namespace Amethyst {
-
-class UIImage;
 
 class ImageLabel : public UILabel {
 public:
@@ -33,7 +32,7 @@ public:
   const ImageStyleProperties &getImageStyleProperties() const;
 
 private:
-  UIImage *m_image = nullptr;
+  UIImage m_image;
 };
 
 } // namespace Amethyst
