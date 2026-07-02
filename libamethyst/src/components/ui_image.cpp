@@ -50,6 +50,8 @@ bool UIImage::setImage(AmTextureId image)
         return false;
     }
     m_image = image;
+    m_svgData.clear();
+    m_svgResolved = false;
     return true;
 }
 
@@ -89,6 +91,7 @@ void UIImage::drawImage(DrawContext &ctx, vec2 absoluteSize, InstanceData base)
         base.setFillColor(m_imgStyle.imageColor);
     } else {
         base.setPrimitiveType(PRIMITIVE_RECT);
+        base.setFillColor(m_imgStyle.imageColor);
     }
 
     s_pushData(ctx.geometry, m_alloc, base);
