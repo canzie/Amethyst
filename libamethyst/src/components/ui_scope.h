@@ -34,6 +34,7 @@ class Popup;
 class ScrollingFrame;
 class SliderFloat;
 class SliderInt;
+class Spline;
 class TabBar;
 class TextButton;
 class TextInput;
@@ -51,6 +52,7 @@ struct PopupScope;
 struct ScrollingFrameScope;
 struct SliderFloatScope;
 struct SliderIntScope;
+struct SplineScope;
 struct DragFloatScope;
 struct DragIntScope;
 struct TabScope;
@@ -73,6 +75,7 @@ class UIScope {
     explicit UIScope(Instance &parent) : m_parent(&parent) {}
 
     UIScope &canvas(CanvasProperties props = {}, std::function<void(CanvasScope &)> fn = {});
+    UIScope &spline(SplineProperties props = {}, std::function<void(SplineScope &)> fn = {});
     UIScope &contextMenu(ContextMenuProperties props = {}, std::function<void(ContextMenuScope &)> fn = {});
     UIScope &dropdown(DropdownProperties props = {}, std::function<void(DropdownScope &)> fn = {});
     UIScope &menuBar(MenuBarProperties props = {}, std::function<void(MenuBarScope &)> fn = {});
@@ -113,6 +116,13 @@ class UIScope {
 struct CanvasScope : UIScope {
     Canvas &component;
     explicit CanvasScope(Canvas &c);
+};
+
+struct SplineScope : UIScope {
+    Spline &component;
+    explicit SplineScope(Spline &s);
+    SplineScope &knot(vec2 point);
+    SplineScope &knot(float x, float y);
 };
 
 struct FrameScope : UIScope {

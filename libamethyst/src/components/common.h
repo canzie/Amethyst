@@ -202,7 +202,16 @@ enum PrimitiveType : uint8_t {
     PRIMITIVE_CANVAS_CIRCLE,
     PRIMITIVE_CANVAS_ELLIPSE,
     PRIMITIVE_SVG,
+    PRIMITIVE_CANVAS_BEZIER,
     PRIMITIVE_COUNT,
+};
+
+enum class CurveType {
+    NONE,
+    LINEAR,
+    QUADRATIC,
+    CUBIC,
+    CATMULL_ROM,
 };
 
 enum class FillDirection {

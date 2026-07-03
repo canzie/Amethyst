@@ -17,6 +17,7 @@
 #include "components/popup.h"
 #include "components/scrolling_frame.h"
 #include "components/slider.h"
+#include "components/spline.h"
 #include "components/tab_bar.h"
 #include "components/text_button.h"
 #include "components/text_input.h"
@@ -35,6 +36,7 @@ void UIScope::track(EventConnection conn)
 }
 
 CanvasScope::CanvasScope(Canvas &c) : UIScope(c), component(c) {}
+SplineScope::SplineScope(Spline &s) : UIScope(s), component(s) {}
 ContextMenuScope::ContextMenuScope(ContextMenu &cm) : component(cm) {}
 DropdownScope::DropdownScope(Dropdown &d) : component(d) {}
 MenuBarScope::MenuBarScope(MenuBar &mb) : UIScope(mb), component(mb) {}
@@ -72,6 +74,36 @@ UIScope &UIScope::canvas(CanvasProperties props, std::function<void(CanvasScope 
         CanvasScope scope(*c);
         fn(scope);
     }
+    return *this;
+}
+
+UIScope &UIScope::spline(SplineProperties props, std::function<void(SplineScope &)> fn)
+{
+    auto *s = m_parent->add<Spline>();
+    if (!props.classes.empty()) {
+        s->setClasses(props.classes);
+    }
+    s->setBaseProperties(props.base);
+    s->setSplineProperties(props.spline);
+    if (!props.knots.empty()) {
+        s->setKnots(std::move(props.knots));
+    }
+    if (fn) {
+        SplineScope scope(*s);
+        fn(scope);
+    }
+    return *this;
+}
+
+SplineScope &SplineScope::knot(vec2 point)
+{
+    component.addKnot(point);
+    return *this;
+}
+
+SplineScope &SplineScope::knot(float x, float y)
+{
+    component.addKnot(vec2(x, y));
     return *this;
 }
 

@@ -62,6 +62,10 @@ inline bool propIsSet(BorderMode v)
 {
     return v != BorderMode::NONE;
 }
+inline bool propIsSet(CurveType v)
+{
+    return v != CurveType::NONE;
+}
 inline bool propIsSet(GuiState v)
 {
     return v != GuiState::NONE;
@@ -219,6 +223,17 @@ struct CheckboxStyleProperties {
 
     bool apply(const CheckboxStyleProperties &src);
     CheckboxStyleProperties diff(const CheckboxStyleProperties &base) const;
+};
+
+struct SplineStyleProperties {
+    CurveType type = CurveType::NONE;
+    float thickness = PROP_UNSET_FLOAT;
+    Color4 color = Color4(PROP_UNSET_FLOAT);
+    am_bool showKnots = PROP_UNSET_BOOL;
+    float knotSize = PROP_UNSET_FLOAT;
+
+    bool apply(const SplineStyleProperties &src);
+    SplineStyleProperties diff(const SplineStyleProperties &base) const;
 };
 
 struct CollapsibleHeaderStyleProperties {
@@ -384,6 +399,13 @@ struct TreeViewStyleProperties {
 struct CanvasProperties {
     std::vector<std::string> classes{};
     BaseProperties base{};
+};
+
+struct SplineProperties {
+    std::vector<std::string> classes{};
+    BaseProperties base{};
+    SplineStyleProperties spline{};
+    std::vector<vec2> knots{};
 };
 
 struct FrameProperties {

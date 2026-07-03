@@ -105,6 +105,17 @@ bool CheckboxStyleProperties::apply(const CheckboxStyleProperties &src)
     return changed;
 }
 
+bool SplineStyleProperties::apply(const SplineStyleProperties &src)
+{
+    bool changed = false;
+    AM_APPLY(type)
+    AM_APPLY(thickness)
+    AM_APPLY(color)
+    AM_APPLY(showKnots)
+    AM_APPLY(knotSize)
+    return changed;
+}
+
 bool CollapsibleHeaderStyleProperties::apply(const CollapsibleHeaderStyleProperties &src)
 {
     bool changed = false;
@@ -366,6 +377,17 @@ CheckboxStyleProperties CheckboxStyleProperties::diff(const CheckboxStylePropert
 {
     CheckboxStyleProperties out;
     AM_DIFF(checkColor)
+    return out;
+}
+
+SplineStyleProperties SplineStyleProperties::diff(const SplineStyleProperties &base) const
+{
+    SplineStyleProperties out;
+    AM_DIFF(type)
+    AM_DIFF(thickness)
+    AM_DIFF(color)
+    AM_DIFF(showKnots)
+    AM_DIFF(knotSize)
     return out;
 }
 

@@ -71,6 +71,7 @@ const uint PRIMITIVE_CANVAS_QUAD = 7;
 const uint PRIMITIVE_CANVAS_CIRCLE = 8;
 const uint PRIMITIVE_CANVAS_ELLIPSE = 9;
 const uint PRIMITIVE_SVG = 10;
+const uint PRIMITIVE_CANVAS_BEZIER = 11;
 
 const uint BORDER_OUTLINE = 0;
 const uint BORDER_MIDDLE = 1;
@@ -126,6 +127,52 @@ float sdSegment(vec2 p, vec2 a, vec2 b)
     vec2 pa = p - a, ba = b - a;
     float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
     return length(pa - ba * h);
+}
+
+// iquilezles.org/articles/distfunctions2d
+// Unsigned distance to a quadratic Bezier defined by endpoints A, C and control B.
+// Solves the cubic dq/dt = 0 in closed form. Degenerates to a division by zero when the
+// control is colinear with the endpoints (b == 0), so fall back to a straight segment there.
+float sdBezier(vec2 pos, vec2 A, vec2 B, vec2 C)
+{
+    vec2 a = B - A;
+    vec2 b = A - 2.0 * B + C;
+    vec2 c = a * 2.0;
+    vec2 d = A - pos;
+
+    if (dot(b, b) < 1e-6) {
+        return sdSegment(pos, A, C);
+    }
+
+    float kk = 1.0 / dot(b, b);
+    float kx = kk * dot(a, b);
+    float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;
+    float kz = kk * dot(d, a);
+
+    float res = 0.0;
+    float p = ky - kx * kx;
+    float p3 = p * p * p;
+    float q = kx * (2.0 * kx * kx - 3.0 * ky) + kz;
+    float h = q * q + 4.0 * p3;
+
+    if (h >= 0.0) {
+        h = sqrt(h);
+        vec2 x = (vec2(h, -h) - q) / 2.0;
+        vec2 uv = sign(x) * pow(abs(x), vec2(1.0 / 3.0));
+        float t = clamp(uv.x + uv.y - kx, 0.0, 1.0);
+        vec2 qd = d + (c + b * t) * t;
+        res = dot(qd, qd);
+    } else {
+        float z = sqrt(-p);
+        float v = acos(q / (p * z * 2.0)) / 3.0;
+        float m = cos(v);
+        float n = sin(v) * 1.732050808;
+        vec3 t = clamp(vec3(m + m, -n - m, n - m) * z - kx, 0.0, 1.0);
+        vec2 qx = d + (c + b * t.x) * t.x;
+        vec2 qy = d + (c + b * t.y) * t.y;
+        res = min(dot(qx, qx), dot(qy, qy));
+    }
+    return sqrt(res);
 }
 
 // iquilezles.org/articles/distfunctions2d
@@ -328,6 +375,11 @@ void main()
         vec2 a = unpackHalf2x16(fragShapeData.x);
         vec2 b = unpackHalf2x16(fragShapeData.y);
         dist = sdSegment(p, a, b) - fragCornerRadius;
+    } else if (fragPrimitiveType == PRIMITIVE_CANVAS_BEZIER) {
+        vec2 A = unpackHalf2x16(fragShapeData.x);
+        vec2 B = unpackHalf2x16(fragShapeData.y);
+        vec2 C = unpackHalf2x16(fragShapeData.z);
+        dist = sdBezier(p, A, B, C) - fragCornerRadius;
     } else if (fragPrimitiveType == PRIMITIVE_CANVAS_TRI) {
         vec2 t0 = unpackHalf2x16(fragShapeData.x);
         vec2 t1 = unpackHalf2x16(fragShapeData.y);
