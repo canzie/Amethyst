@@ -934,6 +934,7 @@ void Gizmo::reset()
     m_impl->accumulatedRotation = 0.0f;
     m_impl->accumulatedTranslation = vec3(0.0f);
     m_impl->accumulatedScale = vec3(1.0f);
+    m_impl->canvas->clear();
 }
 
 Canvas &Gizmo::canvas()

@@ -46,6 +46,9 @@ UIInput::UIInput()
 UIInput::~UIInput()
 {
     m_tick.unregister();
+    if (m_hovered) {
+        InputInterface::setCursorShape(CURSOR_ARROW);
+    }
     if (m_textAlloc != nullptr && m_textAlloc->isValid()) {
         if (m_glyphSlice.isValid()) {
             m_textAlloc->registry->glyphBuffer().destroySlice(m_glyphSlice);
@@ -190,6 +193,7 @@ EventResult UIInput::onMouseMoved(int32_t x, int32_t y)
 EventResult UIInput::onMouseEnter()
 {
     UIObject::onMouseEnter();
+    m_hovered = true;
     InputInterface::setCursorShape(CURSOR_IBEAM);
     return EventResult::CONSUMED;
 }
@@ -197,6 +201,7 @@ EventResult UIInput::onMouseEnter()
 EventResult UIInput::onMouseLeave()
 {
     UIObject::onMouseLeave();
+    m_hovered = false;
     InputInterface::setCursorShape(CURSOR_ARROW);
     return EventResult::CONSUMED;
 }

@@ -128,6 +128,7 @@ class UIInput : public UIObject {
     size_t m_cursorPosition = 0;
     std::optional<size_t> m_selectionStart;
     bool m_focused = false;
+    bool m_hovered = false;
     float m_cursorBlinkTimer = 0.0f;
     bool m_cursorVisible = true;
     bool m_draggingSelection = false;

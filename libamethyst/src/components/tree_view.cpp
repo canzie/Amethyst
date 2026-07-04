@@ -406,20 +406,25 @@ void TreeView::ensurePoolCapacity(uint32_t count)
             if (hovered) {
                 hoveredRow = static_cast<int32_t>(logicalRow);
             } else if (hoveredRow == static_cast<int32_t>(logicalRow)) {
-                hoveredRow = -1;
+                hoveredRow = NO_ROW_SELECTION;
             }
             markDirty();
         }));
         m_rowInputConns.push_back(frame->onInputBeganCb.connect([this, poolSlot](const InputObject &io) {
-            if (io.type != InputType::MOUSE_BUTTON_1) {
-                return;
-            }
             uint32_t logicalRow = m_rowBySlot[poolSlot];
-            selectedRow = static_cast<int32_t>(logicalRow);
-            if (onRowClicked) {
-                onRowClicked(logicalRow);
+            if (io.type == InputType::MOUSE_BUTTON_1) {
+                selectedRow = static_cast<int32_t>(logicalRow);
+                if (onRowClicked) {
+                    onRowClicked(logicalRow);
+                }
+                markDirty();
+            } else if (io.type == InputType::MOUSE_BUTTON_2) {
+                selectedRow = static_cast<int32_t>(logicalRow);
+                if (onRowRightClicked) {
+                    onRowRightClicked(logicalRow, vec2(io.position.x, io.position.y));
+                }
+                markDirty();
             }
-            markDirty();
         }));
 
         m_rowBackgrounds.push_back(std::move(frame));

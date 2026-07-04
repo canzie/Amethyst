@@ -194,11 +194,14 @@ class TreeView : public UIObject {
     bool setTreeViewProperties(const TreeViewStyleProperties &props);
     const TreeViewStyleProperties &getTreeViewProperties() const { return m_tvProps; }
 
+    static constexpr int32_t NO_ROW_SELECTION = -1;
+
   public:
-    int32_t hoveredRow = -1;
-    int32_t selectedRow = -1;
+    int32_t hoveredRow = NO_ROW_SELECTION;
+    int32_t selectedRow = NO_ROW_SELECTION;
 
     std::function<void(uint32_t)> onRowClicked;
+    std::function<void(uint32_t, vec2)> onRowRightClicked;
     std::function<void(uint32_t, bool)> onRowToggled;
 
   protected:
