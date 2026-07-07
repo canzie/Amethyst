@@ -241,29 +241,29 @@ DragFloat::DragFloat()
 
 std::string DragFloat::formatValue() const
 {
-    return s_formatNumber(getFormat(), value ? *value : 0.0);
+    return s_formatNumber(getFormat(), readBinding());
 }
 
 void DragFloat::applyScrub(float pixelDelta)
 {
-    if (!value) {
+    if (!hasBinding()) {
         return;
     }
-    *value = clampValue(scrubValue(*value, pixelDelta, speed));
+    writeBinding(clampValue(scrubValue(readBinding(), pixelDelta, speed)));
     if (onValueChanged) {
-        onValueChanged(*value);
+        onValueChanged(readBinding());
     }
     markDirty();
 }
 
 void DragFloat::commitFromField()
 {
-    if (!value) {
+    if (!hasBinding()) {
         return;
     }
-    *value = clampValue(m_field->asDouble());
+    writeBinding(clampValue(m_field->asDouble()));
     if (onValueChanged) {
-        onValueChanged(*value);
+        onValueChanged(readBinding());
     }
     markDirty();
 }
@@ -278,7 +278,7 @@ double DragFloat::clampValue(double v) const
 {
     AM_ASSERT(min <= max, "DragFloat min must be <= max");
     if (std::isnan(v)) {
-        return value ? *value : 0.0;
+        return readBinding();
     }
     if (v < min) {
         v = min;
@@ -297,29 +297,29 @@ DragInt::DragInt()
 
 std::string DragInt::formatValue() const
 {
-    return s_formatNumber(getFormat(), static_cast<long long>(value ? *value : 0));
+    return s_formatNumber(getFormat(), static_cast<long long>(readBinding()));
 }
 
 void DragInt::applyScrub(float pixelDelta)
 {
-    if (!value) {
+    if (!hasBinding()) {
         return;
     }
-    *value = clampValue(s_saturateToInt64(scrubValue(static_cast<double>(*value), pixelDelta, static_cast<double>(speed))));
+    writeBinding(clampValue(s_saturateToInt64(scrubValue(static_cast<double>(readBinding()), pixelDelta, static_cast<double>(speed)))));
     if (onValueChanged) {
-        onValueChanged(*value);
+        onValueChanged(readBinding());
     }
     markDirty();
 }
 
 void DragInt::commitFromField()
 {
-    if (!value) {
+    if (!hasBinding()) {
         return;
     }
-    *value = clampValue(m_field->asInt64());
+    writeBinding(clampValue(m_field->asInt64()));
     if (onValueChanged) {
-        onValueChanged(*value);
+        onValueChanged(readBinding());
     }
     markDirty();
 }

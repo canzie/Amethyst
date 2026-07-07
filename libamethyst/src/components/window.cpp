@@ -176,6 +176,9 @@ void Window::onMouseButton(int button, int action, int mods, int32_t x, int32_t 
     case MOUSE_BUTTON_2:
         type = InputType::MOUSE_BUTTON_2;
         break;
+    case MOUSE_BUTTON_3:
+        type = InputType::MOUSE_BUTTON_3;
+        break;
     default:
         return;
     }

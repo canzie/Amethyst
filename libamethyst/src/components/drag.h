@@ -98,7 +98,8 @@ class DragFloat : public Drag {
     virtual ~DragFloat() = default;
 
   public:
-    double *value = nullptr;
+    double *value = nullptr; // 8-byte binding
+    float *valueF = nullptr; // 4-byte binding, used when value is null
     std::function<void(double)> onValueChanged;
 
     double speed = 1.0;
@@ -113,6 +114,17 @@ class DragFloat : public Drag {
 
   private:
     double clampValue(double v) const;
+
+    bool hasBinding() const { return value != nullptr || valueF != nullptr; }
+    double readBinding() const { return value != nullptr ? *value : (valueF != nullptr ? static_cast<double>(*valueF) : 0.0); }
+    void writeBinding(double v)
+    {
+        if (value != nullptr) {
+            *value = v;
+        } else if (valueF != nullptr) {
+            *valueF = static_cast<float>(v);
+        }
+    }
 };
 
 class DragInt : public Drag {
@@ -121,7 +133,8 @@ class DragInt : public Drag {
     virtual ~DragInt() = default;
 
   public:
-    int64_t *value = nullptr;
+    int64_t *value = nullptr; // 8-byte binding
+    int32_t *valueI = nullptr; // 4-byte binding, used when value is null
     std::function<void(int64_t)> onValueChanged;
 
     int64_t speed = 1;
@@ -136,6 +149,17 @@ class DragInt : public Drag {
 
   private:
     int64_t clampValue(int64_t v) const;
+
+    bool hasBinding() const { return value != nullptr || valueI != nullptr; }
+    int64_t readBinding() const { return value != nullptr ? *value : (valueI != nullptr ? static_cast<int64_t>(*valueI) : 0); }
+    void writeBinding(int64_t v)
+    {
+        if (value != nullptr) {
+            *value = v;
+        } else if (valueI != nullptr) {
+            *valueI = static_cast<int32_t>(v);
+        }
+    }
 };
 
 } // namespace Amethyst
