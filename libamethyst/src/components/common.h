@@ -112,6 +112,11 @@ struct UnifiedDimension4 {
     UDim bottom;
     UDim left;
 
+    static UnifiedDimension4 fromOffset(float _offset)
+    {
+        return {{0.0f, _offset}, {0.0f, _offset}, {0.0f, _offset}, {0.0f, _offset}};
+    }
+
     vec4 resolve(vec2 parentSize) const
     {
         return vec4(top.resolve(parentSize.y), right.resolve(parentSize.x), bottom.resolve(parentSize.y),

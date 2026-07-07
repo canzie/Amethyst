@@ -1,7 +1,9 @@
 #include "components/context_menu.h"
 
+#include "amethyst/icons.h"
 #include "components/extensions/ui_list_layout.h"
 #include "components/frame.h"
+#include "components/image_label.h"
 #include "components/overlay_layer.h"
 #include "components/scrolling_frame.h"
 #include "components/text_button.h"
@@ -14,6 +16,9 @@
 namespace Amethyst {
 
 #define POPUP_ZINDEX 10
+
+static constexpr float ICON_INSET = 4.0f;
+static constexpr float ROW_PADDING = 8.0f;
 
 ContextMenu::ContextMenu()
 {
@@ -231,6 +236,7 @@ void ContextMenu::addItemRows(Instance *container, const std::vector<size_t> &pa
     size_t depth = path.size();
 
     Color3 bgColor = getBaseStyleProperties().backgroundColor;
+    float iconSize = itemHeight - ICON_INSET;
 
     for (size_t idx = 0; idx < items.size(); idx++) {
         ContextMenuItem &item = items[idx];
@@ -251,6 +257,8 @@ void ContextMenu::addItemRows(Instance *container, const std::vector<size_t> &pa
             continue;
         }
 
+        bool hasIcon = item.kind() == ContextMenuItem::Kind::TOGGLE || item.kind() == ContextMenuItem::Kind::SUBMENU;
+
         auto *row = container->add<TextButton>();
         row->setBaseStyleProperties({
             .backgroundColor = bgColor,
@@ -259,13 +267,33 @@ void ContextMenu::addItemRows(Instance *container, const std::vector<size_t> &pa
         });
         row->setBaseProperties({
             .layoutOrder = static_cast<LayoutOrder>(idx * 100),
-            .padding = {UDim::fromOffset(0.0f), UDim::fromOffset(8.0f), UDim::fromOffset(0.0f), UDim::fromOffset(8.0f)},
+            .padding = UDim4::fromOffset(ROW_PADDING),
             .size = UDim2::fromOffset(popupWidth, itemHeight),
             .zIndex = POPUP_ZINDEX,
         });
         row->setButtonProperties({.autoButtonColor = false});
         row->setTextStyleProperties(m_textProps);
         row->setText(buildItemText(item));
+
+        ImageLabel *checkIcon = nullptr;
+        if (hasIcon) {
+            bool isToggle = item.kind() == ContextMenuItem::Kind::TOGGLE;
+            auto *icon = row->add<ImageLabel>();
+            icon->setSvg(isToggle ? Icons::CHECK : Icons::ARROW);
+            icon->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
+            icon->setImageStyleProperties({.imageColor = m_textProps.textColor});
+            icon->setBaseProperties({
+                .anchorPoint = {1.0f, 0.5f},
+                .interactable = false,
+                .position = UDim2(1.0f, 0.0f, 0.5f, 0.0f),
+                .size = UDim2::fromOffset(iconSize, iconSize),
+                .visible = isToggle ? std::get<ContextMenuToggle>(item.payload).currentState() : true,
+                .zIndex = POPUP_ZINDEX,
+            });
+            if (isToggle) {
+                checkIcon = icon;
+            }
+        }
 
         if (!item.enabled) {
             row->setBaseProperties({.interactable = false});
@@ -325,9 +353,12 @@ void ContextMenu::addItemRows(Instance *container, const std::vector<size_t> &pa
             };
         } else if (item.kind() == ContextMenuItem::Kind::TOGGLE) {
             ContextMenuItem *itemPtr = &items[idx];
-            row->onMouseButton1ClickCb = [this, row, itemPtr]() {
-                std::get<ContextMenuToggle>(itemPtr->payload).toggle();
-                row->setText(buildItemText(*itemPtr));
+            row->onMouseButton1ClickCb = [itemPtr, checkIcon]() {
+                auto &toggle = std::get<ContextMenuToggle>(itemPtr->payload);
+                toggle.toggle();
+                if (checkIcon != nullptr) {
+                    checkIcon->setBaseProperties({.visible = toggle.currentState()});
+                }
                 return EventResult::CONSUMED;
             };
         }
@@ -347,14 +378,7 @@ std::string ContextMenu::buildItemText(const ContextMenuItem &item) const
 {
     std::string text;
     text.reserve(item.label.size() + item.shortcutHint.size() + 8);
-    if (item.kind() == ContextMenuItem::Kind::TOGGLE) {
-        const auto &t = std::get<ContextMenuToggle>(item.payload);
-        text.append(t.currentState() ? "\xe2\x9c\x93 " : "  ");
-    }
     text.append(item.label);
-    if (item.kind() == ContextMenuItem::Kind::SUBMENU) {
-        text.append(" \xe2\x96\xb6");
-    }
     if (!item.shortcutHint.empty()) {
         text.append("    ");
         text.append(item.shortcutHint);
