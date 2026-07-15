@@ -18,7 +18,7 @@ class UILayer : public UIBase2D {
     UILayer();
     virtual ~UILayer();
 
-    virtual void draw(DrawContext &ctx) = 0;
+    void draw(DrawContext &ctx) override = 0;
 
     /**
      * @brief Get the geometry registry for this layer

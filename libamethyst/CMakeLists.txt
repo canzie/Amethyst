@@ -44,6 +44,10 @@ target_include_directories(amethyst
 
 target_link_libraries(amethyst PUBLIC freetype TracyClient lunasvg)
 
+target_compile_definitions(amethyst PRIVATE
+    $<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>
+)
+
 target_compile_options(amethyst PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic -Werror>
     $<$<CXX_COMPILER_ID:Clang>:-Wno-reorder-init-list -Wno-missing-designated-field-initializers>

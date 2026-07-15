@@ -103,6 +103,11 @@ class TextProcessor {
     void setGlyphAtlas(GlyphAtlas *atlas) { m_glyphAtlas = atlas; }
 
     /**
+     * @brief Get the font data currently associated with this processor
+     */
+    const TTF::FontData *fontData() const { return m_fontData; }
+
+    /**
      * @brief Layout text using glyph atlas (new implementation)
      * @param text The text to layout
      * @param params Layout parameters
