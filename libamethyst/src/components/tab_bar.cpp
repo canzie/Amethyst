@@ -191,6 +191,7 @@ void TabBar::ensureTabComponents(Tab &tab)
         .visible = false,
         .zIndex = 101,
     });
+    closeBtn->setBaseStyleProperties({.backgroundTransparency = 1.0f});
     closeBtn->setTextStyleProperties({
         .textXAlignment = TextXAlignment::CENTER,
         .textYAlignment = TextYAlignment::CENTER,
