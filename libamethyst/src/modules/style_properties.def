@@ -70,7 +70,9 @@
     X(INDICATOR_COLOR, "indicator-color", Color4, COLOR4, Color4(0.7f, 0.7f, 0.7f, 1.0f)) \
     X(THUMB_WIDTH, "thumb-width", float, LENGTH, 12.0f) \
     X(THUMB_HEIGHT, "thumb-height", float, LENGTH, 18.0f) \
-    X(TRACK_HEIGHT, "track-height", float, LENGTH, 8.0f)
+    X(TRACK_HEIGHT, "track-height", UDim, UDIM, UDim::fromScale(1.0f)) \
+    X(SLIDER_FILL_COLOR, "slider-fill-color", Color4, COLOR4, Color4(0.28f, 0.45f, 0.70f, 0.0f)) \
+    X(SLIDER_LABEL_PADDING, "slider-label-padding", float, LENGTH, 6.0f)
 
 #define AM_BASE_STYLE_FIELDS(X)                               \
     X(BACKGROUND_COLOR, backgroundColor, Color3)              \
@@ -98,9 +100,11 @@
     X(SCROLLBAR_THUMB_TRANSPARENCY, scrollBarThumbTransparency, float)
 
 #define AM_SLIDER_STYLE_FIELDS(X)    \
-    X(TRACK_HEIGHT, trackHeight, float) \
+    X(TRACK_HEIGHT, trackHeight, UDim) \
     X(THUMB_WIDTH, thumbWidth, float)   \
-    X(THUMB_HEIGHT, thumbHeight, float)
+    X(THUMB_HEIGHT, thumbHeight, float) \
+    X(SLIDER_FILL_COLOR, fillColor, Color4) \
+    X(SLIDER_LABEL_PADDING, labelPadding, float)
 
 #define AM_TAB_BAR_STYLE_FIELDS(X)                \
     X(BAR_THICKNESS, barThickness, float)         \

@@ -238,6 +238,8 @@ bool SliderStyleProperties::apply(const SliderStyleProperties &src)
     AM_APPLY(trackHeight)
     AM_APPLY(thumbWidth)
     AM_APPLY(thumbHeight)
+    AM_APPLY(fillColor)
+    AM_APPLY(labelPadding)
     return changed;
 }
 
@@ -503,6 +505,8 @@ SliderStyleProperties SliderStyleProperties::diff(const SliderStyleProperties &b
     AM_DIFF(trackHeight)
     AM_DIFF(thumbWidth)
     AM_DIFF(thumbHeight)
+    AM_DIFF(fillColor)
+    AM_DIFF(labelPadding)
     return out;
 }
 

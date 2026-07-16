@@ -63,6 +63,9 @@ int main()
     double position = 0.0;
     double opacity = 1.0;
     int64_t count = 10;
+    float progressWithThumb = 65.0f;
+    float progressNoThumb = 40.0f;
+    float progressLeftLabel = 25.0f;
 
     BaseStyleProperties dragStyle = {.backgroundColor = Color3::fromHex(0x33333A), .cornerRadius = 4.0f};
     DragStyleProperties dragText = {.text = {.fontSize = 14.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}}};
@@ -122,6 +125,51 @@ int main()
                  [&](DragIntScope &d) {
                      d.component.onValueChanged = [](int64_t v) { AM_LOG_INFO("Count: {}", v); };
                  });
+
+    // --- SliderFloat with a progress fill, normal (thin) track, circular thumb ---
+    root.textLabel(caption("Progress", 190.0f));
+    root.sliderFloat({
+        .base = {.padding = UDim4::fromOffset(1.0f), .position = UDim2::fromOffset(170, 190), .size = UDim2::fromOffset(160, 28)},
+        .style = dragStyle,
+        .slider = {.thumb = {.backgroundColor = Color3(0.3f, 0.75f, 0.4f)},
+                   .trackHeight = UDim::fromOffset(8.0f),
+                   .fillColor = Color4(0.3f, 0.75f, 0.4f, 1.0f)},
+        .format = "%.0f%%",
+        .thumbShape = ShapeKind::CIRCLE,
+        .min = 0.0f,
+        .max = 100.0f,
+        .value = &progressWithThumb,
+    });
+
+    // --- SliderFloat with a progress fill, thumb hidden, track at its default full height (proper bar look) ---
+    root.textLabel(caption("Progress (no thumb)", 230.0f));
+    root.sliderFloat({
+        .base = {.padding = UDim4::fromOffset(3.0f), .position = UDim2::fromOffset(170, 230), .size = UDim2::fromOffset(160, 28)},
+        .style = dragStyle,
+        .slider = {.thumb = {.backgroundTransparency = 1.0f, .borderMode = BorderMode::NONE},
+                   .fillColor = Color4(0.35f, 0.55f, 0.85f, 1.0f)},
+        .format = "%.0f%%",
+        .min = 0.0f,
+        .max = 100.0f,
+        .value = &progressNoThumb,
+    });
+
+    // --- SliderFloat with a progress fill and left-aligned, padded value text ---
+    root.textLabel(caption("Progress (left text)", 270.0f));
+    root.sliderFloat({
+        .base = {.padding = UDim4::fromOffset(1.0f), .position = UDim2::fromOffset(170, 270), .size = UDim2::fromOffset(160, 28)},
+        .style = dragStyle,
+        .slider = {.thumb = {.backgroundColor = Color3(0.85f, 0.55f, 0.2f)},
+                   .text = {.textXAlignment = TextXAlignment::LEFT},
+                   .trackHeight = UDim::fromOffset(8.0f),
+                   .fillColor = Color4(0.85f, 0.55f, 0.2f, 1.0f),
+                   .labelPadding = 12.0f},
+        .format = "%.0f%%",
+        .thumbShape = ShapeKind::CIRCLE,
+        .min = 0.0f,
+        .max = 100.0f,
+        .value = &progressLeftLabel,
+    });
 
     amCtx.draw(window);
 

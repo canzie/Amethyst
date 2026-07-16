@@ -343,9 +343,11 @@ struct TableStyleProperties {
 struct SliderStyleProperties {
     BaseStyleProperties thumb{};
     TextStyleProperties text{};
-    float trackHeight = PROP_UNSET_FLOAT;
+    UDim trackHeight = UDim{PROP_UNSET_FLOAT, 0.0f};
     float thumbWidth = PROP_UNSET_FLOAT;
     float thumbHeight = PROP_UNSET_FLOAT;
+    Color4 fillColor = Color4(PROP_UNSET_FLOAT);
+    float labelPadding = PROP_UNSET_FLOAT; // the side this padding applies to depends on the textXAlignment
 
     bool apply(const SliderStyleProperties &src);
     SliderStyleProperties diff(const SliderStyleProperties &base) const;
@@ -527,6 +529,7 @@ struct SliderFloatProperties {
     SliderStyleProperties slider{};
     std::string format{};
     ValueScale scale = ValueScale::LINEAR;
+    ShapeKind thumbShape = ShapeKind::RECT;
     float min = 0.0f;
     float max = 100.0f;
     float *value = nullptr;
@@ -539,6 +542,7 @@ struct SliderIntProperties {
     SliderStyleProperties slider{};
     std::string format{};
     ValueScale scale = ValueScale::LINEAR;
+    ShapeKind thumbShape = ShapeKind::RECT;
     int min = 0;
     int max = 100;
     int *value = nullptr;

@@ -8,6 +8,7 @@
 #include "components/common.h"
 #include "components/frame.h"
 #include "components/properties.h"
+#include "components/shape.h"
 #include "components/text_label.h"
 #include "components/ui_object.h"
 #include <functional>
@@ -32,6 +33,7 @@ class Slider : public UIObject {
 
   public:
     ValueScale scale = ValueScale::LINEAR;
+    ShapeKind thumbShape = ShapeKind::RECT;
 
   protected:
     virtual void updateComponents() = 0;
@@ -50,7 +52,8 @@ class Slider : public UIObject {
     std::string m_format;
 
     Frame *m_track = nullptr;
-    Frame *m_thumb = nullptr;
+    Frame *m_fill = nullptr;
+    Shape *m_thumb = nullptr;
     TextLabel *m_valueLabel = nullptr;
 };
 

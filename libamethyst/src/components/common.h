@@ -195,6 +195,15 @@ enum class TextTruncate {
     SPLIT_WORD,
 };
 
+/**
+ * @brief Restricted set of primitives Shape accepts.
+ */
+enum class ShapeKind {
+    CIRCLE,
+    RECT,
+    TRIANGLE,
+};
+
 enum PrimitiveType : uint8_t {
     PRIMITIVE_RECT,
     PRIMITIVE_CIRCLE,

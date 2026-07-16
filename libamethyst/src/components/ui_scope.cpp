@@ -422,6 +422,7 @@ UIScope &UIScope::sliderFloat(SliderFloatProperties props, std::function<void(Sl
         s->setFormat(std::move(props.format));
     }
     s->scale = props.scale;
+    s->thumbShape = props.thumbShape;
     s->min = props.min;
     s->max = props.max;
     s->value = props.value;
@@ -445,6 +446,7 @@ UIScope &UIScope::sliderInt(SliderIntProperties props, std::function<void(Slider
         s->setFormat(std::move(props.format));
     }
     s->scale = props.scale;
+    s->thumbShape = props.thumbShape;
     s->min = props.min;
     s->max = props.max;
     s->value = props.value;

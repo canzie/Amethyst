@@ -105,7 +105,7 @@ static void s_layoutBar(SliderFloat &bar, std::shared_ptr<const Gradient> gradie
                         float thumbTransparency)
 {
     SliderStyleProperties sliderStyle;
-    sliderStyle.trackHeight = BAR_THICKNESS;
+    sliderStyle.trackHeight = UDim::fromOffset(BAR_THICKNESS);
     sliderStyle.thumb.backgroundColor = thumbColor;
     sliderStyle.thumb.backgroundTransparency = thumbTransparency;
     sliderStyle.thumb.borderMode = BorderMode::OUTLINE;

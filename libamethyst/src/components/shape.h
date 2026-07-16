@@ -11,11 +11,15 @@ namespace Amethyst {
 
 class Shape : public UIObject {
   public:
-    explicit Shape(PrimitiveType primitive);
+    explicit Shape(ShapeKind kind);
 
     void draw(DrawContext &ctx) override;
 
+    bool setKind(ShapeKind kind);
+    ShapeKind getKind() const { return m_kind; }
+
   private:
+    ShapeKind m_kind;
     PrimitiveType m_primitive;
 };
 

@@ -77,6 +77,8 @@ slider {
     corner-radius: 2px;
     thumb-color: #4772b3;
     thumb-corner-radius: 2px;
+    text-x-alignment: center;
+    text-y-alignment: center;
 }
 
 checkbox {

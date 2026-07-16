@@ -20,13 +20,30 @@ static void s_setupTrack(Frame &track, float x, float y, float width, float heig
     track.setBaseStyleProperties(slider->getBaseStyleProperties());
     track.setBaseProperties({
         .interactable = true,
+        .padding = slider->getBaseProperties().padding,
         .position = UDim2::fromOffset(x, y),
         .size = UDim2::fromOffset(width, height),
     });
 }
 
-static void s_setupThumb(Frame &thumb, float x, float y, float width, float height, const Slider *slider)
+static void s_setupFill(Frame &fill, float fillWidth, const Slider *slider)
 {
+    Color4 fillColor = slider->getSliderProperties().fillColor;
+    fill.setBaseStyleProperties({
+        .backgroundColor = Color3(fillColor),
+        .backgroundTransparency = 1.0f - fillColor.a,
+        .cornerRadius = slider->getBaseStyleProperties().cornerRadius,
+    });
+    fill.setBaseProperties({
+        .interactable = false,
+        .position = UDim2::fromOffset(0.0f, 0.0f),
+        .size = UDim2({0.0f, 1.0f}, {fillWidth, 0.0f}),
+    });
+}
+
+static void s_setupThumb(Shape &thumb, float x, float y, float width, float height, const Slider *slider)
+{
+    thumb.setKind(slider->thumbShape);
     thumb.setBaseStyleProperties(slider->getSliderProperties().thumb);
     thumb.setBaseProperties({
         .interactable = false,
@@ -37,17 +54,25 @@ static void s_setupThumb(Frame &thumb, float x, float y, float width, float heig
 
 static void s_setupValueLabel(TextLabel &label, const Slider *slider, const std::string &text)
 {
-    TextStyleProperties textStyle = slider->getSliderProperties().text;
-    textStyle.textXAlignment = TextXAlignment::CENTER;
-    textStyle.textYAlignment = TextYAlignment::CENTER;
+    const TextStyleProperties &textStyle = slider->getSliderProperties().text;
     label.setTextStyleProperties(textStyle);
     label.setText(text);
     label.setBaseStyleProperties({
         .backgroundColor = Color3(0.0f),
         .backgroundTransparency = 1.0f,
     });
+
+    float labelPadding = slider->getSliderProperties().labelPadding;
+    UDim4 padding{};
+    if (textStyle.textXAlignment == TextXAlignment::LEFT) {
+        padding.left = UDim::fromOffset(labelPadding);
+    } else if (textStyle.textXAlignment == TextXAlignment::RIGHT) {
+        padding.right = UDim::fromOffset(labelPadding);
+    }
+
     label.setBaseProperties({
         .interactable = false,
+        .padding = padding,
         .position = UDim2::fromOffset(0, 0),
         .size = UDim2::fromScale(1.0f, 1.0f),
     });
@@ -86,7 +111,8 @@ template <typename T> static std::string s_formatNumber(const std::string &forma
 Slider::Slider()
 {
     m_track = add<Frame>();
-    m_thumb = add<Frame>();
+    m_fill = m_track->add<Frame>();
+    m_thumb = add<Shape>(thumbShape);
     m_valueLabel = add<TextLabel>();
     resolveStyle();
 }
@@ -121,7 +147,7 @@ void Slider::layoutTrack(float normalizedPos, float thumbWidth, const std::strin
     float boxWidth = absoluteSize.x;
     float boxHeight = absoluteSize.y;
 
-    float trackHeight = m_sProps.trackHeight;
+    float trackHeight = m_sProps.trackHeight.resolve(boxHeight);
     float trackY = (boxHeight - trackHeight) * 0.5f;
     s_setupTrack(*m_track, 0.0f, trackY, boxWidth, trackHeight, this);
 
@@ -129,6 +155,7 @@ void Slider::layoutTrack(float normalizedPos, float thumbWidth, const std::strin
     float clampedThumbWidth = std::clamp(thumbWidth, 0.0f, boxWidth);
     float thumbX = normalizedPos * (boxWidth - clampedThumbWidth);
     float thumbY = (boxHeight - thumbHeight) * 0.5f;
+    s_setupFill(*m_fill, thumbX, this);
     s_setupThumb(*m_thumb, thumbX, thumbY, clampedThumbWidth, thumbHeight, this);
 
     UIDragDetector *drag = m_track->getExtension<UIDragDetector>();
