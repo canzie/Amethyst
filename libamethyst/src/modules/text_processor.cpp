@@ -7,6 +7,9 @@
 
 #include "utils/profiling.h"
 
+#include <algorithm>
+#include <cmath>
+
 #define UTF8_ASCII_MASK  0x80u
 #define UTF8_2BYTE_MASK  0xE0u
 #define UTF8_2BYTE_MARK  0xC0u
@@ -232,8 +235,8 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
         for (const auto &gi : lines[lineIdx]) {
             const GlyphInfo *glyphInfo = gi.info;
 
-            float posX = offsetX + gi.localX + glyphInfo->bearingX;
-            float posY = baseline - glyphInfo->bearingY;
+            float posX = std::round(offsetX + gi.localX + glyphInfo->bearingX);
+            float posY = std::round(baseline - glyphInfo->bearingY);
 
             float uvMinX = glyphInfo->x / atlasWidth;
             float uvMinY = glyphInfo->y / atlasHeight;
@@ -294,10 +297,25 @@ BatchedText TextProcessor::layoutTextBatched(const std::string &text, const Text
         }
     }
 
-    float boxX = params.position.x;
-    float boxY = startY;
+    // The render quad is sized from nominal font metrics (ascender/descender), but glyph ink
+    // isn't bound by those metrics (accented caps, descenders on g/y/p/q/j, etc). Pad the quad
+    // by the actual overshoot of the first/last line so that ink isn't clipped by the quad edge.
+    float topOvershoot = 0.0f;
+    for (const auto &gi : lines.front()) {
+        topOvershoot = std::max(topOvershoot, gi.info->bearingY - metrics.ascender);
+    }
+    float bottomOvershoot = 0.0f;
+    for (const auto &gi : lines.back()) {
+        float glyphBottom = gi.info->height - gi.info->bearingY;
+        bottomOvershoot = std::max(bottomOvershoot, glyphBottom + metrics.descender);
+    }
+    float topPad = std::ceil(std::max(topOvershoot, 0.0f));
+    float bottomPad = std::ceil(std::max(bottomOvershoot, 0.0f));
+
+    float boxX = std::round(params.position.x);
+    float boxY = std::round(startY) - topPad;
     out.pos = vec2(boxX, boxY);
-    out.size = vec2(std::max(params.bounds.x, maxLineWidth), totalHeight);
+    out.size = vec2(std::max(params.bounds.x, maxLineWidth), totalHeight + topPad + bottomPad);
     out.lineHeightPx = lineHeightPx;
 
     size_t glyphTotal = 0;
