@@ -170,6 +170,9 @@ void DockingLayer::collapseNode(int32_t nodeIndex)
         } else if (secondChild == oldIndex) {
             secondChild = newIndex;
         }
+        if (parentIndex == oldIndex) {
+            parentIndex = newIndex;
+        }
     };
 
     int32_t lastIndex = static_cast<int32_t>(m_nodes.size() - 1);
@@ -184,14 +187,15 @@ void DockingLayer::collapseNode(int32_t nodeIndex)
     }
     swapAndRemoveNode(secondToRemove);
 
-    parent.firstChild = firstChild;
-    parent.secondChild = secondChild;
+    DockNode &parentAfterRemoval = m_nodes[parentIndex];
+    parentAfterRemoval.firstChild = firstChild;
+    parentAfterRemoval.secondChild = secondChild;
 
-    if (parent.firstChild >= 0) {
-        m_nodes[parent.firstChild].parentNode = parentIndex;
+    if (parentAfterRemoval.firstChild >= 0) {
+        m_nodes[parentAfterRemoval.firstChild].parentNode = parentIndex;
     }
-    if (parent.secondChild >= 0) {
-        m_nodes[parent.secondChild].parentNode = parentIndex;
+    if (parentAfterRemoval.secondChild >= 0) {
+        m_nodes[parentAfterRemoval.secondChild].parentNode = parentIndex;
     }
     m_pendingDeletions.push_back(emptyTabBar);
 }
@@ -544,6 +548,17 @@ void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
     };
 
     tabBar->onTornOffTabMoved = [this](Instance *, vec2 pos) { updateDockHints(pos); };
+
+    // onTabClosed fires before the tab is removed, so a count of 1 means this was the last tab.
+    tabBar->onTabClosed = [this, tabBar](Instance *) {
+        if (tabBar->getTabCount() <= 1) {
+            int32_t sourceNode = findNodeByPosition(tabBar->absolutePosition, m_rootNode, absoluteSize, absolutePosition);
+            if (sourceNode >= 0) {
+                collapseNode(sourceNode);
+                markDirty();
+            }
+        }
+    };
 }
 
 void DockingLayer::initDockHints()
