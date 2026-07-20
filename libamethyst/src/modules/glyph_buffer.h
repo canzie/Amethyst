@@ -63,7 +63,7 @@ struct GlyphSliceHandle {
 class GlyphBuffer {
   public:
     static constexpr uint32_t GLYPH_CAPACITY = 1u << 14;
-    static constexpr uint32_t LINE_CAPACITY = 1u << 11;
+    static constexpr uint32_t LINE_CAPACITY = 1u << 13;
     static constexpr uint32_t SLICE_CAPACITY = 1u << 11;
 
     GlyphBuffer();

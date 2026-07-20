@@ -10,7 +10,7 @@
 namespace Amethyst {
 
 static constexpr uint32_t MIN_GLYPH_BLOCK = 16;
-static constexpr uint32_t MIN_LINE_BLOCK = 4;
+static constexpr uint32_t MIN_LINE_BLOCK = 1;
 
 GlyphBuffer::GlyphBuffer()
 {
