@@ -1,7 +1,5 @@
 #include "components/dropdown.h"
 
-#include <climits>
-
 namespace Amethyst {
 
 Dropdown::Dropdown()

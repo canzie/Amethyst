@@ -33,6 +33,7 @@ class TabBar : public UIObject {
     ~TabBar() override = default;
 
     void draw(DrawContext &ctx) override;
+    void arrange() override;
     void resolveStyle() override;
     std::vector<Instance *> getHittableInstances() override;
 

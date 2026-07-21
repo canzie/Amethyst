@@ -220,15 +220,7 @@ void Drag::draw(DrawContext &ctx)
         pushData(ctx.geometry, bgData);
     }
 
-    vec4 childClip = computeChildClipRect();
-
-    for (auto &child : m_children) {
-        if (auto *drawable = child->as<UIObject>()) {
-            drawable->clipRect = childClip;
-            drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
-            drawable->draw(ctx);
-        }
-    }
+    drawChildren(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }
@@ -305,7 +297,8 @@ void DragInt::applyScrub(float pixelDelta)
     if (!hasBinding()) {
         return;
     }
-    writeBinding(clampValue(s_saturateToInt64(scrubValue(static_cast<double>(readBinding()), pixelDelta, static_cast<double>(speed)))));
+    writeBinding(
+        clampValue(s_saturateToInt64(scrubValue(static_cast<double>(readBinding()), pixelDelta, static_cast<double>(speed)))));
     if (onValueChanged) {
         onValueChanged(readBinding());
     }

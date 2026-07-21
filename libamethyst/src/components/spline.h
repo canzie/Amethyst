@@ -26,6 +26,7 @@ class Spline : public UIObject {
     ~Spline();
 
     void draw(DrawContext &ctx) override;
+    void arrange() override;
 
     /**
      * @brief Replace the full set of knots the curve passes through.

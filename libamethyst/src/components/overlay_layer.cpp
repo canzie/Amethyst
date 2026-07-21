@@ -22,11 +22,9 @@ void OverlayLayer::draw(DrawContext &ctx)
     layerCtx.svgAtlas = ctx.svgAtlas;
 
     for (auto &child : m_children) {
-        if (auto *drawable = child->as<UIObject>()) {
-            drawable->clipRect = clipRect;
-            drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-            drawable->draw(layerCtx);
-        } else if (auto *layer = child->as<UILayer>()) {
+        if (auto *obj = child->asUiObject()) {
+            obj->draw(layerCtx);
+        } else if (auto *layer = child->asLayer()) {
             layer->draw(ctx);
         }
     }

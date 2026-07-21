@@ -10,15 +10,11 @@ InvisibleButton::~InvisibleButton() = default;
 
 void InvisibleButton::draw(DrawContext &ctx)
 {
-    vec4 childClip = computeChildClipRect();
-
-    for (auto &child : m_children) {
-        if (auto *drawable = child->as<UIObject>()) {
-            drawable->clipRect = childClip;
-            drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
-            drawable->draw(ctx);
-        }
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
     }
+
+    drawChildren(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }

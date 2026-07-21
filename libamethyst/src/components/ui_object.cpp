@@ -2,6 +2,8 @@
 #include "components/common.h"
 #include "components/extensions/ui_aspect_ratio_constraint.h"
 #include "components/extensions/ui_drag_detector.h"
+#include "components/extensions/ui_grid_layout.h"
+#include "components/extensions/ui_list_layout.h"
 #include "components/extensions/ui_size_constraint.h"
 #include "components/input_interface.h"
 #include "components/ui_layer.h"
@@ -17,6 +19,8 @@ namespace Amethyst {
 UIObject::UIObject()
     : m_eventConsumptionFlags(INTERACTION_CATEGORY_HOVER | INTERACTION_CATEGORY_CLICK | INTERACTION_CATEGORY_MOVE)
 {
+    kind |= KIND_UI_OBJECT;
+
     // sane defaults so we can compare to the default struct
     // otherwise we need to force the user to copy the current struct all the time, or use optionals everywhere?
     m_uiObjProps.active = false;
@@ -145,6 +149,46 @@ void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentR
     }
 }
 
+void UIObject::applyLayoutExtensions()
+{
+    if (auto *gridLayout = getExtension<UIGridLayout>()) {
+        gridLayout->apply(m_children);
+    } else if (auto *listLayout = getExtension<UIListLayout>()) {
+        listLayout->apply(m_children);
+    }
+}
+
+void UIObject::arrange()
+{
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
+    applyLayoutExtensions();
+
+    vec4 childClip = computeChildClipRect();
+    for (auto &child : m_children) {
+        if (auto *obj = child->asUiObject()) {
+            obj->clipRect = childClip;
+            obj->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
+            obj->arrange();
+        } else if (auto *layer = child->asLayer()) {
+            layer->arrange();
+        }
+    }
+}
+
+void UIObject::drawChildren(DrawContext &ctx)
+{
+    for (auto &child : m_children) {
+        if (auto *obj = child->asUiObject()) {
+            obj->draw(ctx);
+        } else if (auto *layer = child->asLayer()) {
+            layer->draw(ctx);
+        }
+    }
+}
+
 InstanceData UIObject::createInstanceData() const
 {
     AM_PROFILE_FUNCTION();
@@ -203,14 +247,22 @@ EventResult UIObject::onMouseEnter()
 
 bool UIObject::isVisible() const
 {
-    if (!m_uiObjProps.visible) return false;
+    if (!m_uiObjProps.visible || m_renderCulled) return false;
     if (!parent) return true;
-    if (auto *obj = parent->as<UIObject>()) {
+    if (auto *obj = parent->asUiObject()) {
         return obj->isVisible();
-    } else if (auto *layer = parent->as<UILayer>()) {
+    } else if (auto *layer = parent->asLayer()) {
         return layer->isVisible();
     }
     return true;
+}
+
+void UIObject::setRenderCulled(bool culled)
+{
+    if (m_renderCulled != culled) {
+        m_renderCulled = culled;
+        markDirty();
+    }
 }
 
 int32_t UIObject::getAbsoluteZIndex() const

@@ -43,6 +43,7 @@ class Window : public UILayer {
     virtual ~Window();
 
     void draw(DrawContext &ctx) override;
+    void arrange() override;
 
     void onMouseButton(int button, int action, int mods, int32_t x, int32_t y);
     void onMouseScroll(float xoffset, float yoffset, int32_t x, int32_t y);

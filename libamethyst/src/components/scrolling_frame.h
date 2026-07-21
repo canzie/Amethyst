@@ -20,10 +20,8 @@ class ScrollingFrame : public UIObject {
     virtual ~ScrollingFrame();
 
     void draw(DrawContext &ctx) override;
-    void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation) override;
+    void arrange() override;
     void resolveStyle() override;
-    Instance *addChild(std::unique_ptr<Instance> child) override;
-    std::unique_ptr<Instance> removeChild(Instance *child) override;
 
     const ScrollingFrameStyleProperties &getScrollingFrameProperties() { return m_sfProps; }
     bool setScrollingFrameProperties(const ScrollingFrameStyleProperties &props);
@@ -36,16 +34,19 @@ class ScrollingFrame : public UIObject {
     ScrollingFrameStyleProperties m_sfProps;
 
   private:
-    void drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 viewport, bool needsVertical, bool needsHorizontal);
+    void layoutChildren(vec2 &absCanvasSize, vec2 viewport);
+    void arrangeScrollbars();
+    void drawScrollbars(DrawContext &ctx);
 
     vec2 m_scrollOffset = {0.0f, 0.0f};
     vec2 m_maxScroll = {0.0f, 0.0f};
+    vec2 m_absCanvasSize = {0.0f, 0.0f};
+    bool m_needsVertical = false;
+    bool m_needsHorizontal = false;
     std::unique_ptr<Frame> m_verticalBar;
     std::unique_ptr<Frame> m_verticalThumb;
     std::unique_ptr<Frame> m_horizontalBar;
     std::unique_ptr<Frame> m_horizontalThumb;
-
-    std::unordered_map<Instance *, bool> m_childViewportVisibility;
 };
 
 } // namespace Amethyst

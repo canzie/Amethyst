@@ -59,10 +59,6 @@ void DockingLayer::draw(DrawContext &ctx)
         return;
     }
 
-    if (flags & FLAG_DIRTY) {
-        computeLayout(m_rootNode, absoluteSize, absolutePosition);
-    }
-
     for (auto &tabBar : m_tabBars) {
         tabBar->draw(layerCtx);
     }
@@ -72,11 +68,40 @@ void DockingLayer::draw(DrawContext &ctx)
         hintCtx.geometry = ctx.overlay;
     }
     for (auto &hint : m_dockHintComponents) {
-        hint->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
         hint->draw(hintCtx);
     }
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+}
+
+void DockingLayer::arrange()
+{
+    if (m_rootNode < 0) {
+        return;
+    }
+
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY)) || !isVisible()) {
+        return;
+    }
+
+    if (flags & FLAG_DIRTY) {
+        computeLayout(m_rootNode, absoluteSize, absolutePosition);
+    }
+
+    for (auto &tabBar : m_tabBars) {
+        tabBar->arrange();
+    }
+
+    for (auto &node : m_nodes) {
+        if (node.resizeHandle) {
+            node.resizeHandle->arrange();
+        }
+    }
+
+    for (auto &hint : m_dockHintComponents) {
+        hint->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+        hint->arrange();
+    }
 }
 
 void DockingLayer::processPendingDeletions()

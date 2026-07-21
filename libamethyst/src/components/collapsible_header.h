@@ -18,6 +18,7 @@ class CollapsibleHeader : public UIObject {
     ~CollapsibleHeader() override;
 
     void draw(DrawContext &ctx) override;
+    void arrange() override;
     void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation) override;
     void resolveStyle() override;
     std::vector<Instance *> getHittableInstances() override;
@@ -43,7 +44,7 @@ class CollapsibleHeader : public UIObject {
     std::string m_title;
 
   private:
-    void drawHeaderBar(DrawContext &ctx, const vec4 &childClip);
+    void arrangeHeaderBar();
 
     std::unique_ptr<Frame> m_headerBackground;
     std::unique_ptr<InvisibleButton> m_headerButton;

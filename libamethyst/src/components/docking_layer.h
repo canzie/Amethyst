@@ -60,6 +60,7 @@ class DockingLayer : public UILayer {
     DockingLayer &operator=(DockingLayer &&) = delete;
 
     void draw(DrawContext &ctx) override;
+    void arrange() override;
     std::vector<Instance *> getHittableInstances() override;
 
     DockLayoutConfig saveConfig() const;

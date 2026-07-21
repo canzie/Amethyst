@@ -539,7 +539,7 @@ void TabBar::layoutContent()
         bool isSelected = (child == selectedContent);
         bool wasSelected = (child == lastContent);
 
-        if (auto *drawable = child->as<UIObject>()) {
+        if (auto *drawable = child->asUiObject()) {
             drawable->setBaseProperties({.visible = static_cast<int8_t>(isSelected)});
 
             if (selectionChanged && (isSelected || wasSelected)) {
@@ -552,7 +552,7 @@ void TabBar::layoutContent()
                     .size = UDim2(1.0f, sizeAdjust.x, 1.0f, sizeAdjust.y),
                 });
             }
-        } else if (auto *layer = child->as<UILayer>()) {
+        } else if (auto *layer = child->asLayer()) {
             layer->visible = isSelected;
 
             if (selectionChanged && (isSelected || wasSelected)) {
@@ -580,7 +580,7 @@ std::vector<Instance *> TabBar::getHittableInstances()
     return result;
 }
 
-void TabBar::draw(DrawContext &ctx)
+void TabBar::arrange()
 {
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
@@ -596,6 +596,36 @@ void TabBar::draw(DrawContext &ctx)
     layoutTabs();
     layoutContent();
 
+    vec4 childClip = computeChildClipRect();
+
+    if (shouldShowTabs()) {
+        for (auto &tab : m_tabs) {
+            bool isTornOff = (tab.get() == m_draggedTab && m_tornOff);
+            tab->button->clipRect = isTornOff ? vec4(0.0f) : childClip;
+            tab->button->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            tab->button->arrange();
+        }
+    }
+
+    for (auto &tab : m_tabs) {
+        Instance *child = tab->content.get();
+        if (auto *obj = child->asUiObject()) {
+            obj->clipRect = childClip;
+            obj->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            obj->arrange();
+        } else if (auto *layer = child->asLayer()) {
+            layer->clipRect = childClip;
+            layer->arrange();
+        }
+    }
+}
+
+void TabBar::draw(DrawContext &ctx)
+{
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
     if (flags & FLAG_DIRTY) {
         InstanceData data = createInstanceData();
         data.setPrimitiveType(PRIMITIVE_RECT);
@@ -603,29 +633,21 @@ void TabBar::draw(DrawContext &ctx)
         pushData(ctx.geometry, data);
     }
 
-    vec4 childClip = computeChildClipRect();
-
     if (shouldShowTabs()) {
         DrawContext buttonCtx = ctx;
         if (ctx.overlay) {
             buttonCtx.geometry = ctx.overlay;
         }
         for (auto &tab : m_tabs) {
-            bool isTornOff = (tab.get() == m_draggedTab && m_tornOff);
-            tab->button->clipRect = isTornOff ? vec4(0.0f) : childClip;
-            tab->button->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
             tab->button->draw(buttonCtx);
         }
     }
 
     for (auto &tab : m_tabs) {
         Instance *child = tab->content.get();
-        if (auto *drawable = child->as<UIObject>()) {
-            drawable->clipRect = childClip;
-            drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-            drawable->draw(ctx);
-        } else if (auto *layer = child->as<UILayer>()) {
-            layer->clipRect = childClip;
+        if (auto *obj = child->asUiObject()) {
+            obj->draw(ctx);
+        } else if (auto *layer = child->asLayer()) {
             layer->draw(ctx);
         }
     }

@@ -350,19 +350,28 @@ void Spline::draw(DrawContext &ctx)
         for (size_t i = m_allocations.size(); i < instances.size(); i++) {
             m_allocations.push_back(ctx.geometry->submit(instances[i]));
         }
-
-        syncHandles();
     }
 
-    for (auto &child : m_children) {
-        if (auto *obj = child->as<UIObject>()) {
-            obj->clipRect = clipRect;
-            obj->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-            obj->draw(ctx);
-        }
-    }
+    drawChildren(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+}
+
+void Spline::arrange()
+{
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
+    syncHandles();
+
+    for (auto &child : m_children) {
+        if (auto *obj = child->asUiObject()) {
+            obj->clipRect = clipRect;
+            obj->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            obj->arrange();
+        }
+    }
 }
 
 } // namespace Amethyst

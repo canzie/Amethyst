@@ -43,6 +43,7 @@ class Table : public UIObject {
     Table();
 
     void draw(DrawContext &ctx) override;
+    void arrange() override;
     void resolveStyle() override;
 
     /**
@@ -155,9 +156,9 @@ class Table : public UIObject {
     void ensureRowBackgroundCapacity(uint32_t count);
     void ensureColumnSeparatorCapacity(uint32_t count);
     void ensureRowSeparatorCapacity(uint32_t count);
-    void drawHeader(DrawContext &ctx, const vec4 &childClip);
-    void drawSeparators(DrawContext &ctx, const vec4 &childClip);
-    void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip, bool drawBackground);
+    void arrangeHeader(const vec4 &childClip);
+    void arrangeSeparators(const vec4 &childClip);
+    void arrangeRow(uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip, bool drawBackground);
 
     std::vector<TableColumn> m_columns;
 

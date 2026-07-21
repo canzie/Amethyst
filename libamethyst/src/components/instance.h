@@ -16,10 +16,22 @@
 
 namespace Amethyst {
 
+class UIObject;
+class UILayer;
+
 enum InstanceFlags : uint8_t {
     FLAG_NONE = 0,
     FLAG_DIRTY = 1 << 0,
     FLAG_CHILD_DIRTY = 1 << 1,
+};
+
+/**
+ * @brief Bitmask of the type branches a node belongs to
+ */
+enum InstanceKind : uint16_t {
+    KIND_BASE = 0,
+    KIND_UI_OBJECT = 1 << 0,
+    KIND_UI_LAYER = 1 << 1,
 };
 
 class Instance {
@@ -54,6 +66,9 @@ class Instance {
     template <typename T> T *as() { return dynamic_cast<T *>(this); }
     template <typename T> const T *as() const { return dynamic_cast<const T *>(this); }
 
+    UIObject *asUiObject() { return (kind & KIND_UI_OBJECT) ? reinterpret_cast<UIObject *>(this) : nullptr; }
+    UILayer *asLayer() { return (kind & KIND_UI_LAYER) ? reinterpret_cast<UILayer *>(this) : nullptr; }
+
     Instance *findFirstChild(const std::string &childName) const;
 
     template <typename T> T *findFirstChildOfClass(const std::string &childName) const
@@ -78,6 +93,7 @@ class Instance {
 
   public:
     uint8_t flags = FLAG_NONE;
+    uint16_t kind = KIND_BASE;
     std::string name;
     Instance *parent = nullptr;
     EventSignal<void(Instance *)> onDestroy;

@@ -1,7 +1,3 @@
-/*
- * Dropdown menu button.
- */
-
 #ifndef AMETHYST__DROPDOWN_H
 #define AMETHYST__DROPDOWN_H
 

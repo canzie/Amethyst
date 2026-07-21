@@ -37,10 +37,17 @@ class UIObject : public UIBase2D {
     UIObject &operator=(UIObject &&) = default;
 
     virtual void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation);
+    void arrange() override;
     InstanceData createInstanceData() const;
     Window *getWindow();
 
     vec4 computeChildClipRect() const;
+
+    /**
+     * @brief Recurse the draw pass into children.
+     * @param ctx Draw context forwarded to each child
+     */
+    void drawChildren(DrawContext &ctx);
 
     /**
      * @brief Adopts an EventConnection, tying its lifetime to this object.
@@ -65,6 +72,13 @@ class UIObject : public UIBase2D {
     template <typename T> void removeExtension() { m_extensions.erase(std::type_index(typeid(T))); }
 
     bool isVisible() const;
+
+    /**
+     * @brief Layout-owned cull flag. Hides culled children without touching the user visible property.
+     */
+    void setRenderCulled(bool culled);
+    bool isRenderCulled() const { return m_renderCulled; }
+
     int32_t getRelativeZIndex() const { return m_uiObjProps.zIndex; }
     int32_t getAbsoluteZIndex() const;
     int32_t getZIndex() const override;
@@ -150,6 +164,11 @@ class UIObject : public UIBase2D {
     std::span<const StyleKey> getClasses() const { return m_classes; }
 
   protected:
+    /**
+     * @brief Apply an attached layout extension
+     */
+    void applyLayoutExtensions();
+
     friend class Window;
     virtual EventResult onMouseEnter(void);
     virtual EventResult onMouseLeave(void);
@@ -171,6 +190,7 @@ class UIObject : public UIBase2D {
     BaseProperties m_uiObjProps;
     BaseStyleProperties m_baseStyle;
     std::vector<StyleKey> m_classes;
+    bool m_renderCulled = false;
 
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;

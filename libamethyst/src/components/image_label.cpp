@@ -75,15 +75,7 @@ void ImageLabel::draw(DrawContext &ctx)
         m_image.drawImage(ctx, absoluteSize, createInstanceData());
     }
 
-    vec4 childClip = computeChildClipRect();
-
-    for (auto &child : m_children) {
-        if (auto *drawable = child->as<UIObject>()) {
-            drawable->clipRect = childClip;
-            drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
-            drawable->draw(ctx);
-        }
-    }
+    drawChildren(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }

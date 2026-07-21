@@ -358,7 +358,7 @@ void Table::ensureRowBackgroundCapacity(uint32_t count)
     }
 }
 
-void Table::drawHeader(DrawContext &ctx, const vec4 &childClip)
+void Table::arrangeHeader(const vec4 &childClip)
 {
     uint32_t cols = columnCount();
     ensureHeaderCapacity();
@@ -368,9 +368,8 @@ void Table::drawHeader(DrawContext &ctx, const vec4 &childClip)
         .backgroundTransparency = 0.0f,
     });
     m_headerBackground->clipRect = childClip;
-    m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_tProps.headerHeight}, absolutePosition, absoluteRotation);
-    m_headerBackground->draw(ctx);
+    m_headerBackground->arrange();
 
     for (uint32_t col = 0; col < cols; col++) {
         TextLabel *lbl = m_headerLabels[col];
@@ -387,32 +386,30 @@ void Table::drawHeader(DrawContext &ctx, const vec4 &childClip)
         });
         lbl->setText(m_columns[col].header);
         lbl->clipRect = childClip;
-        lbl->markDirty();
 
         float cellX = m_columnPositions[col] + m_resolvedPadding.w;
         float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col] - m_resolvedPadding.w - m_resolvedPadding.y;
 
         lbl->computeAbsolutes({cellWidth, m_tProps.headerHeight}, absolutePosition + vec2(cellX, 0.0f), absoluteRotation);
-        lbl->draw(ctx);
+        lbl->arrange();
     }
 }
 
-void Table::drawSeparators(DrawContext &ctx, const vec4 &childClip)
+void Table::arrangeSeparators(const vec4 &childClip)
 {
     for (Frame *sep : m_columnSeparators) {
         sep->clipRect = childClip;
         sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-        sep->draw(ctx);
+        sep->arrange();
     }
     for (Frame *sep : m_rowSeparators) {
         sep->clipRect = childClip;
         sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-        sep->draw(ctx);
+        sep->arrange();
     }
 }
 
-void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip,
-                    bool drawBackground)
+void Table::arrangeRow(uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip, bool drawBackground)
 {
     uint32_t cols = columnCount();
 
@@ -435,9 +432,8 @@ void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex,
             .zIndex = Z_ROW_BG,
         });
         bg->clipRect = childClip;
-        bg->markDirty();
         bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + vec2(0.0f, y), absoluteRotation);
-        bg->draw(ctx);
+        bg->arrange();
     }
 
     for (uint32_t col = 0; col < cols; col++) {
@@ -446,8 +442,8 @@ void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex,
             continue;
         }
 
-        auto *drawable = cell->as<UIObject>();
-        if (drawable == nullptr) {
+        auto *obj = cell->asUiObject();
+        if (obj == nullptr) {
             continue;
         }
 
@@ -459,27 +455,26 @@ void Table::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t visualIndex,
         float paddedWidth = cellWidth - m_resolvedPadding.w - m_resolvedPadding.y;
         float paddedHeight = m_computedRowHeight - m_resolvedPadding.x - m_resolvedPadding.z;
 
-        drawable->clipRect = childClip;
-        drawable->computeAbsolutes({paddedWidth, paddedHeight}, absolutePosition + vec2(paddedX, paddedY), absoluteRotation);
-        drawable->draw(ctx);
+        obj->clipRect = childClip;
+        obj->computeAbsolutes({paddedWidth, paddedHeight}, absolutePosition + vec2(paddedX, paddedY), absoluteRotation);
+        obj->arrange();
     }
 }
 
-void Table::draw(DrawContext &ctx)
+void Table::arrange()
 {
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
     uint32_t cols = columnCount();
     if (cols == 0) {
-        flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
         return;
     }
 
     m_computedRowHeight = m_tProps.rowHeight > 0.0f ? m_tProps.rowHeight : FALLBACK_ROW_HEIGHT;
 
     if (flags & FLAG_DIRTY) {
-        InstanceData data = createInstanceData();
-        data.setPrimitiveType(PRIMITIVE_RECT);
-        pushData(ctx.geometry, data);
-
         rebuildColumnPositions();
         updateSeparators();
         m_resolvedPadding = m_tProps.cellPadding.resolve(absoluteSize);
@@ -490,10 +485,10 @@ void Table::draw(DrawContext &ctx)
     float rowStride = m_computedRowHeight + (s_showRowSeparators(m_tProps.separatorMode) ? m_tProps.separatorWidth : 0.0f);
 
     if (m_tProps.showHeader) {
-        drawHeader(ctx, childClip);
+        arrangeHeader(childClip);
     }
 
-    drawSeparators(ctx, childClip);
+    arrangeSeparators(childClip);
 
     bool showRowBackgrounds = m_tProps.rowBackgroundColor.a > 0.0f || m_tProps.rowAlternateColor.a > 0.0f;
     uint32_t visibleCount = static_cast<uint32_t>(m_displayOrder.size());
@@ -502,14 +497,32 @@ void Table::draw(DrawContext &ctx)
 
     for (uint32_t vi = 0; vi < visibleCount; vi++) {
         float rowY = dataStartY + static_cast<float>(vi) * rowStride;
-        drawRow(ctx, m_displayOrder[vi], vi, rowY, childClip, showRowBackgrounds);
+        arrangeRow(m_displayOrder[vi], vi, rowY, childClip, showRowBackgrounds);
     }
 
     for (uint32_t i = neededBackgrounds; i < m_rowBackgrounds.size(); i++) {
-        Frame *bg = m_rowBackgrounds[i];
-        bg->setBaseProperties({.visible = false});
-        bg->draw(ctx);
+        m_rowBackgrounds[i]->setBaseProperties({.visible = false});
     }
+}
+
+void Table::draw(DrawContext &ctx)
+{
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
+    if (columnCount() == 0) {
+        flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+        return;
+    }
+
+    if (flags & FLAG_DIRTY) {
+        InstanceData data = createInstanceData();
+        data.setPrimitiveType(PRIMITIVE_RECT);
+        pushData(ctx.geometry, data);
+    }
+
+    drawChildren(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }

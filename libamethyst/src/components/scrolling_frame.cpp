@@ -62,40 +62,78 @@ bool ScrollingFrame::setScrollingFrameProperties(const ScrollingFrameStyleProper
     return changed;
 }
 
-Instance *ScrollingFrame::addChild(std::unique_ptr<Instance> child)
+void ScrollingFrame::layoutChildren(vec2 &absCanvasSize, vec2 viewport)
 {
-    Instance *raw = child.get();
-    Instance *result = Instance::addChild(std::move(child));
-    if (auto *obj = raw->as<UIObject>()) {
-        m_childViewportVisibility[raw] = obj->isVisible();
+    AutomaticSize acs = m_sfProps.automaticCanvasSize;
+    bool autoCanvas = acs != AutomaticSize::NONE && acs != AutomaticSize::OFF;
+
+    vec2 origin = absoluteContentPosition - m_scrollOffset;
+    vec4 childClip = computeChildClipRect();
+
+    for (auto &child : m_children) {
+        auto *obj = child->asUiObject();
+        if (obj == nullptr) {
+            continue;
+        }
+
+        obj->clipRect = childClip;
+        obj->computeAbsolutes(absCanvasSize, origin, absoluteRotation);
+        obj->arrange();
+
+        if (autoCanvas) {
+            vec2 childCanvasOffset = obj->absolutePosition - origin;
+            if (acs == AutomaticSize::X || acs == AutomaticSize::XY) {
+                absCanvasSize.x = std::max(absCanvasSize.x, childCanvasOffset.x + obj->absoluteSize.x);
+            }
+            if (acs == AutomaticSize::Y || acs == AutomaticSize::XY) {
+                absCanvasSize.y = std::max(absCanvasSize.y, childCanvasOffset.y + obj->absoluteSize.y);
+            }
+        }
+
+        vec2 childEffectivePos = obj->absolutePosition - absoluteContentPosition;
+        bool inViewport = (childEffectivePos.x + obj->absoluteSize.x > 0.0f) && (childEffectivePos.x < viewport.x) &&
+                          (childEffectivePos.y + obj->absoluteSize.y > 0.0f) && (childEffectivePos.y < viewport.y);
+        obj->setRenderCulled(!inViewport);
     }
-    return result;
 }
 
-std::unique_ptr<Instance> ScrollingFrame::removeChild(Instance *child)
+void ScrollingFrame::arrange()
 {
-    if (child->as<UIObject>()) {
-        m_childViewportVisibility.erase(child);
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
     }
-    return Instance::removeChild(child);
-}
 
-void ScrollingFrame::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation)
-{
-    UIObject::computeAbsolutes(parentSize, parentPos, parentRotation);
+    applyLayoutExtensions();
+
+    m_scrollOffset = clamp(m_scrollOffset, vec2(0.0f), m_maxScroll);
+
+    vec2 viewport = absoluteContentSize;
+    vec2 absCanvasSize = m_sfProps.canvasSize.resolve(viewport);
+    layoutChildren(absCanvasSize, viewport);
+    m_maxScroll = max(absCanvasSize - viewport, vec2(0.0f));
 
     bool barsEnabled = m_sfProps.scrollBarVisibility != ScrollBarVisibility::NEVER && isVisible();
-    bool needsVertical = barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) &&
-                         m_maxScroll.y > 0.0f;
-    bool needsHorizontal = barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::X || m_sfProps.scrollAxis == ScrollAxis::XY) &&
-                           m_maxScroll.x > 0.0f;
+    m_needsVertical =
+        barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) && m_maxScroll.y > 0.0f;
+    m_needsHorizontal =
+        barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::X || m_sfProps.scrollAxis == ScrollAxis::XY) && m_maxScroll.x > 0.0f;
 
-    if (needsVertical) {
-        absoluteContentSize.x -= m_sfProps.scrollBarThickness;
+    if (m_needsVertical || m_needsHorizontal) {
+        if (m_needsVertical) {
+            viewport.x -= m_sfProps.scrollBarThickness;
+        }
+        if (m_needsHorizontal) {
+            viewport.y -= m_sfProps.scrollBarThickness;
+        }
+        absoluteContentSize = viewport;
+        absCanvasSize = m_sfProps.canvasSize.resolve(viewport);
+        layoutChildren(absCanvasSize, viewport);
+        m_maxScroll = max(absCanvasSize - viewport, vec2(0.0f));
+        m_scrollOffset = clamp(m_scrollOffset, vec2(0.0f), m_maxScroll);
     }
-    if (needsHorizontal) {
-        absoluteContentSize.y -= m_sfProps.scrollBarThickness;
-    }
+
+    m_absCanvasSize = absCanvasSize;
+    arrangeScrollbars();
 }
 
 void ScrollingFrame::draw(DrawContext &ctx)
@@ -111,70 +149,17 @@ void ScrollingFrame::draw(DrawContext &ctx)
         pushData(ctx.geometry, data);
     }
 
-    AutomaticSize acs = m_sfProps.automaticCanvasSize;
-    bool autoCanvas = acs != AutomaticSize::NONE && acs != AutomaticSize::OFF;
-
-    bool barsEnabled = m_sfProps.scrollBarVisibility != ScrollBarVisibility::NEVER && isVisible();
-    bool needsVertical = barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) &&
-                         m_maxScroll.y > 0.0f;
-    bool needsHorizontal = barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::X || m_sfProps.scrollAxis == ScrollAxis::XY) &&
-                           m_maxScroll.x > 0.0f;
-
-    vec2 absCanvasSize = m_sfProps.canvasSize.resolve(absoluteContentSize);
-
-    m_scrollOffset = clamp(m_scrollOffset, vec2(0.0f), m_maxScroll);
-
-    if (auto *gridLayout = getExtension<UIGridLayout>()) {
-        gridLayout->apply(m_children);
-    } else if (auto *listLayout = getExtension<UIListLayout>()) {
-        listLayout->apply(m_children);
-    }
-
-    vec4 childClip = computeChildClipRect();
-
-    for (auto &child : m_children) {
-        auto *obj = child->as<UIObject>();
-        if (obj == nullptr) continue;
-
-        obj->clipRect = childClip;
-        obj->computeAbsolutes(absCanvasSize, absoluteContentPosition - m_scrollOffset, absoluteRotation);
-
-        if (autoCanvas) {
-            vec2 childCanvasOffset = obj->absolutePosition - (absoluteContentPosition - m_scrollOffset);
-            if (acs == AutomaticSize::X || acs == AutomaticSize::XY)
-                absCanvasSize.x = std::max(absCanvasSize.x, childCanvasOffset.x + obj->absoluteSize.x);
-            if (acs == AutomaticSize::Y || acs == AutomaticSize::XY)
-                absCanvasSize.y = std::max(absCanvasSize.y, childCanvasOffset.y + obj->absoluteSize.y);
-        }
-
-        vec2 childEffectivePos = obj->absolutePosition - absoluteContentPosition;
-        bool inViewport = (childEffectivePos.x + obj->absoluteSize.x > 0.0f) && (childEffectivePos.x < absoluteContentSize.x) &&
-                          (childEffectivePos.y + obj->absoluteSize.y > 0.0f) && (childEffectivePos.y < absoluteContentSize.y);
-
-        bool localVisible = obj->getBaseProperties().visible != 0;
-        bool effective = obj->isVisible() && inViewport;
-
-        auto &lastViewport = m_childViewportVisibility[child.get()];
-        if (effective != lastViewport) {
-            obj->markDirty();
-            lastViewport = effective;
-        }
-
-        obj->setBaseProperties({.visible = static_cast<am_bool>(effective)});
-        obj->draw(ctx);
-        obj->setBaseProperties({.visible = static_cast<am_bool>(localVisible)});
-    }
-
-    m_maxScroll = max(absCanvasSize - absoluteContentSize, vec2(0.0f));
-    drawScrollbars(ctx, absCanvasSize, absoluteContentSize, needsVertical, needsHorizontal);
+    drawChildren(ctx);
+    drawScrollbars(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }
 
-void ScrollingFrame::drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 viewport, bool needsVertical,
-                                    bool needsHorizontal)
+void ScrollingFrame::arrangeScrollbars()
 {
-    if (needsVertical) {
+    vec2 viewport = absoluteContentSize;
+
+    if (m_needsVertical) {
         if (m_verticalBar == nullptr) {
             m_verticalBar = std::make_unique<Frame>();
             m_verticalBar->parent = this;
@@ -190,10 +175,10 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 v
             m_verticalThumb->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
         }
 
-        float trackHeight = absoluteSize.y - (needsHorizontal ? m_sfProps.scrollBarThickness : 0.0f);
-        float thumbRatio = viewport.y / absCanvasSize.y;
+        float trackHeight = absoluteSize.y - (m_needsHorizontal ? m_sfProps.scrollBarThickness : 0.0f);
+        float thumbRatio = viewport.y / m_absCanvasSize.y;
         float thumbHeight = trackHeight * thumbRatio;
-        float scrollRatio = m_scrollOffset.y / (absCanvasSize.y - viewport.y);
+        float scrollRatio = m_scrollOffset.y / (m_absCanvasSize.y - viewport.y);
         float thumbY = scrollRatio * (trackHeight - thumbHeight);
 
         m_verticalBar->setBaseStyleProperties({
@@ -205,7 +190,7 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 v
         m_verticalBar->computeAbsolutes(vec2(m_sfProps.scrollBarThickness, trackHeight),
                                         absolutePosition + vec2(absoluteSize.x - m_sfProps.scrollBarThickness, 0.0f),
                                         absoluteRotation);
-        m_verticalBar->draw(ctx);
+        m_verticalBar->arrange();
 
         m_verticalThumb->setBaseStyleProperties({
             .backgroundColor = m_sfProps.scrollBarThumbColor,
@@ -216,13 +201,13 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 v
         m_verticalThumb->computeAbsolutes(vec2(m_sfProps.scrollBarThickness, thumbHeight),
                                           absolutePosition + vec2(absoluteSize.x - m_sfProps.scrollBarThickness, thumbY),
                                           absoluteRotation);
-        m_verticalThumb->draw(ctx);
+        m_verticalThumb->arrange();
     } else {
         m_verticalBar.reset();
         m_verticalThumb.reset();
     }
 
-    if (needsHorizontal) {
+    if (m_needsHorizontal) {
         if (m_horizontalBar == nullptr) {
             m_horizontalBar = std::make_unique<Frame>();
             m_horizontalBar->parent = this;
@@ -238,10 +223,10 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 v
             m_horizontalThumb->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
         }
 
-        float trackWidth = absoluteSize.x - (needsVertical ? m_sfProps.scrollBarThickness : 0.0f);
-        float thumbRatio = viewport.x / absCanvasSize.x;
+        float trackWidth = absoluteSize.x - (m_needsVertical ? m_sfProps.scrollBarThickness : 0.0f);
+        float thumbRatio = viewport.x / m_absCanvasSize.x;
         float thumbWidth = trackWidth * thumbRatio;
-        float scrollRatio = m_scrollOffset.x / (absCanvasSize.x - viewport.x);
+        float scrollRatio = m_scrollOffset.x / (m_absCanvasSize.x - viewport.x);
         float thumbX = scrollRatio * (trackWidth - thumbWidth);
 
         m_horizontalBar->setBaseStyleProperties({
@@ -253,7 +238,7 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 v
         m_horizontalBar->computeAbsolutes(vec2(trackWidth, m_sfProps.scrollBarThickness),
                                           absolutePosition + vec2(0.0f, absoluteSize.y - m_sfProps.scrollBarThickness),
                                           absoluteRotation);
-        m_horizontalBar->draw(ctx);
+        m_horizontalBar->arrange();
 
         m_horizontalThumb->setBaseStyleProperties({
             .backgroundColor = m_sfProps.scrollBarThumbColor,
@@ -264,10 +249,26 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx, vec2 absCanvasSize, vec2 v
         m_horizontalThumb->computeAbsolutes(vec2(thumbWidth, m_sfProps.scrollBarThickness),
                                             absolutePosition + vec2(thumbX, absoluteSize.y - m_sfProps.scrollBarThickness),
                                             absoluteRotation);
-        m_horizontalThumb->draw(ctx);
+        m_horizontalThumb->arrange();
     } else {
         m_horizontalBar.reset();
         m_horizontalThumb.reset();
+    }
+}
+
+void ScrollingFrame::drawScrollbars(DrawContext &ctx)
+{
+    if (m_verticalBar != nullptr) {
+        m_verticalBar->draw(ctx);
+    }
+    if (m_verticalThumb != nullptr) {
+        m_verticalThumb->draw(ctx);
+    }
+    if (m_horizontalBar != nullptr) {
+        m_horizontalBar->draw(ctx);
+    }
+    if (m_horizontalThumb != nullptr) {
+        m_horizontalThumb->draw(ctx);
     }
 }
 

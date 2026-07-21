@@ -182,21 +182,29 @@ void Slider::draw(DrawContext &ctx)
         return;
     }
 
+    drawChildren(ctx);
+
+    flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+}
+
+void Slider::arrange()
+{
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
     if (flags & FLAG_DIRTY) {
         updateComponents();
     }
 
     vec4 childClip = computeChildClipRect();
-
     for (auto &child : m_children) {
-        if (auto *drawable = child->as<UIObject>()) {
-            drawable->clipRect = childClip;
-            drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-            drawable->draw(ctx);
+        if (auto *obj = child->asUiObject()) {
+            obj->clipRect = childClip;
+            obj->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            obj->arrange();
         }
     }
-
-    flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }
 
 std::vector<Instance *> Slider::getHittableInstances()

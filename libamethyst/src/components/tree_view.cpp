@@ -433,7 +433,7 @@ void TreeView::ensurePoolCapacity(uint32_t count)
 }
 
 // WIP: header rendering is wired but off by default and unverified against all themes.
-void TreeView::drawHeader(DrawContext &ctx, const vec4 &childClip)
+void TreeView::arrangeHeader(const vec4 &childClip)
 {
     uint32_t cols = columnCount();
     ensureHeaderCapacity();
@@ -446,7 +446,7 @@ void TreeView::drawHeader(DrawContext &ctx, const vec4 &childClip)
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_tvProps.headerHeight}, absolutePosition, absoluteRotation);
-    m_headerBackground->draw(ctx);
+    m_headerBackground->arrange();
 
     for (uint32_t col = 0; col < cols; col++) {
         TextLabel *lbl = m_headerLabels[col].get();
@@ -470,22 +470,22 @@ void TreeView::drawHeader(DrawContext &ctx, const vec4 &childClip)
         float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col] - m_cellPaddingPx.w - m_cellPaddingPx.y;
 
         lbl->computeAbsolutes({cellWidth, m_tvProps.headerHeight}, absolutePosition + vec2(cellX, 0.0f), absoluteRotation);
-        lbl->draw(ctx);
+        lbl->arrange();
     }
 }
 
-void TreeView::drawSeparators(DrawContext &ctx, const vec4 &childClip)
+void TreeView::arrangeSeparators(const vec4 &childClip)
 {
     for (auto &sep : m_separators) {
         sep->setBaseProperties({.visible = true});
         sep->clipRect = childClip;
+        sep->markDirty();
         sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-        sep->draw(ctx);
+        sep->arrange();
     }
 }
 
-void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y,
-                       const vec4 &childClip)
+void TreeView::arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, const vec4 &childClip)
 {
     uint32_t cols = columnCount();
     uint32_t visualIndex = visibleIndex;
@@ -556,7 +556,7 @@ void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot,
             continue;
         }
 
-        auto *drawable = cell->as<UIObject>();
+        auto *drawable = cell->asUiObject();
         if (!drawable) {
             continue;
         }
@@ -573,29 +573,28 @@ void TreeView::drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot,
         });
     }
 
-    bg->draw(ctx);
+    bg->arrange();
 }
 
-void TreeView::draw(DrawContext &ctx)
+void TreeView::arrange()
 {
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
     if (!isVisible()) {
         for (uint32_t slot = 0; slot < m_rowBackgrounds.size(); slot++) {
-            hideSlot(ctx, slot);
+            hideSlot(slot);
         }
-        if (m_headerBackground != nullptr && m_headerBackground->setBaseProperties({.visible = false})) {
-            m_headerBackground->draw(ctx);
+        if (m_headerBackground != nullptr) {
+            m_headerBackground->setBaseProperties({.visible = false});
         }
         for (auto &lbl : m_headerLabels) {
-            if (lbl->setBaseProperties({.visible = false})) {
-                lbl->draw(ctx);
-            }
+            lbl->setBaseProperties({.visible = false});
         }
         for (auto &sep : m_separators) {
-            if (sep->setBaseProperties({.visible = false})) {
-                sep->draw(ctx);
-            }
+            sep->setBaseProperties({.visible = false});
         }
-        flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
         return;
     }
 
@@ -607,7 +606,6 @@ void TreeView::draw(DrawContext &ctx)
 
     uint32_t cols = columnCount();
     if (cols == 0) {
-        flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
         return;
     }
 
@@ -624,7 +622,6 @@ void TreeView::draw(DrawContext &ctx)
 
     float viewportHeight = childClip.w - childClip.y;
     if (viewportHeight <= 0.0f) {
-        flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
         return;
     }
 
@@ -641,15 +638,15 @@ void TreeView::draw(DrawContext &ctx)
     ensurePoolCapacity(windowCount);
 
     if (static_cast<bool>(m_tvProps.showHeader)) {
-        drawHeader(ctx, childClip);
+        arrangeHeader(childClip);
     }
 
-    drawSeparators(ctx, childClip);
+    arrangeSeparators(childClip);
 
     for (uint32_t slot = 0; slot < m_rowBackgrounds.size(); slot++) {
         uint32_t desired = slot < windowCount ? m_visible[first + slot] : INVALID_ROW;
         if (m_rowBySlot[slot] != INVALID_ROW && m_rowBySlot[slot] != desired) {
-            parkRowCells(ctx, m_rowBySlot[slot]);
+            parkRowCells(m_rowBySlot[slot]);
             m_rowBySlot[slot] = INVALID_ROW;
         }
     }
@@ -660,12 +657,34 @@ void TreeView::draw(DrawContext &ctx)
         attachRowCells(poolSlot, logicalRow);
         m_rowBySlot[poolSlot] = logicalRow;
         float rowY = headerH + static_cast<float>(k) * m_rowHeightPx;
-        drawRow(ctx, logicalRow, poolSlot, k, rowY, childClip);
+        arrangeRow(logicalRow, poolSlot, k, rowY, childClip);
     }
 
     for (uint32_t slot = windowCount; slot < m_rowBackgrounds.size(); slot++) {
-        hideSlot(ctx, slot);
+        hideSlot(slot);
     }
+}
+
+void TreeView::draw(DrawContext &ctx)
+{
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
+    if (m_headerBackground != nullptr) {
+        m_headerBackground->draw(ctx);
+    }
+    for (auto &lbl : m_headerLabels) {
+        lbl->draw(ctx);
+    }
+    for (auto &sep : m_separators) {
+        sep->draw(ctx);
+    }
+    for (auto &bg : m_rowBackgrounds) {
+        bg->draw(ctx);
+    }
+
+    drawChildren(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }
@@ -683,7 +702,7 @@ void TreeView::attachRowCells(uint32_t poolSlot, uint32_t logicalRow)
     }
 }
 
-void TreeView::parkRowCells(DrawContext &ctx, uint32_t logicalRow)
+void TreeView::parkRowCells(uint32_t logicalRow)
 {
     uint32_t cols = columnCount();
     for (uint32_t col = 0; col < cols; col++) {
@@ -691,8 +710,8 @@ void TreeView::parkRowCells(DrawContext &ctx, uint32_t logicalRow)
         if (cell == nullptr) {
             continue;
         }
-        if (auto *drawable = cell->as<UIObject>(); drawable && drawable->setBaseProperties({.visible = false})) {
-            drawable->draw(ctx);
+        if (auto *obj = cell->asUiObject()) {
+            obj->setBaseProperties({.visible = false});
         }
         if (cell->parent != this) {
             cell->reparent(this);
@@ -700,7 +719,7 @@ void TreeView::parkRowCells(DrawContext &ctx, uint32_t logicalRow)
     }
 }
 
-void TreeView::hideSlot(DrawContext &ctx, uint32_t poolSlot)
+void TreeView::hideSlot(uint32_t poolSlot)
 {
     Frame *bg = m_rowBackgrounds[poolSlot].get();
     ImageButton *disc = m_disclosures[poolSlot];
@@ -708,7 +727,6 @@ void TreeView::hideSlot(DrawContext &ctx, uint32_t poolSlot)
     changed |= disc->setBaseProperties({.interactable = false, .visible = false});
     if (changed) {
         bg->markDirty();
-        bg->draw(ctx);
     }
 }
 

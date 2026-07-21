@@ -152,7 +152,7 @@ void CollapsibleHeader::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degree
     }
 }
 
-void CollapsibleHeader::drawHeaderBar(DrawContext &ctx, const vec4 &childClip)
+void CollapsibleHeader::arrangeHeaderBar()
 {
     bool expanded = static_cast<bool>(m_chProps.expanded);
     bool showIndicator = static_cast<bool>(m_chProps.showIndicator);
@@ -200,16 +200,47 @@ void CollapsibleHeader::drawHeaderBar(DrawContext &ctx, const vec4 &childClip)
         .borderPixelSize = 0.0f,
         .cornerRadius = m_chProps.headerCornerRadius,
     });
+
+    vec4 childClip = computeChildClipRect();
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_chProps.headerHeight}, absolutePosition, absoluteRotation);
-    m_headerBackground->draw(ctx);
+    m_headerBackground->arrange();
 
     m_headerButton->setBaseProperties({.zIndex = Z_HEADER_BUTTON});
     m_headerButton->clipRect = childClip;
     m_headerButton->markDirty();
     m_headerButton->computeAbsolutes({absoluteSize.x, m_chProps.headerHeight}, absolutePosition, absoluteRotation);
-    m_headerButton->draw(ctx);
+    m_headerButton->arrange();
+}
+
+void CollapsibleHeader::arrange()
+{
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
+    arrangeHeaderBar();
+
+    bool expanded = static_cast<bool>(m_chProps.expanded);
+    if (expanded) {
+        applyLayoutExtensions();
+    }
+
+    vec2 contentPos = absoluteContentPosition + vec2(0.0f, m_chProps.headerHeight);
+    vec2 contentSize = {absoluteContentSize.x, max(absoluteContentSize.y - m_chProps.headerHeight, 0.0f)};
+
+    vec4 childClip = computeChildClipRect();
+    for (auto &child : m_children) {
+        if (auto *obj = child->asUiObject()) {
+            obj->setRenderCulled(!expanded);
+            obj->clipRect = childClip;
+            obj->computeAbsolutes(contentSize, contentPos, absoluteRotation);
+            obj->arrange();
+        } else if (auto *layer = child->asLayer()) {
+            layer->arrange();
+        }
+    }
 }
 
 void CollapsibleHeader::draw(DrawContext &ctx)
@@ -226,37 +257,10 @@ void CollapsibleHeader::draw(DrawContext &ctx)
         pushData(ctx.geometry, data);
     }
 
-    vec4 childClip = computeChildClipRect();
-    drawHeaderBar(ctx, childClip);
+    m_headerBackground->draw(ctx);
+    m_headerButton->draw(ctx);
 
-    bool expanded = static_cast<bool>(m_chProps.expanded);
-
-    if (expanded) {
-        if (auto *gridLayout = getExtension<UIGridLayout>()) {
-            gridLayout->apply(m_children);
-        } else if (auto *listLayout = getExtension<UIListLayout>()) {
-            listLayout->apply(m_children);
-        }
-    }
-
-    vec2 contentPos = absoluteContentPosition + vec2(0.0f, m_chProps.headerHeight);
-    vec2 contentSize = {absoluteContentSize.x, max(absoluteContentSize.y - m_chProps.headerHeight, 0.0f)};
-
-    for (auto &child : m_children) {
-        if (auto *drawable = child->as<UIObject>()) {
-            am_bool localVisible = drawable->getBaseProperties().visible;
-            drawable->clipRect = childClip;
-            drawable->computeAbsolutes(contentSize, contentPos, absoluteRotation);
-            drawable->setBaseProperties({.visible = static_cast<am_bool>(static_cast<bool>(localVisible) && expanded)});
-            drawable->draw(ctx);
-            drawable->setBaseProperties({.visible = localVisible});
-        } else if (auto *layer = child->as<UILayer>()) {
-            bool localVisible = layer->visible;
-            layer->visible = localVisible && expanded;
-            layer->draw(ctx);
-            layer->visible = localVisible;
-        }
-    }
+    drawChildren(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }

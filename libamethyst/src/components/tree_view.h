@@ -57,6 +57,7 @@ class TreeView : public UIObject {
     virtual ~TreeView();
 
     void draw(DrawContext &ctx) override;
+    void arrange() override;
     void resolveStyle() override;
     void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation) override;
 
@@ -215,12 +216,12 @@ class TreeView : public UIObject {
     void updateSeparators();
     void ensureHeaderCapacity();
     void ensurePoolCapacity(uint32_t count);
-    void drawHeader(DrawContext &ctx, const vec4 &childClip);
-    void drawSeparators(DrawContext &ctx, const vec4 &childClip);
-    void drawRow(DrawContext &ctx, uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, const vec4 &childClip);
+    void arrangeHeader(const vec4 &childClip);
+    void arrangeSeparators(const vec4 &childClip);
+    void arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, const vec4 &childClip);
     void attachRowCells(uint32_t poolSlot, uint32_t logicalRow);
-    void parkRowCells(DrawContext &ctx, uint32_t logicalRow);
-    void hideSlot(DrawContext &ctx, uint32_t poolSlot);
+    void parkRowCells(uint32_t logicalRow);
+    void hideSlot(uint32_t poolSlot);
 
     std::vector<TreeColumn> m_columns;
     std::vector<Instance *> m_cells;

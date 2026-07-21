@@ -64,18 +64,32 @@ void Window::draw(DrawContext &ctx)
     layerCtx.svgAtlas = ctx.svgAtlas;
 
     for (auto &child : m_children) {
-        if (auto *drawable = child->as<UIObject>()) {
-            drawable->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
-            drawable->draw(layerCtx);
-        } else if (auto *layer = child->as<UILayer>()) {
+        if (auto *obj = child->asUiObject()) {
+            obj->draw(layerCtx);
+        } else if (auto *layer = child->asLayer()) {
             layer->draw(layerCtx);
+        }
+    }
+
+    m_overlayLayer->draw(layerCtx);
+}
+
+void Window::arrange()
+{
+    AM_PROFILE_FUNCTION();
+    for (auto &child : m_children) {
+        if (auto *obj = child->asUiObject()) {
+            obj->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+            obj->arrange();
+        } else if (auto *layer = child->asLayer()) {
+            layer->arrange();
         }
     }
 
     m_overlayLayer->absoluteSize = absoluteSize;
     m_overlayLayer->absolutePosition = absolutePosition;
     m_overlayLayer->clipRect = clipRect;
-    m_overlayLayer->draw(layerCtx);
+    m_overlayLayer->arrange();
 }
 
 static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, const vec2 &point, UIObject **stack, uint8_t &count,
@@ -105,7 +119,7 @@ static bool s_fillHoverStackRecursive(const std::vector<Instance *> &instances, 
         }
 
         if (pointInside) {
-            if (auto *obj = inst->as<UIObject>()) {
+            if (auto *obj = inst->asUiObject()) {
                 if (count < capacity) {
                     stack[count++] = obj;
                 }
@@ -141,7 +155,7 @@ template <typename Fn> static bool s_dispatchRecursive(const std::vector<Instanc
         }
 
         if (pointInside) {
-            if (auto *obj = inst->as<UIObject>()) {
+            if (auto *obj = inst->asUiObject()) {
                 if (fn(obj) == EventResult::CONSUMED) {
                     return true;
                 }
@@ -326,7 +340,7 @@ void Window::onMouseScroll(float xoffset, float yoffset, int32_t x, int32_t y)
     vec2 point(x, y);
 
     while (target) {
-        auto *uiObject = target->as<UIObject>();
+        auto *uiObject = target->asUiObject();
         if (uiObject) {
             EventResult result = EventResult::PROPAGATE;
             if (yoffset > 0) {

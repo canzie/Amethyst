@@ -1,7 +1,3 @@
-/*
- * Color picker implementation
- */
-
 #include "components/color_picker.h"
 
 #include "components/extensions/ui_drag_detector.h"
@@ -9,7 +5,6 @@
 #include "components/slider.h"
 #include "logging/log.h"
 #include "rendering/draw_context.h"
-#include "rendering/geometry_registry.h"
 
 #include <algorithm>
 
@@ -168,24 +163,22 @@ void ColorPicker::draw(DrawContext &ctx)
     }
 
     if (flags & FLAG_DIRTY) {
-        updateComponents();
-
         InstanceData data = createInstanceData();
         data.setPrimitiveType(PRIMITIVE_RECT);
         pushData(ctx.geometry, data);
     }
 
-    vec4 childClip = computeChildClipRect();
-
-    for (auto &child : m_children) {
-        if (auto *drawable = child->as<UIObject>()) {
-            drawable->clipRect = childClip;
-            drawable->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
-            drawable->draw(ctx);
-        }
-    }
+    drawChildren(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
+}
+
+void ColorPicker::arrange()
+{
+    if (flags & FLAG_DIRTY) {
+        updateComponents();
+    }
+    UIObject::arrange();
 }
 
 void Color3Picker::updateComponents()

@@ -3,7 +3,6 @@
 #include "amethyst/icons.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
-#include "rendering/geometry_registry.h"
 
 namespace Amethyst {
 
@@ -54,8 +53,6 @@ void Checkbox::draw(DrawContext &ctx)
     bool checked = value != nullptr && *value;
     m_checkIcon->setImageStyleProperties({.imageColor = m_cbProps.checkColor});
     m_checkIcon->setBaseProperties({.visible = checked});
-    m_checkIcon->clipRect = computeChildClipRect();
-    m_checkIcon->computeAbsolutes(absoluteContentSize, absoluteContentPosition, absoluteRotation);
     m_checkIcon->draw(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);

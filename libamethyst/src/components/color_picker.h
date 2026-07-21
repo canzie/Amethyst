@@ -21,6 +21,7 @@ class ColorPicker : public UIObject {
     virtual ~ColorPicker() = default;
 
     void draw(DrawContext &ctx) override;
+    void arrange() override;
 
     /**
      * @brief Pull the bound color into the internal channels and redraw.

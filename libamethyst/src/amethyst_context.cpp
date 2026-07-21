@@ -57,6 +57,7 @@ void AmethystContext::syncWindow(void *cmdBuffer, Window &window)
 
 void AmethystContext::draw(UIBase2D &root)
 {
+    root.arrange();
     root.draw(m_drawCtx);
 }
 
