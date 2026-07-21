@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -313,6 +314,38 @@ static const std::unordered_map<std::string, PropParser> &s_propParsers()
 }
 
 using Decl = std::pair<StyleProperty, StyleValue>;
+using VarMap = std::unordered_map<std::string, std::string>;
+
+static bool s_isVariableNameChar(char c)
+{
+    return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-';
+}
+
+static std::optional<std::string> s_substituteVars(std::string_view text, const VarMap &vars)
+{
+    std::string out;
+    out.reserve(text.size());
+    for (size_t i = 0; i < text.size();) {
+        if (text[i] != '@') {
+            out.push_back(text[i]);
+            ++i;
+            continue;
+        }
+        size_t j = i + 1;
+        while (j < text.size() && s_isVariableNameChar(text[j])) {
+            ++j;
+        }
+        std::string name(text.substr(i + 1, j - i - 1));
+        auto it = vars.find(name);
+        if (it == vars.end()) {
+            AM_LOG_WARN("Undefined style variable '@{}'; skipping declaration", name);
+            return std::nullopt;
+        }
+        out += it->second;
+        i = j;
+    }
+    return out;
+}
 
 static void s_parseSpacing(std::string_view value, std::vector<Decl> &out, StyleProperty top, StyleProperty right,
                            StyleProperty bottom, StyleProperty left)
@@ -363,7 +396,7 @@ static void s_parseDeclaration(std::string_view key, std::string_view value, std
     out.push_back({it->second.prop, it->second.parse(value, style)});
 }
 
-static std::vector<Decl> s_parseBlock(std::string_view block, Style &style)
+static std::vector<Decl> s_parseBlock(std::string_view block, Style &style, const VarMap &vars)
 {
     std::vector<Decl> out;
     for (std::string_view stmt : s_split(block, ';')) {
@@ -376,11 +409,15 @@ static std::vector<Decl> s_parseBlock(std::string_view block, Style &style)
             continue;
         }
         std::string_view key = s_trim(stmt.substr(0, colon));
-        std::string_view value = s_trim(stmt.substr(colon + 1));
-        if (key.empty() || value.empty()) {
+        std::optional<std::string> value = s_substituteVars(s_trim(stmt.substr(colon + 1)), vars);
+        if (key.empty() || !value.has_value()) {
             continue;
         }
-        s_parseDeclaration(key, value, out, style);
+        std::string_view resolved = s_trim(*value);
+        if (resolved.empty()) {
+            continue;
+        }
+        s_parseDeclaration(key, resolved, out, style);
     }
     return out;
 }
@@ -527,6 +564,7 @@ static Style s_parseSource(std::string_view rawSource)
     std::string_view src = source;
 
     Style style;
+    VarMap vars;
     uint32_t order = 0;
     size_t pos = 0;
 
@@ -536,6 +574,28 @@ static Style s_parseSource(std::string_view rawSource)
         }
         if (pos >= src.size()) {
             break;
+        }
+
+        if (src.substr(pos, 9) == "@property" && (pos + 9 >= src.size() || std::isspace(static_cast<unsigned char>(src[pos + 9])))) {
+            size_t eol = src.find('\n', pos);
+            std::string_view directive = s_trim(src.substr(pos, eol == std::string_view::npos ? std::string_view::npos : eol - pos));
+            std::string_view rest = s_trim(directive.substr(9));
+            size_t sep = 0;
+            while (sep < rest.size() && !std::isspace(static_cast<unsigned char>(rest[sep]))) {
+                ++sep;
+            }
+            std::string_view name = rest.substr(0, sep);
+            std::string_view literal = s_trim(rest.substr(sep));
+            if (name.empty() || literal.empty()) {
+                AM_LOG_WARN("Malformed @property directive: {}", std::string(directive));
+            } else {
+                std::optional<std::string> value = s_substituteVars(literal, vars);
+                if (value.has_value()) {
+                    vars[std::string(name)] = std::string(s_trim(*value));
+                }
+            }
+            pos = eol == std::string_view::npos ? src.size() : eol + 1;
+            continue;
         }
 
         size_t braceOpen = src.find('{', pos);
@@ -553,7 +613,7 @@ static Style s_parseSource(std::string_view rawSource)
         std::string_view block = src.substr(braceOpen + 1, braceClose - braceOpen - 1);
         pos = braceClose + 1;
 
-        std::vector<Decl> decls = s_parseBlock(block, style);
+        std::vector<Decl> decls = s_parseBlock(block, style, vars);
         for (std::string_view selText : s_split(selectorList, ',')) {
             if (selText.empty()) {
                 continue;
