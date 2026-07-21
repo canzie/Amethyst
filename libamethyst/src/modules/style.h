@@ -131,7 +131,7 @@ struct FontHandle {
     bool operator==(const FontHandle &) const = default;
 };
 
-using StyleValue = std::variant<Color3, Color4, float, UDim, BorderMode, TextXAlignment, TextYAlignment, FontHandle>;
+using StyleValue = std::variant<Color3, Color4, float, uvec4, UDim, BorderMode, TextXAlignment, TextYAlignment, FontHandle>;
 
 /**
  * @brief Class-name hash (FNV-1a 32-bit).

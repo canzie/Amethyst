@@ -19,6 +19,7 @@ layout(location = 14) in flat uint fragLineCount;
 layout(location = 15) in flat float fragLineHeight;
 layout(location = 16) in flat uint fragTextBatched;
 layout(location = 17) in flat uint fragGradientSlot;
+layout(location = 18) in flat vec4 fragCornerRadii;
 
 layout(set = 0, binding = 1) uniform sampler2D gTextures[];
 
@@ -364,7 +365,9 @@ void main()
     float dist;
 
     if (fragPrimitiveType == PRIMITIVE_RECT) {
-        dist = sdfRect(p, halfSize, vec4(fragCornerRadius));
+        // sdfRect's vec4 is ordered (BR, TR, BL, TL) by its p.x/p.y sign selection; remap from
+        // the (TL, TR, BR, BL) corner order carried in fragCornerRadii.
+        dist = sdfRect(p, halfSize, vec4(fragCornerRadii.z, fragCornerRadii.y, fragCornerRadii.w, fragCornerRadii.x));
     } else if (fragPrimitiveType == PRIMITIVE_CIRCLE) {
         dist = sdfCircle(p, min(halfSize.x, halfSize.y));
     } else if (fragPrimitiveType == PRIMITIVE_TRIANGLE) {

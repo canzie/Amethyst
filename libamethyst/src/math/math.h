@@ -1,6 +1,8 @@
 #ifndef AMETHYST__MATH_H
 #define AMETHYST__MATH_H
 
+#include "utils/am_assert.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -301,6 +303,36 @@ inline vec4 operator*(float s, vec4 v)
     return v * s;
 }
 
+struct uvec4 {
+    uint32_t x = 0;
+    uint32_t y = 0;
+    uint32_t z = 0;
+    uint32_t w = 0;
+
+    uvec4() = default;
+    constexpr uvec4(uint32_t x, uint32_t y, uint32_t z, uint32_t w) : x(x), y(y), z(z), w(w) {}
+
+    template <typename T>
+    requires std::is_arithmetic_v<T>
+    constexpr uvec4(T s) : x(uint32_t(s)), y(uint32_t(s)), z(uint32_t(s)), w(uint32_t(s))
+    {
+    }
+
+    bool operator==(const uvec4 &o) const { return x == o.x && y == o.y && z == o.z && w == o.w; }
+    bool operator!=(const uvec4 &o) const { return !(*this == o); }
+
+    uint32_t &operator[](size_t i)
+    {
+        AM_ASSERT(i < 4, "uvec4 index out of range");
+        return (&x)[i];
+    }
+    uint32_t operator[](size_t i) const
+    {
+        AM_ASSERT(i < 4, "uvec4 index out of range");
+        return (&x)[i];
+    }
+};
+
 inline vec3::vec3(vec4 v) : x(v.x), y(v.y), z(v.z) {}
 
 struct mat3 {
@@ -464,6 +496,14 @@ inline vec4 min(vec4 a, vec4 b)
     return {std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z), std::min(a.w, b.w)};
 }
 inline vec4 max(vec4 a, vec4 b)
+{
+    return {std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z), std::max(a.w, b.w)};
+}
+inline uvec4 min(uvec4 a, uvec4 b)
+{
+    return {std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z), std::min(a.w, b.w)};
+}
+inline uvec4 max(uvec4 a, uvec4 b)
 {
     return {std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z), std::max(a.w, b.w)};
 }

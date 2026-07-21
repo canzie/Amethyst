@@ -22,7 +22,8 @@ struct InstanceData {
     uint borderColor;             // 4B packed RGBA
     uint shapeData[4];            // 16B packed half2 pairs for text UV etc
     uint rotationBorderThickness; // 4B: rotation(16) | borderThickness(16 half)
-    uint cornerPrimitiveMode;     // 4B: cornerRadius(16 half) | primitiveType(8) | borderMode(8)
+    uint primitiveMode;           // 4B: unused(16) | primitiveType(8) | borderMode(8)
+    uint cornerRadii;             // 4B: rounded-box per-corner radii tl|tr|br|bl (uint8), else radius(16 half)
     uint textureId;               // 4B texture handle
     int zIndex;                   // 4B z-index
     uint flags;                   // 4B: visible(1) | padding(31)
@@ -54,6 +55,7 @@ layout(location = 14) out flat uint fragLineCount;
 layout(location = 15) out flat float fragLineHeight;
 layout(location = 16) out flat uint fragTextBatched;
 layout(location = 17) out flat uint fragGradientSlot;
+layout(location = 18) out flat vec4 fragCornerRadii;
 
 const vec2 positions[4] = vec2[](
     vec2(-0.5, -0.5),
@@ -104,9 +106,13 @@ float unpackHalf(uint packed) {
 
 #define INST_ROTATION(rbt)         (float((rbt) & 0xFFFFu) * (2.0 * PI / 65535.0))
 #define INST_BORDER_THICKNESS(rbt) unpackHalf((rbt) >> 16u)
-#define INST_PRIMITIVE_TYPE(cpm)   (((cpm) >> 16u) & 0xFFu)
-#define INST_BORDER_MODE(cpm)      (((cpm) >> 24u) & 0xFFu)
-#define INST_CORNER_RADIUS(cpm)    unpackHalf((cpm) & 0xFFFFu)
+#define INST_PRIMITIVE_TYPE(pm)    (((pm) >> 16u) & 0xFFu)
+#define INST_BORDER_MODE(pm)       (((pm) >> 24u) & 0xFFu)
+#define INST_CORNER_RADIUS(cr)     unpackHalf(cr)
+#define INST_CORNER_TL(cr)         ((cr) & 0xFFu)
+#define INST_CORNER_TR(cr)         (((cr) >> 8u) & 0xFFu)
+#define INST_CORNER_BR(cr)         (((cr) >> 16u) & 0xFFu)
+#define INST_CORNER_BL(cr)         (((cr) >> 24u) & 0xFFu)
 
 void main()
 {
@@ -124,7 +130,7 @@ void main()
     float s = sin(rotation);
 
     float borderThickness = INST_BORDER_THICKNESS(inst.rotationBorderThickness);
-    uint borderMode = INST_BORDER_MODE(inst.cornerPrimitiveMode);
+    uint borderMode = INST_BORDER_MODE(inst.primitiveMode);
 
     // Outward border modes draw outside the shape edge, but the quad is sized to the shape so
     // they have no fragments to land on. Grow the quad by the outward extent (+ AA fringe) and
@@ -148,7 +154,7 @@ void main()
     fragUV = uvs[gl_VertexIndex] * (1.0 + 2.0 * padRatio) - padRatio;
 
     // Unpack primitive type from bits 16-23
-    uint primitiveType = INST_PRIMITIVE_TYPE(inst.cornerPrimitiveMode);
+    uint primitiveType = INST_PRIMITIVE_TYPE(inst.primitiveMode);
 
     bool textBatched = (primitiveType == PRIMITIVE_TEXT) && ((inst.flags & INSTANCE_FLAG_TEXT_RICH) == 0u);
     fragTextBatched = textBatched ? 1u : 0u;
@@ -176,8 +182,11 @@ void main()
     // Unpack border thickness from upper 16 bits as half float
     fragBorderThickness = borderThickness;
 
-    // Unpack corner radius from lower 16 bits as half float
-    fragCornerRadius = INST_CORNER_RADIUS(inst.cornerPrimitiveMode);
+    // The cornerRadii word is primitive-dependent: a rounded box reads four per-corner radius
+    // bytes, every other primitive reads its low 16 bits as a stroke/circle radius half float.
+    fragCornerRadius = INST_CORNER_RADIUS(inst.cornerRadii);
+    fragCornerRadii = vec4(INST_CORNER_TL(inst.cornerRadii), INST_CORNER_TR(inst.cornerRadii),
+                           INST_CORNER_BR(inst.cornerRadii), INST_CORNER_BL(inst.cornerRadii));
 
     fragSize = inst.scale;
 

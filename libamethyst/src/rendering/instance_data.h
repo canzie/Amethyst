@@ -27,7 +27,8 @@ struct InstanceData {
     uint32_t borderColor = 0;               // 4B packed RGBA
     uint32_t shapeData[4] = {0, 0, 0, 0};   // 16B packed half2 pairs for triangle/line/text UV
     uint32_t rotationBorderThickness = 0;   // 4B: rotation(16 bits) | borderThickness(16 bits half)
-    uint32_t cornerPrimitiveMode = 0;       // 4B: cornerRadius(16 bits half) | primitiveType(8) | borderMode(8)
+    uint32_t primitiveMode = 0;             // 4B: unused(16 bits) | primitiveType(8) | borderMode(8)
+    uint32_t cornerRadii = 0;               // 4B: per-corner radii tl|tr|br|bl (uint8), for lines its thickness(16 half)
     uint32_t textureId = UINT32_MAX;        // 4B texture handle
     int32_t zIndex = 0;                     // 4B z-index for sorting
     uint32_t flags = INSTANCE_FLAG_VISIBLE; // 4B: visible(1 bit) | padding(31 bits)
@@ -47,21 +48,20 @@ struct InstanceData {
         rotationBorderThickness = (rotationBorderThickness & 0x0000FFFFu) | (static_cast<uint32_t>(packed) << 16);
     }
 
-    void setCornerRadius(float radius)
+    void setThickness(float thickness)
     {
-        uint16_t packed = packFloatToHalf(radius);
-        cornerPrimitiveMode = (cornerPrimitiveMode & 0xFFFF0000u) | packed;
+        uint16_t packed = packFloatToHalf(thickness);
+        cornerRadii = (cornerRadii & 0xFFFF0000u) | packed;
     }
+
+    void setCornerRadii(const uvec4 &radii) { cornerRadii = packU8x4(min(radii, uvec4(255u))); }
 
     void setPrimitiveType(PrimitiveType type)
     {
-        cornerPrimitiveMode = (cornerPrimitiveMode & 0xFF00FFFFu) | (static_cast<uint32_t>(type) << 16);
+        primitiveMode = (primitiveMode & 0xFF00FFFFu) | (static_cast<uint32_t>(type) << 16);
     }
 
-    void setBorderMode(BorderMode mode)
-    {
-        cornerPrimitiveMode = (cornerPrimitiveMode & 0x00FFFFFFu) | (static_cast<uint32_t>(mode) << 24);
-    }
+    void setBorderMode(BorderMode mode) { primitiveMode = (primitiveMode & 0x00FFFFFFu) | (static_cast<uint32_t>(mode) << 24); }
 
     void setUvRect(const vec4 &uvRect)
     {

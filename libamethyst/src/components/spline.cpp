@@ -176,7 +176,7 @@ InstanceData Spline::makeInstance(const QuadBezier &seg, float thickness, Color4
 
     data.translation = absolutePosition + center;
     data.scale = bboxMax - bboxMin;
-    data.setCornerRadius(halfThick);
+    data.setThickness(halfThick);
     data.setShapePoint(0, seg.a - center);
     data.setShapePoint(1, seg.control - center);
     data.setShapePoint(2, seg.c - center);

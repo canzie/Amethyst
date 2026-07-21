@@ -38,6 +38,10 @@ inline bool propIsSet(const vec2 &v)
 {
     return !std::isnan(v.x);
 }
+inline bool propIsSet(const uvec4 &v)
+{
+    return v.x != PROP_UNSET_UINT32;
+}
 inline bool propIsSet(const Color3 &v)
 {
     return !std::isnan(v.r);
@@ -159,7 +163,7 @@ struct BaseStyleProperties {
     float borderPixelSize = PROP_UNSET_FLOAT;
     Color3 borderColor = Color3(PROP_UNSET_FLOAT);
     float borderTransparency = PROP_UNSET_FLOAT;
-    float cornerRadius = PROP_UNSET_FLOAT;
+    uvec4 cornerRadius = uvec4(PROP_UNSET_UINT32);
 
     bool apply(const BaseStyleProperties &src);
     BaseStyleProperties diff(const BaseStyleProperties &base) const;

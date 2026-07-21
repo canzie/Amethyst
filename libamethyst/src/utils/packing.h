@@ -54,10 +54,9 @@ inline uint32_t packRotationAndBorderThickness(float rotationRadians, float bord
     return static_cast<uint32_t>(rot) | (static_cast<uint32_t>(border) << 16);
 }
 
-inline uint32_t packCornerPrimitiveMode(float cornerRadius, uint8_t primitiveType, uint8_t borderMode)
+inline uint32_t packU8x4(const uvec4 &v)
 {
-    uint16_t corner = packFloatToHalf(cornerRadius);
-    return static_cast<uint32_t>(corner) | (static_cast<uint32_t>(primitiveType) << 16) | (static_cast<uint32_t>(borderMode) << 24);
+    return (v.x & 0xFFu) | ((v.y & 0xFFu) << 8) | ((v.z & 0xFFu) << 16) | ((v.w & 0xFFu) << 24);
 }
 
 } // namespace Amethyst

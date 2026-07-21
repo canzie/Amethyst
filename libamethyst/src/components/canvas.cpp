@@ -175,7 +175,7 @@ InstanceData Canvas::buildInstanceData(const DrawCmd &cmd) const
 
         data.translation = absolutePosition + center;
         data.scale = size;
-        data.setCornerRadius(halfThick);
+        data.setThickness(halfThick);
         data.setShapePoint(0, cmd.points[0] - center);
         data.setShapePoint(1, cmd.points[1] - center);
 
@@ -219,7 +219,7 @@ InstanceData Canvas::buildInstanceData(const DrawCmd &cmd) const
 
         data.translation = absolutePosition + cmd.points[0];
         data.scale = vec2(totalRadius * 2.0f);
-        data.setCornerRadius(cmd.radius);
+        data.setThickness(cmd.radius);
         data.setBorderThickness(cmd.borderThickness);
 
     } else if (cmd.primitive == PRIMITIVE_CANVAS_ELLIPSE) {

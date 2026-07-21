@@ -268,6 +268,32 @@ static StyleValue s_parse_LENGTH(std::string_view sv, Style &)
     return StyleValue(s_parseLength(sv));
 }
 
+static uint32_t s_lengthToRadius(std::string_view sv)
+{
+    return static_cast<uint32_t>(s_parseLength(sv) + 0.5f);
+}
+
+// Corner shorthand follows CSS border-radius ordering (top-left, top-right, bottom-right, bottom-left):
+// one value sets all four, two set the tl/br and tr/bl diagonals, four set each corner.
+static StyleValue s_parse_CORNERS(std::string_view sv, Style &)
+{
+    std::vector<std::string_view> tokens = s_splitWhitespace(sv);
+    if (tokens.size() == 1) {
+        return StyleValue(uvec4(s_lengthToRadius(tokens[0])));
+    }
+    if (tokens.size() == 2) {
+        uint32_t d0 = s_lengthToRadius(tokens[0]);
+        uint32_t d1 = s_lengthToRadius(tokens[1]);
+        return StyleValue(uvec4(d0, d1, d0, d1));
+    }
+    if (tokens.size() == 4) {
+        return StyleValue(uvec4(s_lengthToRadius(tokens[0]), s_lengthToRadius(tokens[1]), s_lengthToRadius(tokens[2]),
+                                s_lengthToRadius(tokens[3])));
+    }
+    AM_LOG_WARN("Corner-radius shorthand expects 1, 2 or 4 values: {}", std::string(sv));
+    return StyleValue(uvec4(0u));
+}
+
 static StyleValue s_parse_RATIO(std::string_view sv, Style &)
 {
     return StyleValue(s_parseRatio(sv));

@@ -256,8 +256,6 @@ void AmVulkanBackend::init(const AmVulkanInitInfo &config, const AmGlfwInitInfo 
 
 void AmVulkanBackend::shutdown()
 {
-    GLFWwindow *glfwWindow = static_cast<GLFWwindow *>(m_glfwInfo.window);
-
     VkDevice device = m_info.device;
     vkDeviceWaitIdle(device);
 

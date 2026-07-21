@@ -15,7 +15,7 @@
     X(BORDER_TRANSPARENCY, "border-transparency", float, RATIO, 0.0f)                                         \
     X(BORDER_PIXEL_SIZE, "border-pixel-size", float, LENGTH, 0.0f)                                            \
     X(BORDER_MODE, "border-mode", BorderMode, BMODE, BorderMode::OUTLINE)                                     \
-    X(CORNER_RADIUS, "corner-radius", float, LENGTH, 0.0f)                                                    \
+    X(CORNER_RADIUS, "corner-radius", uvec4, CORNERS, uvec4(0u))                                              \
     X(PADDING_TOP, "padding-top", UDim, UDIM, UDim{})                                                         \
     X(PADDING_RIGHT, "padding-right", UDim, UDIM, UDim{})                                                     \
     X(PADDING_BOTTOM, "padding-bottom", UDim, UDIM, UDim{})                                                   \
@@ -81,7 +81,7 @@
     X(BORDER_PIXEL_SIZE, borderPixelSize, float)              \
     X(BORDER_COLOR, borderColor, Color3)                      \
     X(BORDER_TRANSPARENCY, borderTransparency, float)         \
-    X(CORNER_RADIUS, cornerRadius, float)
+    X(CORNER_RADIUS, cornerRadius, uvec4)
 
 #define AM_TEXT_STYLE_FIELDS(X)                         \
     X(FONT_SIZE, fontSize, float)                       \

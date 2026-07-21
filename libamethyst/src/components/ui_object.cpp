@@ -158,7 +158,7 @@ InstanceData UIObject::createInstanceData() const
     data.setBorderColor(Color4(m_baseStyle.borderColor, 1.0f - m_baseStyle.borderTransparency));
     data.setRotation(radians(absoluteRotation));
     data.setBorderThickness(m_baseStyle.borderPixelSize);
-    data.setCornerRadius(m_baseStyle.cornerRadius);
+    data.setCornerRadii(m_baseStyle.cornerRadius);
     data.setPrimitiveType(PRIMITIVE_TRIANGLE);
     data.setBorderMode(m_baseStyle.borderMode);
     data.zIndex = getZIndex();
