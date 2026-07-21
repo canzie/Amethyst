@@ -75,6 +75,7 @@ static void s_setupValueLabel(TextLabel &label, const Slider *slider, const std:
         .padding = padding,
         .position = UDim2::fromOffset(0, 0),
         .size = UDim2::fromScale(1.0f, 1.0f),
+        .zIndex = 2,
     });
 }
 

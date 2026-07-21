@@ -80,7 +80,15 @@ void DockingLayer::arrange()
         return;
     }
 
-    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY)) || !isVisible()) {
+    if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
+        return;
+    }
+
+    if (!isVisible()) {
+        for (auto &tabBar : m_tabBars) {
+            tabBar->markDirty();
+            tabBar->arrange();
+        }
         return;
     }
 
