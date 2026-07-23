@@ -81,11 +81,14 @@ enum class StyleProperty {
 
     TAB_WIDTH,
     TAB_SPACING,
+    TAB_OFFSET,
     BAR_THICKNESS,
     TAB_COLOR,
     TAB_ACTIVE_COLOR,
     TAB_HOVERED_COLOR,
     TAB_PRESSED_COLOR,
+    TAB_CORNER_RADIUS,
+    TAB_CLOSE_COLOR,
 
     HEADER_COLOR,
     HEADER_TRANSPARENCY,
@@ -95,6 +98,9 @@ enum class StyleProperty {
     INDICATOR_SIZE,
     INDICATOR_PADDING,
     INDICATOR_COLOR,
+
+    IMAGE_COLOR,
+    PLACEHOLDER_COLOR,
 
     COUNT,
 };
@@ -121,6 +127,7 @@ enum class ComponentType {
     COLLAPSIBLE_HEADER,
     TEXT_INPUT,
     DRAG,
+    MENU_BAR,
 };
 
 /**
@@ -254,6 +261,22 @@ class Style {
      * @return Fully-resolved collapsible-header style
      */
     CollapsibleHeaderStyleProperties getCollapsibleHeaderStyle(ComponentType type, std::span<const StyleKey> classes = {});
+
+    /**
+     * @brief Resolve the text-input style for a component type and class set.
+     * @param type Component type whose inheritance chain is walked
+     * @param classes Class hashes carried by the node, in any order
+     * @return Fully-resolved text-input style, with the text sub-style populated
+     */
+    TextInputStyleProperties getTextInputStyle(ComponentType type, std::span<const StyleKey> classes = {});
+
+    /**
+     * @brief Resolve the image tint style for a component type and class set.
+     * @param type Component type whose inheritance chain is walked
+     * @param classes Class hashes carried by the node, in any order
+     * @return Fully-resolved image style
+     */
+    ImageStyleProperties getImageStyle(ComponentType type, std::span<const StyleKey> classes = {});
 
     /**
      * @brief Hash a class name to its token. Stateless; safe without a loaded theme.

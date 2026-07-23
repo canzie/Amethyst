@@ -122,6 +122,11 @@ class DockingLayer : public UILayer {
     float innerSpacing = 0.0f;
     bool persistLayout = false;
 
+    /**
+     * @brief Style classes applied to every TabBar the layer creates
+     */
+    std::vector<std::string> tabBarClasses;
+
   private:
     std::vector<DockNode> m_nodes;
     std::vector<std::unique_ptr<TabBar>> m_tabBars;

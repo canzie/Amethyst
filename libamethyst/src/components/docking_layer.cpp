@@ -554,6 +554,10 @@ int32_t DockingLayer::findNodeByResizeHandlePosition(vec2 pos, int32_t nodeIndex
 
 void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
 {
+    if (!tabBarClasses.empty()) {
+        tabBar->setClasses(tabBarClasses);
+    }
+
     tabBar->onTornOffTabReleased = [this, tabBar](std::unique_ptr<TabBar::Tab> tab, vec2 dropPos) {
         hideDockHints();
         int32_t sourceNode = findNodeByPosition(tabBar->absolutePosition, m_rootNode, absoluteSize, absolutePosition);

@@ -17,9 +17,7 @@ void TextInput::resolveStyle()
 {
     auto &style = Style::instance();
     setBaseStyleProperties(style.getBaseStyle(ComponentType::TEXT_INPUT, getClasses()));
-    TextInputStyleProperties tiStyle;
-    tiStyle.text = style.getTextStyle(ComponentType::TEXT_INPUT, getClasses());
-    setTextInputProperties(tiStyle);
+    setTextInputProperties(style.getTextInputStyle(ComponentType::TEXT_INPUT, getClasses()));
 }
 
 void TextInput::draw(DrawContext &ctx)

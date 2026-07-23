@@ -294,6 +294,8 @@ struct TabBarStyleProperties {
     Color3 focussedTabColor = Color3(PROP_UNSET_FLOAT);
     Color3 hoveredTabColor = Color3(PROP_UNSET_FLOAT);
     Color3 pressedTabColor = Color3(PROP_UNSET_FLOAT);
+    uvec4 tabCornerRadius = uvec4(PROP_UNSET_UINT32);
+    Color4 closeColor = Color4(PROP_UNSET_FLOAT);
     TabCloseButtonVisibility closeButtonVisibility = TabCloseButtonVisibility::NONE;
     am_bool tabTearOffEnabled = PROP_UNSET_BOOL;
 

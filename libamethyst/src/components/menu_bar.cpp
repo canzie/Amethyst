@@ -1,6 +1,7 @@
 #include "components/menu_bar.h"
 
 #include "components/extensions/ui_list_layout.h"
+#include "modules/style.h"
 
 #include <climits>
 
@@ -19,6 +20,13 @@ MenuBar::MenuBar()
     layout->verticalFlex = UiFlexAlignment::FILL;
     layout->innerPadding = UDim::fromOffset(0.0f);
     layout->sortOrder = SortOrder::SORT_LAYOUT_ORDER;
+
+    resolveStyle();
+}
+
+void MenuBar::resolveStyle()
+{
+    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::MENU_BAR, getClasses()));
 }
 
 Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items)
@@ -31,6 +39,7 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items
     });
     entry->setTextStyleProperties({
         .fontSize = m_mbProps.entryFontSize,
+        .textColor = Style::instance().getTextStyle(ComponentType::MENU_BAR, getClasses()).textColor,
         .textXAlignment = TextXAlignment::CENTER,
         .textYAlignment = TextYAlignment::CENTER,
     });

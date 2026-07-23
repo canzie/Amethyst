@@ -174,6 +174,8 @@ bool TabBarStyleProperties::apply(const TabBarStyleProperties &src)
     AM_APPLY(focussedTabColor)
     AM_APPLY(hoveredTabColor)
     AM_APPLY(pressedTabColor)
+    AM_APPLY(tabCornerRadius)
+    AM_APPLY(closeColor)
     AM_APPLY(closeButtonVisibility)
     AM_APPLY(tabTearOffEnabled)
     return changed;
@@ -449,6 +451,8 @@ TabBarStyleProperties TabBarStyleProperties::diff(const TabBarStyleProperties &b
     AM_DIFF(focussedTabColor)
     AM_DIFF(hoveredTabColor)
     AM_DIFF(pressedTabColor)
+    AM_DIFF(tabCornerRadius)
+    AM_DIFF(closeColor)
     AM_DIFF(closeButtonVisibility)
     AM_DIFF(tabTearOffEnabled)
     return out;

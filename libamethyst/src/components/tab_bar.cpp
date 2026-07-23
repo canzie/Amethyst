@@ -182,6 +182,7 @@ void TabBar::ensureTabComponents(Tab &tab)
         .size = UDim2::fromScale(1.0f),
     });
     tab.labelFrame = static_cast<Frame *>(tab.button->addChild(std::move(newFrame)));
+    tab.labelFrame->setBaseStyleProperties({.cornerRadius = m_tbProps.tabCornerRadius});
 
     auto closeBtn = std::make_unique<TextButton>();
     closeBtn->setBaseProperties({
@@ -193,6 +194,7 @@ void TabBar::ensureTabComponents(Tab &tab)
     });
     closeBtn->setBaseStyleProperties({.backgroundTransparency = 1.0f});
     closeBtn->setTextStyleProperties({
+        .textColor = m_tbProps.closeColor,
         .textXAlignment = TextXAlignment::CENTER,
         .textYAlignment = TextYAlignment::CENTER,
     });

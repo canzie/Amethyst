@@ -47,6 +47,7 @@ Drag::Drag()
         .position = UDim2::fromOffset(0, 0),
         .size = UDim2::fromScale(1.0f, 1.0f),
     });
+    m_field->setBaseStyleProperties({.backgroundTransparency = 1.0f});
 
     TextInputStyleProperties fieldStyle;
     fieldStyle.readOnly = true;

@@ -19,6 +19,7 @@ ImageButton::ImageButton(const std::string &svgData)
 void ImageButton::resolveStyle()
 {
     setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::IMAGE_BUTTON, getClasses()));
+    setImageStyleProperties(Style::instance().getImageStyle(ComponentType::IMAGE_BUTTON, getClasses()));
 }
 
 void ImageButton::setSvg(std::string svgData)

@@ -320,6 +320,23 @@ CollapsibleHeaderStyleProperties Style::getCollapsibleHeaderStyle(ComponentType 
     return r;
 }
 
+TextInputStyleProperties Style::getTextInputStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    TextInputStyleProperties r;
+    r.text = getTextStyle(type, classes);
+    r.placeholderColor = std::get<Color4>(d[static_cast<size_t>(StyleProperty::PLACEHOLDER_COLOR)]);
+    return r;
+}
+
+ImageStyleProperties Style::getImageStyle(ComponentType type, std::span<const StyleKey> classes)
+{
+    const DenseSet &d = resolveSet(type, classes);
+    ImageStyleProperties r;
+    r.imageColor = std::get<Color4>(d[static_cast<size_t>(StyleProperty::IMAGE_COLOR)]);
+    return r;
+}
+
 std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
 {
     static const std::array<ComponentType, 1> uiObject = {ComponentType::UI_OBJECT};
@@ -353,6 +370,7 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
     static const std::array<ComponentType, 2> collapsibleHeader = {ComponentType::COLLAPSIBLE_HEADER, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 2> textInput = {ComponentType::TEXT_INPUT, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 2> drag = {ComponentType::DRAG, ComponentType::UI_OBJECT};
+    static const std::array<ComponentType, 3> menuBar = {ComponentType::MENU_BAR, ComponentType::FRAME, ComponentType::UI_OBJECT};
 
     switch (type) {
     case ComponentType::UI_OBJECT:
@@ -395,6 +413,8 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
         return textInput;
     case ComponentType::DRAG:
         return drag;
+    case ComponentType::MENU_BAR:
+        return menuBar;
     }
     return uiObject;
 }
@@ -422,6 +442,7 @@ const std::unordered_map<std::string, ComponentType> &Style::getComponentTypeNam
         {"collapsible-header", ComponentType::COLLAPSIBLE_HEADER},
         {"text-input", ComponentType::TEXT_INPUT},
         {"drag", ComponentType::DRAG},
+        {"menu-bar", ComponentType::MENU_BAR},
     };
     return names;
 }

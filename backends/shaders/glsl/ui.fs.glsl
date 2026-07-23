@@ -403,7 +403,7 @@ void main()
         dist = sdfRect(p, halfSize, vec4(0.0));
     }
 
-    float aa = fwidth(dist);
+    float aa = fwidth(dist) * 0.5;
 
     float outerThreshold = 0.0;
     float innerThreshold = 0.0;
@@ -421,7 +421,7 @@ void main()
         }
     }
 
-    float shapeAlpha = 1.0 - smoothstep(-aa, aa, dist - outerThreshold);
+    float outerCoverage = 1.0 - smoothstep(-aa, aa, dist - outerThreshold);
 
     vec4 fillColor = fragFillColor;
     if (fragGradientSlot != INVALID_GRADIENT) {
@@ -429,21 +429,27 @@ void main()
         fillColor = vec4(g.rgb * fragFillColor.rgb, g.a * fragFillColor.a);
     }
 
-    vec4 color;
-    if (fragBorderThickness > 0.0) {
-        float fillMask = 1.0 - smoothstep(-aa, aa, dist - innerThreshold);
-        color = mix(fragBorderColor, fillColor, fillMask);
-    } else {
-        color = fillColor;
-    }
-
     if (fragTextureId != INVALID_TEXTURE) {
         vec4 texColor = texture(gTextures[fragTextureId], fragUV);
-        color.rgb = mix(color.rgb, texColor.rgb, texColor.a);
+        fillColor.rgb = mix(fillColor.rgb, texColor.rgb, texColor.a);
     }
 
-    float finalAlpha = shapeAlpha * color.a;
-    if (finalAlpha < 0.001) discard;
-
-    outColor = vec4(color.rgb, finalAlpha);
+    // Composite the border as an explicit band (outer coverage minus the fill's coverage) OVER the
+    // fill, rather than averaging the two colours. Averaging tints a thin border with the fill/
+    // background behind it (a 1px border never reaches its own colour); band compositing keeps the
+    // border's colour and only its coverage drops at sub-pixel edges - the crisp-thin-stroke look.
+    if (fragBorderThickness > 0.0) {
+        float fillCoverage = 1.0 - smoothstep(-aa, aa, dist - innerThreshold);
+        float borderCoverage = max(outerCoverage - fillCoverage, 0.0);
+        float ba = fragBorderColor.a * borderCoverage;
+        float fa = fillColor.a * fillCoverage;
+        float outAlpha = ba + fa * (1.0 - ba);
+        if (outAlpha < 0.001) discard;
+        vec3 outRgb = (fragBorderColor.rgb * ba + fillColor.rgb * fa * (1.0 - ba)) / outAlpha;
+        outColor = vec4(outRgb, outAlpha);
+    } else {
+        float outAlpha = fillColor.a * outerCoverage;
+        if (outAlpha < 0.001) discard;
+        outColor = vec4(fillColor.rgb, outAlpha);
+    }
 }

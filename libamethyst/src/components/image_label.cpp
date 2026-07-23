@@ -21,6 +21,7 @@ ImageLabel::ImageLabel(const std::string &svgData)
 void ImageLabel::resolveStyle()
 {
     setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::IMAGE_LABEL, getClasses()));
+    setImageStyleProperties(Style::instance().getImageStyle(ComponentType::IMAGE_LABEL, getClasses()));
 }
 
 void ImageLabel::setSvg(std::string svgData)

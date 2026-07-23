@@ -29,6 +29,8 @@ class MenuBar : public Frame {
     bool setMenuBarProperties(const MenuBarStyleProperties &props);
     const MenuBarStyleProperties &getMenuBarProperties() const { return m_mbProps; }
 
+    void resolveStyle() override;
+
   protected:
     MenuBarStyleProperties m_mbProps;
 

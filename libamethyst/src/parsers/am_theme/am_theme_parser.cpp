@@ -576,6 +576,11 @@ static std::string s_stripComments(std::string_view src)
             }
             i += 2;
             out.push_back(' ');
+        } else if (i + 1 < src.size() && src[i] == '/' && src[i + 1] == '/') {
+            i += 2;
+            while (i < src.size() && src[i] != '\n') {
+                ++i;
+            }
         } else {
             out.push_back(src[i]);
             ++i;
