@@ -12,7 +12,7 @@ namespace Amethyst {
 
 class UILabel : public UIObject {
   public:
-    UILabel() { m_uiObjProps.guiState = GuiState::NON_INTERCTABLE; };
+    UILabel() = default;
     virtual ~UILabel() = default;
 };
 

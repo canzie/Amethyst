@@ -18,9 +18,13 @@ Checkbox::Checkbox()
 
 void Checkbox::resolveStyle()
 {
+    resolveBaseStyle(ComponentType::CHECKBOX);
+
     auto &style = Style::instance();
-    setBaseStyleProperties(style.getBaseStyle(ComponentType::CHECKBOX, getClasses()));
-    setCheckboxProperties(style.getCheckboxStyle(ComponentType::CHECKBOX, getClasses()));
+    std::span<const StyleKey> classes = getClasses();
+    CheckboxStyleProperties oldBaseline = style.getCheckboxStyle(ComponentType::CHECKBOX, classes, m_lastResolvedGuiState);
+    CheckboxStyleProperties resolved = style.getCheckboxStyle(ComponentType::CHECKBOX, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_cbProps, [this](const CheckboxStyleProperties &next) { setCheckboxProperties(next); });
 }
 
 bool Checkbox::setCheckboxProperties(const CheckboxStyleProperties &props)

@@ -70,9 +70,13 @@ Drag::~Drag()
 
 void Drag::resolveStyle()
 {
+    resolveBaseStyle(ComponentType::DRAG);
+
     auto &style = Style::instance();
-    setBaseStyleProperties(style.getBaseStyle(ComponentType::DRAG, getClasses()));
-    setDragProperties(style.getDragStyle(ComponentType::DRAG, getClasses()));
+    std::span<const StyleKey> classes = getClasses();
+    DragStyleProperties oldBaseline = style.getDragStyle(ComponentType::DRAG, classes, m_lastResolvedGuiState);
+    DragStyleProperties resolved = style.getDragStyle(ComponentType::DRAG, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_dProps, [this](const DragStyleProperties &next) { setDragProperties(next); });
 }
 
 bool Drag::setDragProperties(const DragStyleProperties &props)

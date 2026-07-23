@@ -42,9 +42,13 @@ Table::Table()
 
 void Table::resolveStyle()
 {
+    resolveBaseStyle(ComponentType::TABLE);
+
     auto &style = Style::instance();
-    setBaseStyleProperties(style.getBaseStyle(ComponentType::TABLE, getClasses()));
-    setTableProperties(style.getTableStyle(ComponentType::TABLE, getClasses()));
+    std::span<const StyleKey> classes = getClasses();
+    TableStyleProperties oldBaseline = style.getTableStyle(ComponentType::TABLE, classes, m_lastResolvedGuiState);
+    TableStyleProperties resolved = style.getTableStyle(ComponentType::TABLE, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_tProps, [this](const TableStyleProperties &next) { setTableProperties(next); });
 }
 
 bool Table::setTableProperties(const TableStyleProperties &props)

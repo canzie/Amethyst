@@ -20,8 +20,14 @@ ImageLabel::ImageLabel(const std::string &svgData)
 
 void ImageLabel::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::IMAGE_LABEL, getClasses()));
-    setImageStyleProperties(Style::instance().getImageStyle(ComponentType::IMAGE_LABEL, getClasses()));
+    resolveBaseStyle(ComponentType::IMAGE_LABEL);
+
+    auto &style = Style::instance();
+    std::span<const StyleKey> classes = getClasses();
+    ImageStyleProperties oldBaseline = style.getImageStyle(ComponentType::IMAGE_LABEL, classes, m_lastResolvedGuiState);
+    ImageStyleProperties resolved = style.getImageStyle(ComponentType::IMAGE_LABEL, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_image.getImageStyleProperties(),
+                           [this](const ImageStyleProperties &next) { setImageStyleProperties(next); });
 }
 
 void ImageLabel::setSvg(std::string svgData)

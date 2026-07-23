@@ -70,10 +70,6 @@ inline bool propIsSet(CurveType v)
 {
     return v != CurveType::NONE;
 }
-inline bool propIsSet(GuiState v)
-{
-    return v != GuiState::NONE;
-}
 inline bool propIsSet(ZIndexBehavior v)
 {
     return v != ZIndexBehavior::NONE;
@@ -140,7 +136,6 @@ struct BaseProperties {
     vec2 anchorPoint = vec2(PROP_UNSET_FLOAT);
     AutomaticSize automaticSize = AutomaticSize::NONE;
     am_bool clipsDescendants = PROP_UNSET_BOOL;
-    GuiState guiState = GuiState::NONE;
     am_bool interactable = PROP_UNSET_BOOL;
     LayoutOrder layoutOrder = PROP_UNSET_UINT32;
     UDim4 padding = {{PROP_UNSET_FLOAT, 0}, {}, {}, {}};
@@ -290,10 +285,6 @@ struct TabBarStyleProperties {
     float tabWidth = PROP_UNSET_FLOAT;
     float tabSpacing = PROP_UNSET_FLOAT;
     float tabOffset = PROP_UNSET_FLOAT;
-    Color3 tabColor = Color3(PROP_UNSET_FLOAT);
-    Color3 focussedTabColor = Color3(PROP_UNSET_FLOAT);
-    Color3 hoveredTabColor = Color3(PROP_UNSET_FLOAT);
-    Color3 pressedTabColor = Color3(PROP_UNSET_FLOAT);
     uvec4 tabCornerRadius = uvec4(PROP_UNSET_UINT32);
     Color4 closeColor = Color4(PROP_UNSET_FLOAT);
     TabCloseButtonVisibility closeButtonVisibility = TabCloseButtonVisibility::NONE;
@@ -630,6 +621,25 @@ struct MenuBarProperties {
     BaseStyleProperties style{};
     MenuBarStyleProperties menuBar{};
 };
+
+/**
+ * @brief Re-resolve a themed style struct without discarding instance-level overrides.
+ *
+ * `resolved` is a freshly theme-resolved struct (every field set); applying it directly would
+ * stomp any override the owner applied via its setter since the last resolve. `oldBaseline` is
+ * what the theme resolved last time (no overrides) — recomputed on demand from Style's own cache
+ * rather than stored per instance, so this costs a cache lookup, not extra memory per node.
+ * `current.diff(oldBaseline)` recovers exactly the fields the owner changed since then; those are
+ * re-applied on top of the new `resolved` before `applyFn` commits it.
+ */
+template <typename StyleT, typename ApplyFn>
+void reconcileStyleOverrides(const StyleT &oldBaseline, const StyleT &resolved, const StyleT &current, ApplyFn &&applyFn)
+{
+    StyleT overrides = current.diff(oldBaseline);
+    StyleT next = resolved;
+    next.apply(overrides);
+    std::forward<ApplyFn>(applyFn)(next);
+}
 
 } // namespace Amethyst
 

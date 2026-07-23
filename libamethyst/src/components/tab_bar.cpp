@@ -46,9 +46,13 @@ TabBar::TabBar()
 
 void TabBar::resolveStyle()
 {
+    resolveBaseStyle(ComponentType::TAB_BAR);
+
     auto &style = Style::instance();
-    setBaseStyleProperties(style.getBaseStyle(ComponentType::TAB_BAR, getClasses()));
-    setTabBarProperties(style.getTabBarStyle(ComponentType::TAB_BAR, getClasses()));
+    std::span<const StyleKey> classes = getClasses();
+    TabBarStyleProperties oldBaseline = style.getTabBarStyle(ComponentType::TAB_BAR, classes, m_lastResolvedGuiState);
+    TabBarStyleProperties resolved = style.getTabBarStyle(ComponentType::TAB_BAR, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_tbProps, [this](const TabBarStyleProperties &next) { setTabBarProperties(next); });
 }
 
 bool TabBar::setTabBarProperties(const TabBarStyleProperties &props)
@@ -140,7 +144,8 @@ void TabBar::select(int32_t index)
     if (index < 0 || index >= static_cast<int32_t>(m_tabs.size())) return;
     if (index == m_selectedIndex) return;
 
-    m_tabs[m_selectedIndex]->labelFrame->setBaseStyleProperties({.backgroundColor = m_tbProps.tabColor});
+    Frame *oldLabel = m_tabs[m_selectedIndex]->labelFrame;
+    oldLabel->setGuiState(static_cast<uint16_t>(oldLabel->getGuiState() & ~GUI_STATE_SELECTED));
     m_tabs[m_selectedIndex]->closeButton->setBaseProperties({
         .visible = static_cast<int8_t>(s_closeButtonVisible(m_tbProps.closeButtonVisibility, false, false)),
     });
@@ -148,7 +153,8 @@ void TabBar::select(int32_t index)
     m_lastSelectedIndex = m_selectedIndex;
     m_selectedIndex = index;
 
-    m_tabs[m_selectedIndex]->labelFrame->setBaseStyleProperties({.backgroundColor = m_tbProps.focussedTabColor});
+    Frame *newLabel = m_tabs[m_selectedIndex]->labelFrame;
+    newLabel->setGuiState(static_cast<uint16_t>(newLabel->getGuiState() | GUI_STATE_SELECTED));
     m_tabs[m_selectedIndex]->closeButton->setBaseProperties({
         .visible = static_cast<int8_t>(s_closeButtonVisible(m_tbProps.closeButtonVisibility, true, false)),
     });
@@ -182,6 +188,7 @@ void TabBar::ensureTabComponents(Tab &tab)
         .size = UDim2::fromScale(1.0f),
     });
     tab.labelFrame = static_cast<Frame *>(tab.button->addChild(std::move(newFrame)));
+    tab.labelFrame->addStructuralClass("tab-bar#tab");
     tab.labelFrame->setBaseStyleProperties({.cornerRadius = m_tbProps.tabCornerRadius});
 
     auto closeBtn = std::make_unique<TextButton>();
@@ -277,9 +284,7 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
 
     tab.button->onMouseEnterCb = [this, tabPtr]() {
         int32_t idx = findTabIndex(tabPtr);
-        if (idx != m_selectedIndex) {
-            tabPtr->labelFrame->setBaseStyleProperties({.backgroundColor = m_tbProps.hoveredTabColor});
-        }
+        tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() | GUI_STATE_HOVERED));
         tabPtr->closeButton->setBaseProperties({
             .visible = static_cast<am_bool>(s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, true)),
         });
@@ -288,9 +293,7 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
 
     tab.button->onMouseLeaveCb = [this, tabPtr]() {
         int32_t idx = findTabIndex(tabPtr);
-        tabPtr->labelFrame->setBaseStyleProperties({
-            .backgroundColor = (idx == m_selectedIndex) ? m_tbProps.focussedTabColor : m_tbProps.tabColor,
-        });
+        tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() & ~GUI_STATE_HOVERED));
         tabPtr->closeButton->setBaseProperties({
             .visible = static_cast<am_bool>(s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, false)),
         });
@@ -298,17 +301,14 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
     };
 
     tab.button->onMouseButton1DownCb = [this, tabPtr](int32_t, int32_t) {
-        tabPtr->labelFrame->setBaseStyleProperties({.backgroundColor = m_tbProps.pressedTabColor});
+        tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() | GUI_STATE_PRESSED));
         int32_t idx = findTabIndex(tabPtr);
         if (idx >= 0) select(idx);
         return EventResult::CONSUMED;
     };
 
-    tab.button->onMouseButton1UpCb = [this, tabPtr](int32_t, int32_t) {
-        int32_t idx = findTabIndex(tabPtr);
-        tabPtr->labelFrame->setBaseStyleProperties({
-            .backgroundColor = (idx == m_selectedIndex) ? m_tbProps.focussedTabColor : m_tbProps.hoveredTabColor,
-        });
+    tab.button->onMouseButton1UpCb = [tabPtr](int32_t, int32_t) {
+        tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() & ~GUI_STATE_PRESSED));
         return EventResult::CONSUMED;
     };
 
@@ -323,9 +323,9 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
 {
     ensureTabComponents(tab);
     tab.button->parent = this;
-    tab.labelFrame->setBaseStyleProperties({
-        .backgroundColor = (index == m_selectedIndex) ? m_tbProps.focussedTabColor : m_tbProps.tabColor,
-    });
+    if (index == m_selectedIndex) {
+        tab.labelFrame->setGuiState(static_cast<uint16_t>(tab.labelFrame->getGuiState() | GUI_STATE_SELECTED));
+    }
     setupTabDragCallbacks(tab);
     setupTabInteractionCallbacks(tab);
 }
@@ -422,7 +422,8 @@ std::unique_ptr<Instance> TabBar::removeTab(Instance *content)
     markAllTabsDirty();
 
     if (!m_tabs.empty()) {
-        m_tabs[m_selectedIndex]->labelFrame->setBaseStyleProperties({.backgroundColor = m_tbProps.focussedTabColor});
+        Frame *label = m_tabs[m_selectedIndex]->labelFrame;
+        label->setGuiState(static_cast<uint16_t>(label->getGuiState() | GUI_STATE_SELECTED));
     }
 
     if (m_selectedIndex != oldSelected && onSelectionChanged) {

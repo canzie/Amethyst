@@ -41,9 +41,13 @@ TextButton::TextButton()
 
 void TextButton::resolveStyle()
 {
+    resolveBaseStyle(ComponentType::TEXT_BUTTON);
+
     auto &style = Style::instance();
-    setBaseStyleProperties(style.getBaseStyle(ComponentType::TEXT_BUTTON, getClasses()));
-    setTextStyleProperties(style.getTextStyle(ComponentType::TEXT_BUTTON, getClasses()));
+    std::span<const StyleKey> classes = getClasses();
+    TextStyleProperties oldBaseline = style.getTextStyle(ComponentType::TEXT_BUTTON, classes, m_lastResolvedGuiState);
+    TextStyleProperties resolved = style.getTextStyle(ComponentType::TEXT_BUTTON, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_textStyle, [this](const TextStyleProperties &next) { setTextStyleProperties(next); });
 }
 
 TextButton::~TextButton()

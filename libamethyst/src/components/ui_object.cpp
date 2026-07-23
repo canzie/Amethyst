@@ -27,7 +27,6 @@ UIObject::UIObject()
     m_uiObjProps.anchorPoint = vec2(0.0f);
     m_uiObjProps.automaticSize = AutomaticSize::OFF;
     m_uiObjProps.clipsDescendants = true;
-    m_uiObjProps.guiState = GuiState::IDLE;
     m_uiObjProps.interactable = true;
     m_uiObjProps.layoutOrder = 0;
     m_uiObjProps.padding = UDim4{};
@@ -70,6 +69,32 @@ bool UIObject::setBaseStyleProperties(BaseStyleProperties style)
 
 void UIObject::resolveStyle() {}
 
+uint16_t UIObject::effectiveGuiState() const
+{
+    uint16_t s = m_guiState;
+    if (!static_cast<bool>(m_uiObjProps.interactable)) {
+        s = static_cast<uint16_t>(s | GUI_STATE_DISABLED);
+    }
+    return s;
+}
+
+void UIObject::setGuiState(uint16_t state)
+{
+    if (state != m_guiState) {
+        m_guiState = state;
+        markDirty();
+    }
+}
+
+void UIObject::resolveBaseStyle(ComponentType type)
+{
+    Style &style = Style::instance();
+    std::span<const StyleKey> classes = getClasses();
+    BaseStyleProperties oldBaseline = style.getBaseStyle(type, classes, m_lastResolvedGuiState);
+    BaseStyleProperties resolved = style.getBaseStyle(type, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_baseStyle, [this](const BaseStyleProperties &next) { setBaseStyleProperties(next); });
+}
+
 void UIObject::addClass(std::string_view name)
 {
     StyleKey token = Style::classToken(name);
@@ -84,7 +109,8 @@ void UIObject::addClass(std::string_view name)
 void UIObject::removeClass(std::string_view name)
 {
     StyleKey token = Style::classToken(name);
-    auto it = std::ranges::find(m_classes, token);
+    auto begin = m_classes.begin() + static_cast<ptrdiff_t>(m_structuralClassCount);
+    auto it = std::find(begin, m_classes.end(), token);
     if (it != m_classes.end()) {
         m_classes.erase(it);
     }
@@ -100,7 +126,7 @@ bool UIObject::hasClass(std::string_view name) const
 
 void UIObject::setClasses(std::span<const std::string> names)
 {
-    m_classes.clear();
+    m_classes.erase(m_classes.begin() + static_cast<ptrdiff_t>(m_structuralClassCount), m_classes.end());
     for (const auto &name : names) {
         StyleKey token = Style::classToken(name);
         if (std::ranges::find(m_classes, token) == m_classes.end()) {
@@ -114,13 +140,26 @@ void UIObject::setClasses(std::span<const std::string> names)
 
 void UIObject::setClasses(std::initializer_list<std::string_view> names)
 {
-    m_classes.clear();
+    m_classes.erase(m_classes.begin() + static_cast<ptrdiff_t>(m_structuralClassCount), m_classes.end());
     for (std::string_view name : names) {
         StyleKey token = Style::classToken(name);
         if (std::ranges::find(m_classes, token) == m_classes.end()) {
             m_classes.push_back(token);
             Style::instance().registerClassName(token, name);
         }
+    }
+    resolveStyle();
+    markDirty();
+}
+
+void UIObject::addStructuralClass(std::string_view name)
+{
+    StyleKey token = Style::classToken(name);
+    auto begin = m_classes.begin() + static_cast<ptrdiff_t>(m_structuralClassCount);
+    if (std::find(m_classes.begin(), begin, token) == begin) {
+        m_classes.insert(begin, token);
+        ++m_structuralClassCount;
+        Style::instance().registerClassName(token, name);
     }
     resolveStyle();
     markDirty();
@@ -162,6 +201,12 @@ void UIObject::arrange()
 {
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
+    }
+
+    uint16_t currentGuiState = effectiveGuiState();
+    if (currentGuiState != m_lastResolvedGuiState) {
+        resolveStyle();
+        m_lastResolvedGuiState = currentGuiState;
     }
 
     applyLayoutExtensions();
@@ -241,7 +286,7 @@ Window *UIObject::getWindow()
 EventResult UIObject::onMouseEnter()
 {
     onHoverChanged.fire(true);
-    markDirty();
+    setGuiState(static_cast<uint16_t>(m_guiState | GUI_STATE_HOVERED));
     return consumes(INTERACTION_CATEGORY_HOVER) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
@@ -291,7 +336,7 @@ int32_t UIObject::getZIndex() const
 EventResult UIObject::onMouseLeave()
 {
     onHoverChanged.fire(false);
-    markDirty();
+    setGuiState(static_cast<uint16_t>(m_guiState & ~GUI_STATE_HOVERED));
     return consumes(INTERACTION_CATEGORY_HOVER) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 

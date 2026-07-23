@@ -45,9 +45,13 @@ TextLabel::TextLabel()
 
 void TextLabel::resolveStyle()
 {
+    resolveBaseStyle(ComponentType::TEXT_LABEL);
+
     auto &style = Style::instance();
-    setBaseStyleProperties(style.getBaseStyle(ComponentType::TEXT_LABEL, getClasses()));
-    setTextStyleProperties(style.getTextStyle(ComponentType::TEXT_LABEL, getClasses()));
+    std::span<const StyleKey> classes = getClasses();
+    TextStyleProperties oldBaseline = style.getTextStyle(ComponentType::TEXT_LABEL, classes, m_lastResolvedGuiState);
+    TextStyleProperties resolved = style.getTextStyle(ComponentType::TEXT_LABEL, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_textStyle, [this](const TextStyleProperties &next) { setTextStyleProperties(next); });
 }
 
 TextLabel::~TextLabel()

@@ -120,9 +120,13 @@ Slider::Slider()
 
 void Slider::resolveStyle()
 {
+    resolveBaseStyle(ComponentType::SLIDER);
+
     auto &style = Style::instance();
-    setBaseStyleProperties(style.getBaseStyle(ComponentType::SLIDER, getClasses()));
-    setSliderProperties(style.getSliderStyle(ComponentType::SLIDER, getClasses()));
+    std::span<const StyleKey> classes = getClasses();
+    SliderStyleProperties oldBaseline = style.getSliderStyle(ComponentType::SLIDER, classes, m_lastResolvedGuiState);
+    SliderStyleProperties resolved = style.getSliderStyle(ComponentType::SLIDER, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_sProps, [this](const SliderStyleProperties &next) { setSliderProperties(next); });
 }
 
 bool Slider::setSliderProperties(const SliderStyleProperties &props)

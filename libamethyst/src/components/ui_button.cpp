@@ -63,6 +63,7 @@ EventResult UIButton::onInputEnded(const InputObject &input)
 
 EventResult UIButton::onMouseButton1Down(int32_t x, int32_t y)
 {
+    setGuiState(static_cast<uint16_t>(getGuiState() | GUI_STATE_PRESSED));
     if (onMouseButton1DownCb) {
         return onMouseButton1DownCb(x, y);
     }
@@ -71,6 +72,7 @@ EventResult UIButton::onMouseButton1Down(int32_t x, int32_t y)
 
 EventResult UIButton::onMouseButton1Up(int32_t x, int32_t y)
 {
+    setGuiState(static_cast<uint16_t>(getGuiState() & ~GUI_STATE_PRESSED));
     if (onMouseButton1UpCb) {
         return onMouseButton1UpCb(x, y);
     }

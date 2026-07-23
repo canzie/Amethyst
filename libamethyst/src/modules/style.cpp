@@ -95,17 +95,30 @@ void Style::addTypeValue(ComponentType type, StyleProperty prop, const StyleValu
     m_rawType[type].push_back({prop, value});
 }
 
-void Style::addClassValue(StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value)
+void Style::addClassValue(StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value, uint16_t state)
 {
-    m_classSets[classToken].push_back({prop, value});
-    m_classOrder[classToken] = order;
+    if (state == GUI_STATE_NONE) {
+        m_classSets[classToken].push_back({prop, value});
+        m_classOrder[classToken] = order;
+        return;
+    }
+    ClassPseudoKey key{classToken, state};
+    m_classPseudoSets[key].push_back({prop, value});
+    m_classPseudoOrder[key] = order;
 }
 
-void Style::addTypeClassValue(ComponentType type, StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value)
+void Style::addTypeClassValue(ComponentType type, StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value,
+                              uint16_t state)
 {
-    uint64_t key = typeClassKey(type, classToken);
-    m_typeClassSets[key].push_back({prop, value});
-    m_typeClassOrder[key] = order;
+    if (state == GUI_STATE_NONE) {
+        uint64_t key = typeClassKey(type, classToken);
+        m_typeClassSets[key].push_back({prop, value});
+        m_typeClassOrder[key] = order;
+        return;
+    }
+    TypeClassPseudoKey key{type, classToken, state};
+    m_typeClassPseudoSets[key].push_back({prop, value});
+    m_typeClassPseudoOrder[key] = order;
 }
 
 void Style::clearResolved()
@@ -135,7 +148,7 @@ const DenseSet &Style::bakedFor(ComponentType type)
     return inserted->second;
 }
 
-const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> classes)
+const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
     if (classes.empty()) {
         return bakedFor(type);
@@ -145,6 +158,7 @@ const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> 
     key.type = type;
     key.classes.assign(classes.begin(), classes.end());
     std::sort(key.classes.begin(), key.classes.end());
+    key.state = state;
 
     auto cached = m_cacheIndex.find(key);
     if (cached != m_cacheIndex.end()) {
@@ -156,6 +170,7 @@ const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> 
 
     struct Contributor {
         int tier;
+        int pseudoRank; // 0 = unqualified rule, 1 = pseudo-qualified rule (wins ties within the same tier)
         int depth;
         uint32_t order;
         const SparseSet *set;
@@ -165,7 +180,7 @@ const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> 
     for (StyleKey c : classes) {
         auto it = m_classSets.find(c);
         if (it != m_classSets.end()) {
-            contributors.push_back({1, 0, m_classOrder[c], &it->second});
+            contributors.push_back({1, 0, 0, m_classOrder[c], &it->second});
         }
     }
 
@@ -176,7 +191,32 @@ const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> 
             auto it = m_typeClassSets.find(tcKey);
             if (it != m_typeClassSets.end()) {
                 int depth = static_cast<int>(hierarchy.size() - 1 - i);
-                contributors.push_back({2, depth, m_typeClassOrder[tcKey], &it->second});
+                contributors.push_back({2, 0, depth, m_typeClassOrder[tcKey], &it->second});
+            }
+        }
+    }
+
+    // Pseudo-qualified rules: walk each active bit individually since a rule only ever names one state,
+    // so "hovered and pressed at once" still matches both an authored :hover and :pressed rule.
+    for (uint16_t remaining = state; remaining != GUI_STATE_NONE;) {
+        uint16_t bit = static_cast<uint16_t>(remaining & static_cast<uint16_t>(-static_cast<int16_t>(remaining)));
+        remaining = static_cast<uint16_t>(remaining & ~bit);
+
+        for (StyleKey c : classes) {
+            ClassPseudoKey pk{c, bit};
+            auto it = m_classPseudoSets.find(pk);
+            if (it != m_classPseudoSets.end()) {
+                contributors.push_back({1, 1, 0, m_classPseudoOrder[pk], &it->second});
+            }
+        }
+        for (StyleKey c : classes) {
+            for (size_t i = 0; i < hierarchy.size(); ++i) {
+                TypeClassPseudoKey tpk{hierarchy[i], c, bit};
+                auto it = m_typeClassPseudoSets.find(tpk);
+                if (it != m_typeClassPseudoSets.end()) {
+                    int depth = static_cast<int>(hierarchy.size() - 1 - i);
+                    contributors.push_back({2, 1, depth, m_typeClassPseudoOrder[tpk], &it->second});
+                }
             }
         }
     }
@@ -184,6 +224,9 @@ const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> 
     std::sort(contributors.begin(), contributors.end(), [](const Contributor &a, const Contributor &b) {
         if (a.tier != b.tier) {
             return a.tier < b.tier;
+        }
+        if (a.pseudoRank != b.pseudoRank) {
+            return a.pseudoRank < b.pseudoRank;
         }
         if (a.depth != b.depth) {
             return a.depth < b.depth;
@@ -210,12 +253,28 @@ size_t Style::CacheKeyHash::operator()(const CacheKey &k) const
     for (StyleKey c : k.classes) {
         h = h * 1099511628211ull ^ c;
     }
+    h = h * 1099511628211ull ^ k.state;
     return h;
 }
 
-BaseStyleProperties Style::getBaseStyle(ComponentType type, std::span<const StyleKey> classes)
+size_t Style::ClassPseudoKeyHash::operator()(const ClassPseudoKey &k) const
 {
-    const DenseSet &d = resolveSet(type, classes);
+    size_t h = std::hash<size_t>{}(k.classToken);
+    h = h * 1099511628211ull ^ k.state;
+    return h;
+}
+
+size_t Style::TypeClassPseudoKeyHash::operator()(const TypeClassPseudoKey &k) const
+{
+    size_t h = std::hash<size_t>{}(static_cast<size_t>(k.type));
+    h = h * 1099511628211ull ^ k.classToken;
+    h = h * 1099511628211ull ^ k.state;
+    return h;
+}
+
+BaseStyleProperties Style::getBaseStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+{
+    const DenseSet &d = resolveSet(type, classes, state);
     BaseStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_BASE_STYLE_FIELDS(X)
@@ -223,9 +282,9 @@ BaseStyleProperties Style::getBaseStyle(ComponentType type, std::span<const Styl
     return r;
 }
 
-TextStyleProperties Style::getTextStyle(ComponentType type, std::span<const StyleKey> classes)
+TextStyleProperties Style::getTextStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
-    const DenseSet &d = resolveSet(type, classes);
+    const DenseSet &d = resolveSet(type, classes, state);
     TextStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_TEXT_STYLE_FIELDS(X)
@@ -234,9 +293,9 @@ TextStyleProperties Style::getTextStyle(ComponentType type, std::span<const Styl
     return r;
 }
 
-ScrollingFrameStyleProperties Style::getScrollingFrameStyle(ComponentType type, std::span<const StyleKey> classes)
+ScrollingFrameStyleProperties Style::getScrollingFrameStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
-    const DenseSet &d = resolveSet(type, classes);
+    const DenseSet &d = resolveSet(type, classes, state);
     ScrollingFrameStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_SCROLLING_FRAME_STYLE_FIELDS(X)
@@ -244,9 +303,9 @@ ScrollingFrameStyleProperties Style::getScrollingFrameStyle(ComponentType type, 
     return r;
 }
 
-SliderStyleProperties Style::getSliderStyle(ComponentType type, std::span<const StyleKey> classes)
+SliderStyleProperties Style::getSliderStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
-    const DenseSet &d = resolveSet(type, classes);
+    const DenseSet &d = resolveSet(type, classes, state);
     SliderStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_SLIDER_STYLE_FIELDS(X)
@@ -254,20 +313,20 @@ SliderStyleProperties Style::getSliderStyle(ComponentType type, std::span<const 
     r.thumb.backgroundColor = std::get<Color3>(d[static_cast<size_t>(StyleProperty::THUMB_COLOR)]);
     r.thumb.backgroundTransparency = std::get<float>(d[static_cast<size_t>(StyleProperty::THUMB_TRANSPARENCY)]);
     r.thumb.cornerRadius = std::get<float>(d[static_cast<size_t>(StyleProperty::THUMB_CORNER_RADIUS)]);
-    r.text = getTextStyle(type, classes);
+    r.text = getTextStyle(type, classes, state);
     return r;
 }
 
-DragStyleProperties Style::getDragStyle(ComponentType type, std::span<const StyleKey> classes)
+DragStyleProperties Style::getDragStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
     DragStyleProperties r;
-    r.text = getTextStyle(type, classes);
+    r.text = getTextStyle(type, classes, state);
     return r;
 }
 
-TabBarStyleProperties Style::getTabBarStyle(ComponentType type, std::span<const StyleKey> classes)
+TabBarStyleProperties Style::getTabBarStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
-    const DenseSet &d = resolveSet(type, classes);
+    const DenseSet &d = resolveSet(type, classes, state);
     TabBarStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_TAB_BAR_STYLE_FIELDS(X)
@@ -275,9 +334,9 @@ TabBarStyleProperties Style::getTabBarStyle(ComponentType type, std::span<const 
     return r;
 }
 
-TableStyleProperties Style::getTableStyle(ComponentType type, std::span<const StyleKey> classes)
+TableStyleProperties Style::getTableStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
-    const DenseSet &d = resolveSet(type, classes);
+    const DenseSet &d = resolveSet(type, classes, state);
     TableStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_TABLE_STYLE_FIELDS(X)
@@ -285,9 +344,9 @@ TableStyleProperties Style::getTableStyle(ComponentType type, std::span<const St
     return r;
 }
 
-TreeViewStyleProperties Style::getTreeViewStyle(ComponentType type, std::span<const StyleKey> classes)
+TreeViewStyleProperties Style::getTreeViewStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
-    const DenseSet &d = resolveSet(type, classes);
+    const DenseSet &d = resolveSet(type, classes, state);
     TreeViewStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_TREE_VIEW_STYLE_FIELDS(X)
@@ -295,9 +354,9 @@ TreeViewStyleProperties Style::getTreeViewStyle(ComponentType type, std::span<co
     return r;
 }
 
-CheckboxStyleProperties Style::getCheckboxStyle(ComponentType type, std::span<const StyleKey> classes)
+CheckboxStyleProperties Style::getCheckboxStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
-    const DenseSet &d = resolveSet(type, classes);
+    const DenseSet &d = resolveSet(type, classes, state);
     CheckboxStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_CHECKBOX_STYLE_FIELDS(X)
@@ -305,9 +364,9 @@ CheckboxStyleProperties Style::getCheckboxStyle(ComponentType type, std::span<co
     return r;
 }
 
-CollapsibleHeaderStyleProperties Style::getCollapsibleHeaderStyle(ComponentType type, std::span<const StyleKey> classes)
+CollapsibleHeaderStyleProperties Style::getCollapsibleHeaderStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
-    const DenseSet &d = resolveSet(type, classes);
+    const DenseSet &d = resolveSet(type, classes, state);
     CollapsibleHeaderStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_COLLAPSIBLE_HEADER_STYLE_FIELDS(X)
@@ -320,18 +379,18 @@ CollapsibleHeaderStyleProperties Style::getCollapsibleHeaderStyle(ComponentType 
     return r;
 }
 
-TextInputStyleProperties Style::getTextInputStyle(ComponentType type, std::span<const StyleKey> classes)
+TextInputStyleProperties Style::getTextInputStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
-    const DenseSet &d = resolveSet(type, classes);
+    const DenseSet &d = resolveSet(type, classes, state);
     TextInputStyleProperties r;
-    r.text = getTextStyle(type, classes);
+    r.text = getTextStyle(type, classes, state);
     r.placeholderColor = std::get<Color4>(d[static_cast<size_t>(StyleProperty::PLACEHOLDER_COLOR)]);
     return r;
 }
 
-ImageStyleProperties Style::getImageStyle(ComponentType type, std::span<const StyleKey> classes)
+ImageStyleProperties Style::getImageStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
 {
-    const DenseSet &d = resolveSet(type, classes);
+    const DenseSet &d = resolveSet(type, classes, state);
     ImageStyleProperties r;
     r.imageColor = std::get<Color4>(d[static_cast<size_t>(StyleProperty::IMAGE_COLOR)]);
     return r;

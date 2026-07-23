@@ -44,9 +44,13 @@ TreeView::TreeView()
 
 void TreeView::resolveStyle()
 {
+    resolveBaseStyle(ComponentType::TREE_VIEW);
+
     auto &style = Style::instance();
-    setBaseStyleProperties(style.getBaseStyle(ComponentType::TREE_VIEW, getClasses()));
-    setTreeViewProperties(style.getTreeViewStyle(ComponentType::TREE_VIEW, getClasses()));
+    std::span<const StyleKey> classes = getClasses();
+    TreeViewStyleProperties oldBaseline = style.getTreeViewStyle(ComponentType::TREE_VIEW, classes, m_lastResolvedGuiState);
+    TreeViewStyleProperties resolved = style.getTreeViewStyle(ComponentType::TREE_VIEW, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_tvProps, [this](const TreeViewStyleProperties &next) { setTreeViewProperties(next); });
 }
 
 TreeView::~TreeView()

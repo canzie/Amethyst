@@ -48,9 +48,13 @@ ScrollingFrame::~ScrollingFrame()
 
 void ScrollingFrame::resolveStyle()
 {
+    resolveBaseStyle(ComponentType::SCROLLING_FRAME);
+
     auto &style = Style::instance();
-    setBaseStyleProperties(style.getBaseStyle(ComponentType::SCROLLING_FRAME, getClasses()));
-    setScrollingFrameProperties(style.getScrollingFrameStyle(ComponentType::SCROLLING_FRAME, getClasses()));
+    std::span<const StyleKey> classes = getClasses();
+    ScrollingFrameStyleProperties oldBaseline = style.getScrollingFrameStyle(ComponentType::SCROLLING_FRAME, classes, m_lastResolvedGuiState);
+    ScrollingFrameStyleProperties resolved = style.getScrollingFrameStyle(ComponentType::SCROLLING_FRAME, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_sfProps, [this](const ScrollingFrameStyleProperties &next) { setScrollingFrameProperties(next); });
 }
 
 bool ScrollingFrame::setScrollingFrameProperties(const ScrollingFrameStyleProperties &props)

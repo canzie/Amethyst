@@ -18,8 +18,14 @@ ImageButton::ImageButton(const std::string &svgData)
 
 void ImageButton::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::IMAGE_BUTTON, getClasses()));
-    setImageStyleProperties(Style::instance().getImageStyle(ComponentType::IMAGE_BUTTON, getClasses()));
+    resolveBaseStyle(ComponentType::IMAGE_BUTTON);
+
+    auto &style = Style::instance();
+    std::span<const StyleKey> classes = getClasses();
+    ImageStyleProperties oldBaseline = style.getImageStyle(ComponentType::IMAGE_BUTTON, classes, m_lastResolvedGuiState);
+    ImageStyleProperties resolved = style.getImageStyle(ComponentType::IMAGE_BUTTON, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_image.getImageStyleProperties(),
+                           [this](const ImageStyleProperties &next) { setImageStyleProperties(next); });
 }
 
 void ImageButton::setSvg(std::string svgData)

@@ -17,7 +17,7 @@ Frame::Frame()
 
 void Frame::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::FRAME, getClasses()));
+    resolveBaseStyle(ComponentType::FRAME);
 }
 
 void Frame::draw(DrawContext &ctx)

@@ -118,19 +118,42 @@ class UIObject : public UIBase2D {
     const BaseStyleProperties &getBaseStyleProperties() const { return m_baseStyle; }
 
     /**
-     * @brief Re-resolve this node's styling from the global theme and its class set.
+     * @brief Re-resolve this node's styling from the global theme, its class set and pseudo-state.
      *
-     * Called from each component constructor and again whenever the class set changes.
-     * The default implementation does nothing; concrete components override it to pull
-     * their resolved style structs from Style::instance().
+     * Called from each component constructor, whenever the class set changes, and from
+     * arrange() when the node's effective GuiState changes since the last resolve. The
+     * default implementation does nothing; concrete components override it to pull their
+     * resolved style structs from Style::instance(), passing effectiveGuiState() through.
      */
     virtual void resolveStyle();
+
+    /**
+     * @brief Current GuiState bits set on this node (HOVERED/PRESSED/FOCUSED/CHECKED/SELECTED).
+     * Does not include DISABLED, which is derived from `interactable`; see effectiveGuiState().
+     * @return The raw, stored pseudo-state bitmask
+     */
+    uint16_t getGuiState() const { return m_guiState; }
+
+    /**
+     * @brief Overwrite this node's GuiState bits and mark it dirty if they changed.
+     * @param state New bitmask; callers should only ever set/clear HOVERED/PRESSED/FOCUSED/CHECKED/SELECTED
+     */
+    void setGuiState(uint16_t state);
 
     /**
      * @brief Add a style class to this node and re-resolve.
      * @param name Class name; interned to a token and recorded for diagnostics
      */
     void addClass(std::string_view name);
+
+    /**
+     * @brief Add a class this component owns (e.g. a #part selector) that setClasses()/removeClass()
+     * must never be able to strip. Structural classes sit ahead of the user-facing ones in getClasses().
+     * Intended for a component to call on a Frame/UIObject it composes internally (e.g. TabBar on a
+     * tab's label Frame), not on itself from a subclass constructor.
+     * @param name Class name; interned to a token and recorded for diagnostics
+     */
+    void addStructuralClass(std::string_view name);
 
     /**
      * @brief Remove a style class from this node and re-resolve.
@@ -169,6 +192,28 @@ class UIObject : public UIBase2D {
      */
     void applyLayoutExtensions();
 
+    /**
+     * @brief GuiState bits including the DISABLED bit derived from `!interactable`.
+     * @return The bitmask resolveStyle() should resolve against
+     */
+    uint16_t effectiveGuiState() const;
+
+    /**
+     * @brief Resolve and apply BaseStyleProperties for a component type, preserving any
+     * instance-level overrides applied via setBaseStyleProperties() since the last resolve.
+     * Does not update the last-resolved tracking; call commitResolvedState() once at the end
+     * of resolveStyle(), after every style struct the component owns has been reconciled.
+     * @param type Component type to resolve against
+     */
+    void resolveBaseStyle(ComponentType type);
+
+    /**
+     * @brief Snapshot the classes and GuiState just resolved against, so the next resolve can
+     * recover instance overrides by diffing against this exact prior context. Must be called
+     * once at the end of every resolveStyle() override, after all owned style structs are done.
+     */
+    void commitResolvedState();
+
     friend class Window;
     virtual EventResult onMouseEnter(void);
     virtual EventResult onMouseLeave(void);
@@ -189,7 +234,10 @@ class UIObject : public UIBase2D {
   protected:
     BaseProperties m_uiObjProps;
     BaseStyleProperties m_baseStyle;
-    std::vector<StyleKey> m_classes;
+    std::vector<StyleKey> m_classes; // [0, m_structuralClassCount) are structural, the rest are user-facing
+    size_t m_structuralClassCount = 0;
+    uint16_t m_guiState = GUI_STATE_NONE;
+    uint16_t m_lastResolvedGuiState = GUI_STATE_NONE;
     bool m_renderCulled = false;
 
   private:

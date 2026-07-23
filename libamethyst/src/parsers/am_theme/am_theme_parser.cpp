@@ -529,11 +529,39 @@ static Selector s_parseSelector(std::string_view sel)
     return out;
 }
 
+static bool s_parsePseudoState(std::string_view name, uint16_t &out)
+{
+    if (name == "hover") {
+        out = GUI_STATE_HOVERED;
+    } else if (name == "pressed") {
+        out = GUI_STATE_PRESSED;
+    } else if (name == "disabled") {
+        out = GUI_STATE_DISABLED;
+    } else if (name == "focused") {
+        out = GUI_STATE_FOCUSED;
+    } else if (name == "checked") {
+        out = GUI_STATE_CHECKED;
+    } else if (name == "selected") {
+        out = GUI_STATE_SELECTED;
+    } else {
+        return false;
+    }
+    return true;
+}
+
 static void s_applySelector(const Selector &sel, const std::vector<Decl> &decls, Style &style, uint32_t &order)
 {
+    uint16_t pseudoState = GUI_STATE_NONE;
     if (!sel.pseudo.empty()) {
-        AM_LOG_DEBUG("Pseudo-state '{}' is not yet supported; skipping rule", std::string(sel.pseudo));
-        return;
+        if (!s_parsePseudoState(sel.pseudo, pseudoState)) {
+            AM_LOG_WARN("Unknown pseudo-state ':{}'; skipping rule", std::string(sel.pseudo));
+            return;
+        }
+        if (sel.kind == SelectorKind::TYPE) {
+            AM_LOG_WARN("Pseudo-states are not supported on bare type selectors; use a class or #part instead: ':{}'",
+                       std::string(sel.pseudo));
+            return;
+        }
     }
 
     switch (sel.kind) {
@@ -547,7 +575,7 @@ static void s_applySelector(const Selector &sel, const std::vector<Decl> &decls,
         style.registerClassName(sel.classToken, sel.className);
         uint32_t o = order++;
         for (const auto &[prop, value] : decls) {
-            style.addClassValue(sel.classToken, o, prop, value);
+            style.addClassValue(sel.classToken, o, prop, value, pseudoState);
         }
         break;
     }
@@ -555,7 +583,7 @@ static void s_applySelector(const Selector &sel, const std::vector<Decl> &decls,
         style.registerClassName(sel.classToken, sel.className);
         uint32_t o = order++;
         for (const auto &[prop, value] : decls) {
-            style.addTypeClassValue(sel.type, sel.classToken, o, prop, value);
+            style.addTypeClassValue(sel.type, sel.classToken, o, prop, value, pseudoState);
         }
         break;
     }

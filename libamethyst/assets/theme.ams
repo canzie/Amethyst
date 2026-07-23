@@ -98,10 +98,22 @@ tab-bar {
     background-color: #2d2d2d;
     tab-width: 120px;
     bar-thickness: 35px;
-    tab-color: #393939;
-    tab-active-color: #4a4a4a;
-    tab-hovered-color: #424242;
-    tab-pressed-color: #353535;
+}
+
+tab-bar#tab {
+    background-color: #393939;
+}
+
+tab-bar#tab:hover {
+    background-color: #424242;
+}
+
+tab-bar#tab:pressed {
+    background-color: #353535;
+}
+
+tab-bar#tab:selected {
+    background-color: #4a4a4a;
 }
 
 collapsible-header#header {

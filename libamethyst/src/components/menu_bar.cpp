@@ -26,7 +26,7 @@ MenuBar::MenuBar()
 
 void MenuBar::resolveStyle()
 {
-    setBaseStyleProperties(Style::instance().getBaseStyle(ComponentType::MENU_BAR, getClasses()));
+    resolveBaseStyle(ComponentType::MENU_BAR);
 }
 
 Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items)

@@ -37,7 +37,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_headerBackground = std::make_unique<Frame>();
     m_headerBackground->parent = this;
     m_headerBackground->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
-    m_headerBackground->addClass("collapsible-header#header");
+    m_headerBackground->addStructuralClass("collapsible-header#header");
 
     m_headerButton = std::make_unique<InvisibleButton>();
     m_headerButton->parent = this;
@@ -75,9 +75,14 @@ CollapsibleHeader::~CollapsibleHeader()
 
 void CollapsibleHeader::resolveStyle()
 {
+    resolveBaseStyle(ComponentType::COLLAPSIBLE_HEADER);
+
     auto &style = Style::instance();
-    setBaseStyleProperties(style.getBaseStyle(ComponentType::COLLAPSIBLE_HEADER, getClasses()));
-    setCollapsibleHeaderProperties(style.getCollapsibleHeaderStyle(ComponentType::COLLAPSIBLE_HEADER, getClasses()));
+    std::span<const StyleKey> classes = getClasses();
+    CollapsibleHeaderStyleProperties oldBaseline = style.getCollapsibleHeaderStyle(ComponentType::COLLAPSIBLE_HEADER, classes, m_lastResolvedGuiState);
+    CollapsibleHeaderStyleProperties resolved = style.getCollapsibleHeaderStyle(ComponentType::COLLAPSIBLE_HEADER, classes, effectiveGuiState());
+    reconcileStyleOverrides(oldBaseline, resolved, m_chProps,
+                           [this](const CollapsibleHeaderStyleProperties &next) { setCollapsibleHeaderProperties(next); });
 }
 
 void CollapsibleHeader::toggle()

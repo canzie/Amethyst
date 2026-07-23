@@ -60,10 +60,6 @@
     X(TAB_SPACING, "tab-spacing", float, LENGTH, 0.0f)                                                        \
     X(TAB_OFFSET, "tab-offset", float, LENGTH, 0.0f)                                                          \
     X(BAR_THICKNESS, "bar-thickness", float, LENGTH, 30.0f)                                                   \
-    X(TAB_COLOR, "tab-color", Color3, COLOR3, Color3(0.22f))                                                  \
-    X(TAB_ACTIVE_COLOR, "tab-active-color", Color3, COLOR3, Color3(0.32f))                                    \
-    X(TAB_HOVERED_COLOR, "tab-hovered-color", Color3, COLOR3, Color3(0.28f))                                  \
-    X(TAB_PRESSED_COLOR, "tab-pressed-color", Color3, COLOR3, Color3(0.18f))                                  \
     X(TAB_CORNER_RADIUS, "tab-corner-radius", uvec4, CORNERS, uvec4(0u))                                      \
     X(TAB_CLOSE_COLOR, "tab-close-color", Color4, COLOR4, Color4(0.6f, 0.6f, 0.6f, 1.0f))                     \
     X(HEADER_COLOR, "header-color", Color3, COLOR3, Color3(0.25f, 0.25f, 0.28f))                              \
@@ -116,10 +112,6 @@
     X(TAB_WIDTH, tabWidth, float)                 \
     X(TAB_SPACING, tabSpacing, float)             \
     X(TAB_OFFSET, tabOffset, float)               \
-    X(TAB_COLOR, tabColor, Color3)                \
-    X(TAB_ACTIVE_COLOR, focussedTabColor, Color3) \
-    X(TAB_HOVERED_COLOR, hoveredTabColor, Color3) \
-    X(TAB_PRESSED_COLOR, pressedTabColor, Color3) \
     X(TAB_CORNER_RADIUS, tabCornerRadius, uvec4)  \
     X(TAB_CLOSE_COLOR, closeColor, Color4)
 

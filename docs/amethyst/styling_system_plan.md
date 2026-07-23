@@ -310,6 +310,12 @@ Kept: `StyleProperty` enum (now the dense index + sparse-set key), `ComponentTyp
 
 ## Pseudo-states (future, reserve only)
 
+**Superseded by `style_layering_plan.md`.** Pseudo-states were implemented on top of this system, but
+doing so exposed that the `*StyleProperties` structs conflate three roles (live value, theme-resolved
+return, setter-argument DTO) into one type, which made "does an instance override survive a state/class
+change" fundamentally unreliable without a proper fix. See that doc for the from-scratch design
+(live/args/override-mask struct triplet per style type) before touching pseudo-state code further.
+
 - Syntax `.foo:hover`, `text_button:active`. `:` reserved now, not wired.
 - Data model: a scope can hold per-state sets; at resolve time pick the set matching the node's
   current `GuiState` (already on `BaseProperties`), else the base set. No new event wiring. Adds a

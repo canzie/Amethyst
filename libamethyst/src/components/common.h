@@ -147,12 +147,18 @@ enum class BorderMode {
     INSET,
 };
 
-enum class GuiState {
-    NONE,
-    IDLE,
-    HOVER,
-    PRESS,
-    NON_INTERCTABLE,
+/**
+ * @brief Bitmask of interaction/semantic pseudo-states a node currently carries.
+ * DISABLED is never stored directly; it is derived from BaseProperties::interactable.
+ */
+enum GuiState : uint16_t {
+    GUI_STATE_NONE = 0,
+    GUI_STATE_HOVERED = 1 << 0,
+    GUI_STATE_PRESSED = 1 << 1,
+    GUI_STATE_DISABLED = 1 << 2,
+    GUI_STATE_FOCUSED = 1 << 3,
+    GUI_STATE_CHECKED = 1 << 4,
+    GUI_STATE_SELECTED = 1 << 5,
 };
 
 enum class StartCorner {
