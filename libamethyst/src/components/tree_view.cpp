@@ -20,11 +20,11 @@ TreeView::TreeView()
 {
     m_tvProps.rowHeight = 0.0f;
     m_tvProps.cellPadding = {};
-    m_tvProps.showColumnSeparators = 0;
+    m_tvProps.showColumnSeparators = false;
     m_tvProps.columnSeparatorWidth = 1.0f;
     m_tvProps.columnSeparatorColor = {0.3f, 0.3f, 0.3f, 1.0f};
     m_tvProps.indentPerLevel = 16.0f;
-    m_tvProps.showDisclosureTriangles = 1;
+    m_tvProps.showDisclosureTriangles = true;
     m_tvProps.disclosureTriangleSize = 16.0f;
     m_tvProps.disclosureTrianglePadding = 4.0f;
     m_tvProps.disclosureTriangleColor = {0.7f, 0.7f, 0.7f, 1.0f};
@@ -32,8 +32,8 @@ TreeView::TreeView()
     m_tvProps.rowAlternateColor = {0.22f, 0.22f, 0.24f, 1.0f};
     m_tvProps.rowHoverColor = {0.3f, 0.3f, 0.35f, 1.0f};
     m_tvProps.rowSelectedColor = {0.25f, 0.4f, 0.65f, 1.0f};
-    m_tvProps.fillRows = 1;
-    m_tvProps.showHeader = 0;
+    m_tvProps.fillRows = true;
+    m_tvProps.showHeader = false;
     m_tvProps.headerHeight = 28.0f;
     m_tvProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
     m_tvProps.header.fontSize = 14.0f;
@@ -46,11 +46,10 @@ void TreeView::resolveStyle()
 {
     resolveBaseStyle(ComponentType::TREE_VIEW);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    TreeViewStyleProperties oldBaseline = style.getTreeViewStyle(ComponentType::TREE_VIEW, classes, m_lastResolvedGuiState);
-    TreeViewStyleProperties resolved = style.getTreeViewStyle(ComponentType::TREE_VIEW, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_tvProps, [this](const TreeViewStyleProperties &next) { setTreeViewProperties(next); });
+    TreeViewStyleProperties resolved = Style::instance().getTreeViewStyle(ComponentType::TREE_VIEW, getClasses(), effectiveGuiState());
+    if (m_tvProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
 TreeView::~TreeView()
@@ -69,7 +68,7 @@ TreeView::~TreeView()
     }
 }
 
-bool TreeView::setTreeViewProperties(const TreeViewStyleProperties &props)
+bool TreeView::setTreeViewProperties(const TreeViewStylePropertiesArgs &props)
 {
     bool changed = m_tvProps.apply(props);
     if (changed) {

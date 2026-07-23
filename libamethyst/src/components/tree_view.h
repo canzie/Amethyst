@@ -192,7 +192,7 @@ class TreeView : public UIObject {
      */
     std::vector<Instance *> getHittableInstances() override;
 
-    bool setTreeViewProperties(const TreeViewStyleProperties &props);
+    bool setTreeViewProperties(const TreeViewStylePropertiesArgs &props);
     const TreeViewStyleProperties &getTreeViewProperties() const { return m_tvProps; }
 
     static constexpr int32_t NO_ROW_SELECTION = -1;

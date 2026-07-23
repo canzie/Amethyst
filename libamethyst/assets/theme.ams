@@ -88,6 +88,14 @@ checkbox {
     corner-radius: 2px;
 }
 
+checkbox#box:hover {
+    background-color: #333333;
+}
+
+checkbox#box:active {
+    background-color: #2d3a4a;
+}
+
 dropdown {
     background-color: #3d3d3d;
     highlight-color: #4772b3;
@@ -112,12 +120,29 @@ tab-bar#tab:pressed {
     background-color: #353535;
 }
 
-tab-bar#tab:selected {
+tab-bar#tab:active {
     background-color: #4a4a4a;
 }
 
 collapsible-header#header {
     background-color: #404047;
+}
+
+menu-bar {
+    background-color: #2d2d2d;
+}
+
+menu-bar#entry {
+    background-color: #2d2d2d;
+    border-pixel-size: 0px;
+}
+
+menu-bar#entry:hover {
+    background-color: #40404c;
+}
+
+menu-bar#entry:active {
+    background-color: #4772b3;
 }
 
 .danger {

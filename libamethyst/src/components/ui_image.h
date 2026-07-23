@@ -26,10 +26,12 @@ public:
   bool setImage(AmTextureId image);
   AmTextureId getImage() const { return m_image; }
 
-  bool setImageStyleProperties(const ImageStyleProperties &props);
+  bool setImageStyleProperties(const ImageStylePropertiesArgs &props);
   const ImageStyleProperties &getImageStyleProperties() const {
     return m_imgStyle;
   }
+
+  bool resolveImageStyle(const ImageStyleProperties &resolved) { return m_imgStyle.apply(resolved); }
 
   void drawImage(DrawContext &ctx, vec2 absoluteSize, InstanceData base);
 

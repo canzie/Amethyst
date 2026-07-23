@@ -26,7 +26,7 @@ class Slider : public UIObject {
     std::vector<Instance *> getHittableInstances() override;
     void resolveStyle() override;
 
-    bool setSliderProperties(const SliderStyleProperties &props);
+    bool setSliderProperties(const SliderStylePropertiesArgs &props);
     const SliderStyleProperties &getSliderProperties() const { return m_sProps; }
 
     void setFormat(std::string format);

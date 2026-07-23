@@ -22,12 +22,10 @@ void ImageLabel::resolveStyle()
 {
     resolveBaseStyle(ComponentType::IMAGE_LABEL);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    ImageStyleProperties oldBaseline = style.getImageStyle(ComponentType::IMAGE_LABEL, classes, m_lastResolvedGuiState);
-    ImageStyleProperties resolved = style.getImageStyle(ComponentType::IMAGE_LABEL, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_image.getImageStyleProperties(),
-                           [this](const ImageStyleProperties &next) { setImageStyleProperties(next); });
+    ImageStyleProperties resolved = Style::instance().getImageStyle(ComponentType::IMAGE_LABEL, getClasses(), effectiveGuiState());
+    if (m_image.resolveImageStyle(resolved)) {
+        markDirty();
+    }
 }
 
 void ImageLabel::setSvg(std::string svgData)
@@ -54,7 +52,7 @@ AmTextureId ImageLabel::getImage() const
     return m_image.getImage();
 }
 
-bool ImageLabel::setImageStyleProperties(const ImageStyleProperties &props)
+bool ImageLabel::setImageStyleProperties(const ImageStylePropertiesArgs &props)
 {
     bool changed = m_image.setImageStyleProperties(props);
     if (changed) {

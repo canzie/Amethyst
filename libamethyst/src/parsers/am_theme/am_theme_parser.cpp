@@ -244,6 +244,24 @@ static TextYAlignment s_parseTextYAlignment(std::string_view sv)
     return TextYAlignment::TOP;
 }
 
+static ImageScaleType s_parseImageScaleType(std::string_view sv)
+{
+    sv = s_trim(sv);
+    if (sv == "stretch") {
+        return ImageScaleType::STRETCH;
+    }
+    if (sv == "tile") {
+        return ImageScaleType::TILE;
+    }
+    if (sv == "fit") {
+        return ImageScaleType::FIT;
+    }
+    if (sv == "crop") {
+        return ImageScaleType::CROP;
+    }
+    return ImageScaleType::STRETCH;
+}
+
 static std::string_view s_unquote(std::string_view sv)
 {
     sv = s_trim(sv);
@@ -322,6 +340,30 @@ static StyleValue s_parse_YALIGN(std::string_view sv, Style &)
 static StyleValue s_parse_FONT(std::string_view sv, Style &style)
 {
     return StyleValue(FontHandle{style.internFont(s_unquote(sv))});
+}
+
+static StyleValue s_parse_ISCALE(std::string_view sv, Style &)
+{
+    return StyleValue(s_parseImageScaleType(sv));
+}
+
+static StyleValue s_parse_SIZE2(std::string_view sv, Style &)
+{
+    std::vector<std::string_view> tokens = s_splitWhitespace(sv);
+    if (tokens.size() == 2) {
+        return StyleValue(vec2(s_parseLength(tokens[0]), s_parseLength(tokens[1])));
+    }
+    if (tokens.size() == 1) {
+        float v = s_parseLength(tokens[0]);
+        return StyleValue(vec2(v, v));
+    }
+    AM_LOG_WARN("Size value expects 1 or 2 length values: {}", std::string(sv));
+    return StyleValue(vec2(0.0f));
+}
+
+static StyleValue s_parse_NUMBER(std::string_view sv, Style &)
+{
+    return StyleValue(s_parseNumber(s_trim(sv)));
 }
 
 struct PropParser {
@@ -539,10 +581,8 @@ static bool s_parsePseudoState(std::string_view name, uint16_t &out)
         out = GUI_STATE_DISABLED;
     } else if (name == "focused") {
         out = GUI_STATE_FOCUSED;
-    } else if (name == "checked") {
-        out = GUI_STATE_CHECKED;
-    } else if (name == "selected") {
-        out = GUI_STATE_SELECTED;
+    } else if (name == "active") {
+        out = GUI_STATE_ACTIVE;
     } else {
         return false;
     }

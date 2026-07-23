@@ -43,11 +43,10 @@ void TextButton::resolveStyle()
 {
     resolveBaseStyle(ComponentType::TEXT_BUTTON);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    TextStyleProperties oldBaseline = style.getTextStyle(ComponentType::TEXT_BUTTON, classes, m_lastResolvedGuiState);
-    TextStyleProperties resolved = style.getTextStyle(ComponentType::TEXT_BUTTON, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_textStyle, [this](const TextStyleProperties &next) { setTextStyleProperties(next); });
+    TextStyleProperties resolved = Style::instance().getTextStyle(ComponentType::TEXT_BUTTON, getClasses(), effectiveGuiState());
+    if (m_textStyle.apply(resolved)) {
+        markDirty();
+    }
 }
 
 TextButton::~TextButton()
@@ -60,7 +59,7 @@ TextButton::~TextButton()
     }
 }
 
-bool TextButton::setTextStyleProperties(const TextStyleProperties &props)
+bool TextButton::setTextStyleProperties(const TextStylePropertiesArgs &props)
 {
     bool changed = m_textStyle.apply(props);
     if (changed) {

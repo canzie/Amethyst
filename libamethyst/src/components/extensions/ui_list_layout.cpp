@@ -131,7 +131,7 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
 
         if (isVertical) {
             float itemSize = childSize.y + extraItemSize;
-            BaseProperties props;
+            BasePropertiesArgs props;
             props.position = UDim2::fromOffset(crossOffset, currentOffset);
             if (extraItemSize > 0.0f || crossAxisFlex == UiFlexAlignment::FILL) {
                 props.size = UDim2::fromOffset(childSize.x, itemSize);
@@ -140,7 +140,7 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
             currentOffset += itemSize + spacing;
         } else {
             float itemSize = childSize.x + extraItemSize;
-            BaseProperties props;
+            BasePropertiesArgs props;
             props.position = UDim2::fromOffset(currentOffset, crossOffset);
             if (extraItemSize > 0.0f || crossAxisFlex == UiFlexAlignment::FILL) {
                 props.size = UDim2::fromOffset(itemSize, childSize.y);

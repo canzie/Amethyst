@@ -67,8 +67,8 @@ int main()
     float progressNoThumb = 40.0f;
     float progressLeftLabel = 25.0f;
 
-    BaseStyleProperties dragStyle = {.backgroundColor = Color3::fromHex(0x33333A), .cornerRadius = 4.0f};
-    DragStyleProperties dragText = {.text = {.fontSize = 14.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}}};
+    BaseStylePropertiesArgs dragStyle = {.backgroundColor = Color3::fromHex(0x33333A), .cornerRadius = 4.0f};
+    DragStylePropertiesArgs dragText = {.text = {.fontSize = 14.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}}};
 
     auto caption = [](const char *label, float y) {
         return TextLabelProperties{

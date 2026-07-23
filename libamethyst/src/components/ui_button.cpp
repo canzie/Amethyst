@@ -2,7 +2,7 @@
 
 namespace Amethyst {
 
-bool UIButton::setButtonProperties(const ButtonProperties &props)
+bool UIButton::setButtonProperties(const ButtonPropertiesArgs &props)
 {
     bool changed = m_btnProps.apply(props);
     if (changed) {

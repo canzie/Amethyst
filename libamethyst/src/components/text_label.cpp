@@ -47,11 +47,10 @@ void TextLabel::resolveStyle()
 {
     resolveBaseStyle(ComponentType::TEXT_LABEL);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    TextStyleProperties oldBaseline = style.getTextStyle(ComponentType::TEXT_LABEL, classes, m_lastResolvedGuiState);
-    TextStyleProperties resolved = style.getTextStyle(ComponentType::TEXT_LABEL, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_textStyle, [this](const TextStyleProperties &next) { setTextStyleProperties(next); });
+    TextStyleProperties resolved = Style::instance().getTextStyle(ComponentType::TEXT_LABEL, getClasses(), effectiveGuiState());
+    if (m_textStyle.apply(resolved)) {
+        markDirty();
+    }
 }
 
 TextLabel::~TextLabel()
@@ -64,7 +63,7 @@ TextLabel::~TextLabel()
     }
 }
 
-bool TextLabel::setTextStyleProperties(const TextStyleProperties &props)
+bool TextLabel::setTextStyleProperties(const TextStylePropertiesArgs &props)
 {
     bool changed = m_textStyle.apply(props);
     if (changed) {

@@ -58,7 +58,7 @@ class UIInput : public UIObject {
      */
     void selectAll();
 
-    bool setTextInputProperties(const TextInputStyleProperties &props);
+    bool setTextInputProperties(const TextInputStylePropertiesArgs &props);
     const TextInputStyleProperties &getTextInputProperties() const { return m_tiProps; }
 
     std::function<void(const std::string &)> onTextChanged;

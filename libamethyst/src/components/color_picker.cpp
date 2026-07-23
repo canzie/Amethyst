@@ -99,7 +99,7 @@ static void s_layoutField(Frame &field, Frame &shade, Frame &thumb, float hue, f
 static void s_layoutBar(SliderFloat &bar, std::shared_ptr<const Gradient> gradient, float y, float width, Color3 thumbColor,
                         float thumbTransparency)
 {
-    SliderStyleProperties sliderStyle;
+    SliderStylePropertiesArgs sliderStyle;
     sliderStyle.trackHeight = UDim::fromOffset(BAR_THICKNESS);
     sliderStyle.thumb.backgroundColor = thumbColor;
     sliderStyle.thumb.backgroundTransparency = thumbTransparency;

@@ -49,7 +49,7 @@ UIObject::UIObject()
 
 UIObject::~UIObject() {}
 
-bool UIObject::setBaseProperties(BaseProperties props)
+bool UIObject::setBaseProperties(BasePropertiesArgs props)
 {
     bool changed = m_uiObjProps.apply(props);
     if (changed) {
@@ -58,7 +58,7 @@ bool UIObject::setBaseProperties(BaseProperties props)
     return changed;
 }
 
-bool UIObject::setBaseStyleProperties(BaseStyleProperties style)
+bool UIObject::setBaseStyleProperties(BaseStylePropertiesArgs style)
 {
     bool changed = m_baseStyle.apply(style);
     if (changed) {
@@ -88,11 +88,10 @@ void UIObject::setGuiState(uint16_t state)
 
 void UIObject::resolveBaseStyle(ComponentType type)
 {
-    Style &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    BaseStyleProperties oldBaseline = style.getBaseStyle(type, classes, m_lastResolvedGuiState);
-    BaseStyleProperties resolved = style.getBaseStyle(type, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_baseStyle, [this](const BaseStyleProperties &next) { setBaseStyleProperties(next); });
+    BaseStyleProperties resolved = Style::instance().getBaseStyle(type, getClasses(), effectiveGuiState());
+    if (m_baseStyle.apply(resolved)) {
+        markDirty();
+    }
 }
 
 void UIObject::addClass(std::string_view name)

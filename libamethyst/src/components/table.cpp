@@ -29,7 +29,7 @@ Table::Table()
     m_tProps.separatorMode = TableSeparatorMode::COLUMNS;
     m_tProps.separatorWidth = 1.0f;
     m_tProps.separatorColor = Color4{0.3f, 0.3f, 0.3f, 1.0f};
-    m_tProps.showHeader = 1;
+    m_tProps.showHeader = true;
     m_tProps.headerHeight = 28.0f;
     m_tProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
     m_tProps.header.fontSize = 14.0f;
@@ -44,14 +44,13 @@ void Table::resolveStyle()
 {
     resolveBaseStyle(ComponentType::TABLE);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    TableStyleProperties oldBaseline = style.getTableStyle(ComponentType::TABLE, classes, m_lastResolvedGuiState);
-    TableStyleProperties resolved = style.getTableStyle(ComponentType::TABLE, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_tProps, [this](const TableStyleProperties &next) { setTableProperties(next); });
+    TableStyleProperties resolved = Style::instance().getTableStyle(ComponentType::TABLE, getClasses(), effectiveGuiState());
+    if (m_tProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
-bool Table::setTableProperties(const TableStyleProperties &props)
+bool Table::setTableProperties(const TableStylePropertiesArgs &props)
 {
     bool changed = m_tProps.apply(props);
     if (changed) {

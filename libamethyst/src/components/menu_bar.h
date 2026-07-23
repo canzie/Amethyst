@@ -26,7 +26,7 @@ class MenuBar : public Frame {
     Dropdown *addMenu(std::string label, std::vector<ContextMenuItem> items);
     void clear();
 
-    bool setMenuBarProperties(const MenuBarStyleProperties &props);
+    bool setMenuBarProperties(const MenuBarStylePropertiesArgs &props);
     const MenuBarStyleProperties &getMenuBarProperties() const { return m_mbProps; }
 
     void resolveStyle() override;

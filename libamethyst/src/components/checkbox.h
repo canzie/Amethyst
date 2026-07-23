@@ -22,9 +22,10 @@ class Checkbox : public UIButton {
     virtual ~Checkbox() = default;
 
     void draw(DrawContext &ctx) override;
+    void arrange() override;
     void resolveStyle() override;
 
-    bool setCheckboxProperties(const CheckboxStyleProperties &props);
+    bool setCheckboxProperties(const CheckboxStylePropertiesArgs &props);
     const CheckboxStyleProperties &getCheckboxProperties() const { return m_cbProps; }
 
     void setCheckIcon(std::string svg);

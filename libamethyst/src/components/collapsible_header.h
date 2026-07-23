@@ -27,7 +27,7 @@ class CollapsibleHeader : public UIObject {
     void expand();
     void collapse();
 
-    bool setCollapsibleHeaderProperties(const CollapsibleHeaderStyleProperties &props);
+    bool setCollapsibleHeaderProperties(const CollapsibleHeaderStylePropertiesArgs &props);
     const CollapsibleHeaderStyleProperties &getCollapsibleHeaderProperties() const { return m_chProps; }
 
     void setTitle(std::string title);

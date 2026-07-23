@@ -384,7 +384,9 @@ TextInputStyleProperties Style::getTextInputStyle(ComponentType type, std::span<
     const DenseSet &d = resolveSet(type, classes, state);
     TextInputStyleProperties r;
     r.text = getTextStyle(type, classes, state);
-    r.placeholderColor = std::get<Color4>(d[static_cast<size_t>(StyleProperty::PLACEHOLDER_COLOR)]);
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_TEXT_INPUT_STYLE_FIELDS(X)
+#undef X
     return r;
 }
 
@@ -392,7 +394,49 @@ ImageStyleProperties Style::getImageStyle(ComponentType type, std::span<const St
 {
     const DenseSet &d = resolveSet(type, classes, state);
     ImageStyleProperties r;
-    r.imageColor = std::get<Color4>(d[static_cast<size_t>(StyleProperty::IMAGE_COLOR)]);
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_IMAGE_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+MenuBarStyleProperties Style::getMenuBarStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+{
+    const DenseSet &d = resolveSet(type, classes, state);
+    MenuBarStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_MENU_BAR_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+SplineStyleProperties Style::getSplineStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+{
+    const DenseSet &d = resolveSet(type, classes, state);
+    SplineStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_SPLINE_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+ContextMenuStyleProperties Style::getContextMenuStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+{
+    const DenseSet &d = resolveSet(type, classes, state);
+    ContextMenuStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_CONTEXT_MENU_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
+DropdownStyleProperties Style::getDropdownStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+{
+    const DenseSet &d = resolveSet(type, classes, state);
+    DropdownStyleProperties r;
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_DROPDOWN_STYLE_FIELDS(X)
+#undef X
     return r;
 }
 
@@ -430,6 +474,9 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
     static const std::array<ComponentType, 2> textInput = {ComponentType::TEXT_INPUT, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 2> drag = {ComponentType::DRAG, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 3> menuBar = {ComponentType::MENU_BAR, ComponentType::FRAME, ComponentType::UI_OBJECT};
+    static const std::array<ComponentType, 2> spline = {ComponentType::SPLINE, ComponentType::UI_OBJECT};
+    static const std::array<ComponentType, 3> contextMenu = {ComponentType::CONTEXT_MENU, ComponentType::FRAME,
+                                                             ComponentType::UI_OBJECT};
 
     switch (type) {
     case ComponentType::UI_OBJECT:
@@ -474,6 +521,10 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
         return drag;
     case ComponentType::MENU_BAR:
         return menuBar;
+    case ComponentType::SPLINE:
+        return spline;
+    case ComponentType::CONTEXT_MENU:
+        return contextMenu;
     }
     return uiObject;
 }
@@ -502,6 +553,8 @@ const std::unordered_map<std::string, ComponentType> &Style::getComponentTypeNam
         {"text-input", ComponentType::TEXT_INPUT},
         {"drag", ComponentType::DRAG},
         {"menu-bar", ComponentType::MENU_BAR},
+        {"spline", ComponentType::SPLINE},
+        {"context-menu", ComponentType::CONTEXT_MENU},
     };
     return names;
 }

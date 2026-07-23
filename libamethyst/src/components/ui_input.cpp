@@ -63,7 +63,7 @@ UIInput::~UIInput()
     }
 }
 
-bool UIInput::setTextInputProperties(const TextInputStyleProperties &props)
+bool UIInput::setTextInputProperties(const TextInputStylePropertiesArgs &props)
 {
     bool changed = m_tiProps.apply(props);
     if (changed) {
@@ -108,6 +108,7 @@ void UIInput::focus()
         return;
     }
     m_focused = true;
+    setGuiState(static_cast<uint16_t>(getGuiState() | GUI_STATE_FOCUSED));
     InputInterface::clearKeyEvents();
 
     Window *win = getWindow();
@@ -137,6 +138,7 @@ void UIInput::loseFocus()
         return;
     }
     m_focused = false;
+    setGuiState(static_cast<uint16_t>(getGuiState() & ~GUI_STATE_FOCUSED));
     m_cursorVisible = false;
     m_pressConn.disconnect();
     m_tick.unregister();

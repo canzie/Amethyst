@@ -14,9 +14,6 @@
 namespace Amethyst {
 
 using Degrees = float;
-using am_bool = int8_t;
-static_assert(static_cast<bool>(am_bool{0}) == false, "am_bool: 0 must convert to false");
-static_assert(static_cast<bool>(am_bool{1}) == true, "am_bool: a positive value must convert to true");
 
 /**
  * @brief Opaque texture handle for bindless textures.
@@ -157,8 +154,7 @@ enum GuiState : uint16_t {
     GUI_STATE_PRESSED = 1 << 1,
     GUI_STATE_DISABLED = 1 << 2,
     GUI_STATE_FOCUSED = 1 << 3,
-    GUI_STATE_CHECKED = 1 << 4,
-    GUI_STATE_SELECTED = 1 << 5,
+    GUI_STATE_ACTIVE = 1 << 4,
 };
 
 enum class StartCorner {

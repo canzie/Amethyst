@@ -12,8 +12,6 @@ MenuBar::MenuBar()
     m_mbProps.entryPaddingX = 12.0f;
     m_mbProps.entryPaddingY = 4.0f;
     m_mbProps.entryFontSize = 14.0f;
-    m_mbProps.entryHoverBackground = Color3{0.25f, 0.25f, 0.30f};
-    m_mbProps.entryActiveBackground = Color3{0.28f, 0.42f, 0.62f};
 
     auto *layout = addExtension<UIListLayout>();
     layout->fillDirection = FillDirection::FILL_HORIZONTAL;
@@ -27,6 +25,11 @@ MenuBar::MenuBar()
 void MenuBar::resolveStyle()
 {
     resolveBaseStyle(ComponentType::MENU_BAR);
+
+    MenuBarStyleProperties resolved = Style::instance().getMenuBarStyle(ComponentType::MENU_BAR, getClasses(), effectiveGuiState());
+    if (m_mbProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
 Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items)
@@ -45,12 +48,8 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items
     });
     entry->setText(label);
     entry->setButtonProperties({.autoButtonColor = false});
+    entry->addStructuralClass("menu-bar#entry");
     float estWidth = static_cast<float>(label.size()) * m_mbProps.entryFontSize * 0.6f + 2.0f * m_mbProps.entryPaddingX;
-    entry->setBaseStyleProperties({
-        .backgroundColor = getBaseStyleProperties().backgroundColor,
-        .backgroundTransparency = getBaseStyleProperties().backgroundTransparency,
-        .borderPixelSize = 0.0f,
-    });
     entry->setBaseProperties({
         .layoutOrder = static_cast<LayoutOrder>(m_entries.size()),
         .padding = {UDim::fromOffset(m_mbProps.entryPaddingY), UDim::fromOffset(m_mbProps.entryPaddingX),
@@ -59,31 +58,21 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items
     });
 
     entry->onMouseEnterCb = [this, entry]() {
-        Color3 newBg = entry->isOpen() ? m_mbProps.entryActiveBackground : m_mbProps.entryHoverBackground;
-        if (entry->getBaseStyleProperties().backgroundColor != newBg) {
-            entry->setBaseStyleProperties({.backgroundColor = newBg});
-        }
+        entry->setGuiState(static_cast<uint16_t>(entry->getGuiState() | GUI_STATE_HOVERED));
         onEntryHovered(entry);
         return EventResult::CONSUMED;
     };
-    entry->onMouseLeaveCb = [this, entry]() {
-        Color3 newBg = entry->isOpen() ? m_mbProps.entryActiveBackground : getBaseStyleProperties().backgroundColor;
-        if (entry->getBaseStyleProperties().backgroundColor != newBg) {
-            entry->setBaseStyleProperties({.backgroundColor = newBg});
-        }
+    entry->onMouseLeaveCb = [entry]() {
+        entry->setGuiState(static_cast<uint16_t>(entry->getGuiState() & ~GUI_STATE_HOVERED));
         return EventResult::CONSUMED;
     };
     entry->onOpenedCb = [this, entry]() {
         m_openEntry = entry;
-        if (entry->getBaseStyleProperties().backgroundColor != m_mbProps.entryActiveBackground) {
-            entry->setBaseStyleProperties({.backgroundColor = m_mbProps.entryActiveBackground});
-        }
+        entry->setGuiState(static_cast<uint16_t>(entry->getGuiState() | GUI_STATE_ACTIVE));
     };
     entry->onClosedCb = [this, entry]() {
         onEntryClosed(entry);
-        if (entry->getBaseStyleProperties().backgroundColor != getBaseStyleProperties().backgroundColor) {
-            entry->setBaseStyleProperties({.backgroundColor = getBaseStyleProperties().backgroundColor});
-        }
+        entry->setGuiState(static_cast<uint16_t>(entry->getGuiState() & ~GUI_STATE_ACTIVE));
     };
 
     m_entries.push_back(entry);
@@ -117,7 +106,7 @@ void MenuBar::onEntryClosed(Dropdown *entry)
     }
 }
 
-bool MenuBar::setMenuBarProperties(const MenuBarStyleProperties &props)
+bool MenuBar::setMenuBarProperties(const MenuBarStylePropertiesArgs &props)
 {
     bool changed = m_mbProps.apply(props);
     if (changed) {

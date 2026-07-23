@@ -11,7 +11,7 @@ namespace Amethyst {
 
 static void s_place(UIObject *o, UDim2 position, UDim2 size)
 {
-    BaseProperties b{};
+    BasePropertiesArgs b{};
     b.position = position;
     b.size = size;
     o->setBaseProperties(b);
@@ -19,7 +19,7 @@ static void s_place(UIObject *o, UDim2 position, UDim2 size)
 
 static void s_fill(UIObject *o, Color3 color, float transparency = 0.0f)
 {
-    BaseStyleProperties s{};
+    BaseStylePropertiesArgs s{};
     s.backgroundColor = color;
     s.backgroundTransparency = transparency;
     o->setBaseStyleProperties(s);
@@ -29,16 +29,16 @@ static std::unique_ptr<TextLabel> s_cellLabel(const std::string &text, Color4 co
 {
     auto label = std::make_unique<TextLabel>();
 
-    BaseProperties b{};
+    BasePropertiesArgs b{};
     b.interactable = false;
     b.size = UDim2::fromScale(1.0f, 1.0f);
     label->setBaseProperties(b);
 
-    BaseStyleProperties s{};
+    BaseStylePropertiesArgs s{};
     s.backgroundTransparency = 1.0f;
     label->setBaseStyleProperties(s);
 
-    TextStyleProperties t{};
+    TextStylePropertiesArgs t{};
     t.fontSize = 12.0f;
     t.textColor = color;
     t.textYAlignment = TextYAlignment::CENTER;
@@ -67,12 +67,12 @@ void CurveEditor::buildLayout()
     s_place(headerLabel, UDim2::fromOffset(12.0f, 0.0f), UDim2(1.0f, -12.0f, 1.0f, 0.0f));
     s_fill(headerLabel, Color3::fromHex(0x232323), 1.0f);
     {
-        BaseProperties b{};
+        BasePropertiesArgs b{};
         b.interactable = false;
         b.position = UDim2::fromOffset(12.0f, 0.0f);
         b.size = UDim2(1.0f, -12.0f, 1.0f, 0.0f);
         headerLabel->setBaseProperties(b);
-        TextStyleProperties t{};
+        TextStylePropertiesArgs t{};
         t.fontSize = 12.0f;
         t.textColor = Color4(0.78f, 0.78f, 0.82f, 1.0f);
         t.textYAlignment = TextYAlignment::CENTER;
@@ -83,7 +83,7 @@ void CurveEditor::buildLayout()
     m_tree = m_side->add<TreeView>();
     s_place(m_tree, UDim2::fromOffset(0.0f, 30.0f), UDim2(1.0f, 0.0f, 1.0f, -30.0f));
     {
-        TreeViewStyleProperties tp{};
+        TreeViewStylePropertiesArgs tp{};
         tp.rowHeight = 24.0f;
         tp.indentPerLevel = 16.0f;
         tp.rowBackgroundColor = Color4::fromHex(0x1f1f1f);
@@ -108,13 +108,13 @@ void CurveEditor::buildLayout()
     s_fill(m_toolbar, Color3::fromHex(0x232323));
     m_title = m_toolbar->add<TextLabel>();
     {
-        BaseProperties b{};
+        BasePropertiesArgs b{};
         b.interactable = false;
         b.position = UDim2::fromOffset(14.0f, 0.0f);
         b.size = UDim2(1.0f, -14.0f, 1.0f, 0.0f);
         m_title->setBaseProperties(b);
         s_fill(m_title, Color3::fromHex(0x232323), 1.0f);
-        TextStyleProperties t{};
+        TextStylePropertiesArgs t{};
         t.fontSize = 13.0f;
         t.textColor = Color4(0.90f, 0.90f, 0.92f, 1.0f);
         t.textYAlignment = TextYAlignment::CENTER;
@@ -131,13 +131,13 @@ void CurveEditor::buildLayout()
     s_fill(m_inspector, Color3::fromHex(0x1f1f1f));
     TextLabel *insLabel = m_inspector->add<TextLabel>();
     {
-        BaseProperties b{};
+        BasePropertiesArgs b{};
         b.interactable = false;
         b.position = UDim2::fromOffset(14.0f, 0.0f);
         b.size = UDim2(1.0f, -14.0f, 1.0f, 0.0f);
         insLabel->setBaseProperties(b);
         s_fill(insLabel, Color3::fromHex(0x1f1f1f), 1.0f);
-        TextStyleProperties t{};
+        TextStylePropertiesArgs t{};
         t.fontSize = 12.0f;
         t.textColor = Color4(0.5f, 0.5f, 0.53f, 1.0f);
         t.textYAlignment = TextYAlignment::CENTER;
@@ -156,7 +156,7 @@ void CurveEditor::buildGrid()
 
         Frame *vertical = m_plot->add<Frame>();
         {
-            BaseProperties b{};
+            BasePropertiesArgs b{};
             b.interactable = false;
             b.position = UDim2(f, 0.0f, 0.0f, 0.0f);
             b.size = UDim2(0.0f, 1.0f, 1.0f, 0.0f);
@@ -166,7 +166,7 @@ void CurveEditor::buildGrid()
 
         Frame *horizontal = m_plot->add<Frame>();
         {
-            BaseProperties b{};
+            BasePropertiesArgs b{};
             b.interactable = false;
             b.position = UDim2(0.0f, 0.0f, f, 0.0f);
             b.size = UDim2(1.0f, 0.0f, 0.0f, 1.0f);
@@ -181,7 +181,7 @@ Spline *CurveEditor::addCurve(const std::string &name, Color4 color, std::vector
     Spline *spline = m_plot->add<Spline>();
     s_place(spline, UDim2::fromOffset(0.0f, 0.0f), UDim2::fromScale(1.0f, 1.0f));
     {
-        SplineStyleProperties sp{};
+        SplineStylePropertiesArgs sp{};
         sp.type = CurveType::CATMULL_ROM;
         sp.thickness = 2.5f;
         sp.color = color;
@@ -250,12 +250,12 @@ void CurveEditor::refreshSelection()
                            plotBg.b + (color.b - plotBg.b) * m_dimAlpha, 1.0f);
         }
 
-        SplineStyleProperties sp{};
+        SplineStylePropertiesArgs sp{};
         sp.color = color;
         sp.showKnots = selected;
         m_curves[i].spline->setSplineProperties(sp);
 
-        BaseProperties b{};
+        BasePropertiesArgs b{};
         b.zIndex = selected ? 2 : 1;
         m_curves[i].spline->setBaseProperties(b);
     }

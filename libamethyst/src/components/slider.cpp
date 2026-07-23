@@ -122,14 +122,13 @@ void Slider::resolveStyle()
 {
     resolveBaseStyle(ComponentType::SLIDER);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    SliderStyleProperties oldBaseline = style.getSliderStyle(ComponentType::SLIDER, classes, m_lastResolvedGuiState);
-    SliderStyleProperties resolved = style.getSliderStyle(ComponentType::SLIDER, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_sProps, [this](const SliderStyleProperties &next) { setSliderProperties(next); });
+    SliderStyleProperties resolved = Style::instance().getSliderStyle(ComponentType::SLIDER, getClasses(), effectiveGuiState());
+    if (m_sProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
-bool Slider::setSliderProperties(const SliderStyleProperties &props)
+bool Slider::setSliderProperties(const SliderStylePropertiesArgs &props)
 {
     bool changed = m_sProps.apply(props);
     if (changed) {
@@ -175,8 +174,14 @@ void Slider::layoutTrack(float normalizedPos, float thumbWidth, const std::strin
         float normalized = std::clamp((relative - clampedThumbWidth * 0.5f) / span, 0.0f, 1.0f);
         applyNormalized(normalized);
     };
-    drag->onDragStart = [applyFromX](vec2 startPos) { applyFromX(startPos.x); };
+    drag->onDragStart = [this, applyFromX](vec2 startPos) {
+        applyFromX(startPos.x);
+        m_thumb->setGuiState(static_cast<uint16_t>(m_thumb->getGuiState() | GUI_STATE_PRESSED));
+    };
     drag->onDragUpdate = [applyFromX](vec2, vec2 position) { applyFromX(position.x); };
+    drag->onDragEnd = [this](vec2) {
+        m_thumb->setGuiState(static_cast<uint16_t>(m_thumb->getGuiState() & ~GUI_STATE_PRESSED));
+    };
 
     s_setupValueLabel(*m_valueLabel, this, valueText);
 }

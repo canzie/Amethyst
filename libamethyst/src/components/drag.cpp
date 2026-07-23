@@ -49,7 +49,7 @@ Drag::Drag()
     });
     m_field->setBaseStyleProperties({.backgroundTransparency = 1.0f});
 
-    TextInputStyleProperties fieldStyle;
+    TextInputStylePropertiesArgs fieldStyle;
     fieldStyle.readOnly = true;
     fieldStyle.text.textXAlignment = TextXAlignment::CENTER;
     fieldStyle.text.textYAlignment = TextYAlignment::CENTER;
@@ -72,18 +72,17 @@ void Drag::resolveStyle()
 {
     resolveBaseStyle(ComponentType::DRAG);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    DragStyleProperties oldBaseline = style.getDragStyle(ComponentType::DRAG, classes, m_lastResolvedGuiState);
-    DragStyleProperties resolved = style.getDragStyle(ComponentType::DRAG, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_dProps, [this](const DragStyleProperties &next) { setDragProperties(next); });
+    DragStyleProperties resolved = Style::instance().getDragStyle(ComponentType::DRAG, getClasses(), effectiveGuiState());
+    if (m_dProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
-bool Drag::setDragProperties(const DragStyleProperties &props)
+bool Drag::setDragProperties(const DragStylePropertiesArgs &props)
 {
     bool changed = m_dProps.apply(props);
     if (changed) {
-        TextInputStyleProperties fieldStyle;
+        TextInputStylePropertiesArgs fieldStyle;
         fieldStyle.text = m_dProps.text;
         fieldStyle.text.textXAlignment = TextXAlignment::CENTER;
         fieldStyle.text.textYAlignment = TextYAlignment::CENTER;
@@ -121,6 +120,7 @@ EventResult Drag::onInputBegan(const InputObject &input)
     m_pressX = input.position.x;
     m_lastX = m_pressX;
     m_state = State::PENDING;
+    setGuiState(static_cast<uint16_t>(getGuiState() | GUI_STATE_PRESSED));
     if (auto *window = getWindow()) {
         window->captureMouse(this);
     }
@@ -162,6 +162,7 @@ EventResult Drag::onInputEnded(const InputObject &input)
     if (auto *window = getWindow()) {
         window->releaseMouse(this);
     }
+    setGuiState(static_cast<uint16_t>(getGuiState() & ~GUI_STATE_PRESSED));
     if (m_state == State::PENDING) {
         enterEdit();
     } else if (m_state == State::SCRUBBING) {
@@ -176,7 +177,7 @@ void Drag::enterEdit()
     m_state = State::EDITING;
     configureField();
 
-    TextInputStyleProperties editable;
+    TextInputStylePropertiesArgs editable;
     editable.readOnly = false;
     m_field->setTextInputProperties(editable);
     m_field->setBaseProperties({.interactable = true});
@@ -194,7 +195,7 @@ void Drag::exitEdit()
     commitFromField();
     m_state = State::IDLE;
 
-    TextInputStyleProperties readOnly;
+    TextInputStylePropertiesArgs readOnly;
     readOnly.readOnly = true;
     m_field->setTextInputProperties(readOnly);
     m_field->setBaseProperties({.interactable = false});

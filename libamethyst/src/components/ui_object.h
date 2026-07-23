@@ -111,10 +111,10 @@ class UIObject : public UIBase2D {
      */
     bool propagates(InteractionCategory cat) const;
 
-    bool setBaseProperties(BaseProperties props);
+    bool setBaseProperties(BasePropertiesArgs props);
     const BaseProperties &getBaseProperties() const { return m_uiObjProps; }
 
-    bool setBaseStyleProperties(BaseStyleProperties style);
+    bool setBaseStyleProperties(BaseStylePropertiesArgs style);
     const BaseStyleProperties &getBaseStyleProperties() const { return m_baseStyle; }
 
     /**
@@ -199,20 +199,11 @@ class UIObject : public UIBase2D {
     uint16_t effectiveGuiState() const;
 
     /**
-     * @brief Resolve and apply BaseStyleProperties for a component type, preserving any
-     * instance-level overrides applied via setBaseStyleProperties() since the last resolve.
-     * Does not update the last-resolved tracking; call commitResolvedState() once at the end
-     * of resolveStyle(), after every style struct the component owns has been reconciled.
+     * @brief Resolve and merge BaseStyleProperties for a component type, honoring any
+     * instance-level overrides pinned by a prior setBaseStyleProperties() call.
      * @param type Component type to resolve against
      */
     void resolveBaseStyle(ComponentType type);
-
-    /**
-     * @brief Snapshot the classes and GuiState just resolved against, so the next resolve can
-     * recover instance overrides by diffing against this exact prior context. Must be called
-     * once at the end of every resolveStyle() override, after all owned style structs are done.
-     */
-    void commitResolvedState();
 
     friend class Window;
     virtual EventResult onMouseEnter(void);

@@ -17,11 +17,10 @@ void TextInput::resolveStyle()
 {
     resolveBaseStyle(ComponentType::TEXT_INPUT);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    TextInputStyleProperties oldBaseline = style.getTextInputStyle(ComponentType::TEXT_INPUT, classes, m_lastResolvedGuiState);
-    TextInputStyleProperties resolved = style.getTextInputStyle(ComponentType::TEXT_INPUT, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, getTextInputProperties(), [this](const TextInputStyleProperties &next) { setTextInputProperties(next); });
+    TextInputStyleProperties resolved = Style::instance().getTextInputStyle(ComponentType::TEXT_INPUT, getClasses(), effectiveGuiState());
+    if (m_tiProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
 void TextInput::draw(DrawContext &ctx)

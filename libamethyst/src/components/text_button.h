@@ -26,7 +26,7 @@ class TextButton : public UIButton {
     void draw(DrawContext &ctx) override;
     void resolveStyle() override;
 
-    bool setTextStyleProperties(const TextStyleProperties &props);
+    bool setTextStyleProperties(const TextStylePropertiesArgs &props);
     const TextStyleProperties &getTextStyleProperties() const { return m_textStyle; }
 
     void setText(std::string text);

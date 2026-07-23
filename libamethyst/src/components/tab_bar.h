@@ -81,7 +81,7 @@ class TabBar : public UIObject {
     TabBarConfig saveConfig() const;
     void applyConfig(const TabBarConfig &config);
 
-    bool setTabBarProperties(const TabBarStyleProperties &props);
+    bool setTabBarProperties(const TabBarStylePropertiesArgs &props);
     const TabBarStyleProperties &getTabBarProperties() const { return m_tbProps; }
 
     std::function<void(Instance *content)> onTabClosed;

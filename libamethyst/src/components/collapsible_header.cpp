@@ -77,12 +77,11 @@ void CollapsibleHeader::resolveStyle()
 {
     resolveBaseStyle(ComponentType::COLLAPSIBLE_HEADER);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    CollapsibleHeaderStyleProperties oldBaseline = style.getCollapsibleHeaderStyle(ComponentType::COLLAPSIBLE_HEADER, classes, m_lastResolvedGuiState);
-    CollapsibleHeaderStyleProperties resolved = style.getCollapsibleHeaderStyle(ComponentType::COLLAPSIBLE_HEADER, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_chProps,
-                           [this](const CollapsibleHeaderStyleProperties &next) { setCollapsibleHeaderProperties(next); });
+    CollapsibleHeaderStyleProperties resolved =
+        Style::instance().getCollapsibleHeaderStyle(ComponentType::COLLAPSIBLE_HEADER, getClasses(), effectiveGuiState());
+    if (m_chProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
 void CollapsibleHeader::toggle()
@@ -116,7 +115,7 @@ void CollapsibleHeader::collapse()
     }
 }
 
-bool CollapsibleHeader::setCollapsibleHeaderProperties(const CollapsibleHeaderStyleProperties &props)
+bool CollapsibleHeader::setCollapsibleHeaderProperties(const CollapsibleHeaderStylePropertiesArgs &props)
 {
     bool changed = m_chProps.apply(props);
     if (changed) {

@@ -141,7 +141,7 @@ class Table : public UIObject {
      */
     std::vector<Instance *> getHittableInstances() override;
 
-    bool setTableProperties(const TableStyleProperties &props);
+    bool setTableProperties(const TableStylePropertiesArgs &props);
     const TableStyleProperties &getTableProperties() const { return m_tProps; }
 
     std::function<void(uint32_t)> onRowSelected;

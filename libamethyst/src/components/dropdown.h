@@ -18,6 +18,8 @@ class Dropdown : public TextButton {
   public:
     Dropdown();
 
+    void resolveStyle() override;
+
     void setItems(std::vector<ContextMenuItem> items);
     std::vector<ContextMenuItem> &items();
 
@@ -25,7 +27,7 @@ class Dropdown : public TextButton {
     void close();
     bool isOpen() const;
 
-    bool setDropdownProperties(const DropdownStyleProperties &props);
+    bool setDropdownProperties(const DropdownStylePropertiesArgs &props);
     const DropdownStyleProperties &getDropdownProperties() const { return m_ddProps; }
 
     std::function<void(std::string_view)> onItemSelected;

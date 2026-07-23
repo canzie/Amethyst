@@ -28,7 +28,7 @@ public:
   void setImage(AmTextureId image);
   AmTextureId getImage() const;
 
-  bool setImageStyleProperties(const ImageStyleProperties &props);
+  bool setImageStyleProperties(const ImageStylePropertiesArgs &props);
   const ImageStyleProperties &getImageStyleProperties() const;
 
 private:

@@ -29,7 +29,7 @@ UIImage::~UIImage()
     }
 }
 
-bool UIImage::setImageStyleProperties(const ImageStyleProperties &props)
+bool UIImage::setImageStyleProperties(const ImageStylePropertiesArgs &props)
 {
     return m_imgStyle.apply(props);
 }

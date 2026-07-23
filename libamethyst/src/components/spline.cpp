@@ -2,6 +2,7 @@
 
 #include "components/extensions/ui_drag_detector.h"
 #include "components/frame.h"
+#include "modules/style.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 #include "rendering/instance_data.h"
@@ -33,14 +34,23 @@ static vec2 s_midpointControl(vec2 endpointA, vec2 endpointB, vec2 mid)
 Spline::Spline()
 {
     m_splineProps.type = CurveType::CATMULL_ROM;
-    m_splineProps.thickness = 2.0f;
-    m_splineProps.color = Color4(1.0f, 1.0f, 1.0f, 1.0f);
     m_splineProps.showKnots = true;
-    m_splineProps.knotSize = 10.0f;
 
     propagate(INTERACTION_CATEGORY_CLICK);
     propagate(INTERACTION_CATEGORY_MOVE);
     propagate(INTERACTION_CATEGORY_HOVER);
+
+    resolveStyle();
+}
+
+void Spline::resolveStyle()
+{
+    resolveBaseStyle(ComponentType::SPLINE);
+
+    SplineStyleProperties resolved = Style::instance().getSplineStyle(ComponentType::SPLINE, getClasses(), effectiveGuiState());
+    if (m_splineProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
 Spline::~Spline()
@@ -74,7 +84,7 @@ void Spline::clearKnots()
     }
 }
 
-bool Spline::setSplineProperties(const SplineStyleProperties &props)
+bool Spline::setSplineProperties(const SplineStylePropertiesArgs &props)
 {
     bool changed = m_splineProps.apply(props);
     if (changed) {

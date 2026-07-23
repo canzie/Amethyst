@@ -8,6 +8,8 @@ namespace Amethyst {
 
 Checkbox::Checkbox()
 {
+    addStructuralClass("checkbox#box");
+
     m_checkIcon = add<ImageLabel>();
     m_checkIcon->setSvg(Icons::CHECK);
     m_checkIcon->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
@@ -16,18 +18,25 @@ Checkbox::Checkbox()
     resolveStyle();
 }
 
+void Checkbox::arrange()
+{
+    bool checked = value != nullptr && *value;
+    uint16_t state = getGuiState();
+    setGuiState(static_cast<uint16_t>(checked ? (state | GUI_STATE_ACTIVE) : (state & ~GUI_STATE_ACTIVE)));
+    UIObject::arrange();
+}
+
 void Checkbox::resolveStyle()
 {
     resolveBaseStyle(ComponentType::CHECKBOX);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    CheckboxStyleProperties oldBaseline = style.getCheckboxStyle(ComponentType::CHECKBOX, classes, m_lastResolvedGuiState);
-    CheckboxStyleProperties resolved = style.getCheckboxStyle(ComponentType::CHECKBOX, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_cbProps, [this](const CheckboxStyleProperties &next) { setCheckboxProperties(next); });
+    CheckboxStyleProperties resolved = Style::instance().getCheckboxStyle(ComponentType::CHECKBOX, getClasses(), effectiveGuiState());
+    if (m_cbProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
-bool Checkbox::setCheckboxProperties(const CheckboxStyleProperties &props)
+bool Checkbox::setCheckboxProperties(const CheckboxStylePropertiesArgs &props)
 {
     bool changed = m_cbProps.apply(props);
     if (changed) {

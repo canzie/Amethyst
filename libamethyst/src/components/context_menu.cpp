@@ -8,6 +8,7 @@
 #include "components/scrolling_frame.h"
 #include "components/text_button.h"
 #include "components/window.h"
+#include "modules/style.h"
 
 #include "math/math.h"
 #include <algorithm>
@@ -34,9 +35,22 @@ ContextMenu::ContextMenu()
     m_textProps.textXAlignment = TextXAlignment::LEFT;
     m_textProps.textYAlignment = TextYAlignment::CENTER;
     m_overlayPtr = nullptr;
+
+    resolveStyle();
 }
 
-bool ContextMenu::setContextMenuProperties(const ContextMenuStyleProperties &props)
+void ContextMenu::resolveStyle()
+{
+    resolveBaseStyle(ComponentType::CONTEXT_MENU);
+
+    ContextMenuStyleProperties resolved =
+        Style::instance().getContextMenuStyle(ComponentType::CONTEXT_MENU, getClasses(), effectiveGuiState());
+    if (m_cmProps.apply(resolved)) {
+        markDirty();
+    }
+}
+
+bool ContextMenu::setContextMenuProperties(const ContextMenuStylePropertiesArgs &props)
 {
     bool changed = m_cmProps.apply(props);
     if (changed) {
@@ -45,7 +59,7 @@ bool ContextMenu::setContextMenuProperties(const ContextMenuStyleProperties &pro
     return changed;
 }
 
-bool ContextMenu::setTextStyleProperties(const TextStyleProperties &props)
+bool ContextMenu::setTextStyleProperties(const TextStylePropertiesArgs &props)
 {
     bool changed = m_textProps.apply(props);
     if (changed) {

@@ -29,7 +29,15 @@
     X(STROKE_THICKNESS, "stroke-thickness", float, LENGTH, 0.0f)                                              \
     X(STROKE_COLOR, "stroke-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                           \
     X(IMAGE_COLOR, "image-color", Color4, COLOR4, Color4(1.0f, 1.0f, 1.0f, 1.0f))                             \
+    X(IMAGE_SCALE_TYPE, "image-scale-type", ImageScaleType, ISCALE, ImageScaleType::STRETCH)                  \
+    X(IMAGE_TILE_SIZE, "image-tile-size", vec2, SIZE2, vec2(0.0f))                                            \
     X(PLACEHOLDER_COLOR, "placeholder-color", Color4, COLOR4, Color4(0.5f, 0.5f, 0.5f, 1.0f))                 \
+    X(SELECTION_COLOR, "selection-color", Color4, COLOR4, Color4(0.2f, 0.4f, 0.8f, 0.4f))                     \
+    X(CURSOR_COLOR, "cursor-color", Color4, COLOR4, Color4(1.0f, 1.0f, 1.0f, 1.0f))                           \
+    X(CURSOR_BLINK_RATE, "cursor-blink-rate", float, NUMBER, 0.5f)                                            \
+    X(ENTRY_PADDING_X, "entry-padding-x", float, LENGTH, 8.0f)                                                \
+    X(ENTRY_PADDING_Y, "entry-padding-y", float, LENGTH, 4.0f)                                                \
+    X(ENTRY_FONT_SIZE, "entry-font-size", float, LENGTH, 14.0f)                                               \
     X(SCROLLBAR_COLOR, "scrollbar-color", Color3, COLOR3, Color3(0.7f))                                       \
     X(SCROLLBAR_TRANSPARENCY, "scrollbar-transparency", float, RATIO, 0.0f)                                   \
     X(SCROLLBAR_THICKNESS, "scrollbar-thickness", float, LENGTH, 8.0f)                                        \
@@ -73,7 +81,16 @@
     X(THUMB_HEIGHT, "thumb-height", float, LENGTH, 18.0f) \
     X(TRACK_HEIGHT, "track-height", UDim, UDIM, UDim::fromScale(1.0f)) \
     X(SLIDER_FILL_COLOR, "slider-fill-color", Color4, COLOR4, Color4(0.28f, 0.45f, 0.70f, 0.0f)) \
-    X(SLIDER_LABEL_PADDING, "slider-label-padding", float, LENGTH, 6.0f)
+    X(SLIDER_LABEL_PADDING, "slider-label-padding", float, LENGTH, 6.0f)                        \
+    X(CURVE_THICKNESS, "curve-thickness", float, LENGTH, 2.0f)                                  \
+    X(CURVE_COLOR, "curve-color", Color4, COLOR4, Color4(1.0f, 1.0f, 1.0f, 1.0f))               \
+    X(CURVE_KNOT_SIZE, "curve-knot-size", float, LENGTH, 10.0f)                                 \
+    X(MENU_ITEM_HOVER_BACKGROUND, "menu-item-hover-background", Color3, COLOR3, Color3(0.25f, 0.42f, 0.65f)) \
+    X(MENU_SEPARATOR_COLOR, "menu-separator-color", Color3, COLOR3, Color3(0.32f, 0.32f, 0.32f)) \
+    X(DROPDOWN_ITEM_FONT_SIZE, "dropdown-item-font-size", float, LENGTH, 14.0f)                 \
+    X(DROPDOWN_POPUP_BACKGROUND, "dropdown-popup-background", Color3, COLOR3, Color3(0.18f, 0.18f, 0.18f)) \
+    X(DROPDOWN_ITEM_TEXT_COLOR, "dropdown-item-text-color", Color4, COLOR4, Color4(0.92f, 0.92f, 0.92f, 1.0f)) \
+    X(DROPDOWN_ITEM_DISABLED_COLOR, "dropdown-item-disabled-color", Color4, COLOR4, Color4(0.45f, 0.45f, 0.45f, 1.0f))
 
 #define AM_BASE_STYLE_FIELDS(X)                               \
     X(BACKGROUND_COLOR, backgroundColor, Color3)              \
@@ -146,5 +163,38 @@
     X(INDICATOR_SIZE, indicatorSize, float)            \
     X(INDICATOR_PADDING, indicatorPadding, float)      \
     X(INDICATOR_COLOR, indicatorColor, Color4)
+
+#define AM_IMAGE_STYLE_FIELDS(X)                \
+    X(IMAGE_COLOR, imageColor, Color4)          \
+    X(IMAGE_SCALE_TYPE, scaleType, ImageScaleType) \
+    X(IMAGE_TILE_SIZE, tileSize, vec2)
+
+#define AM_TEXT_INPUT_STYLE_FIELDS(X)                  \
+    X(PLACEHOLDER_COLOR, placeholderColor, Color4)     \
+    X(SELECTION_COLOR, selectionColor, Color4)         \
+    X(CURSOR_COLOR, cursorColor, Color4)               \
+    X(CURSOR_BLINK_RATE, cursorBlinkRate, float)
+
+#define AM_MENU_BAR_STYLE_FIELDS(X)              \
+    X(ENTRY_PADDING_X, entryPaddingX, float)     \
+    X(ENTRY_PADDING_Y, entryPaddingY, float)     \
+    X(ENTRY_FONT_SIZE, entryFontSize, float)
+
+#define AM_SPLINE_STYLE_FIELDS(X)          \
+    X(CURVE_THICKNESS, thickness, float)   \
+    X(CURVE_COLOR, color, Color4)          \
+    X(CURVE_KNOT_SIZE, knotSize, float)
+
+#define AM_CONTEXT_MENU_STYLE_FIELDS(X)                        \
+    X(MENU_ITEM_HOVER_BACKGROUND, itemHoverBackground, Color3) \
+    X(MENU_SEPARATOR_COLOR, separatorColor, Color3)
+
+#define AM_DROPDOWN_STYLE_FIELDS(X)                             \
+    X(DROPDOWN_ITEM_FONT_SIZE, itemFontSize, float)             \
+    X(DROPDOWN_POPUP_BACKGROUND, popupBackground, Color3)       \
+    X(DROPDOWN_ITEM_TEXT_COLOR, itemTextColor, Color4)          \
+    X(DROPDOWN_ITEM_DISABLED_COLOR, itemDisabledColor, Color4)  \
+    X(MENU_ITEM_HOVER_BACKGROUND, itemHoverBackground, Color3)  \
+    X(MENU_SEPARATOR_COLOR, separatorColor, Color3)
 
 #endif // AMETHYST__STYLE_PROPERTIES_DEF

@@ -96,7 +96,28 @@ enum class StyleProperty {
     INDICATOR_COLOR,
 
     IMAGE_COLOR,
+    IMAGE_SCALE_TYPE,
+    IMAGE_TILE_SIZE,
     PLACEHOLDER_COLOR,
+    SELECTION_COLOR,
+    CURSOR_COLOR,
+    CURSOR_BLINK_RATE,
+
+    ENTRY_PADDING_X,
+    ENTRY_PADDING_Y,
+    ENTRY_FONT_SIZE,
+
+    CURVE_THICKNESS,
+    CURVE_COLOR,
+    CURVE_KNOT_SIZE,
+
+    MENU_ITEM_HOVER_BACKGROUND,
+    MENU_SEPARATOR_COLOR,
+
+    DROPDOWN_ITEM_FONT_SIZE,
+    DROPDOWN_POPUP_BACKGROUND,
+    DROPDOWN_ITEM_TEXT_COLOR,
+    DROPDOWN_ITEM_DISABLED_COLOR,
 
     COUNT,
 };
@@ -124,6 +145,8 @@ enum class ComponentType {
     TEXT_INPUT,
     DRAG,
     MENU_BAR,
+    SPLINE,
+    CONTEXT_MENU,
 };
 
 /**
@@ -134,7 +157,8 @@ struct FontHandle {
     bool operator==(const FontHandle &) const = default;
 };
 
-using StyleValue = std::variant<Color3, Color4, float, uvec4, UDim, BorderMode, TextXAlignment, TextYAlignment, FontHandle>;
+using StyleValue =
+    std::variant<Color3, Color4, float, uvec4, vec2, UDim, BorderMode, TextXAlignment, TextYAlignment, FontHandle, ImageScaleType>;
 
 /**
  * @brief Class-name hash (FNV-1a 32-bit).
@@ -288,6 +312,43 @@ class Style {
      * @return Fully-resolved image style
      */
     ImageStyleProperties getImageStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+
+    /**
+     * @brief Resolve the menu-bar style for a component type, class set and pseudo-state.
+     * @param type Component type whose inheritance chain is walked
+     * @param classes Class hashes carried by the node, in any order
+     * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @return Fully-resolved menu-bar style
+     */
+    MenuBarStyleProperties getMenuBarStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+
+    /**
+     * @brief Resolve the spline style for a component type, class set and pseudo-state.
+     * @param type Component type whose inheritance chain is walked
+     * @param classes Class hashes carried by the node, in any order
+     * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @return Fully-resolved spline style
+     */
+    SplineStyleProperties getSplineStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+
+    /**
+     * @brief Resolve the context-menu style for a component type, class set and pseudo-state.
+     * @param type Component type whose inheritance chain is walked
+     * @param classes Class hashes carried by the node, in any order
+     * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @return Fully-resolved context-menu style
+     */
+    ContextMenuStyleProperties getContextMenuStyle(ComponentType type, std::span<const StyleKey> classes = {},
+                                                   uint16_t state = GUI_STATE_NONE);
+
+    /**
+     * @brief Resolve the dropdown style for a component type, class set and pseudo-state.
+     * @param type Component type whose inheritance chain is walked
+     * @param classes Class hashes carried by the node, in any order
+     * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @return Fully-resolved dropdown style
+     */
+    DropdownStyleProperties getDropdownStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
 
     /**
      * @brief Hash a class name to its token. Stateless; safe without a loaded theme.

@@ -908,7 +908,7 @@ void Gizmo::Impl::drawScale(GizmoAxis hovered, bool active, vec2 mouse)
 Gizmo::Gizmo(UIBase2D *parent) : m_impl(std::make_unique<Impl>())
 {
     auto canvasOwned = std::make_unique<GizmoCanvas>();
-    BaseProperties props;
+    BasePropertiesArgs props;
     props.size = UDim2::fromScale(1.0f, 1.0f);
     props.zIndex = 100;
     canvasOwned->setBaseProperties(props);

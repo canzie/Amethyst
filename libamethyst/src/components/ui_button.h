@@ -17,7 +17,7 @@ class UIButton : public UIObject {
     UIButton() = default;
     virtual ~UIButton() = default;
 
-    bool setButtonProperties(const ButtonProperties &props);
+    bool setButtonProperties(const ButtonPropertiesArgs &props);
     const ButtonProperties &getButtonProperties() const;
 
   protected:

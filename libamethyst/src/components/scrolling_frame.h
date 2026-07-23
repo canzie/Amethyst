@@ -24,7 +24,7 @@ class ScrollingFrame : public UIObject {
     void resolveStyle() override;
 
     const ScrollingFrameStyleProperties &getScrollingFrameProperties() { return m_sfProps; }
-    bool setScrollingFrameProperties(const ScrollingFrameStyleProperties &props);
+    bool setScrollingFrameProperties(const ScrollingFrameStylePropertiesArgs &props);
 
   protected:
     EventResult onMouseScrollUp() override;

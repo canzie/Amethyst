@@ -25,7 +25,7 @@ ScrollingFrame::ScrollingFrame()
     m_sfProps.scrollBarThumbColor = Color3{0.7f, 0.7f, 0.7f};
     m_sfProps.scrollBarThumbTransparency = 0.0f;
     m_sfProps.scrollSpeed = 30.0f;
-    m_sfProps.elasticScrolling = 0;
+    m_sfProps.elasticScrolling = false;
 
     resolveStyle();
 }
@@ -50,14 +50,14 @@ void ScrollingFrame::resolveStyle()
 {
     resolveBaseStyle(ComponentType::SCROLLING_FRAME);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    ScrollingFrameStyleProperties oldBaseline = style.getScrollingFrameStyle(ComponentType::SCROLLING_FRAME, classes, m_lastResolvedGuiState);
-    ScrollingFrameStyleProperties resolved = style.getScrollingFrameStyle(ComponentType::SCROLLING_FRAME, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_sfProps, [this](const ScrollingFrameStyleProperties &next) { setScrollingFrameProperties(next); });
+    ScrollingFrameStyleProperties resolved =
+        Style::instance().getScrollingFrameStyle(ComponentType::SCROLLING_FRAME, getClasses(), effectiveGuiState());
+    if (m_sfProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
-bool ScrollingFrame::setScrollingFrameProperties(const ScrollingFrameStyleProperties &props)
+bool ScrollingFrame::setScrollingFrameProperties(const ScrollingFrameStylePropertiesArgs &props)
 {
     bool changed = m_sfProps.apply(props);
     if (changed) {

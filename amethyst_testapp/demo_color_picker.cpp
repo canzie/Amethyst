@@ -98,7 +98,7 @@ int main()
                     .style = {.backgroundTransparency = 1.0f},
                     .text = {.fontSize = 16.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .textYAlignment = TextYAlignment::CENTER},
                     .label = "RGB"});
-    root.color3Picker({.base = {.padding = {{0.0f, 10.0f}, {0.0f, 10.0f}, {0.0f, 10.0f}, {0.0f, 10.0f}},
+    root.color3Picker({.base = {.padding = UDim4{{0.0f, 10.0f}, {0.0f, 10.0f}, {0.0f, 10.0f}, {0.0f, 10.0f}},
                                 .position = UDim2::fromOffset(40, 50),
                                 .size = UDim2::fromOffset(260, 300)},
                        .style = {.backgroundColor = Color3::fromHex(0x26262C), .cornerRadius = 8.0f},
@@ -127,7 +127,7 @@ int main()
                     .style = {.backgroundTransparency = 1.0f},
                     .text = {.fontSize = 16.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}, .textYAlignment = TextYAlignment::CENTER},
                     .label = "RGBA"});
-    root.color4Picker({.base = {.padding = {{0.0f, 10.0f}, {0.0f, 10.0f}, {0.0f, 10.0f}, {0.0f, 10.0f}},
+    root.color4Picker({.base = {.padding = UDim4{{0.0f, 10.0f}, {0.0f, 10.0f}, {0.0f, 10.0f}, {0.0f, 10.0f}},
                                 .position = UDim2::fromOffset(360, 50),
                                 .size = UDim2::fromOffset(260, 320)},
                        .style = {.backgroundColor = Color3::fromHex(0x26262C), .cornerRadius = 8.0f},

@@ -26,7 +26,7 @@ class Drag : public UIObject {
     void draw(DrawContext &ctx) override;
     void resolveStyle() override;
 
-    bool setDragProperties(const DragStyleProperties &props);
+    bool setDragProperties(const DragStylePropertiesArgs &props);
     const DragStyleProperties &getDragProperties() const { return m_dProps; }
 
     void setFormat(std::string format);

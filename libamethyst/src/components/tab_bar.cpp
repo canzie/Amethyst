@@ -48,14 +48,13 @@ void TabBar::resolveStyle()
 {
     resolveBaseStyle(ComponentType::TAB_BAR);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    TabBarStyleProperties oldBaseline = style.getTabBarStyle(ComponentType::TAB_BAR, classes, m_lastResolvedGuiState);
-    TabBarStyleProperties resolved = style.getTabBarStyle(ComponentType::TAB_BAR, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_tbProps, [this](const TabBarStyleProperties &next) { setTabBarProperties(next); });
+    TabBarStyleProperties resolved = Style::instance().getTabBarStyle(ComponentType::TAB_BAR, getClasses(), effectiveGuiState());
+    if (m_tbProps.apply(resolved)) {
+        markDirty();
+    }
 }
 
-bool TabBar::setTabBarProperties(const TabBarStyleProperties &props)
+bool TabBar::setTabBarProperties(const TabBarStylePropertiesArgs &props)
 {
     bool changed = m_tbProps.apply(props);
     if (changed) {
@@ -145,18 +144,18 @@ void TabBar::select(int32_t index)
     if (index == m_selectedIndex) return;
 
     Frame *oldLabel = m_tabs[m_selectedIndex]->labelFrame;
-    oldLabel->setGuiState(static_cast<uint16_t>(oldLabel->getGuiState() & ~GUI_STATE_SELECTED));
+    oldLabel->setGuiState(static_cast<uint16_t>(oldLabel->getGuiState() & ~GUI_STATE_ACTIVE));
     m_tabs[m_selectedIndex]->closeButton->setBaseProperties({
-        .visible = static_cast<int8_t>(s_closeButtonVisible(m_tbProps.closeButtonVisibility, false, false)),
+        .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, false, false),
     });
 
     m_lastSelectedIndex = m_selectedIndex;
     m_selectedIndex = index;
 
     Frame *newLabel = m_tabs[m_selectedIndex]->labelFrame;
-    newLabel->setGuiState(static_cast<uint16_t>(newLabel->getGuiState() | GUI_STATE_SELECTED));
+    newLabel->setGuiState(static_cast<uint16_t>(newLabel->getGuiState() | GUI_STATE_ACTIVE));
     m_tabs[m_selectedIndex]->closeButton->setBaseProperties({
-        .visible = static_cast<int8_t>(s_closeButtonVisible(m_tbProps.closeButtonVisibility, true, false)),
+        .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, true, false),
     });
 
     if (onSelectionChanged) {
@@ -286,7 +285,7 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
         int32_t idx = findTabIndex(tabPtr);
         tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() | GUI_STATE_HOVERED));
         tabPtr->closeButton->setBaseProperties({
-            .visible = static_cast<am_bool>(s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, true)),
+            .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, true),
         });
         return EventResult::CONSUMED;
     };
@@ -295,7 +294,7 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
         int32_t idx = findTabIndex(tabPtr);
         tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() & ~GUI_STATE_HOVERED));
         tabPtr->closeButton->setBaseProperties({
-            .visible = static_cast<am_bool>(s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, false)),
+            .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, false),
         });
         return EventResult::CONSUMED;
     };
@@ -324,7 +323,7 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
     ensureTabComponents(tab);
     tab.button->parent = this;
     if (index == m_selectedIndex) {
-        tab.labelFrame->setGuiState(static_cast<uint16_t>(tab.labelFrame->getGuiState() | GUI_STATE_SELECTED));
+        tab.labelFrame->setGuiState(static_cast<uint16_t>(tab.labelFrame->getGuiState() | GUI_STATE_ACTIVE));
     }
     setupTabDragCallbacks(tab);
     setupTabInteractionCallbacks(tab);
@@ -423,7 +422,7 @@ std::unique_ptr<Instance> TabBar::removeTab(Instance *content)
 
     if (!m_tabs.empty()) {
         Frame *label = m_tabs[m_selectedIndex]->labelFrame;
-        label->setGuiState(static_cast<uint16_t>(label->getGuiState() | GUI_STATE_SELECTED));
+        label->setGuiState(static_cast<uint16_t>(label->getGuiState() | GUI_STATE_ACTIVE));
     }
 
     if (m_selectedIndex != oldSelected && onSelectionChanged) {
@@ -543,7 +542,7 @@ void TabBar::layoutContent()
         bool wasSelected = (child == lastContent);
 
         if (auto *drawable = child->asUiObject()) {
-            drawable->setBaseProperties({.visible = static_cast<int8_t>(isSelected)});
+            drawable->setBaseProperties({.visible = isSelected});
 
             if (selectionChanged && (isSelected || wasSelected)) {
                 drawable->markDirty();

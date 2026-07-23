@@ -27,6 +27,7 @@ class Spline : public UIObject {
 
     void draw(DrawContext &ctx) override;
     void arrange() override;
+    void resolveStyle() override;
 
     /**
      * @brief Replace the full set of knots the curve passes through.
@@ -39,10 +40,10 @@ class Spline : public UIObject {
 
     /**
      * @brief Merge in the set fields of a spline style block, keeping current values for unset ones.
-     * @param props Style block; only fields that pass propIsSet override
+     * @param props Style block; only fields that are set override
      * @return True if any resolved value changed
      */
-    bool setSplineProperties(const SplineStyleProperties &props);
+    bool setSplineProperties(const SplineStylePropertiesArgs &props);
     const SplineStyleProperties &getSplineProperties() const { return m_splineProps; }
 
   private:

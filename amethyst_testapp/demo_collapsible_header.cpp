@@ -104,7 +104,7 @@ int main()
 
                 // --- Section 1: General Settings ---
                 sf.collapsibleHeader(
-                      {.base = {.layoutOrder = 0, .size = {1.0f, 0.0f, 0.0f, GENERAL_HEIGHT}},
+                      {.base = {.layoutOrder = 0u, .size = {1.0f, 0.0f, 0.0f, GENERAL_HEIGHT}},
                        .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                        .header = {.expanded = true,
                                   .titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
@@ -138,7 +138,7 @@ int main()
                       })
                     // --- Section 2: Audio (starts collapsed) ---
                     .collapsibleHeader(
-                        {.base = {.layoutOrder = 1, .size = {1.0f, 0.0f, 0.0f, AUDIO_HEIGHT}},
+                        {.base = {.layoutOrder = 1u, .size = {1.0f, 0.0f, 0.0f, AUDIO_HEIGHT}},
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                          .header = {.expanded = false,
                                     .titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
@@ -175,7 +175,7 @@ int main()
                         })
                     // --- Section 3: Graphics (table inside) ---
                     .collapsibleHeader(
-                        {.base = {.layoutOrder = 2, .size = {1.0f, 0.0f, 0.0f, GRAPHICS_HEIGHT}},
+                        {.base = {.layoutOrder = 2u, .size = {1.0f, 0.0f, 0.0f, GRAPHICS_HEIGHT}},
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                          .header = {.titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
                                     .headerHeight = 32.0f,
@@ -190,7 +190,7 @@ int main()
                             };
                             ch.table({.base = {.position = UDim2::fromOffset(5.0f, 5.0f), .size = {1.0f, -10.0f, 0.0f, 224.0f}},
                                       .table = {.rowHeight = 28.0f,
-                                                .cellPadding = {{0.0f, 2.0f}, {0.0f, 8.0f}, {0.0f, 2.0f}, {0.0f, 8.0f}},
+                                                .cellPadding = UDim4{{0.0f, 2.0f}, {0.0f, 8.0f}, {0.0f, 2.0f}, {0.0f, 8.0f}},
                                                 .separatorMode = TableSeparatorMode::COLUMNS,
                                                 .separatorColor = {0.3f, 0.3f, 0.35f, 0.5f},
                                                 .showHeader = true}},
@@ -270,7 +270,7 @@ int main()
                         })
                     // --- Section 4: No indicator ---
                     .collapsibleHeader(
-                        {.base = {.layoutOrder = 3, .size = {1.0f, 0.0f, 0.0f, CONTROLS_HEIGHT}},
+                        {.base = {.layoutOrder = 3u, .size = {1.0f, 0.0f, 0.0f, CONTROLS_HEIGHT}},
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                          .header = {.titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
                                     .headerHeight = 32.0f,
@@ -299,7 +299,7 @@ int main()
                         })
                     // --- Section 5: custom SVG indicator + custom header ---
                     .collapsibleHeader(
-                        {.base = {.layoutOrder = 4, .size = {1.0f, 0.0f, 0.0f, SHADER_HEIGHT}},
+                        {.base = {.layoutOrder = 4u, .size = {1.0f, 0.0f, 0.0f, SHADER_HEIGHT}},
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                          .header = {.headerHeight = 36.0f, .headerCornerRadius = 4.0f, .indicatorSize = 18.0f}},
                         [statusLabel](CollapsibleHeaderScope &ch) {

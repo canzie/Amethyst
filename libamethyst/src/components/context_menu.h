@@ -19,6 +19,8 @@ class ContextMenu : public Popup {
   public:
     ContextMenu();
 
+    void resolveStyle() override;
+
     void setItems(std::vector<ContextMenuItem> items);
     std::vector<ContextMenuItem> &items() { return m_items; }
 
@@ -26,10 +28,10 @@ class ContextMenu : public Popup {
     void showAt(vec2 pos);
     void hide();
 
-    bool setContextMenuProperties(const ContextMenuStyleProperties &props);
+    bool setContextMenuProperties(const ContextMenuStylePropertiesArgs &props);
     const ContextMenuStyleProperties &getContextMenuProperties() const { return m_cmProps; }
 
-    bool setTextStyleProperties(const TextStyleProperties &props);
+    bool setTextStyleProperties(const TextStylePropertiesArgs &props);
     const TextStyleProperties &getTextStyleProperties() const { return m_textProps; }
 
     std::function<void(std::string_view)> onItemSelected;

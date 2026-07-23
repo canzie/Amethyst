@@ -1,5 +1,7 @@
 #include "components/dropdown.h"
 
+#include "modules/style.h"
+
 namespace Amethyst {
 
 Dropdown::Dropdown()
@@ -14,9 +16,21 @@ Dropdown::Dropdown()
     m_ddProps.itemDisabledColor = Color4{0.45f, 0.45f, 0.45f, 1.0f};
     m_ddProps.itemHoverBackground = Color3{0.25f, 0.42f, 0.65f};
     m_ddProps.separatorColor = Color3{0.32f, 0.32f, 0.32f};
+
+    resolveStyle();
 }
 
-bool Dropdown::setDropdownProperties(const DropdownStyleProperties &props)
+void Dropdown::resolveStyle()
+{
+    resolveBaseStyle(ComponentType::DROPDOWN);
+
+    DropdownStyleProperties resolved = Style::instance().getDropdownStyle(ComponentType::DROPDOWN, getClasses(), effectiveGuiState());
+    if (m_ddProps.apply(resolved)) {
+        markDirty();
+    }
+}
+
+bool Dropdown::setDropdownProperties(const DropdownStylePropertiesArgs &props)
 {
     bool changed = m_ddProps.apply(props);
     if (changed) {
@@ -101,12 +115,12 @@ void Dropdown::syncContextMenu()
         return;
     }
 
-    ContextMenuStyleProperties cmProps;
+    ContextMenuStylePropertiesArgs cmProps;
     cmProps.itemHoverBackground = m_ddProps.itemHoverBackground;
     cmProps.separatorColor = m_ddProps.separatorColor;
     m_contextMenu->setContextMenuProperties(cmProps);
 
-    TextStyleProperties textProps;
+    TextStylePropertiesArgs textProps;
     textProps.fontSize = m_ddProps.itemFontSize;
     textProps.textColor = m_ddProps.itemTextColor;
     textProps.textXAlignment = TextXAlignment::LEFT;

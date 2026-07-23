@@ -20,12 +20,10 @@ void ImageButton::resolveStyle()
 {
     resolveBaseStyle(ComponentType::IMAGE_BUTTON);
 
-    auto &style = Style::instance();
-    std::span<const StyleKey> classes = getClasses();
-    ImageStyleProperties oldBaseline = style.getImageStyle(ComponentType::IMAGE_BUTTON, classes, m_lastResolvedGuiState);
-    ImageStyleProperties resolved = style.getImageStyle(ComponentType::IMAGE_BUTTON, classes, effectiveGuiState());
-    reconcileStyleOverrides(oldBaseline, resolved, m_image.getImageStyleProperties(),
-                           [this](const ImageStyleProperties &next) { setImageStyleProperties(next); });
+    ImageStyleProperties resolved = Style::instance().getImageStyle(ComponentType::IMAGE_BUTTON, getClasses(), effectiveGuiState());
+    if (m_image.resolveImageStyle(resolved)) {
+        markDirty();
+    }
 }
 
 void ImageButton::setSvg(std::string svgData)
@@ -52,7 +50,7 @@ AmTextureId ImageButton::getImage() const
     return m_image.getImage();
 }
 
-bool ImageButton::setImageStyleProperties(const ImageStyleProperties &props)
+bool ImageButton::setImageStyleProperties(const ImageStylePropertiesArgs &props)
 {
     bool changed = m_image.setImageStyleProperties(props);
     if (changed) {
