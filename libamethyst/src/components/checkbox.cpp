@@ -8,8 +8,6 @@ namespace Amethyst {
 
 Checkbox::Checkbox()
 {
-    addStructuralClass("checkbox#box");
-
     m_checkIcon = add<ImageLabel>();
     m_checkIcon->setSvg(Icons::CHECK);
     m_checkIcon->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});

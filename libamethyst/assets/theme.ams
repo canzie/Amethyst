@@ -88,14 +88,6 @@ checkbox {
     corner-radius: 2px;
 }
 
-checkbox#box:hover {
-    background-color: #333333;
-}
-
-checkbox#box:active {
-    background-color: #2d3a4a;
-}
-
 dropdown {
     background-color: #3d3d3d;
     highlight-color: #4772b3;

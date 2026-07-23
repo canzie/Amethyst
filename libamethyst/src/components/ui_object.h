@@ -147,13 +147,10 @@ class UIObject : public UIBase2D {
     void addClass(std::string_view name);
 
     /**
-     * @brief Add a class this component owns (e.g. a #part selector) that setClasses()/removeClass()
-     * must never be able to strip. Structural classes sit ahead of the user-facing ones in getClasses().
-     * Intended for a component to call on a Frame/UIObject it composes internally (e.g. TabBar on a
-     * tab's label Frame), not on itself from a subclass constructor.
-     * @param name Class name; interned to a token and recorded for diagnostics
+     * @brief Bind this node as the given named sub-part (e.g. a TabBar's "tab") and re-resolve.
+     * @param part The part this node is bound as
      */
-    void addStructuralClass(std::string_view name);
+    void bindPart(ComponentPart part);
 
     /**
      * @brief Remove a style class from this node and re-resolve.
@@ -179,6 +176,13 @@ class UIObject : public UIBase2D {
      * @param names Class names to apply
      */
     void setClasses(std::initializer_list<std::string_view> names);
+
+    /**
+     * @brief Replace this node's class set with already-interned tokens (e.g. another node's
+     * getClasses()) and re-resolve once.
+     * @param tokens Interned class tokens to apply
+     */
+    void setClasses(std::span<const StyleKey> tokens);
 
     /**
      * @brief Access this node's class tokens.
@@ -225,8 +229,8 @@ class UIObject : public UIBase2D {
   protected:
     BaseProperties m_uiObjProps;
     BaseStyleProperties m_baseStyle;
-    std::vector<StyleKey> m_classes; // [0, m_structuralClassCount) are structural, the rest are user-facing
-    size_t m_structuralClassCount = 0;
+    std::vector<StyleKey> m_classes;
+    ComponentPart m_part = ComponentPart::NONE;
     uint16_t m_guiState = GUI_STATE_NONE;
     uint16_t m_lastResolvedGuiState = GUI_STATE_NONE;
     bool m_renderCulled = false;

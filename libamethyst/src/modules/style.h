@@ -87,9 +87,7 @@ enum class StyleProperty {
     TAB_CLOSE_COLOR,
 
     HEADER_COLOR,
-    HEADER_TRANSPARENCY,
     HEADER_HEIGHT,
-    HEADER_CORNER_RADIUS,
 
     INDICATOR_SIZE,
     INDICATOR_PADDING,
@@ -150,6 +148,18 @@ enum class ComponentType {
 };
 
 /**
+ * @brief Named sub-part of a compositing component (e.g. a TabBar's tab label, a MenuBar's entry),
+ * targetable in a theme via `type#part` or `.class#part`. NONE means "not a part".
+ */
+enum class ComponentPart {
+    NONE,
+    TAB,
+    ENTRY,
+    HEADER,
+    INDICATOR,
+};
+
+/**
  * @brief Interned font-family handle; an index into the Style font-name table.
  */
 struct FontHandle {
@@ -198,157 +208,186 @@ class Style {
     static bool load(const std::filesystem::path &path);
 
     /**
-     * @brief Resolve the base surface style for a component type, class set and pseudo-state.
+     * @brief Resolve the base surface style for a component type, class set, pseudo-state and part.
      *
-     * Starts from the baked type cascade, then layers the matching standalone and
-     * type-qualified class rules in precedence order, then any rules qualified by an
-     * active bit in `state`; the result is a concrete value for every themeable field.
-     * Instance overrides are applied by the caller on top. Resolved sets are cached
-     * per (type, class-set, state).
+     * Starts from the baked type cascade, then layers every matching class/type-class/part/
+     * class-part rule (qualified further by any active bit in `state`) in CSS-style specificity
+     * order; the result is a concrete value for every themeable field. Instance overrides are
+     * applied by the caller on top. Resolved sets are cached per resolved shape.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved base style
      */
-    BaseStyleProperties getBaseStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    BaseStyleProperties getBaseStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE,
+                                     ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the text style for a component type, class set and pseudo-state.
+     * @brief Resolve the text style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved text style, with fontFamily decoded from its handle
      */
-    TextStyleProperties getTextStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    TextStyleProperties getTextStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE,
+                                     ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the scrolling-frame style for a component type, class set and pseudo-state.
+     * @brief Resolve the scrolling-frame style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved scrolling-frame style
      */
     ScrollingFrameStyleProperties getScrollingFrameStyle(ComponentType type, std::span<const StyleKey> classes = {},
-                                                         uint16_t state = GUI_STATE_NONE);
+                                                         uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the slider style for a component type, class set and pseudo-state.
+     * @brief Resolve the slider style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved slider style
      */
-    SliderStyleProperties getSliderStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    SliderStyleProperties getSliderStyle(ComponentType type, std::span<const StyleKey> classes = {},
+                                         uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the drag-widget style for a component type, class set and pseudo-state.
+     * @brief Resolve the drag-widget style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved drag style
      */
-    DragStyleProperties getDragStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    DragStyleProperties getDragStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE,
+                                     ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the tab-bar style for a component type, class set and pseudo-state.
+     * @brief Resolve the tab-bar style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved tab-bar style
      */
-    TabBarStyleProperties getTabBarStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    TabBarStyleProperties getTabBarStyle(ComponentType type, std::span<const StyleKey> classes = {},
+                                         uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the table style for a component type, class set and pseudo-state.
+     * @brief Resolve the table style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved table style
      */
-    TableStyleProperties getTableStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    TableStyleProperties getTableStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE,
+                                       ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the tree-view style for a component type, class set and pseudo-state.
+     * @brief Resolve the tree-view style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved tree-view style
      */
-    TreeViewStyleProperties getTreeViewStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    TreeViewStyleProperties getTreeViewStyle(ComponentType type, std::span<const StyleKey> classes = {},
+                                             uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the checkbox style for a component type, class set and pseudo-state.
+     * @brief Resolve the checkbox style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved checkbox style
      */
-    CheckboxStyleProperties getCheckboxStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    CheckboxStyleProperties getCheckboxStyle(ComponentType type, std::span<const StyleKey> classes = {},
+                                             uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the collapsible-header style for a component type, class set and pseudo-state.
+     * @brief Resolve the collapsible-header style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved collapsible-header style
      */
     CollapsibleHeaderStyleProperties getCollapsibleHeaderStyle(ComponentType type, std::span<const StyleKey> classes = {},
-                                                               uint16_t state = GUI_STATE_NONE);
+                                                               uint16_t state = GUI_STATE_NONE,
+                                                               ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the text-input style for a component type, class set and pseudo-state.
+     * @brief Resolve the text-input style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved text-input style, with the text sub-style populated
      */
-    TextInputStyleProperties getTextInputStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    TextInputStyleProperties getTextInputStyle(ComponentType type, std::span<const StyleKey> classes = {},
+                                               uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the image tint style for a component type, class set and pseudo-state.
+     * @brief Resolve the image tint style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved image style
      */
-    ImageStyleProperties getImageStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    ImageStyleProperties getImageStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE,
+                                       ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the menu-bar style for a component type, class set and pseudo-state.
+     * @brief Resolve the menu-bar style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved menu-bar style
      */
-    MenuBarStyleProperties getMenuBarStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    MenuBarStyleProperties getMenuBarStyle(ComponentType type, std::span<const StyleKey> classes = {},
+                                           uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the spline style for a component type, class set and pseudo-state.
+     * @brief Resolve the spline style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved spline style
      */
-    SplineStyleProperties getSplineStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    SplineStyleProperties getSplineStyle(ComponentType type, std::span<const StyleKey> classes = {},
+                                         uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the context-menu style for a component type, class set and pseudo-state.
+     * @brief Resolve the context-menu style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved context-menu style
      */
     ContextMenuStyleProperties getContextMenuStyle(ComponentType type, std::span<const StyleKey> classes = {},
-                                                   uint16_t state = GUI_STATE_NONE);
+                                                   uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
-     * @brief Resolve the dropdown style for a component type, class set and pseudo-state.
+     * @brief Resolve the dropdown style for a component type, class set, pseudo-state and part.
      * @param type Component type whose inheritance chain is walked
      * @param classes Class hashes carried by the node, in any order
      * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
      * @return Fully-resolved dropdown style
      */
-    DropdownStyleProperties getDropdownStyle(ComponentType type, std::span<const StyleKey> classes = {}, uint16_t state = GUI_STATE_NONE);
+    DropdownStyleProperties getDropdownStyle(ComponentType type, std::span<const StyleKey> classes = {},
+                                             uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
      * @brief Hash a class name to its token. Stateless; safe without a loaded theme.
@@ -387,17 +426,18 @@ class Style {
     void addTypeValue(ComponentType type, StyleProperty prop, const StyleValue &value);
 
     /**
-     * @brief Add a property value to a standalone class scope. Parser-facing.
+     * @brief Add a property value to a standalone class rule (.class). Parser-facing.
      * @param classToken Token of the class the rule targets
      * @param order Theme source order of the rule, used to break multi-class ties
      * @param prop Property being set
      * @param value Parsed value
      * @param state Single GuiState bit the rule is qualified by (GUI_STATE_NONE for an unqualified rule)
      */
-    void addClassValue(StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value, uint16_t state = GUI_STATE_NONE);
+    void addClassRule(StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value,
+                      uint16_t state = GUI_STATE_NONE);
 
     /**
-     * @brief Add a property value to a type-qualified class scope (type.class). Parser-facing.
+     * @brief Add a property value to a type-qualified class rule (type.class). Parser-facing.
      * @param type Component type the rule is qualified by
      * @param classToken Token of the class the rule targets
      * @param order Theme source order of the rule, used to break ties
@@ -405,8 +445,37 @@ class Style {
      * @param value Parsed value
      * @param state Single GuiState bit the rule is qualified by (GUI_STATE_NONE for an unqualified rule)
      */
-    void addTypeClassValue(ComponentType type, StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value,
+    void addTypeClassRule(ComponentType type, StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value,
                           uint16_t state = GUI_STATE_NONE);
+
+    /**
+     * @brief Add a property value to a part rule (type#part). Parser-facing.
+     * @param part Part the rule targets
+     * @param order Theme source order of the rule, used to break ties
+     * @param prop Property being set
+     * @param value Parsed value
+     * @param state Single GuiState bit the rule is qualified by (GUI_STATE_NONE for an unqualified rule)
+     */
+    void addPartRule(ComponentPart part, uint32_t order, StyleProperty prop, const StyleValue &value,
+                     uint16_t state = GUI_STATE_NONE);
+
+    /**
+     * @brief Add a property value to a class-qualified part rule (.class#part). Parser-facing.
+     * @param classToken Token of the class the rule targets
+     * @param part Part the rule targets
+     * @param order Theme source order of the rule, used to break ties
+     * @param prop Property being set
+     * @param value Parsed value
+     * @param state Single GuiState bit the rule is qualified by (GUI_STATE_NONE for an unqualified rule)
+     */
+    void addClassPartRule(StyleKey classToken, ComponentPart part, uint32_t order, StyleProperty prop, const StyleValue &value,
+                          uint16_t state = GUI_STATE_NONE);
+
+    /**
+     * @brief Get the theme section-name to part map, for `#part` selector segments.
+     * @return Map from part name string to ComponentPart
+     */
+    static const std::unordered_map<std::string, ComponentPart> &getPartNames();
 
     /**
      * @brief Drop the baked type sets and merge cache after the theme is mutated.
@@ -427,62 +496,75 @@ class Style {
     static const std::unordered_map<std::string, ComponentType> &getComponentTypeNames();
 
   private:
-    static uint64_t typeClassKey(ComponentType type, StyleKey classToken);
-
     const DenseSet &bakedFor(ComponentType type);
-    const DenseSet &resolveSet(ComponentType type, std::span<const StyleKey> classes, uint16_t state);
+    const DenseSet &resolveSet(ComponentType type, std::span<const StyleKey> classes, uint16_t state, ComponentPart part);
     void buildDefaults();
+
+    /**
+     * @brief Declarations authored by a single rule, plus its source order for tie-breaking.
+     */
+    struct Rule {
+        SparseSet decls;
+        uint32_t order = 0;
+    };
+
+    struct ClassKey {
+        StyleKey cls;
+        uint16_t state;
+        bool operator==(const ClassKey &) const = default;
+    };
+    struct ClassKeyHash {
+        size_t operator()(const ClassKey &k) const;
+    };
+
+    struct TypeClassKey {
+        ComponentType type;
+        StyleKey cls;
+        uint16_t state;
+        bool operator==(const TypeClassKey &) const = default;
+    };
+    struct TypeClassKeyHash {
+        size_t operator()(const TypeClassKey &k) const;
+    };
+
+    struct PartKey {
+        ComponentPart part;
+        uint16_t state;
+        bool operator==(const PartKey &) const = default;
+    };
+    struct PartKeyHash {
+        size_t operator()(const PartKey &k) const;
+    };
+
+    struct ClassPartKey {
+        StyleKey cls;
+        ComponentPart part;
+        uint16_t state;
+        bool operator==(const ClassPartKey &) const = default;
+    };
+    struct ClassPartKeyHash {
+        size_t operator()(const ClassPartKey &k) const;
+    };
 
     struct CacheKey {
         ComponentType type;
         std::vector<StyleKey> classes; // sorted
         uint16_t state = GUI_STATE_NONE;
+        ComponentPart part = ComponentPart::NONE;
         bool operator==(const CacheKey &) const = default;
     };
     struct CacheKeyHash {
         size_t operator()(const CacheKey &k) const;
     };
 
-    /**
-     * @brief Key for a class rule qualified by a single pseudo-state bit.
-     */
-    struct ClassPseudoKey {
-        StyleKey classToken;
-        uint16_t state;
-        bool operator==(const ClassPseudoKey &) const = default;
-    };
-    struct ClassPseudoKeyHash {
-        size_t operator()(const ClassPseudoKey &k) const;
-    };
-
-    /**
-     * @brief Key for a type-qualified class rule (type.class) further qualified by a pseudo-state bit.
-     */
-    struct TypeClassPseudoKey {
-        ComponentType type;
-        StyleKey classToken;
-        uint16_t state;
-        bool operator==(const TypeClassPseudoKey &) const = default;
-    };
-    struct TypeClassPseudoKeyHash {
-        size_t operator()(const TypeClassPseudoKey &k) const;
-    };
-
     DenseSet m_defaults;
     std::unordered_map<ComponentType, SparseSet> m_rawType;
-    std::unordered_map<ComponentType, DenseSet> m_typeResolved; // lazily baked
+    std::unordered_map<ComponentType, DenseSet> m_typeBaked; // lazily baked
 
-    std::unordered_map<StyleKey, SparseSet> m_classSets;
-    std::unordered_map<StyleKey, uint32_t> m_classOrder;
-    std::unordered_map<uint64_t, SparseSet> m_typeClassSets; // key = typeClassKey(type, classHash)
-    std::unordered_map<uint64_t, uint32_t> m_typeClassOrder;
-
-    // Pseudo-qualified variants; only ever consulted when resolveSet() is called with a nonzero state,
-    // so idle (the common case) never touches these maps.
-    std::unordered_map<ClassPseudoKey, SparseSet, ClassPseudoKeyHash> m_classPseudoSets;
-    std::unordered_map<ClassPseudoKey, uint32_t, ClassPseudoKeyHash> m_classPseudoOrder;
-    std::unordered_map<TypeClassPseudoKey, SparseSet, TypeClassPseudoKeyHash> m_typeClassPseudoSets;
-    std::unordered_map<TypeClassPseudoKey, uint32_t, TypeClassPseudoKeyHash> m_typeClassPseudoOrder;
+    std::unordered_map<ClassKey, Rule, ClassKeyHash> m_classRules;             // .class            / .class:pseudo
+    std::unordered_map<TypeClassKey, Rule, TypeClassKeyHash> m_typeClassRules; // type.class        / type.class:pseudo
+    std::unordered_map<PartKey, Rule, PartKeyHash> m_partRules;                // type#part         / type#part:pseudo
+    std::unordered_map<ClassPartKey, Rule, ClassPartKeyHash> m_classPartRules; // .class#part       / .class#part:pseudo
 
     std::vector<std::string> m_fontNames;
     std::unordered_map<std::string, uint32_t> m_fontIndex;

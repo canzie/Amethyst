@@ -248,9 +248,6 @@ template <FieldShape Shape> struct CollapsibleHeaderStyleFields {
     F<bool> expanded{};
     F<TextStyleProperties> titleStyle{};
     F<float> headerHeight{};
-    F<Color3> headerColor{};
-    F<float> headerTransparency{};
-    F<float> headerCornerRadius{};
     F<bool> showIndicator{};
     F<float> indicatorSize{};
     F<float> indicatorPadding{};

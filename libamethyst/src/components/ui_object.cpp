@@ -88,10 +88,17 @@ void UIObject::setGuiState(uint16_t state)
 
 void UIObject::resolveBaseStyle(ComponentType type)
 {
-    BaseStyleProperties resolved = Style::instance().getBaseStyle(type, getClasses(), effectiveGuiState());
+    BaseStyleProperties resolved = Style::instance().getBaseStyle(type, getClasses(), effectiveGuiState(), m_part);
     if (m_baseStyle.apply(resolved)) {
         markDirty();
     }
+}
+
+void UIObject::bindPart(ComponentPart part)
+{
+    m_part = part;
+    resolveStyle();
+    markDirty();
 }
 
 void UIObject::addClass(std::string_view name)
@@ -108,8 +115,7 @@ void UIObject::addClass(std::string_view name)
 void UIObject::removeClass(std::string_view name)
 {
     StyleKey token = Style::classToken(name);
-    auto begin = m_classes.begin() + static_cast<ptrdiff_t>(m_structuralClassCount);
-    auto it = std::find(begin, m_classes.end(), token);
+    auto it = std::ranges::find(m_classes, token);
     if (it != m_classes.end()) {
         m_classes.erase(it);
     }
@@ -125,7 +131,7 @@ bool UIObject::hasClass(std::string_view name) const
 
 void UIObject::setClasses(std::span<const std::string> names)
 {
-    m_classes.erase(m_classes.begin() + static_cast<ptrdiff_t>(m_structuralClassCount), m_classes.end());
+    m_classes.clear();
     for (const auto &name : names) {
         StyleKey token = Style::classToken(name);
         if (std::ranges::find(m_classes, token) == m_classes.end()) {
@@ -139,7 +145,7 @@ void UIObject::setClasses(std::span<const std::string> names)
 
 void UIObject::setClasses(std::initializer_list<std::string_view> names)
 {
-    m_classes.erase(m_classes.begin() + static_cast<ptrdiff_t>(m_structuralClassCount), m_classes.end());
+    m_classes.clear();
     for (std::string_view name : names) {
         StyleKey token = Style::classToken(name);
         if (std::ranges::find(m_classes, token) == m_classes.end()) {
@@ -151,15 +157,9 @@ void UIObject::setClasses(std::initializer_list<std::string_view> names)
     markDirty();
 }
 
-void UIObject::addStructuralClass(std::string_view name)
+void UIObject::setClasses(std::span<const StyleKey> tokens)
 {
-    StyleKey token = Style::classToken(name);
-    auto begin = m_classes.begin() + static_cast<ptrdiff_t>(m_structuralClassCount);
-    if (std::find(m_classes.begin(), begin, token) == begin) {
-        m_classes.insert(begin, token);
-        ++m_structuralClassCount;
-        Style::instance().registerClassName(token, name);
-    }
+    m_classes.assign(tokens.begin(), tokens.end());
     resolveStyle();
     markDirty();
 }

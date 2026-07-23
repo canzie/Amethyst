@@ -365,10 +365,6 @@ CheckboxStyleProperties::operator CheckboxStylePropertiesArgs() const
 bool CollapsibleHeaderStyleProperties::apply(const CollapsibleHeaderStyleProperties &src)
 {
     bool changed = false;
-    AM_APPLY_PLAIN(headerHeight)
-    AM_APPLY_PLAIN(headerColor)
-    AM_APPLY_PLAIN(headerTransparency)
-    AM_APPLY_PLAIN(headerCornerRadius)
     AM_APPLY_PLAIN(indicatorSize)
     AM_APPLY_PLAIN(indicatorPadding)
     AM_APPLY_PLAIN(indicatorColor)
@@ -383,9 +379,6 @@ bool CollapsibleHeaderStyleProperties::apply(const CollapsibleHeaderStylePropert
     bool changed = false;
     AM_APPLY_ARGS(expanded)
     AM_APPLY_ARGS(headerHeight)
-    AM_APPLY_ARGS(headerColor)
-    AM_APPLY_ARGS(headerTransparency)
-    AM_APPLY_ARGS(headerCornerRadius)
     AM_APPLY_ARGS(showIndicator)
     AM_APPLY_ARGS(indicatorSize)
     AM_APPLY_ARGS(indicatorPadding)
@@ -402,9 +395,6 @@ CollapsibleHeaderStyleProperties::operator CollapsibleHeaderStylePropertiesArgs(
     AM_TO_ARGS(expanded)
     out.titleStyle = titleStyle;
     AM_TO_ARGS(headerHeight)
-    AM_TO_ARGS(headerColor)
-    AM_TO_ARGS(headerTransparency)
-    AM_TO_ARGS(headerCornerRadius)
     AM_TO_ARGS(showIndicator)
     AM_TO_ARGS(indicatorSize)
     AM_TO_ARGS(indicatorPadding)

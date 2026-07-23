@@ -101,6 +101,7 @@ class TabBar : public UIObject {
     void layoutTabs();
     void layoutContent();
     void markAllTabsDirty();
+    void propagateClassesToTabs();
 
     bool isVertical() const;
     bool shouldShowTabs() const;

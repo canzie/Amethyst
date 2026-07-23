@@ -490,86 +490,18 @@ static std::vector<Decl> s_parseBlock(std::string_view block, Style &style, cons
     return out;
 }
 
-enum class SelectorKind {
-    TYPE,
-    CLASS,
-    TYPE_CLASS,
-    PART,
-    INVALID
-};
-
-struct Selector {
-    SelectorKind kind = SelectorKind::INVALID;
-    ComponentType type = ComponentType::UI_OBJECT;
+/**
+ * @brief Normalized form of one parsed simple selector: `type? .class? #part? :pseudo?`, scanned
+ * left to right. Comma-separated lists are split into simple selectors before this stage.
+ */
+struct SelectorSpec {
+    std::optional<ComponentType> type;
     StyleKey classToken = 0;
     std::string className;
-    std::string_view pseudo;
+    ComponentPart part = ComponentPart::NONE;
+    uint16_t stateBit = GUI_STATE_NONE;
+    bool valid = false;
 };
-
-static Selector s_parseSelector(std::string_view sel)
-{
-    Selector out;
-    sel = s_trim(sel);
-
-    size_t colon = sel.find(':');
-    if (colon != std::string_view::npos) {
-        out.pseudo = s_trim(sel.substr(colon + 1));
-        sel = s_trim(sel.substr(0, colon));
-    }
-    if (sel.empty()) {
-        return out;
-    }
-
-    const auto &typeNames = Style::getComponentTypeNames();
-
-    if (sel[0] == '.') {
-        std::string name(s_trim(sel.substr(1)));
-        out.kind = SelectorKind::CLASS;
-        out.classToken = Style::classToken(name);
-        out.className = name;
-        return out;
-    }
-
-    size_t hash = sel.find('#');
-    if (hash != std::string_view::npos) {
-        std::string_view typePart = s_trim(sel.substr(0, hash));
-        auto typeIt = typeNames.find(std::string(typePart));
-        if (typeIt == typeNames.end()) {
-            AM_LOG_WARN("Unknown component type in selector: {}", std::string(typePart));
-            return out;
-        }
-        out.kind = SelectorKind::PART;
-        out.type = typeIt->second;
-        out.classToken = Style::classToken(sel);
-        out.className = std::string(sel);
-        return out;
-    }
-
-    size_t dot = sel.find('.');
-    if (dot != std::string_view::npos) {
-        std::string_view typePart = s_trim(sel.substr(0, dot));
-        std::string name(s_trim(sel.substr(dot + 1)));
-        auto typeIt = typeNames.find(std::string(typePart));
-        if (typeIt == typeNames.end()) {
-            AM_LOG_WARN("Unknown component type in selector: {}", std::string(typePart));
-            return out;
-        }
-        out.kind = SelectorKind::TYPE_CLASS;
-        out.type = typeIt->second;
-        out.classToken = Style::classToken(name);
-        out.className = name;
-        return out;
-    }
-
-    auto typeIt = typeNames.find(std::string(sel));
-    if (typeIt == typeNames.end()) {
-        AM_LOG_WARN("Unknown component type in selector: {}", std::string(sel));
-        return out;
-    }
-    out.kind = SelectorKind::TYPE;
-    out.type = typeIt->second;
-    return out;
-}
 
 static bool s_parsePseudoState(std::string_view name, uint16_t &out)
 {
@@ -589,47 +521,152 @@ static bool s_parsePseudoState(std::string_view name, uint16_t &out)
     return true;
 }
 
-static void s_applySelector(const Selector &sel, const std::vector<Decl> &decls, Style &style, uint32_t &order)
+static SelectorSpec s_parseSelector(std::string_view sel)
 {
-    uint16_t pseudoState = GUI_STATE_NONE;
-    if (!sel.pseudo.empty()) {
-        if (!s_parsePseudoState(sel.pseudo, pseudoState)) {
-            AM_LOG_WARN("Unknown pseudo-state ':{}'; skipping rule", std::string(sel.pseudo));
-            return;
+    SelectorSpec out;
+    sel = s_trim(sel);
+    if (sel.empty()) {
+        AM_LOG_WARN("Empty selector");
+        return out;
+    }
+
+    const auto &typeNames = Style::getComponentTypeNames();
+
+    size_t typeEnd = sel.find_first_of(".#:");
+    std::string_view typePart = sel.substr(0, typeEnd);
+    size_t i = typeEnd == std::string_view::npos ? sel.size() : typeEnd;
+
+    if (!typePart.empty()) {
+        auto typeIt = typeNames.find(std::string(typePart));
+        if (typeIt == typeNames.end()) {
+            AM_LOG_WARN("Unknown component type in selector: {}", std::string(typePart));
+            return out;
         }
-        if (sel.kind == SelectorKind::TYPE) {
-            AM_LOG_WARN("Pseudo-states are not supported on bare type selectors; use a class or #part instead: ':{}'",
-                       std::string(sel.pseudo));
-            return;
+        out.type = typeIt->second;
+    }
+
+    bool sawClass = false;
+    bool sawPart = false;
+    bool sawPseudo = false;
+    std::string_view pseudoName;
+
+    while (i < sel.size()) {
+        char sigil = sel[i];
+        size_t segStart = i + 1;
+        size_t segEnd = sel.find_first_of(".#:", segStart);
+        std::string_view seg = sel.substr(segStart, (segEnd == std::string_view::npos ? sel.size() : segEnd) - segStart);
+        i = segEnd == std::string_view::npos ? sel.size() : segEnd;
+
+        if (seg.empty()) {
+            AM_LOG_WARN("Malformed selector segment in: {}", std::string(sel));
+            return out;
+        }
+
+        if (sigil == '.') {
+            if (sawClass) {
+                AM_LOG_WARN("Selector names more than one class: {}", std::string(sel));
+                return out;
+            }
+            sawClass = true;
+            out.className = std::string(seg);
+            out.classToken = Style::classToken(out.className);
+        } else if (sigil == '#') {
+            if (sawPart) {
+                AM_LOG_WARN("Selector names more than one part: {}", std::string(sel));
+                return out;
+            }
+            sawPart = true;
+            const auto &partNames = Style::getPartNames();
+            auto partIt = partNames.find(std::string(seg));
+            if (partIt == partNames.end()) {
+                AM_LOG_WARN("Unknown part name in selector: {}", std::string(seg));
+                return out;
+            }
+            out.part = partIt->second;
+        } else { // ':'
+            if (sawPseudo) {
+                AM_LOG_WARN("Chained pseudo-states are not supported: {}", std::string(sel));
+                return out;
+            }
+            sawPseudo = true;
+            pseudoName = seg;
         }
     }
 
-    switch (sel.kind) {
-    case SelectorKind::TYPE:
-        for (const auto &[prop, value] : decls) {
-            style.addTypeValue(sel.type, prop, value);
+    if (sawPseudo) {
+        if (!s_parsePseudoState(pseudoName, out.stateBit)) {
+            AM_LOG_WARN("Unknown pseudo-state ':{}'; skipping rule", std::string(pseudoName));
+            return out;
         }
-        break;
-    case SelectorKind::CLASS:
-    case SelectorKind::PART: {
+        if (!sawClass && !sawPart) {
+            AM_LOG_WARN("Pseudo-states are not supported on bare type selectors; use a class or #part instead: ':{}'",
+                        std::string(pseudoName));
+            return out;
+        }
+    }
+
+    if (!out.type.has_value() && !sawClass && !sawPart) {
+        AM_LOG_WARN("Selector names no type, class or part: {}", std::string(sel));
+        return out;
+    }
+
+    out.valid = true;
+    return out;
+}
+
+static void s_applySelector(const SelectorSpec &sel, const std::vector<Decl> &decls, Style &style, uint32_t &order)
+{
+    if (!sel.valid) {
+        return;
+    }
+
+    bool hasType = sel.type.has_value();
+    bool hasClass = sel.classToken != 0;
+    bool hasPart = sel.part != ComponentPart::NONE;
+
+    if (hasType && !hasClass && !hasPart) {
+        for (const auto &[prop, value] : decls) {
+            style.addTypeValue(*sel.type, prop, value);
+        }
+        return;
+    }
+
+    if (!hasType && hasClass && !hasPart) {
         style.registerClassName(sel.classToken, sel.className);
         uint32_t o = order++;
         for (const auto &[prop, value] : decls) {
-            style.addClassValue(sel.classToken, o, prop, value, pseudoState);
+            style.addClassRule(sel.classToken, o, prop, value, sel.stateBit);
         }
-        break;
+        return;
     }
-    case SelectorKind::TYPE_CLASS: {
+
+    if (hasType && hasClass && !hasPart) {
         style.registerClassName(sel.classToken, sel.className);
         uint32_t o = order++;
         for (const auto &[prop, value] : decls) {
-            style.addTypeClassValue(sel.type, sel.classToken, o, prop, value, pseudoState);
+            style.addTypeClassRule(*sel.type, sel.classToken, o, prop, value, sel.stateBit);
         }
-        break;
+        return;
     }
-    case SelectorKind::INVALID:
-        break;
+
+    if (hasType && !hasClass && hasPart) {
+        uint32_t o = order++;
+        for (const auto &[prop, value] : decls) {
+            style.addPartRule(sel.part, o, prop, value, sel.stateBit);
+        }
+        return;
     }
+
+    if (!hasType && hasClass && hasPart) {
+        style.registerClassName(sel.classToken, sel.className);
+        uint32_t o = order++;
+        for (const auto &[prop, value] : decls) {
+            style.addClassPartRule(sel.classToken, sel.part, o, prop, value, sel.stateBit);
+        }
+        return;
+    }
+
+    AM_LOG_WARN("Unsupported selector combination (type+class+part, or a bare #part)");
 }
 
 static std::string s_stripComments(std::string_view src)
@@ -675,9 +712,11 @@ static Style s_parseSource(std::string_view rawSource)
             break;
         }
 
-        if (src.substr(pos, 9) == "@property" && (pos + 9 >= src.size() || std::isspace(static_cast<unsigned char>(src[pos + 9])))) {
+        if (src.substr(pos, 9) == "@property" &&
+            (pos + 9 >= src.size() || std::isspace(static_cast<unsigned char>(src[pos + 9])))) {
             size_t eol = src.find('\n', pos);
-            std::string_view directive = s_trim(src.substr(pos, eol == std::string_view::npos ? std::string_view::npos : eol - pos));
+            std::string_view directive =
+                s_trim(src.substr(pos, eol == std::string_view::npos ? std::string_view::npos : eol - pos));
             std::string_view rest = s_trim(directive.substr(9));
             size_t sep = 0;
             while (sep < rest.size() && !std::isspace(static_cast<unsigned char>(rest[sep]))) {
@@ -717,7 +756,7 @@ static Style s_parseSource(std::string_view rawSource)
             if (selText.empty()) {
                 continue;
             }
-            Selector sel = s_parseSelector(selText);
+            SelectorSpec sel = s_parseSelector(selText);
             s_applySelector(sel, decls, style, order);
         }
     }

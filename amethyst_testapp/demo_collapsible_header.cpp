@@ -109,14 +109,15 @@ int main()
                        .header = {.expanded = true,
                                   .titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
                                   .headerHeight = 32.0f,
-                                  .headerColor = {0.22f, 0.28f, 0.38f},
-                                  .headerCornerRadius = 4.0f,
                                   .indicatorColor = Color4::fromHex(0xffffffff)},
                        .title = "General Settings"},
                       [statusLabel](CollapsibleHeaderScope &ch) {
                           ch.component.onToggled = [statusLabel](bool exp) {
                               statusLabel->setText(std::string("General Settings: ") + (exp ? "expanded" : "collapsed"));
                           };
+                          ch.header([](FrameScope &hf) {
+                              hf.component.setBaseStyleProperties({.backgroundColor = {0.22f, 0.28f, 0.38f}, .cornerRadius = 4.0f});
+                          });
                           ch.textLabel({.base = {.position = UDim2::fromOffset(10.0f, 10.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
                                         .style = {.backgroundTransparency = 1.0f},
                                         .text = {.fontSize = 13.0f,
@@ -143,14 +144,15 @@ int main()
                          .header = {.expanded = false,
                                     .titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
                                     .headerHeight = 32.0f,
-                                    .headerColor = {0.28f, 0.22f, 0.32f},
-                                    .headerCornerRadius = 4.0f,
                                     .indicatorColor = {0.9f, 0.75f, 1.0f, 1.0f}},
                          .title = "Audio"},
                         [statusLabel](CollapsibleHeaderScope &ch) {
                             ch.component.onToggled = [statusLabel](bool exp) {
                                 statusLabel->setText(std::string("Audio: ") + (exp ? "expanded" : "collapsed"));
                             };
+                            ch.header([](FrameScope &hf) {
+                                hf.component.setBaseStyleProperties({.backgroundColor = {0.28f, 0.22f, 0.32f}, .cornerRadius = 4.0f});
+                            });
                             ch.textLabel(
                                 {.base = {.position = UDim2::fromOffset(10.0f, 10.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
                                  .style = {.backgroundTransparency = 1.0f},
@@ -179,8 +181,6 @@ int main()
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                          .header = {.titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
                                     .headerHeight = 32.0f,
-                                    .headerColor = {0.2f, 0.32f, 0.25f},
-                                    .headerCornerRadius = 4.0f,
                                     .indicatorSize = 24.0f,
                                     .indicatorColor = {0.6f, 1.0f, 0.7f, 1.0f}},
                          .title = "Graphics"},
@@ -188,6 +188,9 @@ int main()
                             ch.component.onToggled = [statusLabel](bool exp) {
                                 statusLabel->setText(std::string("Graphics: ") + (exp ? "expanded" : "collapsed"));
                             };
+                            ch.header([](FrameScope &hf) {
+                                hf.component.setBaseStyleProperties({.backgroundColor = {0.2f, 0.32f, 0.25f}, .cornerRadius = 4.0f});
+                            });
                             ch.table({.base = {.position = UDim2::fromOffset(5.0f, 5.0f), .size = {1.0f, -10.0f, 0.0f, 224.0f}},
                                       .table = {.rowHeight = 28.0f,
                                                 .cellPadding = UDim4{{0.0f, 2.0f}, {0.0f, 8.0f}, {0.0f, 2.0f}, {0.0f, 8.0f}},
@@ -274,14 +277,15 @@ int main()
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
                          .header = {.titleStyle = {.fontSize = 15.0f, .textColor = {1.0f, 1.0f, 1.0f, 1.0f}},
                                     .headerHeight = 32.0f,
-                                    .headerColor = {0.32f, 0.22f, 0.2f},
-                                    .headerCornerRadius = 4.0f,
                                     .showIndicator = false},
                          .title = "Controls (no indicator)"},
                         [statusLabel](CollapsibleHeaderScope &ch) {
                             ch.component.onToggled = [statusLabel](bool exp) {
                                 statusLabel->setText(std::string("Controls: ") + (exp ? "expanded" : "collapsed"));
                             };
+                            ch.header([](FrameScope &hf) {
+                                hf.component.setBaseStyleProperties({.backgroundColor = {0.32f, 0.22f, 0.2f}, .cornerRadius = 4.0f});
+                            });
                             ch.textLabel(
                                 {.base = {.position = UDim2::fromOffset(10.0f, 10.0f), .size = {1.0f, -20.0f, 0.0f, 24.0f}},
                                  .style = {.backgroundTransparency = 1.0f},
@@ -301,7 +305,7 @@ int main()
                     .collapsibleHeader(
                         {.base = {.layoutOrder = 4u, .size = {1.0f, 0.0f, 0.0f, SHADER_HEIGHT}},
                          .style = {.backgroundColor = {0.16f, 0.16f, 0.18f}, .backgroundTransparency = 0.0f, .cornerRadius = 4.0f},
-                         .header = {.headerHeight = 36.0f, .headerCornerRadius = 4.0f, .indicatorSize = 18.0f}},
+                         .header = {.headerHeight = 36.0f, .indicatorSize = 18.0f}},
                         [statusLabel](CollapsibleHeaderScope &ch) {
                             ch.component.onToggled = [statusLabel](bool exp) {
                                 statusLabel->setText(std::string("Shader Pipeline: ") + (exp ? "expanded" : "collapsed"));
@@ -314,6 +318,7 @@ int main()
                             });
 
                             ch.header([statusLabel](FrameScope &header) {
+                                header.component.setBaseStyleProperties({.cornerRadius = 4.0f});
                                 header.textLabel(
                                     {.base = {.position = {0.0f, 0.0f, 0.0f, 0.0f}, .size = {1.0f, -36.0f, 1.0f, 0.0f}},
                                      .style = {.backgroundTransparency = 1.0f},

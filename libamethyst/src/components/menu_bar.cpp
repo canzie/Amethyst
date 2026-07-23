@@ -30,6 +30,15 @@ void MenuBar::resolveStyle()
     if (m_mbProps.apply(resolved)) {
         markDirty();
     }
+
+    propagateClassesToEntries();
+}
+
+void MenuBar::propagateClassesToEntries()
+{
+    for (auto *entry : m_entries) {
+        entry->setClasses(getClasses());
+    }
 }
 
 Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items)
@@ -48,7 +57,8 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items
     });
     entry->setText(label);
     entry->setButtonProperties({.autoButtonColor = false});
-    entry->addStructuralClass("menu-bar#entry");
+    entry->bindPart(ComponentPart::ENTRY);
+    entry->setClasses(getClasses());
     float estWidth = static_cast<float>(label.size()) * m_mbProps.entryFontSize * 0.6f + 2.0f * m_mbProps.entryPaddingX;
     entry->setBaseProperties({
         .layoutOrder = static_cast<LayoutOrder>(m_entries.size()),

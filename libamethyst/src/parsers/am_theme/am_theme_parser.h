@@ -16,11 +16,12 @@ namespace Amethyst {
  *   text-button.primary, .danger { background-color: #4772b3; corner-radius: 4px; }
  *
  * Selectors: bare type (text-button), .class (.danger), type.class (table.compact),
- * type#part (collapsible-header#header) for built-in sub-elements. A trailing
- * :pseudo qualifies a .class or type#part selector by one of the fixed GuiState
- * bits: :hover, :pressed, :disabled, :focused, :checked, :selected. Pseudo-states
- * are not supported on bare type selectors. When two rules at the same specificity
- * both match the active state, the one declared later in the file wins.
+ * type#part (tab-bar#tab) and .class#part (.primary#tab) for built-in sub-parts of
+ * compositing components. A trailing :pseudo qualifies a .class or #part selector
+ * by one of the fixed GuiState bits: :hover, :pressed, :disabled, :focused, :active.
+ * Pseudo-states are not supported on bare type selectors. When two rules at the
+ * same specificity both match the active state, the one declared later in the file
+ * wins.
  *
  * Variables: an @property directive on its own line binds a name to a literal
  * (@property accent #4772b3), and @name expands to that literal wherever it

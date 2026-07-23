@@ -25,8 +25,6 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_chProps.titleStyle.textXAlignment = TextXAlignment::LEFT;
     m_chProps.titleStyle.textYAlignment = TextYAlignment::CENTER;
     m_chProps.headerHeight = 30.0f;
-    m_chProps.headerTransparency = 0.0f;
-    m_chProps.headerCornerRadius = 0.0f;
     m_chProps.showIndicator = true;
     m_chProps.indicatorSize = 16.0f;
     m_chProps.indicatorPadding = 6.0f;
@@ -37,7 +35,8 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_headerBackground = std::make_unique<Frame>();
     m_headerBackground->parent = this;
     m_headerBackground->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
-    m_headerBackground->addStructuralClass("collapsible-header#header");
+    m_headerBackground->bindPart(ComponentPart::HEADER);
+    m_headerBackground->setClasses(getClasses());
 
     m_headerButton = std::make_unique<InvisibleButton>();
     m_headerButton->parent = this;
@@ -56,6 +55,8 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
         indicator->setSvg(Icons::ARROW);
         m_headerBackground->addChild(std::move(indicator));
     }
+    m_indicator->bindPart(ComponentPart::INDICATOR);
+    m_indicator->setClasses(getClasses());
 
     if (customHeader != nullptr) {
         m_headerContent = customHeader.get();
@@ -64,6 +65,10 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
         auto label = std::make_unique<TextLabel>();
         m_headerContent = label.get();
         m_headerBackground->addChild(std::move(label));
+    }
+    if (auto *lbl = m_headerContent->as<TextLabel>()) {
+        lbl->bindPart(ComponentPart::HEADER);
+        lbl->setClasses(getClasses());
     }
 }
 
@@ -81,6 +86,16 @@ void CollapsibleHeader::resolveStyle()
         Style::instance().getCollapsibleHeaderStyle(ComponentType::COLLAPSIBLE_HEADER, getClasses(), effectiveGuiState());
     if (m_chProps.apply(resolved)) {
         markDirty();
+    }
+
+    if (m_headerBackground) {
+        m_headerBackground->setClasses(getClasses());
+    }
+    if (m_indicator) {
+        m_indicator->setClasses(getClasses());
+    }
+    if (auto *lbl = m_headerContent != nullptr ? m_headerContent->as<TextLabel>() : nullptr) {
+        lbl->setClasses(getClasses());
     }
 }
 
@@ -197,13 +212,6 @@ void CollapsibleHeader::arrangeHeaderBar()
         label->setText(m_title);
         label->setBaseStyleProperties({.backgroundTransparency = 1.0f});
     }
-
-    m_headerBackground->setBaseStyleProperties({
-        .backgroundColor = m_chProps.headerColor,
-        .backgroundTransparency = m_chProps.headerTransparency,
-        .borderPixelSize = 0.0f,
-        .cornerRadius = m_chProps.headerCornerRadius,
-    });
 
     vec4 childClip = computeChildClipRect();
     m_headerBackground->clipRect = childClip;

@@ -52,6 +52,15 @@ void TabBar::resolveStyle()
     if (m_tbProps.apply(resolved)) {
         markDirty();
     }
+
+    propagateClassesToTabs();
+}
+
+void TabBar::propagateClassesToTabs()
+{
+    for (auto &tab : m_tabs) {
+        tab->labelFrame->setClasses(getClasses());
+    }
 }
 
 bool TabBar::setTabBarProperties(const TabBarStylePropertiesArgs &props)
@@ -187,7 +196,8 @@ void TabBar::ensureTabComponents(Tab &tab)
         .size = UDim2::fromScale(1.0f),
     });
     tab.labelFrame = static_cast<Frame *>(tab.button->addChild(std::move(newFrame)));
-    tab.labelFrame->addStructuralClass("tab-bar#tab");
+    tab.labelFrame->bindPart(ComponentPart::TAB);
+    tab.labelFrame->setClasses(getClasses());
     tab.labelFrame->setBaseStyleProperties({.cornerRadius = m_tbProps.tabCornerRadius});
 
     auto closeBtn = std::make_unique<TextButton>();

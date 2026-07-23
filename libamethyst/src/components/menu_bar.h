@@ -37,6 +37,7 @@ class MenuBar : public Frame {
   private:
     void onEntryHovered(Dropdown *entry);
     void onEntryClosed(Dropdown *entry);
+    void propagateClassesToEntries();
 
     std::vector<Dropdown *> m_entries;
     Dropdown *m_openEntry = nullptr;

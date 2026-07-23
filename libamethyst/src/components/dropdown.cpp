@@ -24,7 +24,8 @@ void Dropdown::resolveStyle()
 {
     resolveBaseStyle(ComponentType::DROPDOWN);
 
-    DropdownStyleProperties resolved = Style::instance().getDropdownStyle(ComponentType::DROPDOWN, getClasses(), effectiveGuiState());
+    DropdownStyleProperties resolved =
+        Style::instance().getDropdownStyle(ComponentType::DROPDOWN, getClasses(), effectiveGuiState(), m_part);
     if (m_ddProps.apply(resolved)) {
         markDirty();
     }

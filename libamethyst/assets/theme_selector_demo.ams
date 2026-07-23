@@ -1,0 +1,149 @@
+/* Selector grammar showcase theme.
+ * One section per supported selector combo. Colors are loud and non-overlapping
+ * on purpose so a cascade winner is obvious at a glance. Paired with
+ * demo_selector_showcase.cpp. */
+
+ui-object {
+    background-color: #1a1a1a;
+    background-transparency: 0.0;
+    border-pixel-size: 0px;
+    corner-radius: 4px;
+    font-size: 14px;
+    text-color: #ffffff;
+}
+
+frame {
+    background-color: #262626;
+}
+
+ui-label {
+    background-transparency: 1.0;
+    border-pixel-size: 0px;
+}
+
+ui-button {
+    background-color: #333333;
+    corner-radius: 4px;
+    text-color: #ffffff;
+}
+
+text-button {
+    background-color: #333333;
+    corner-radius: 4px;
+    text-color: #ffffff;
+}
+
+tab-bar {
+    background-color: #202020;
+    tab-width: 130px;
+    bar-thickness: 32px;
+}
+
+menu-bar {
+    background-color: #202020;
+}
+
+collapsible-header {
+    background-color: #262626;
+}
+
+/* --- 1. Bare type selector: `frame` above already colors every unclassed Frame --- */
+
+/* --- 2. Class selector: `.class` --- */
+.class-only {
+    background-color: #ff0000; /* red */
+}
+
+/* --- 3. Type + class selector: `type.class`, scoped to frames only --- */
+frame.type-class-only {
+    background-color: #0000ff; /* blue */
+}
+
+/* --- 4. Comma-separated selector list --- */
+.list-a, .list-b {
+    background-color: #00ffff; /* cyan */
+}
+
+/* --- 5. Pseudo-states on a class: `.class:pseudo` --- */
+.pseudo-demo {
+    background-color: #ff00ff; /* magenta, idle */
+}
+
+.pseudo-demo:hover {
+    background-color: #00ff00; /* green */
+}
+
+.pseudo-demo:pressed {
+    background-color: #ff0000; /* red */
+}
+
+.pseudo-demo:disabled {
+    background-color: #444444; /* grey */
+}
+
+/* --- 6. Part selectors: `type#part`, global to the type, shared by every instance --- */
+tab-bar#tab {
+    background-color: #0000ff; /* blue, idle */
+}
+
+tab-bar#tab:hover {
+    background-color: #00ff00; /* green */
+}
+
+tab-bar#tab:pressed {
+    background-color: #ff0000; /* red */
+}
+
+/* --- 7. Full specificity ladder on one TabBar (class "ladder"), lowest to highest --- */
+.ladder {
+    background-color: #ff8800; /* orange: class only, (0,1,0) */
+}
+
+frame.ladder {
+    background-color: #ffff00; /* yellow: type.class, (0,1,1) */
+}
+
+.ladder#tab {
+    background-color: #00ffff; /* cyan: class#part, (1,1,0) -- wins over tab-bar#tab's blue */
+}
+
+.ladder#tab:hover {
+    background-color: #ffffff; /* white: class#part + pseudo -- wins over tab-bar#tab:hover's green */
+}
+
+/* --- 8. Class#part propagating into a compositing owner's sub-parts (class "showcase") --- */
+.showcase#tab {
+    background-color: #ff00ff; /* magenta background on every tab's frame */
+}
+
+.showcase#tab:hover {
+    background-color: #ff8800; /* orange, distinct from the shared tab-bar#tab:hover green */
+}
+
+.showcase {
+    text-color: #00ff00; /* green text; reaches the tab's nested label because TabBar propagates
+                             its own classes onto it, and the demo gives the label the same class */
+}
+
+/* --- 9. Same class#part pattern on MenuBar's entry part --- */
+menu-bar#entry {
+    background-color: #444444;
+    border-pixel-size: 0px;
+}
+
+.mb-demo#entry {
+    background-color: #ff00ff; /* magenta */
+}
+
+.mb-demo#entry:hover {
+    background-color: #00ffff; /* cyan */
+}
+
+/* --- 10. Same class#part pattern on CollapsibleHeader's header part --- */
+collapsible-header#header {
+    background-color: #444444;
+}
+
+.ch-demo#header {
+    background-color: #ffff00; /* yellow */
+}

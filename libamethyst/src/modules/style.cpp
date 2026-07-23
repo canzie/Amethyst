@@ -85,53 +85,63 @@ void Style::registerClassName(StyleKey token, std::string_view name)
     }
 }
 
-uint64_t Style::typeClassKey(ComponentType type, StyleKey classToken)
-{
-    return (static_cast<uint64_t>(type) << 32) | classToken;
-}
-
 void Style::addTypeValue(ComponentType type, StyleProperty prop, const StyleValue &value)
 {
     m_rawType[type].push_back({prop, value});
 }
 
-void Style::addClassValue(StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value, uint16_t state)
+void Style::addClassRule(StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value, uint16_t state)
 {
-    if (state == GUI_STATE_NONE) {
-        m_classSets[classToken].push_back({prop, value});
-        m_classOrder[classToken] = order;
-        return;
-    }
-    ClassPseudoKey key{classToken, state};
-    m_classPseudoSets[key].push_back({prop, value});
-    m_classPseudoOrder[key] = order;
+    Rule &rule = m_classRules[ClassKey{classToken, state}];
+    rule.decls.push_back({prop, value});
+    rule.order = order;
 }
 
-void Style::addTypeClassValue(ComponentType type, StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value,
-                              uint16_t state)
+void Style::addTypeClassRule(ComponentType type, StyleKey classToken, uint32_t order, StyleProperty prop, const StyleValue &value,
+                             uint16_t state)
 {
-    if (state == GUI_STATE_NONE) {
-        uint64_t key = typeClassKey(type, classToken);
-        m_typeClassSets[key].push_back({prop, value});
-        m_typeClassOrder[key] = order;
-        return;
-    }
-    TypeClassPseudoKey key{type, classToken, state};
-    m_typeClassPseudoSets[key].push_back({prop, value});
-    m_typeClassPseudoOrder[key] = order;
+    Rule &rule = m_typeClassRules[TypeClassKey{type, classToken, state}];
+    rule.decls.push_back({prop, value});
+    rule.order = order;
+}
+
+void Style::addPartRule(ComponentPart part, uint32_t order, StyleProperty prop, const StyleValue &value, uint16_t state)
+{
+    Rule &rule = m_partRules[PartKey{part, state}];
+    rule.decls.push_back({prop, value});
+    rule.order = order;
+}
+
+void Style::addClassPartRule(StyleKey classToken, ComponentPart part, uint32_t order, StyleProperty prop, const StyleValue &value,
+                             uint16_t state)
+{
+    Rule &rule = m_classPartRules[ClassPartKey{classToken, part, state}];
+    rule.decls.push_back({prop, value});
+    rule.order = order;
+}
+
+const std::unordered_map<std::string, ComponentPart> &Style::getPartNames()
+{
+    static const std::unordered_map<std::string, ComponentPart> names = {
+        {"tab", ComponentPart::TAB},
+        {"entry", ComponentPart::ENTRY},
+        {"header", ComponentPart::HEADER},
+        {"indicator", ComponentPart::INDICATOR},
+    };
+    return names;
 }
 
 void Style::clearResolved()
 {
-    m_typeResolved.clear();
+    m_typeBaked.clear();
     m_lru.clear();
     m_cacheIndex.clear();
 }
 
 const DenseSet &Style::bakedFor(ComponentType type)
 {
-    auto found = m_typeResolved.find(type);
-    if (found != m_typeResolved.end()) {
+    auto found = m_typeBaked.find(type);
+    if (found != m_typeBaked.end()) {
         return found->second;
     }
 
@@ -144,13 +154,13 @@ const DenseSet &Style::bakedFor(ComponentType type)
         }
     }
 
-    auto [inserted, _] = m_typeResolved.emplace(type, std::move(d));
+    auto [inserted, _] = m_typeBaked.emplace(type, std::move(d));
     return inserted->second;
 }
 
-const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> classes, uint16_t state, ComponentPart part)
 {
-    if (classes.empty()) {
+    if (classes.empty() && part == ComponentPart::NONE) {
         return bakedFor(type);
     }
 
@@ -159,6 +169,7 @@ const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> 
     key.classes.assign(classes.begin(), classes.end());
     std::sort(key.classes.begin(), key.classes.end());
     key.state = state;
+    key.part = part;
 
     auto cached = m_cacheIndex.find(key);
     if (cached != m_cacheIndex.end()) {
@@ -168,70 +179,75 @@ const DenseSet &Style::resolveSet(ComponentType type, std::span<const StyleKey> 
 
     DenseSet d = bakedFor(type);
 
+    // Specificity triple (a, b, c): a = parts, b = classes+pseudos, c = types. Later application wins,
+    // so contributors are gathered here and applied in ascending specificity order below.
     struct Contributor {
-        int tier;
-        int pseudoRank; // 0 = unqualified rule, 1 = pseudo-qualified rule (wins ties within the same tier)
-        int depth;
+        int a;
+        int b;
+        int c;
+        int depth; // type-hierarchy derivedness; only meaningful for type-qualified contributors
         uint32_t order;
         const SparseSet *set;
     };
     std::vector<Contributor> contributors;
 
-    for (StyleKey c : classes) {
-        auto it = m_classSets.find(c);
-        if (it != m_classSets.end()) {
-            contributors.push_back({1, 0, 0, m_classOrder[c], &it->second});
-        }
-    }
-
     std::span<const ComponentType> hierarchy = getTypeHierarchy(type);
-    for (StyleKey c : classes) {
-        for (size_t i = 0; i < hierarchy.size(); ++i) {
-            uint64_t tcKey = typeClassKey(hierarchy[i], c);
-            auto it = m_typeClassSets.find(tcKey);
-            if (it != m_typeClassSets.end()) {
-                int depth = static_cast<int>(hierarchy.size() - 1 - i);
-                contributors.push_back({2, 0, depth, m_typeClassOrder[tcKey], &it->second});
+
+    // Probes only the tokens this node carries (its own classes, its part), never the full rule
+    // tables, so per-node cost is independent of theme size.
+    auto gatherForState = [&](uint16_t st, int pseudoBonus) {
+        for (StyleKey cls : classes) {
+            auto it = m_classRules.find(ClassKey{cls, st});
+            if (it != m_classRules.end()) {
+                contributors.push_back({0, 1 + pseudoBonus, 0, 0, it->second.order, &it->second.decls});
             }
         }
-    }
-
-    // Pseudo-qualified rules: walk each active bit individually since a rule only ever names one state,
-    // so "hovered and pressed at once" still matches both an authored :hover and :pressed rule.
-    for (uint16_t remaining = state; remaining != GUI_STATE_NONE;) {
-        uint16_t bit = static_cast<uint16_t>(remaining & static_cast<uint16_t>(-static_cast<int16_t>(remaining)));
-        remaining = static_cast<uint16_t>(remaining & ~bit);
-
-        for (StyleKey c : classes) {
-            ClassPseudoKey pk{c, bit};
-            auto it = m_classPseudoSets.find(pk);
-            if (it != m_classPseudoSets.end()) {
-                contributors.push_back({1, 1, 0, m_classPseudoOrder[pk], &it->second});
-            }
-        }
-        for (StyleKey c : classes) {
+        for (StyleKey cls : classes) {
             for (size_t i = 0; i < hierarchy.size(); ++i) {
-                TypeClassPseudoKey tpk{hierarchy[i], c, bit};
-                auto it = m_typeClassPseudoSets.find(tpk);
-                if (it != m_typeClassPseudoSets.end()) {
+                auto it = m_typeClassRules.find(TypeClassKey{hierarchy[i], cls, st});
+                if (it != m_typeClassRules.end()) {
                     int depth = static_cast<int>(hierarchy.size() - 1 - i);
-                    contributors.push_back({2, 1, depth, m_typeClassPseudoOrder[tpk], &it->second});
+                    contributors.push_back({0, 1 + pseudoBonus, 1, depth, it->second.order, &it->second.decls});
                 }
             }
         }
+        if (part != ComponentPart::NONE) {
+            auto it = m_partRules.find(PartKey{part, st});
+            if (it != m_partRules.end()) {
+                contributors.push_back({1, 0 + pseudoBonus, 1, 0, it->second.order, &it->second.decls});
+            }
+            for (StyleKey cls : classes) {
+                auto it2 = m_classPartRules.find(ClassPartKey{cls, part, st});
+                if (it2 != m_classPartRules.end()) {
+                    contributors.push_back({1, 1 + pseudoBonus, 0, 0, it2->second.order, &it2->second.decls});
+                }
+            }
+        }
+    };
+
+    gatherForState(GUI_STATE_NONE, 0);
+    // Walk each active pseudo bit individually so "hovered and pressed at once" matches both an
+    // authored :hover and :pressed rule, each gaining +1 in the b (classes+pseudos) slot.
+    for (uint16_t remaining = state; remaining != GUI_STATE_NONE;) {
+        uint16_t bit = static_cast<uint16_t>(remaining & static_cast<uint16_t>(-static_cast<int16_t>(remaining)));
+        remaining = static_cast<uint16_t>(remaining & ~bit);
+        gatherForState(bit, 1);
     }
 
-    std::sort(contributors.begin(), contributors.end(), [](const Contributor &a, const Contributor &b) {
-        if (a.tier != b.tier) {
-            return a.tier < b.tier;
+    std::sort(contributors.begin(), contributors.end(), [](const Contributor &x, const Contributor &y) {
+        if (x.a != y.a) {
+            return x.a < y.a;
         }
-        if (a.pseudoRank != b.pseudoRank) {
-            return a.pseudoRank < b.pseudoRank;
+        if (x.b != y.b) {
+            return x.b < y.b;
         }
-        if (a.depth != b.depth) {
-            return a.depth < b.depth;
+        if (x.c != y.c) {
+            return x.c < y.c;
         }
-        return a.order < b.order;
+        if (x.depth != y.depth) {
+            return x.depth < y.depth;
+        }
+        return x.order < y.order;
     });
 
     for (const Contributor &c : contributors) {
@@ -254,27 +270,43 @@ size_t Style::CacheKeyHash::operator()(const CacheKey &k) const
         h = h * 1099511628211ull ^ c;
     }
     h = h * 1099511628211ull ^ k.state;
+    h = h * 1099511628211ull ^ static_cast<size_t>(k.part);
     return h;
 }
 
-size_t Style::ClassPseudoKeyHash::operator()(const ClassPseudoKey &k) const
+size_t Style::ClassKeyHash::operator()(const ClassKey &k) const
 {
-    size_t h = std::hash<size_t>{}(k.classToken);
+    size_t h = std::hash<size_t>{}(k.cls);
     h = h * 1099511628211ull ^ k.state;
     return h;
 }
 
-size_t Style::TypeClassPseudoKeyHash::operator()(const TypeClassPseudoKey &k) const
+size_t Style::TypeClassKeyHash::operator()(const TypeClassKey &k) const
 {
     size_t h = std::hash<size_t>{}(static_cast<size_t>(k.type));
-    h = h * 1099511628211ull ^ k.classToken;
+    h = h * 1099511628211ull ^ k.cls;
     h = h * 1099511628211ull ^ k.state;
     return h;
 }
 
-BaseStyleProperties Style::getBaseStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+size_t Style::PartKeyHash::operator()(const PartKey &k) const
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    size_t h = std::hash<size_t>{}(static_cast<size_t>(k.part));
+    h = h * 1099511628211ull ^ k.state;
+    return h;
+}
+
+size_t Style::ClassPartKeyHash::operator()(const ClassPartKey &k) const
+{
+    size_t h = std::hash<size_t>{}(k.cls);
+    h = h * 1099511628211ull ^ static_cast<size_t>(k.part);
+    h = h * 1099511628211ull ^ k.state;
+    return h;
+}
+
+BaseStyleProperties Style::getBaseStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state, ComponentPart part)
+{
+    const DenseSet &d = resolveSet(type, classes, state, part);
     BaseStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_BASE_STYLE_FIELDS(X)
@@ -282,9 +314,9 @@ BaseStyleProperties Style::getBaseStyle(ComponentType type, std::span<const Styl
     return r;
 }
 
-TextStyleProperties Style::getTextStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+TextStyleProperties Style::getTextStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state, ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     TextStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_TEXT_STYLE_FIELDS(X)
@@ -293,9 +325,10 @@ TextStyleProperties Style::getTextStyle(ComponentType type, std::span<const Styl
     return r;
 }
 
-ScrollingFrameStyleProperties Style::getScrollingFrameStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+ScrollingFrameStyleProperties Style::getScrollingFrameStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                                            ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     ScrollingFrameStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_SCROLLING_FRAME_STYLE_FIELDS(X)
@@ -303,9 +336,10 @@ ScrollingFrameStyleProperties Style::getScrollingFrameStyle(ComponentType type, 
     return r;
 }
 
-SliderStyleProperties Style::getSliderStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+SliderStyleProperties Style::getSliderStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                            ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     SliderStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_SLIDER_STYLE_FIELDS(X)
@@ -313,20 +347,21 @@ SliderStyleProperties Style::getSliderStyle(ComponentType type, std::span<const 
     r.thumb.backgroundColor = std::get<Color3>(d[static_cast<size_t>(StyleProperty::THUMB_COLOR)]);
     r.thumb.backgroundTransparency = std::get<float>(d[static_cast<size_t>(StyleProperty::THUMB_TRANSPARENCY)]);
     r.thumb.cornerRadius = std::get<float>(d[static_cast<size_t>(StyleProperty::THUMB_CORNER_RADIUS)]);
-    r.text = getTextStyle(type, classes, state);
+    r.text = getTextStyle(type, classes, state, part);
     return r;
 }
 
-DragStyleProperties Style::getDragStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+DragStyleProperties Style::getDragStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state, ComponentPart part)
 {
     DragStyleProperties r;
-    r.text = getTextStyle(type, classes, state);
+    r.text = getTextStyle(type, classes, state, part);
     return r;
 }
 
-TabBarStyleProperties Style::getTabBarStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+TabBarStyleProperties Style::getTabBarStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                            ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     TabBarStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_TAB_BAR_STYLE_FIELDS(X)
@@ -334,9 +369,9 @@ TabBarStyleProperties Style::getTabBarStyle(ComponentType type, std::span<const 
     return r;
 }
 
-TableStyleProperties Style::getTableStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+TableStyleProperties Style::getTableStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state, ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     TableStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_TABLE_STYLE_FIELDS(X)
@@ -344,9 +379,10 @@ TableStyleProperties Style::getTableStyle(ComponentType type, std::span<const St
     return r;
 }
 
-TreeViewStyleProperties Style::getTreeViewStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+TreeViewStyleProperties Style::getTreeViewStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                                ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     TreeViewStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_TREE_VIEW_STYLE_FIELDS(X)
@@ -354,9 +390,10 @@ TreeViewStyleProperties Style::getTreeViewStyle(ComponentType type, std::span<co
     return r;
 }
 
-CheckboxStyleProperties Style::getCheckboxStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+CheckboxStyleProperties Style::getCheckboxStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                                ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     CheckboxStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_CHECKBOX_STYLE_FIELDS(X)
@@ -364,9 +401,10 @@ CheckboxStyleProperties Style::getCheckboxStyle(ComponentType type, std::span<co
     return r;
 }
 
-CollapsibleHeaderStyleProperties Style::getCollapsibleHeaderStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+CollapsibleHeaderStyleProperties Style::getCollapsibleHeaderStyle(ComponentType type, std::span<const StyleKey> classes,
+                                                                  uint16_t state, ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     CollapsibleHeaderStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_COLLAPSIBLE_HEADER_STYLE_FIELDS(X)
@@ -379,20 +417,21 @@ CollapsibleHeaderStyleProperties Style::getCollapsibleHeaderStyle(ComponentType 
     return r;
 }
 
-TextInputStyleProperties Style::getTextInputStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+TextInputStyleProperties Style::getTextInputStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                                  ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     TextInputStyleProperties r;
-    r.text = getTextStyle(type, classes, state);
+    r.text = getTextStyle(type, classes, state, part);
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_TEXT_INPUT_STYLE_FIELDS(X)
 #undef X
     return r;
 }
 
-ImageStyleProperties Style::getImageStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+ImageStyleProperties Style::getImageStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state, ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     ImageStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_IMAGE_STYLE_FIELDS(X)
@@ -400,9 +439,10 @@ ImageStyleProperties Style::getImageStyle(ComponentType type, std::span<const St
     return r;
 }
 
-MenuBarStyleProperties Style::getMenuBarStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+MenuBarStyleProperties Style::getMenuBarStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                              ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     MenuBarStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_MENU_BAR_STYLE_FIELDS(X)
@@ -410,9 +450,10 @@ MenuBarStyleProperties Style::getMenuBarStyle(ComponentType type, std::span<cons
     return r;
 }
 
-SplineStyleProperties Style::getSplineStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+SplineStyleProperties Style::getSplineStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                            ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     SplineStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_SPLINE_STYLE_FIELDS(X)
@@ -420,9 +461,10 @@ SplineStyleProperties Style::getSplineStyle(ComponentType type, std::span<const 
     return r;
 }
 
-ContextMenuStyleProperties Style::getContextMenuStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+ContextMenuStyleProperties Style::getContextMenuStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                                      ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     ContextMenuStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_CONTEXT_MENU_STYLE_FIELDS(X)
@@ -430,9 +472,10 @@ ContextMenuStyleProperties Style::getContextMenuStyle(ComponentType type, std::s
     return r;
 }
 
-DropdownStyleProperties Style::getDropdownStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state)
+DropdownStyleProperties Style::getDropdownStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                                ComponentPart part)
 {
-    const DenseSet &d = resolveSet(type, classes, state);
+    const DenseSet &d = resolveSet(type, classes, state, part);
     DropdownStyleProperties r;
 #define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
     AM_DROPDOWN_STYLE_FIELDS(X)
