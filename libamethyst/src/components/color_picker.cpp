@@ -1,9 +1,11 @@
 #include "components/color_picker.h"
 
+#include "components/common.h"
 #include "components/extensions/ui_drag_detector.h"
 #include "components/frame.h"
 #include "components/slider.h"
 #include "logging/log.h"
+#include "modules/color.h"
 #include "rendering/draw_context.h"
 
 #include <algorithm>
@@ -42,10 +44,12 @@ static const std::shared_ptr<const Gradient> &s_shadeGradient()
 
 static void s_setupBarSlider(SliderFloat &bar, float *value, const std::function<void(float)> &onChanged)
 {
+    bar.setSliderProperties({.fillColor = Color4::fromRgb(0, 0, 0, 0)});
     bar.value = value;
     bar.min = 0.0f;
     bar.max = 1.0f;
     bar.setFormat("");
+    bar.thumbShape = ShapeKind::CIRCLE;
     bar.onValueChanged = onChanged;
 }
 
@@ -108,6 +112,7 @@ static void s_layoutBar(SliderFloat &bar, std::shared_ptr<const Gradient> gradie
     sliderStyle.thumb.borderColor = Color3(1.0f);
     sliderStyle.thumb.borderTransparency = 0.0f;
     sliderStyle.thumb.cornerRadius = 4.0f;
+    sliderStyle.fillColor = Color4::fromRgb(255, 255, 255, 0);
     bar.setSliderProperties(sliderStyle);
     bar.setBaseStyleProperties({.backgroundColor = Color3::fromGradient(std::move(gradient)), .backgroundTransparency = 0.0f});
     bar.setBaseProperties({
@@ -115,6 +120,7 @@ static void s_layoutBar(SliderFloat &bar, std::shared_ptr<const Gradient> gradie
         .position = UDim2::fromOffset(0.0f, y),
         .size = UDim2::fromOffset(width, BAR_THICKNESS),
     });
+    bar.thumbShape = ShapeKind::CIRCLE;
 }
 
 ColorPicker::ColorPicker()

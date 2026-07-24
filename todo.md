@@ -10,17 +10,10 @@
     
     - the 2 other color picker levels
     
-    - make it so tables and treeviews have their own proper header, this then needs to be hooked up to the style system as parts (header)
-      it should also provide a better way to individually position header labels(could be some kind of arg in the column), and decide color etc. also a way to add separators to the header labels
-      and the ability to resize the columns
-    - table and treeview should get their own scrollbar functionality, i'm kind of against not reusing the scrolling frame but one big issue is not being able
-      to lock the header in place when i just want to scroll the content itself, it should also then show this scrollbar under the header, not next to it.
-      thinking about it more its probably then best to add scrolling frame as a core part of the components, then provide some scroll options, including a component part
-      for ui scope it would be weird to directly provide scrolling frame options (outside of styling), so perhaps we just hide it, make it all automatic. dont think
-      anyone would not want their content to be visible? i guess wether to show the scrollbar or have it be hidden but still allow scrolling should be a bool flag, or we can propegate the auto thingy
-      , yeah can then also be in the style file, under the table/treeview itself? or no in the style ams file it can be under the part maybe? idk i guess we could allow either.
+    - (treeview/table) and the ability to resize the columns
     
     - tab bars custom close button ???
+    
     - context menu: right now context menus are amazing for menu bars and casual dropdowns. but for the asset picker dropdown thing the context menu needs
       to be like 2/3x as tall as a "normal" row/entry, it also needs to display quite a lot of custom stuff, so i guess we need a new type or something that allows customising the content of a menu item
       one question that comes up here, do these need their own custom scrolling? since pressing a dropdown on 100/1000 items shouldnt render all of them at once, that is shit

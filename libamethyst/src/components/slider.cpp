@@ -32,6 +32,7 @@ static void s_setupFill(Frame &fill, float fillWidth, const Slider *slider)
     fill.setBaseStyleProperties({
         .backgroundColor = Color3(fillColor),
         .backgroundTransparency = 1.0f - fillColor.a,
+        .borderTransparency = 1.0f,
         .cornerRadius = slider->getBaseStyleProperties().cornerRadius,
     });
     fill.setBaseProperties({
@@ -179,9 +180,7 @@ void Slider::layoutTrack(float normalizedPos, float thumbWidth, const std::strin
         m_thumb->setGuiState(static_cast<uint16_t>(m_thumb->getGuiState() | GUI_STATE_PRESSED));
     };
     drag->onDragUpdate = [applyFromX](vec2, vec2 position) { applyFromX(position.x); };
-    drag->onDragEnd = [this](vec2) {
-        m_thumb->setGuiState(static_cast<uint16_t>(m_thumb->getGuiState() & ~GUI_STATE_PRESSED));
-    };
+    drag->onDragEnd = [this](vec2) { m_thumb->setGuiState(static_cast<uint16_t>(m_thumb->getGuiState() & ~GUI_STATE_PRESSED)); };
 
     s_setupValueLabel(*m_valueLabel, this, valueText);
 }
