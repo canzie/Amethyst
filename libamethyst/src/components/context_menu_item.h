@@ -46,11 +46,12 @@ class ContextMenuItem {
     using Payload = std::variant<ContextMenuAction, ContextMenuToggle, ContextMenuSeparator, ContextMenuSubmenu, ContextMenuSelect>;
 
     enum class Kind {
-        ACTION,
-        TOGGLE,
-        SEPARATOR,
-        SUBMENU,
-        SELECT
+        ACTION,    // simple fire cb on click
+        TOGGLE,    // checkbox
+        SEPARATOR, // duh
+        SUBMENU,   // pure submenu entry
+        SELECT,    // ???
+        RADIO      // radio button style
     };
 
     std::string label;

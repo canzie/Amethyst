@@ -687,6 +687,7 @@ bool TreeViewStyleProperties::apply(const TreeViewStylePropertiesArgs &src)
     AM_APPLY_ARGS(rowAlternateColor)
     AM_APPLY_ARGS(rowHoverColor)
     AM_APPLY_ARGS(rowSelectedColor)
+    AM_APPLY_ARGS(scrollBarVisibility)
     if (header.apply(src.header)) {
         changed = true;
     }
@@ -715,6 +716,7 @@ TreeViewStyleProperties::operator TreeViewStylePropertiesArgs() const
     AM_TO_ARGS(rowAlternateColor)
     AM_TO_ARGS(rowHoverColor)
     AM_TO_ARGS(rowSelectedColor)
+    AM_TO_ARGS(scrollBarVisibility)
     return out;
 }
 

@@ -18,6 +18,7 @@
 #include "components/frame.h"
 #include "components/input_events.h"
 #include "components/properties.h"
+#include "components/scrolling_frame.h"
 #include "components/text_label.h"
 #include "components/ui_object.h"
 #include "modules/event_signal.h"
@@ -43,6 +44,8 @@ struct TreeColumn {
     float weight = 1.0f;
     float minWidth = 0.0f;
     float maxWidth = 0.0f;
+    TextXAlignment labelAlign = TextXAlignment::LEFT;
+    UDim4 labelPadding{};
 };
 
 struct TreeRow {
@@ -218,7 +221,7 @@ class TreeView : public UIObject {
     void ensurePoolCapacity(uint32_t count);
     void arrangeHeader(const vec4 &childClip);
     void arrangeSeparators(const vec4 &childClip);
-    void arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, const vec4 &childClip);
+    void arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, vec2 bodyOrigin, const vec4 &childClip);
     void attachRowCells(uint32_t poolSlot, uint32_t logicalRow);
     void parkRowCells(uint32_t logicalRow);
     void hideSlot(uint32_t poolSlot);
@@ -245,8 +248,10 @@ class TreeView : public UIObject {
     std::vector<EventConnection> m_rowHoverConns;
     std::vector<EventConnection> m_rowInputConns;
 
-    std::unique_ptr<Frame> m_headerBackground;
-    std::vector<std::unique_ptr<TextLabel>> m_headerLabels;
+    Frame *m_headerBackground = nullptr;
+    std::vector<TextLabel *> m_headerLabels;
+
+    ScrollingFrame *m_scrollFrame = nullptr;
 };
 
 } // namespace Amethyst

@@ -32,8 +32,10 @@ Table::Table()
     m_tProps.showHeader = true;
     m_tProps.headerHeight = 28.0f;
     m_tProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
-    m_tProps.header.fontSize = 14.0f;
-    m_tProps.header.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
+    m_tProps.header.apply(TextStylePropertiesArgs{
+        .fontSize = 14.0f,
+        .textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f},
+    });
     m_tProps.rowBackgroundColor = Color4{0.18f, 0.18f, 0.2f, 1.0f};
     m_tProps.rowAlternateColor = Color4{0.22f, 0.22f, 0.24f, 1.0f};
 

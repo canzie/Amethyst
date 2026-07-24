@@ -36,10 +36,17 @@ TreeView::TreeView()
     m_tvProps.showHeader = false;
     m_tvProps.headerHeight = 28.0f;
     m_tvProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
-    m_tvProps.header.fontSize = 14.0f;
-    m_tvProps.header.textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f};
+    m_tvProps.header.apply(TextStylePropertiesArgs{
+        .fontSize = 14.0f,
+        .textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f},
+    });
+    m_tvProps.scrollBarVisibility = ScrollBarVisibility::AUTO;
 
     resolveStyle();
+
+    m_scrollFrame = add<ScrollingFrame>();
+    m_scrollFrame->propagate(
+        static_cast<InteractionCategory>(INTERACTION_CATEGORY_HOVER | INTERACTION_CATEGORY_CLICK | INTERACTION_CATEGORY_MOVE));
 }
 
 void TreeView::resolveStyle()
@@ -56,12 +63,6 @@ TreeView::~TreeView()
 {
     for (auto &bg : m_rowBackgrounds) {
         bg->parent = nullptr;
-    }
-    if (m_headerBackground) {
-        m_headerBackground->parent = nullptr;
-    }
-    for (auto &lbl : m_headerLabels) {
-        lbl->parent = nullptr;
     }
     for (auto &sep : m_separators) {
         sep->parent = nullptr;
@@ -227,9 +228,6 @@ void TreeView::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentR
     if (flags & FLAG_DIRTY) {
         rebuildVisiblePlan();
     }
-    float rowH = m_tvProps.rowHeight > 0.0f ? m_tvProps.rowHeight : DEFAULT_ROW_HEIGHT;
-    float headerH = static_cast<bool>(m_tvProps.showHeader) ? m_tvProps.headerHeight : 0.0f;
-    absoluteSize.y = headerH + static_cast<float>(m_visible.size()) * rowH;
 }
 
 uint16_t TreeView::depth(uint32_t row) const
@@ -380,14 +378,11 @@ void TreeView::ensureHeaderCapacity()
     uint32_t cols = columnCount();
 
     if (!m_headerBackground) {
-        m_headerBackground = std::make_unique<Frame>();
-        m_headerBackground->parent = this;
+        m_headerBackground = add<Frame>();
     }
 
     while (m_headerLabels.size() < cols) {
-        auto lbl = std::make_unique<TextLabel>();
-        lbl->parent = this;
-        m_headerLabels.push_back(std::move(lbl));
+        m_headerLabels.push_back(add<TextLabel>());
     }
 }
 
@@ -395,7 +390,7 @@ void TreeView::ensurePoolCapacity(uint32_t count)
 {
     while (m_rowBackgrounds.size() < count) {
         auto frame = std::make_unique<Frame>();
-        frame->parent = this;
+        frame->parent = m_scrollFrame;
 
         auto disc = std::make_unique<ImageButton>();
         disc->setSvg(Icons::ARROW);
@@ -452,9 +447,10 @@ void TreeView::arrangeHeader(const vec4 &childClip)
     m_headerBackground->arrange();
 
     for (uint32_t col = 0; col < cols; col++) {
-        TextLabel *lbl = m_headerLabels[col].get();
+        TextLabel *lbl = m_headerLabels[col];
         lbl->setBaseStyleProperties({.backgroundTransparency = 1.0f});
         lbl->setBaseProperties({
+            .padding = m_columns[col].labelPadding,
             .size = UDim2::fromScale(1.0f, 1.0f),
             .visible = true,
             .zIndex = Z_ABOVE_CONTENT,
@@ -462,15 +458,15 @@ void TreeView::arrangeHeader(const vec4 &childClip)
         lbl->setTextStyleProperties({
             .fontSize = m_tvProps.header.fontSize,
             .textColor = m_tvProps.header.textColor,
-            .textXAlignment = TextXAlignment::LEFT,
+            .textXAlignment = m_columns[col].labelAlign,
             .textYAlignment = TextYAlignment::CENTER,
         });
         lbl->setText(m_columns[col].header);
         lbl->clipRect = childClip;
         lbl->markDirty();
 
-        float cellX = m_columnPositions[col] + m_cellPaddingPx.w;
-        float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col] - m_cellPaddingPx.w - m_cellPaddingPx.y;
+        float cellX = m_columnPositions[col];
+        float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col];
 
         lbl->computeAbsolutes({cellWidth, m_tvProps.headerHeight}, absolutePosition + vec2(cellX, 0.0f), absoluteRotation);
         lbl->arrange();
@@ -488,7 +484,7 @@ void TreeView::arrangeSeparators(const vec4 &childClip)
     }
 }
 
-void TreeView::arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, const vec4 &childClip)
+void TreeView::arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, vec2 bodyOrigin, const vec4 &childClip)
 {
     uint32_t cols = columnCount();
     uint32_t visualIndex = visibleIndex;
@@ -516,7 +512,7 @@ void TreeView::arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visib
     });
     bg->clipRect = childClip;
     bg->markDirty();
-    bg->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+    bg->computeAbsolutes({absoluteSize.x, 0.0f}, bodyOrigin, absoluteRotation);
 
     ImageButton *disc = m_disclosures[poolSlot];
     if (!static_cast<bool>(m_tvProps.showDisclosureTriangles) || !m_rows[logicalRow].hasChildren) {
@@ -598,6 +594,7 @@ void TreeView::arrange()
         for (auto &sep : m_separators) {
             sep->setBaseProperties({.visible = false});
         }
+        m_scrollFrame->setBaseProperties({.visible = false});
         return;
     }
 
@@ -622,14 +619,32 @@ void TreeView::arrange()
 
     vec4 childClip = computeChildClipRect();
     float headerH = static_cast<bool>(m_tvProps.showHeader) ? m_tvProps.headerHeight : 0.0f;
+    float totalContentHeight = static_cast<float>(m_visible.size()) * m_rowHeightPx;
 
-    float viewportHeight = childClip.w - childClip.y;
+    m_scrollFrame->setBaseProperties({
+        .position = UDim2(0.0f, 0.0f, 0.0f, headerH),
+        .size = UDim2(1.0f, 0.0f, 1.0f, -headerH),
+        .visible = true,
+    });
+    m_scrollFrame->setScrollingFrameProperties({
+        .scrollBarVisibility = m_tvProps.scrollBarVisibility,
+        .canvasSize = UDim2::fromOffset(0.0f, totalContentHeight),
+    });
+    m_scrollFrame->clipRect = childClip;
+    m_scrollFrame->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+    m_scrollFrame->arrange();
+
+    float viewportHeight = m_scrollFrame->absoluteContentSize.y;
     if (viewportHeight <= 0.0f) {
         return;
     }
 
-    float scrolledY = std::max(0.0f, childClip.y - absolutePosition.y - headerH);
-    uint32_t first = static_cast<uint32_t>(std::floor(scrolledY / m_rowHeightPx));
+    vec2 scrollOffset = m_scrollFrame->getScrollOffset();
+    vec2 bodyOrigin = m_scrollFrame->absolutePosition - vec2(0.0f, scrollOffset.y);
+    vec4 bodyClip = childClip;
+    bodyClip.y = std::max(bodyClip.y, m_scrollFrame->absolutePosition.y);
+
+    uint32_t first = static_cast<uint32_t>(std::floor(scrollOffset.y / m_rowHeightPx));
     uint32_t count = static_cast<uint32_t>(std::ceil(viewportHeight / m_rowHeightPx)) + 2;
     uint32_t totalVisible = static_cast<uint32_t>(m_visible.size());
     if (first > totalVisible) {
@@ -659,8 +674,8 @@ void TreeView::arrange()
         uint32_t logicalRow = m_visible[k];
         attachRowCells(poolSlot, logicalRow);
         m_rowBySlot[poolSlot] = logicalRow;
-        float rowY = headerH + static_cast<float>(k) * m_rowHeightPx;
-        arrangeRow(logicalRow, poolSlot, k, rowY, childClip);
+        float rowY = static_cast<float>(k) * m_rowHeightPx;
+        arrangeRow(logicalRow, poolSlot, k, rowY, bodyOrigin, bodyClip);
     }
 
     for (uint32_t slot = windowCount; slot < m_rowBackgrounds.size(); slot++) {
@@ -674,12 +689,6 @@ void TreeView::draw(DrawContext &ctx)
         return;
     }
 
-    if (m_headerBackground != nullptr) {
-        m_headerBackground->draw(ctx);
-    }
-    for (auto &lbl : m_headerLabels) {
-        lbl->draw(ctx);
-    }
     for (auto &sep : m_separators) {
         sep->draw(ctx);
     }
@@ -736,9 +745,12 @@ void TreeView::hideSlot(uint32_t poolSlot)
 std::vector<Instance *> TreeView::getHittableInstances()
 {
     std::vector<Instance *> result;
-    result.reserve(m_rowBackgrounds.size());
+    result.reserve(m_rowBackgrounds.size() + m_children.size());
     for (auto &bg : m_rowBackgrounds) {
         result.push_back(bg.get());
+    }
+    for (auto &child : m_children) {
+        result.push_back(child.get());
     }
     return result;
 }

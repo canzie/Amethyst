@@ -480,6 +480,7 @@ template <FieldShape Shape> struct TreeViewStyleFields {
     F<float> headerHeight{};
     F<Color3> headerColor{};
     F<TextStyleProperties> header{};
+    F<ScrollBarVisibility> scrollBarVisibility{};
 };
 
 using TreeViewStylePropertiesArgs = TreeViewStyleFields<FieldShape::Args>;

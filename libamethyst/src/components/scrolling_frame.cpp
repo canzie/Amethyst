@@ -66,6 +66,14 @@ bool ScrollingFrame::setScrollingFrameProperties(const ScrollingFrameStyleProper
     return changed;
 }
 
+vec2 ScrollingFrame::getScrollFraction() const
+{
+    return {
+        m_maxScroll.x > 0.0f ? m_scrollOffset.x / m_maxScroll.x : 0.0f,
+        m_maxScroll.y > 0.0f ? m_scrollOffset.y / m_maxScroll.y : 0.0f,
+    };
+}
+
 void ScrollingFrame::layoutChildren(vec2 &absCanvasSize, vec2 viewport)
 {
     AutomaticSize acs = m_sfProps.automaticCanvasSize;

@@ -104,10 +104,10 @@ struct UnifiedDimension2 {
 using UDim2 = UnifiedDimension2;
 
 struct UnifiedDimension4 {
-    UDim top;
-    UDim right;
-    UDim bottom;
-    UDim left;
+    UDim top{};
+    UDim right{};
+    UDim bottom{};
+    UDim left{};
 
     static UnifiedDimension4 fromOffset(float _offset)
     {

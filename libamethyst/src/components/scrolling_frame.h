@@ -26,6 +26,24 @@ class ScrollingFrame : public UIObject {
     const ScrollingFrameStyleProperties &getScrollingFrameProperties() { return m_sfProps; }
     bool setScrollingFrameProperties(const ScrollingFrameStylePropertiesArgs &props);
 
+    /**
+     * @brief Current scroll position, normalized to [0, 1] per axis (0 = start, 1 = fully scrolled).
+     * @return The normalized scroll position; 0 on an axis with nothing to scroll
+     */
+    vec2 getScrollFraction() const;
+
+    /**
+     * @brief Maximum scroll offset in canvas pixels, i.e. canvas size minus viewport size (clamped to 0).
+     * @return The per-axis pixel scroll range, as of the last arrange()
+     */
+    vec2 getMaxScroll() const { return m_maxScroll; }
+
+    /**
+     * @brief Current scroll offset in canvas pixels.
+     * @return The scroll offset, clamped to [0, getMaxScroll()] as of the last arrange()
+     */
+    vec2 getScrollOffset() const { return m_scrollOffset; }
+
   protected:
     EventResult onMouseScrollUp() override;
     EventResult onMouseScrollDown() override;
