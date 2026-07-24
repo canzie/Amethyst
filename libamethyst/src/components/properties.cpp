@@ -552,6 +552,7 @@ bool TableStyleProperties::apply(const TableStylePropertiesArgs &src)
     AM_APPLY_ARGS(headerColor)
     AM_APPLY_ARGS(rowBackgroundColor)
     AM_APPLY_ARGS(rowAlternateColor)
+    AM_APPLY_ARGS(scrollBarVisibility)
     if (header.apply(src.header)) {
         changed = true;
     }
@@ -573,6 +574,7 @@ TableStyleProperties::operator TableStylePropertiesArgs() const
     AM_TO_ARGS(headerColor)
     AM_TO_ARGS(rowBackgroundColor)
     AM_TO_ARGS(rowAlternateColor)
+    AM_TO_ARGS(scrollBarVisibility)
     return out;
 }
 

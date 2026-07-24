@@ -13,6 +13,7 @@
 #include "components/common.h"
 #include "components/frame.h"
 #include "components/properties.h"
+#include "components/scrolling_frame.h"
 #include "components/text_label.h"
 #include "components/ui_object.h"
 #include "modules/event_signal.h"
@@ -36,6 +37,8 @@ struct TableColumn {
     float weight = 1.0f;
     float minWidth = 0.0f;
     float maxWidth = 0.0f;
+    TextXAlignment labelAlign = TextXAlignment::LEFT;
+    UDim4 labelPadding{};
 };
 
 class Table : public UIObject {
@@ -157,8 +160,8 @@ class Table : public UIObject {
     void ensureColumnSeparatorCapacity(uint32_t count);
     void ensureRowSeparatorCapacity(uint32_t count);
     void arrangeHeader(const vec4 &childClip);
-    void arrangeSeparators(const vec4 &childClip);
-    void arrangeRow(uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip, bool drawBackground);
+    void arrangeSeparators(vec2 bodyOrigin, const vec4 &childClip);
+    void arrangeRow(uint32_t logicalRow, uint32_t visualIndex, float y, vec2 bodyOrigin, const vec4 &childClip, bool drawBackground);
 
     std::vector<TableColumn> m_columns;
 
@@ -187,6 +190,8 @@ class Table : public UIObject {
     std::vector<EventConnection> m_rowBgInputConns;
     Frame *m_headerBackground = nullptr;
     std::vector<TextLabel *> m_headerLabels;
+
+    ScrollingFrame *m_scrollFrame = nullptr;
 };
 
 } // namespace Amethyst

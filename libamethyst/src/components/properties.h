@@ -402,6 +402,7 @@ template <FieldShape Shape> struct TableStyleFields {
     F<Color4> rowBackgroundColor{};
     F<Color4> rowAlternateColor{};
     F<Color4> selectedRowColor{};
+    F<ScrollBarVisibility> scrollBarVisibility{};
 };
 
 using TableStylePropertiesArgs = TableStyleFields<FieldShape::Args>;

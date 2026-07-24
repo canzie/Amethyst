@@ -38,8 +38,13 @@ Table::Table()
     });
     m_tProps.rowBackgroundColor = Color4{0.18f, 0.18f, 0.2f, 1.0f};
     m_tProps.rowAlternateColor = Color4{0.22f, 0.22f, 0.24f, 1.0f};
+    m_tProps.scrollBarVisibility = ScrollBarVisibility::AUTO;
 
     resolveStyle();
+
+    m_scrollFrame = add<ScrollingFrame>();
+    m_scrollFrame->propagate(
+        static_cast<InteractionCategory>(INTERACTION_CATEGORY_HOVER | INTERACTION_CATEGORY_CLICK | INTERACTION_CATEGORY_MOVE));
 }
 
 void Table::resolveStyle()
@@ -213,7 +218,7 @@ void Table::clear()
         }
     }
     for (Frame *bg : m_rowBackgrounds) {
-        removeChild(bg);
+        m_scrollFrame->removeChild(bg);
     }
 
     m_cells.clear();
@@ -271,7 +276,7 @@ void Table::ensureColumnSeparatorCapacity(uint32_t count)
 void Table::ensureRowSeparatorCapacity(uint32_t count)
 {
     while (m_rowSeparators.size() < count) {
-        m_rowSeparators.push_back(add<Frame>());
+        m_rowSeparators.push_back(m_scrollFrame->add<Frame>());
     }
 }
 
@@ -305,7 +310,6 @@ void Table::updateSeparators()
     uint32_t neededRowSeps = (s_showRowSeparators(m_tProps.separatorMode) && rows > 1) ? rows - 1 : 0;
     ensureRowSeparatorCapacity(neededRowSeps);
 
-    float dataStartY = m_tProps.showHeader ? m_tProps.headerHeight : 0.0f;
     float rowStride = m_computedRowHeight + m_tProps.separatorWidth;
 
     for (uint32_t i = 0; i < static_cast<uint32_t>(m_rowSeparators.size()); i++) {
@@ -315,7 +319,7 @@ void Table::updateSeparators()
             continue;
         }
 
-        float yPos = dataStartY + static_cast<float>(i) * rowStride + m_computedRowHeight;
+        float yPos = static_cast<float>(i) * rowStride + m_computedRowHeight;
         sep->setBaseStyleProperties({
             .backgroundColor = Color3(m_tProps.separatorColor),
             .backgroundTransparency = 1.0f - m_tProps.separatorColor.a,
@@ -335,10 +339,13 @@ void Table::ensureHeaderCapacity()
 
     if (m_headerBackground == nullptr) {
         m_headerBackground = add<Frame>();
+        m_headerBackground->bindPart(ComponentPart::HEADER);
     }
 
     while (m_headerLabels.size() < cols) {
-        m_headerLabels.push_back(add<TextLabel>());
+        TextLabel *lbl = add<TextLabel>();
+        lbl->bindPart(ComponentPart::HEADER);
+        m_headerLabels.push_back(lbl);
     }
 }
 
@@ -346,7 +353,7 @@ void Table::ensureRowBackgroundCapacity(uint32_t count)
 {
     while (m_rowBackgrounds.size() < count) {
         uint32_t slot = static_cast<uint32_t>(m_rowBackgrounds.size());
-        Frame *bg = add<Frame>();
+        Frame *bg = m_scrollFrame->add<Frame>();
         m_rowBgInputConns.push_back(bg->onInputBeganCb.connect([this, slot](const InputObject &io) {
             if (io.type != InputType::MOUSE_BUTTON_1) {
                 return;
@@ -380,41 +387,47 @@ void Table::arrangeHeader(const vec4 &childClip)
         TextLabel *lbl = m_headerLabels[col];
         lbl->setBaseStyleProperties({.backgroundTransparency = 1.0f});
         lbl->setBaseProperties({
+            .padding = m_columns[col].labelPadding,
             .size = UDim2::fromScale(1.0f, 1.0f),
             .zIndex = Z_ABOVE_CONTENT,
         });
         lbl->setTextStyleProperties({
             .fontSize = m_tProps.header.fontSize,
             .textColor = m_tProps.header.textColor,
-            .textXAlignment = TextXAlignment::LEFT,
+            .textXAlignment = m_columns[col].labelAlign,
             .textYAlignment = TextYAlignment::CENTER,
         });
         lbl->setText(m_columns[col].header);
         lbl->clipRect = childClip;
 
-        float cellX = m_columnPositions[col] + m_resolvedPadding.w;
-        float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col] - m_resolvedPadding.w - m_resolvedPadding.y;
+        float cellX = m_columnPositions[col];
+        float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col];
 
         lbl->computeAbsolutes({cellWidth, m_tProps.headerHeight}, absolutePosition + vec2(cellX, 0.0f), absoluteRotation);
         lbl->arrange();
     }
 }
 
-void Table::arrangeSeparators(const vec4 &childClip)
+void Table::arrangeSeparators(vec2 bodyOrigin, const vec4 &childClip)
 {
     for (Frame *sep : m_columnSeparators) {
         sep->clipRect = childClip;
         sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
         sep->arrange();
     }
+
+    vec4 bodyClip = childClip;
+    bodyClip.y = std::max(bodyClip.y, m_scrollFrame->absolutePosition.y);
+
     for (Frame *sep : m_rowSeparators) {
-        sep->clipRect = childClip;
-        sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+        sep->clipRect = bodyClip;
+        sep->computeAbsolutes({absoluteSize.x, 0.0f}, bodyOrigin, absoluteRotation);
         sep->arrange();
     }
 }
 
-void Table::arrangeRow(uint32_t logicalRow, uint32_t visualIndex, float y, const vec4 &childClip, bool drawBackground)
+void Table::arrangeRow(uint32_t logicalRow, uint32_t visualIndex, float y, vec2 bodyOrigin, const vec4 &childClip,
+                        bool drawBackground)
 {
     uint32_t cols = columnCount();
 
@@ -437,7 +450,7 @@ void Table::arrangeRow(uint32_t logicalRow, uint32_t visualIndex, float y, const
             .zIndex = Z_ROW_BG,
         });
         bg->clipRect = childClip;
-        bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, absolutePosition + vec2(0.0f, y), absoluteRotation);
+        bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, bodyOrigin + vec2(0.0f, y), absoluteRotation);
         bg->arrange();
     }
 
@@ -461,7 +474,7 @@ void Table::arrangeRow(uint32_t logicalRow, uint32_t visualIndex, float y, const
         float paddedHeight = m_computedRowHeight - m_resolvedPadding.x - m_resolvedPadding.z;
 
         obj->clipRect = childClip;
-        obj->computeAbsolutes({paddedWidth, paddedHeight}, absolutePosition + vec2(paddedX, paddedY), absoluteRotation);
+        obj->computeAbsolutes({paddedWidth, paddedHeight}, bodyOrigin + vec2(paddedX, paddedY), absoluteRotation);
         obj->arrange();
     }
 }
@@ -486,23 +499,47 @@ void Table::arrange()
     }
 
     vec4 childClip = computeChildClipRect();
-    float dataStartY = m_tProps.showHeader ? m_tProps.headerHeight : 0.0f;
+    float headerH = m_tProps.showHeader ? m_tProps.headerHeight : 0.0f;
     float rowStride = m_computedRowHeight + (s_showRowSeparators(m_tProps.separatorMode) ? m_tProps.separatorWidth : 0.0f);
+    uint32_t visibleCount = static_cast<uint32_t>(m_displayOrder.size());
+    float totalContentHeight = static_cast<float>(visibleCount) * rowStride;
 
     if (m_tProps.showHeader) {
         arrangeHeader(childClip);
     }
 
-    arrangeSeparators(childClip);
+    m_scrollFrame->setBaseProperties({
+        .position = UDim2(0.0f, 0.0f, 0.0f, headerH),
+        .size = UDim2(1.0f, 0.0f, 1.0f, -headerH),
+        .visible = true,
+    });
+    m_scrollFrame->setScrollingFrameProperties({
+        .scrollBarVisibility = m_tProps.scrollBarVisibility,
+        .canvasSize = UDim2::fromOffset(0.0f, totalContentHeight),
+    });
+    m_scrollFrame->clipRect = childClip;
+    m_scrollFrame->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
+    m_scrollFrame->arrange();
+
+    float viewportHeight = m_scrollFrame->absoluteContentSize.y;
+    if (viewportHeight <= 0.0f) {
+        return;
+    }
+
+    vec2 scrollOffset = m_scrollFrame->getScrollOffset();
+    vec2 bodyOrigin = m_scrollFrame->absolutePosition - vec2(0.0f, scrollOffset.y);
+    vec4 bodyClip = childClip;
+    bodyClip.y = std::max(bodyClip.y, m_scrollFrame->absolutePosition.y);
+
+    arrangeSeparators(bodyOrigin, childClip);
 
     bool showRowBackgrounds = m_tProps.rowBackgroundColor.a > 0.0f || m_tProps.rowAlternateColor.a > 0.0f;
-    uint32_t visibleCount = static_cast<uint32_t>(m_displayOrder.size());
     uint32_t neededBackgrounds = showRowBackgrounds ? visibleCount : 0;
     ensureRowBackgroundCapacity(neededBackgrounds);
 
     for (uint32_t vi = 0; vi < visibleCount; vi++) {
-        float rowY = dataStartY + static_cast<float>(vi) * rowStride;
-        arrangeRow(m_displayOrder[vi], vi, rowY, childClip, showRowBackgrounds);
+        float rowY = static_cast<float>(vi) * rowStride;
+        arrangeRow(m_displayOrder[vi], vi, rowY, bodyOrigin, bodyClip, showRowBackgrounds);
     }
 
     for (uint32_t i = neededBackgrounds; i < m_rowBackgrounds.size(); i++) {
@@ -557,6 +594,7 @@ std::vector<Instance *> Table::getHittableInstances()
             result.push_back(cell);
         }
     }
+    result.push_back(m_scrollFrame);
 
     return result;
 }

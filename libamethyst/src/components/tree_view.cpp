@@ -203,7 +203,11 @@ Instance *TreeView::getCell(uint32_t row, uint32_t col) const
 
 void TreeView::clear()
 {
-    m_children.clear();
+    for (Instance *cell : m_cells) {
+        if (cell != nullptr && cell->parent != nullptr) {
+            cell->parent->removeChild(cell);
+        }
+    }
     m_cells.clear();
     m_rows.clear();
     m_visible.clear();
@@ -379,10 +383,13 @@ void TreeView::ensureHeaderCapacity()
 
     if (!m_headerBackground) {
         m_headerBackground = add<Frame>();
+        m_headerBackground->bindPart(ComponentPart::HEADER);
     }
 
     while (m_headerLabels.size() < cols) {
-        m_headerLabels.push_back(add<TextLabel>());
+        TextLabel *lbl = add<TextLabel>();
+        lbl->bindPart(ComponentPart::HEADER);
+        m_headerLabels.push_back(lbl);
     }
 }
 
