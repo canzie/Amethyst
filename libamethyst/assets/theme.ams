@@ -52,7 +52,7 @@ scrolling-frame {
 }
 
 table {
-    background-color: #1d1d1d;
+    background-color: #FF00FF;
     row-height: 32px;
     cell-padding: 4px;
     column-separator-width: 1px;

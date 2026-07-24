@@ -2,14 +2,11 @@
 #define AMETHYST__DROPDOWN_H
 
 #include "components/context_menu.h"
-#include "components/context_menu_item.h"
 #include "components/properties.h"
 #include "components/text_button.h"
-#include "modules/event_signal.h"
 
-#include <cstddef>
 #include <functional>
-#include <string>
+#include <memory>
 #include <vector>
 
 namespace Amethyst {
@@ -20,8 +17,8 @@ class Dropdown : public TextButton {
 
     void resolveStyle() override;
 
-    void setItems(std::vector<ContextMenuItem> items);
-    std::vector<ContextMenuItem> &items();
+    void setItems(std::vector<std::unique_ptr<ContextMenu::ItemData>> items);
+    std::vector<std::unique_ptr<ContextMenu::ItemData>> &items();
 
     void open();
     void close();
@@ -42,7 +39,7 @@ class Dropdown : public TextButton {
   private:
     void syncContextMenu();
 
-    std::vector<ContextMenuItem> m_items;
+    std::vector<std::unique_ptr<ContextMenu::ItemData>> m_items;
     ContextMenu *m_contextMenu = nullptr;
 };
 

@@ -2,34 +2,40 @@
 
 namespace Amethyst {
 
-ContextMenuItem ContextMenuItem::action(std::string label, std::function<void()> cb)
+std::unique_ptr<ContextMenu::ItemData> makeActionItem(std::string label, std::function<void()> cb)
 {
-    ContextMenuItem item;
-    item.label = std::move(label);
-    item.payload = ContextMenuAction{std::move(cb)};
+    auto item = std::make_unique<ContextMenuAction>();
+    item->label = std::move(label);
+    item->onActivate = std::move(cb);
     return item;
 }
 
-ContextMenuItem ContextMenuItem::toggle(std::string label, std::function<void(bool)> cb)
+std::unique_ptr<ContextMenu::ItemData> makeToggleItem(std::string label, std::function<void(bool)> cb)
 {
-    ContextMenuItem item;
-    item.label = std::move(label);
-    item.payload = ContextMenuToggle(std::move(cb));
+    auto item = std::make_unique<ContextMenuToggle>(std::move(cb));
+    item->label = std::move(label);
     return item;
 }
 
-ContextMenuItem ContextMenuItem::separator()
+std::unique_ptr<ContextMenu::ItemData> makeSeparatorItem()
 {
-    ContextMenuItem item;
-    item.payload = ContextMenuSeparator{};
+    return std::make_unique<ContextMenuSeparator>();
+}
+
+std::unique_ptr<ContextMenu::ItemData> makeSubmenuItem(std::string label, std::vector<std::unique_ptr<ContextMenu::ItemData>> items)
+{
+    auto item = std::make_unique<ContextMenuSubmenu>();
+    item->label = std::move(label);
+    item->items = std::move(items);
     return item;
 }
 
-ContextMenuItem ContextMenuItem::submenu(std::string label, std::vector<ContextMenuItem> items)
+std::unique_ptr<ContextMenu::ItemData> makeRadioItem(std::string label, RadioGroup *group, int32_t value)
 {
-    ContextMenuItem item;
-    item.label = std::move(label);
-    item.payload = ContextMenuSubmenu{std::move(items)};
+    auto item = std::make_unique<ContextMenuRadio>();
+    item->label = std::move(label);
+    item->group = group;
+    item->value = value;
     return item;
 }
 

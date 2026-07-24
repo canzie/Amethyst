@@ -10,7 +10,7 @@ namespace Amethyst {
 
 static constexpr float FALLBACK_ROW_HEIGHT = 24.0f;
 
-static constexpr int32_t Z_ROW_BG = 0;
+static constexpr int32_t Z_ROW_BG = 1;
 static constexpr int32_t Z_ABOVE_CONTENT = 2;
 
 static bool s_showColumnSeparators(TableSeparatorMode mode)
@@ -25,26 +25,29 @@ static bool s_showRowSeparators(TableSeparatorMode mode)
 
 Table::Table()
 {
-    m_tProps.cellPadding = UDim4{};
-    m_tProps.separatorMode = TableSeparatorMode::COLUMNS;
-    m_tProps.separatorWidth = 1.0f;
-    m_tProps.separatorColor = Color4{0.3f, 0.3f, 0.3f, 1.0f};
-    m_tProps.showHeader = true;
-    m_tProps.headerHeight = 28.0f;
-    m_tProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
+    setTableProperties({
+        .cellPadding = UDim4{},
+        .separatorMode = TableSeparatorMode::COLUMNS,
+        .separatorWidth = 1.0f,
+        .separatorColor = Color4{0.3f, 0.3f, 0.3f, 1.0f},
+        .showHeader = true,
+        .headerHeight = 28.0f,
+        .headerColor = Color3{0.25f, 0.25f, 0.28f},
+        .rowBackgroundColor = Color4{0.18f, 0.18f, 0.2f, 1.0f},
+        .rowAlternateColor = Color4{0.22f, 0.22f, 0.24f, 1.0f},
+        .scrollBarVisibility = ScrollBarVisibility::AUTO,
+    });
     m_tProps.header.apply(TextStylePropertiesArgs{
         .fontSize = 14.0f,
         .textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f},
     });
-    m_tProps.rowBackgroundColor = Color4{0.18f, 0.18f, 0.2f, 1.0f};
-    m_tProps.rowAlternateColor = Color4{0.22f, 0.22f, 0.24f, 1.0f};
-    m_tProps.scrollBarVisibility = ScrollBarVisibility::AUTO;
 
     resolveStyle();
 
     m_scrollFrame = add<ScrollingFrame>();
     m_scrollFrame->propagate(
         static_cast<InteractionCategory>(INTERACTION_CATEGORY_HOVER | INTERACTION_CATEGORY_CLICK | INTERACTION_CATEGORY_MOVE));
+    m_scrollFrame->setBaseStyleProperties({.backgroundTransparency = 1.0f});
 }
 
 void Table::resolveStyle()
@@ -151,6 +154,9 @@ Instance *Table::nextCell(std::unique_ptr<Instance> child)
 
     Instance *raw = addChild(std::move(child));
     m_cells[idx] = raw;
+    if (auto *obj = raw->asUiObject()) {
+        obj->setBaseProperties({.zIndex = Z_ABOVE_CONTENT});
+    }
     m_cursorCol++;
     markDirty();
     return raw;
@@ -178,6 +184,9 @@ void Table::setCell(uint32_t row, uint32_t col, std::unique_ptr<Instance> child)
 
     Instance *raw = addChild(std::move(child));
     m_cells[idx] = raw;
+    if (auto *obj = raw->asUiObject()) {
+        obj->setBaseProperties({.zIndex = Z_ABOVE_CONTENT});
+    }
     markDirty();
 }
 
@@ -408,7 +417,7 @@ void Table::arrangeHeader(const vec4 &childClip)
     }
 }
 
-void Table::arrangeSeparators(vec2 bodyOrigin, const vec4 &childClip)
+void Table::arrangeSeparators(const vec4 &childClip)
 {
     for (Frame *sep : m_columnSeparators) {
         sep->clipRect = childClip;
@@ -421,38 +430,35 @@ void Table::arrangeSeparators(vec2 bodyOrigin, const vec4 &childClip)
 
     for (Frame *sep : m_rowSeparators) {
         sep->clipRect = bodyClip;
-        sep->computeAbsolutes({absoluteSize.x, 0.0f}, bodyOrigin, absoluteRotation);
-        sep->arrange();
     }
 }
 
-void Table::arrangeRow(uint32_t logicalRow, uint32_t visualIndex, float y, vec2 bodyOrigin, const vec4 &childClip,
-                        bool drawBackground)
+void Table::layoutRowBackground(uint32_t visualIndex, float y)
+{
+    Frame *bg = m_rowBackgrounds[visualIndex];
+    Color4 bgColor = m_tProps.rowBackgroundColor;
+    if (visualIndex % 2 == 1 && m_tProps.rowAlternateColor.a > 0.0f) {
+        bgColor = m_tProps.rowAlternateColor;
+    }
+    if (static_cast<int32_t>(visualIndex) == m_selectedDisplayIndex && m_tProps.selectedRowColor.a > 0.0f) {
+        bgColor = m_tProps.selectedRowColor;
+    }
+
+    bg->setBaseStyleProperties({
+        .backgroundColor = Color3(bgColor),
+        .backgroundTransparency = 1.0f - bgColor.a,
+    });
+    bg->setBaseProperties({
+        .position = UDim2(0.0f, 0.0f, 0.0f, y),
+        .size = UDim2(1.0f, 0.0f, 0.0f, m_computedRowHeight),
+        .visible = true,
+        .zIndex = Z_ROW_BG,
+    });
+}
+
+void Table::arrangeRow(uint32_t logicalRow, float y, vec2 bodyOrigin, const vec4 &childClip)
 {
     uint32_t cols = columnCount();
-
-    if (drawBackground) {
-        Frame *bg = m_rowBackgrounds[visualIndex];
-        Color4 bgColor = m_tProps.rowBackgroundColor;
-        if (visualIndex % 2 == 1 && m_tProps.rowAlternateColor.a > 0.0f) {
-            bgColor = m_tProps.rowAlternateColor;
-        }
-        if (static_cast<int32_t>(visualIndex) == m_selectedDisplayIndex && m_tProps.selectedRowColor.a > 0.0f) {
-            bgColor = m_tProps.selectedRowColor;
-        }
-
-        bg->setBaseStyleProperties({
-            .backgroundColor = Color3(bgColor),
-            .backgroundTransparency = 1.0f - bgColor.a,
-        });
-        bg->setBaseProperties({
-            .size = UDim2::fromScale(1.0f, 1.0f),
-            .zIndex = Z_ROW_BG,
-        });
-        bg->clipRect = childClip;
-        bg->computeAbsolutes({absoluteSize.x, m_computedRowHeight}, bodyOrigin + vec2(0.0f, y), absoluteRotation);
-        bg->arrange();
-    }
 
     for (uint32_t col = 0; col < cols; col++) {
         Instance *cell = m_cells[logicalRow * cols + col];
@@ -508,6 +514,16 @@ void Table::arrange()
         arrangeHeader(childClip);
     }
 
+    bool showRowBackgrounds = m_tProps.rowBackgroundColor.a > 0.0f || m_tProps.rowAlternateColor.a > 0.0f;
+    uint32_t neededBackgrounds = showRowBackgrounds ? visibleCount : 0;
+    ensureRowBackgroundCapacity(neededBackgrounds);
+    for (uint32_t vi = 0; vi < neededBackgrounds; vi++) {
+        layoutRowBackground(vi, static_cast<float>(vi) * rowStride);
+    }
+    for (uint32_t i = neededBackgrounds; i < m_rowBackgrounds.size(); i++) {
+        m_rowBackgrounds[i]->setBaseProperties({.visible = false});
+    }
+
     m_scrollFrame->setBaseProperties({
         .position = UDim2(0.0f, 0.0f, 0.0f, headerH),
         .size = UDim2(1.0f, 0.0f, 1.0f, -headerH),
@@ -515,7 +531,7 @@ void Table::arrange()
     });
     m_scrollFrame->setScrollingFrameProperties({
         .scrollBarVisibility = m_tProps.scrollBarVisibility,
-        .canvasSize = UDim2::fromOffset(0.0f, totalContentHeight),
+        .canvasSize = UDim2(1.0f, 0.0f, 0.0f, totalContentHeight),
     });
     m_scrollFrame->clipRect = childClip;
     m_scrollFrame->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
@@ -531,19 +547,15 @@ void Table::arrange()
     vec4 bodyClip = childClip;
     bodyClip.y = std::max(bodyClip.y, m_scrollFrame->absolutePosition.y);
 
-    arrangeSeparators(bodyOrigin, childClip);
+    arrangeSeparators(childClip);
 
-    bool showRowBackgrounds = m_tProps.rowBackgroundColor.a > 0.0f || m_tProps.rowAlternateColor.a > 0.0f;
-    uint32_t neededBackgrounds = showRowBackgrounds ? visibleCount : 0;
-    ensureRowBackgroundCapacity(neededBackgrounds);
+    for (uint32_t vi = 0; vi < neededBackgrounds; vi++) {
+        m_rowBackgrounds[vi]->clipRect = bodyClip;
+    }
 
     for (uint32_t vi = 0; vi < visibleCount; vi++) {
         float rowY = static_cast<float>(vi) * rowStride;
-        arrangeRow(m_displayOrder[vi], vi, rowY, bodyOrigin, bodyClip, showRowBackgrounds);
-    }
-
-    for (uint32_t i = neededBackgrounds; i < m_rowBackgrounds.size(); i++) {
-        m_rowBackgrounds[i]->setBaseProperties({.visible = false});
+        arrangeRow(m_displayOrder[vi], rowY, bodyOrigin, bodyClip);
     }
 }
 

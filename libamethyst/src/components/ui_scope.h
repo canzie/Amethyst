@@ -1,7 +1,7 @@
 #ifndef AMETHYST__UI_SCOPE_H
 #define AMETHYST__UI_SCOPE_H
 
-#include "components/context_menu_item.h"
+#include "components/context_menu.h"
 #include "components/docking_layer.h"
 #include "components/instance.h"
 #include "components/properties.h"
@@ -10,6 +10,7 @@
 #include "modules/event_signal.h"
 
 #include <functional>
+#include <memory>
 #include <string_view>
 #include <vector>
 
@@ -19,10 +20,10 @@ class Canvas;
 class Checkbox;
 class Color3Picker;
 class Color4Picker;
-class ContextMenu;
 class DragFloat;
 class DragInt;
 class Dropdown;
+class RadioGroup;
 class MenuBar;
 class CollapsibleHeader;
 class Frame;
@@ -269,7 +270,7 @@ struct TreeViewScope : UIScope {
 
 struct DropdownScope {
     Dropdown &component;
-    std::vector<ContextMenuItem> pendingItems;
+    std::vector<std::unique_ptr<ContextMenu::ItemData>> pendingItems;
 
     explicit DropdownScope(Dropdown &d);
 
@@ -277,12 +278,13 @@ struct DropdownScope {
     DropdownScope &toggle(std::string label, std::function<void(bool)> onToggle);
     DropdownScope &separator();
     DropdownScope &submenu(std::string label, std::function<void(DropdownScope &)> fn);
+    DropdownScope &radio(std::string label, RadioGroup *group, int32_t value);
     DropdownScope &items(std::vector<std::string> labels);
 };
 
 struct ContextMenuScope {
     ContextMenu &component;
-    std::vector<ContextMenuItem> pendingItems;
+    std::vector<std::unique_ptr<ContextMenu::ItemData>> pendingItems;
 
     explicit ContextMenuScope(ContextMenu &cm);
 
@@ -290,6 +292,7 @@ struct ContextMenuScope {
     ContextMenuScope &toggle(std::string label, std::function<void(bool)> onToggle);
     ContextMenuScope &separator();
     ContextMenuScope &submenu(std::string label, std::function<void(ContextMenuScope &)> fn);
+    ContextMenuScope &radio(std::string label, RadioGroup *group, int32_t value);
     ContextMenuScope &items(std::vector<std::string> labels);
 };
 

@@ -43,7 +43,7 @@ bool Dropdown::setDropdownProperties(const DropdownStylePropertiesArgs &props)
     return changed;
 }
 
-void Dropdown::setItems(std::vector<ContextMenuItem> items)
+void Dropdown::setItems(std::vector<std::unique_ptr<ContextMenu::ItemData>> items)
 {
     if (isOpen()) {
         close();
@@ -55,7 +55,7 @@ void Dropdown::setItems(std::vector<ContextMenuItem> items)
     }
 }
 
-std::vector<ContextMenuItem> &Dropdown::items()
+std::vector<std::unique_ptr<ContextMenu::ItemData>> &Dropdown::items()
 {
     if (m_contextMenu != nullptr) {
         return m_contextMenu->items();

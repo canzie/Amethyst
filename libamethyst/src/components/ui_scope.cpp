@@ -6,6 +6,7 @@
 #include "components/color_picker.h"
 #include "components/container.h"
 #include "components/context_menu.h"
+#include "components/context_menu_item.h"
 #include "components/drag.h"
 #include "components/dropdown.h"
 #include "components/frame.h"
@@ -734,19 +735,19 @@ TreeViewScope &TreeViewScope::row(std::function<void(TreeRowScope &)> rowFn)
 
 DropdownScope &DropdownScope::action(std::string label, std::function<void()> onSelect)
 {
-    pendingItems.emplace_back(ContextMenuItem::action(std::move(label), std::move(onSelect)));
+    pendingItems.emplace_back(makeActionItem(std::move(label), std::move(onSelect)));
     return *this;
 }
 
 DropdownScope &DropdownScope::toggle(std::string label, std::function<void(bool)> onToggle)
 {
-    pendingItems.emplace_back(ContextMenuItem::toggle(std::move(label), std::move(onToggle)));
+    pendingItems.emplace_back(makeToggleItem(std::move(label), std::move(onToggle)));
     return *this;
 }
 
 DropdownScope &DropdownScope::separator()
 {
-    pendingItems.emplace_back(ContextMenuItem::separator());
+    pendingItems.emplace_back(makeSeparatorItem());
     return *this;
 }
 
@@ -754,17 +755,24 @@ DropdownScope &DropdownScope::submenu(std::string label, std::function<void(Drop
 {
     DropdownScope sub(component);
     fn(sub);
-    pendingItems.emplace_back(ContextMenuItem::submenu(std::move(label), std::move(sub.pendingItems)));
+    pendingItems.emplace_back(makeSubmenuItem(std::move(label), std::move(sub.pendingItems)));
+    return *this;
+}
+
+DropdownScope &DropdownScope::radio(std::string label, RadioGroup *group, int32_t value)
+{
+    pendingItems.emplace_back(makeRadioItem(std::move(label), group, value));
     return *this;
 }
 
 DropdownScope &DropdownScope::items(std::vector<std::string> labels)
 {
-    for (auto &lbl : labels) {
-        ContextMenuItem item;
-        item.label = lbl;
-        item.payload = ContextMenuSelect{};
-        pendingItems.emplace_back(std::move(item));
+    for (auto &label : labels) {
+        pendingItems.emplace_back(makeActionItem(label, [this, label]() {
+            if (component.onItemSelected) {
+                component.onItemSelected(label);
+            }
+        }));
     }
     return *this;
 }
@@ -782,29 +790,36 @@ MenuBarScope &MenuBarScope::menuItem(std::string label, std::function<void(Dropd
 
 ContextMenuScope &ContextMenuScope::action(std::string label, std::function<void()> onSelect)
 {
-    pendingItems.emplace_back(ContextMenuItem::action(std::move(label), std::move(onSelect)));
+    pendingItems.emplace_back(makeActionItem(std::move(label), std::move(onSelect)));
     return *this;
 }
 
 ContextMenuScope &ContextMenuScope::toggle(std::string label, std::function<void(bool)> onToggle)
 {
-    pendingItems.emplace_back(ContextMenuItem::toggle(std::move(label), std::move(onToggle)));
+    pendingItems.emplace_back(makeToggleItem(std::move(label), std::move(onToggle)));
     return *this;
 }
 
 ContextMenuScope &ContextMenuScope::separator()
 {
-    pendingItems.emplace_back(ContextMenuItem::separator());
+    pendingItems.emplace_back(makeSeparatorItem());
+    return *this;
+}
+
+ContextMenuScope &ContextMenuScope::radio(std::string label, RadioGroup *group, int32_t value)
+{
+    pendingItems.emplace_back(makeRadioItem(std::move(label), group, value));
     return *this;
 }
 
 ContextMenuScope &ContextMenuScope::items(std::vector<std::string> labels)
 {
-    for (auto &lbl : labels) {
-        ContextMenuItem item;
-        item.label = lbl;
-        item.payload = ContextMenuSelect{};
-        pendingItems.emplace_back(std::move(item));
+    for (auto &label : labels) {
+        pendingItems.emplace_back(makeActionItem(label, [this, label]() {
+            if (component.onItemSelected) {
+                component.onItemSelected(label);
+            }
+        }));
     }
     return *this;
 }
@@ -813,7 +828,7 @@ ContextMenuScope &ContextMenuScope::submenu(std::string label, std::function<voi
 {
     ContextMenuScope sub(component);
     fn(sub);
-    pendingItems.emplace_back(ContextMenuItem::submenu(std::move(label), std::move(sub.pendingItems)));
+    pendingItems.emplace_back(makeSubmenuItem(std::move(label), std::move(sub.pendingItems)));
     return *this;
 }
 

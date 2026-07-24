@@ -1,16 +1,17 @@
 #include "components/context_menu.h"
 
 #include "amethyst/icons.h"
-#include "components/extensions/ui_list_layout.h"
+#include "components/checkbox.h"
+#include "components/context_menu_item.h"
 #include "components/frame.h"
 #include "components/image_label.h"
 #include "components/overlay_layer.h"
+#include "components/radio_button.h"
 #include "components/scrolling_frame.h"
-#include "components/text_button.h"
+#include "components/text_label.h"
 #include "components/window.h"
 #include "modules/style.h"
 
-#include "math/math.h"
 #include <algorithm>
 #include <climits>
 
@@ -20,10 +21,269 @@ namespace Amethyst {
 
 static constexpr float ICON_INSET = 4.0f;
 static constexpr float ROW_PADDING = 8.0f;
+static constexpr float SEPARATOR_HEIGHT = 8.0f;
+
+static std::string s_buildItemText(const std::string &label, const std::string &shortcutHint)
+{
+    std::string text;
+    text.reserve(label.size() + shortcutHint.size() + 8);
+    text.append(label);
+    if (!shortcutHint.empty()) {
+        text.append("    ");
+        text.append(shortcutHint);
+    }
+    return text;
+}
+
+Frame *ContextMenu::ItemView::create(ContextMenu &owner)
+{
+    m_owner = &owner;
+    m_row = owner.add<Frame>();
+    m_row->setBaseStyleProperties({.backgroundColor = owner.getBaseStyleProperties().backgroundColor,
+                                   .backgroundTransparency = 0.0f,
+                                   .borderPixelSize = 0.0f});
+    m_row->track(m_row->onHoverChanged.connect([this](bool hovered) {
+        if (hovered) {
+            m_owner->closeSubmenu();
+            m_row->setBaseStyleProperties({.backgroundColor = m_owner->getContextMenuProperties().itemHoverBackground});
+        } else {
+            m_row->setBaseStyleProperties({.backgroundColor = m_owner->getBaseStyleProperties().backgroundColor});
+        }
+    }));
+    return m_row;
+}
+
+Frame *ContextMenu::ActionItemView::create(ContextMenu &owner)
+{
+    Frame *row = ItemView::create(owner);
+    row->track(row->onInputBeganCb.connect([this](const InputObject &io) {
+        if (io.type == InputType::MOUSE_BUTTON_1 && m_boundItem != nullptr) {
+            activate(*m_owner, m_boundItem->as<ActionItemData>());
+        }
+    }));
+    return row;
+}
+
+Frame *ContextMenu::ToggleItemView::create(ContextMenu &owner)
+{
+    Frame *row = ItemView::create(owner);
+    row->track(row->onInputBeganCb.connect([this, row](const InputObject &io) {
+        if (io.type == InputType::MOUSE_BUTTON_1 && m_boundItem != nullptr) {
+            toggle(m_boundItem->as<ToggleItemData>());
+            row->markDirty();
+        }
+    }));
+    return row;
+}
+
+Frame *ContextMenu::SubmenuItemView::create(ContextMenu &owner)
+{
+    Frame *row = ItemView::create(owner);
+    row->track(row->onHoverChanged.connect([this](bool hovered) {
+        if (hovered && m_boundItem != nullptr) {
+            openSubmenu(*m_owner, m_boundItem->as<SubmenuItemData>(), m_row);
+        }
+    }));
+    return row;
+}
+
+Frame *ContextMenu::RadioItemView::create(ContextMenu &owner)
+{
+    Frame *row = ItemView::create(owner);
+    row->track(row->onInputBeganCb.connect([this](const InputObject &io) {
+        if (io.type == InputType::MOUSE_BUTTON_1 && m_boundItem != nullptr) {
+            select(m_boundItem->as<RadioItemData>());
+        }
+    }));
+    return row;
+}
+
+class DefaultActionItemView : public ContextMenu::ActionItemView {
+  public:
+    Frame *create(ContextMenu &owner) override
+    {
+        Frame *row = ActionItemView::create(owner);
+        m_label = row->add<TextLabel>();
+        m_label->setTextStyleProperties(owner.getTextStyleProperties());
+        m_label->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
+        m_label->setBaseProperties({
+            .interactable = false,
+            .padding =
+                UDim4{UDim::fromOffset(0.0f), UDim::fromOffset(ROW_PADDING), UDim::fromOffset(0.0f), UDim::fromOffset(ROW_PADDING)},
+            .size = UDim2::fromScale(1.0f, 1.0f),
+        });
+        return row;
+    }
+
+    void bind(ContextMenu::ItemData &item) override
+    {
+        m_boundItem = &item;
+        auto &action = item.as<ContextMenuAction>();
+        if (action.content) {
+            m_label->setBaseProperties({.visible = false});
+            action.content(*m_row);
+        } else {
+            m_label->setBaseProperties({.visible = true});
+            m_label->setText(s_buildItemText(action.label, action.shortcutHint));
+        }
+        m_row->setBaseProperties({.interactable = action.enabled});
+    }
+
+  private:
+    TextLabel *m_label = nullptr;
+};
+
+class DefaultToggleItemView : public ContextMenu::ToggleItemView {
+  public:
+    Frame *create(ContextMenu &owner) override
+    {
+        Frame *row = ToggleItemView::create(owner);
+        m_label = row->add<TextLabel>();
+        m_label->setTextStyleProperties(owner.getTextStyleProperties());
+        m_label->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
+        m_label->setBaseProperties({
+            .interactable = false,
+            .padding =
+                UDim4{UDim::fromOffset(0.0f), UDim::fromOffset(ROW_PADDING), UDim::fromOffset(0.0f), UDim::fromOffset(ROW_PADDING)},
+            .size = UDim2::fromScale(1.0f, 1.0f),
+        });
+
+        m_checkbox = row->add<Checkbox>();
+        m_checkbox->setBaseProperties({
+            .anchorPoint = {1.0f, 0.5f},
+            .interactable = false, // decorative only since the row handles the click
+            .position = UDim2(1.0f, 0.0f, 0.5f, 0.0f),
+            .zIndex = POPUP_ZINDEX,
+        });
+        return row;
+    }
+
+    void bind(ContextMenu::ItemData &item) override
+    {
+        m_boundItem = &item;
+        auto &toggleItem = item.as<ContextMenuToggle>();
+        m_label->setText(s_buildItemText(toggleItem.label, toggleItem.shortcutHint));
+        m_row->setBaseProperties({.interactable = toggleItem.enabled});
+
+        float iconSize = m_owner->itemHeight - ICON_INSET;
+        m_checkbox->setBaseProperties({.size = UDim2::fromOffset(iconSize, iconSize)});
+        m_checkbox->value = &toggleItem.value;
+        m_checkbox->markDirty();
+    }
+
+  private:
+    TextLabel *m_label = nullptr;
+    Checkbox *m_checkbox = nullptr;
+};
+
+class DefaultSeparatorItemView : public ContextMenu::SeparatorItemView {
+  public:
+    Frame *create(ContextMenu &owner) override
+    {
+        Frame *row = SeparatorItemView::create(owner);
+        row->setBaseStyleProperties({
+            .backgroundColor = owner.getContextMenuProperties().separatorColor,
+            .backgroundTransparency = 0.5f,
+            .borderPixelSize = 0.0f,
+        });
+        row->setBaseProperties({.interactable = false});
+        return row;
+    }
+
+    void bind(ContextMenu::ItemData &) override {}
+};
+
+class DefaultSubmenuItemView : public ContextMenu::SubmenuItemView {
+  public:
+    Frame *create(ContextMenu &owner) override
+    {
+        Frame *row = SubmenuItemView::create(owner);
+        m_label = row->add<TextLabel>();
+        m_label->setTextStyleProperties(owner.getTextStyleProperties());
+        m_label->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
+        m_label->setBaseProperties({
+            .interactable = false,
+            .padding =
+                UDim4{UDim::fromOffset(0.0f), UDim::fromOffset(ROW_PADDING), UDim::fromOffset(0.0f), UDim::fromOffset(ROW_PADDING)},
+            .size = UDim2::fromScale(1.0f, 1.0f),
+        });
+
+        m_icon = row->add<ImageLabel>();
+        m_icon->setSvg(Icons::ARROW);
+        m_icon->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
+        m_icon->setBaseProperties({
+            .anchorPoint = {1.0f, 0.5f},
+            .interactable = false,
+            .position = UDim2(1.0f, 0.0f, 0.5f, 0.0f),
+            .visible = true,
+            .zIndex = POPUP_ZINDEX,
+        });
+        return row;
+    }
+
+    void bind(ContextMenu::ItemData &item) override
+    {
+        m_boundItem = &item;
+        auto &submenu = item.as<ContextMenuSubmenu>();
+        m_label->setText(submenu.label);
+        m_row->setBaseProperties({.interactable = submenu.enabled});
+
+        float iconSize = m_owner->itemHeight - ICON_INSET;
+        m_icon->setImageStyleProperties({.imageColor = m_owner->getTextStyleProperties().textColor});
+        m_icon->setBaseProperties({.size = UDim2::fromOffset(iconSize, iconSize)});
+    }
+
+  private:
+    TextLabel *m_label = nullptr;
+    ImageLabel *m_icon = nullptr;
+};
+
+class DefaultRadioItemView : public ContextMenu::RadioItemView {
+  public:
+    Frame *create(ContextMenu &owner) override
+    {
+        Frame *row = RadioItemView::create(owner);
+        m_label = row->add<TextLabel>();
+        m_label->setTextStyleProperties(owner.getTextStyleProperties());
+        m_label->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
+        m_label->setBaseProperties({
+            .interactable = false,
+            .padding =
+                UDim4{UDim::fromOffset(0.0f), UDim::fromOffset(ROW_PADDING), UDim::fromOffset(0.0f), UDim::fromOffset(ROW_PADDING)},
+            .size = UDim2::fromScale(1.0f, 1.0f),
+        });
+
+        m_radio = row->add<RadioButton>();
+        m_radio->setBaseProperties({
+            .anchorPoint = {1.0f, 0.5f},
+            .position = UDim2(1.0f, 0.0f, 0.5f, 0.0f),
+            .zIndex = POPUP_ZINDEX,
+        });
+        return row;
+    }
+
+    void bind(ContextMenu::ItemData &item) override
+    {
+        m_boundItem = &item;
+        auto &radioItem = item.as<ContextMenuRadio>();
+        m_label->setText(s_buildItemText(radioItem.label, radioItem.shortcutHint));
+        m_row->setBaseProperties({.interactable = radioItem.enabled});
+
+        float iconSize = m_owner->itemHeight - ICON_INSET;
+        m_radio->setBaseProperties({.size = UDim2::fromOffset(iconSize, iconSize)});
+        m_radio->value = radioItem.value;
+        m_radio->setGroup(radioItem.group);
+    }
+
+  private:
+    TextLabel *m_label = nullptr;
+    RadioButton *m_radio = nullptr;
+};
 
 ContextMenu::ContextMenu()
 {
     closeOnClickOutside = false;
+    placement = PopupPlacement::BELOW;
     setBaseStyleProperties({
         .backgroundColor = Color3{0.18f, 0.18f, 0.18f},
         .backgroundTransparency = 0.0f,
@@ -32,9 +292,14 @@ ContextMenu::ContextMenu()
     maxVisibleItems = 8;
     itemHeight = 24.0f;
     popupWidth = 180.0f;
-    m_textProps.textXAlignment = TextXAlignment::LEFT;
-    m_textProps.textYAlignment = TextYAlignment::CENTER;
+    setTextStyleProperties({.textXAlignment = TextXAlignment::LEFT, .textYAlignment = TextYAlignment::CENTER});
     m_overlayPtr = nullptr;
+
+    m_rowFactories.action = [] { return std::make_unique<DefaultActionItemView>(); };
+    m_rowFactories.toggle = [] { return std::make_unique<DefaultToggleItemView>(); };
+    m_rowFactories.separator = [] { return std::make_unique<DefaultSeparatorItemView>(); };
+    m_rowFactories.submenu = [] { return std::make_unique<DefaultSubmenuItemView>(); };
+    m_rowFactories.radio = [] { return std::make_unique<DefaultRadioItemView>(); };
 
     resolveStyle();
 }
@@ -46,6 +311,12 @@ void ContextMenu::resolveStyle()
     ContextMenuStyleProperties resolved =
         Style::instance().getContextMenuStyle(ComponentType::CONTEXT_MENU, getClasses(), effectiveGuiState());
     if (m_cmProps.apply(resolved)) {
+        markDirty();
+    }
+
+    TextStyleProperties resolvedText =
+        Style::instance().getTextStyle(ComponentType::CONTEXT_MENU, getClasses(), effectiveGuiState());
+    if (m_textProps.apply(resolvedText)) {
         markDirty();
     }
 }
@@ -68,12 +339,22 @@ bool ContextMenu::setTextStyleProperties(const TextStylePropertiesArgs &props)
     return changed;
 }
 
-void ContextMenu::setItems(std::vector<ContextMenuItem> items)
+void ContextMenu::setItems(std::vector<std::unique_ptr<ItemData>> items)
 {
     if (isOpen()) {
         hide();
     }
     m_items = std::move(items);
+    m_itemsPtr = &m_items;
+}
+
+void ContextMenu::setRowFactories(RowFactories factories)
+{
+    if (factories.action) m_rowFactories.action = std::move(factories.action);
+    if (factories.toggle) m_rowFactories.toggle = std::move(factories.toggle);
+    if (factories.separator) m_rowFactories.separator = std::move(factories.separator);
+    if (factories.submenu) m_rowFactories.submenu = std::move(factories.submenu);
+    if (factories.radio) m_rowFactories.radio = std::move(factories.radio);
 }
 
 bool ContextMenu::prepareShow()
@@ -98,10 +379,8 @@ bool ContextMenu::prepareShow()
                 return;
             }
             bool inside = containsPoint(pos);
-            for (size_t i = 0; !inside && i < m_submenuStack.size(); i++) {
-                if (m_submenuStack[i] != nullptr && m_submenuStack[i]->isOpen() && m_submenuStack[i]->containsPoint(pos)) {
-                    inside = true;
-                }
+            if (!inside && m_submenu != nullptr && m_submenu->isOpen() && m_submenu->containsPoint(pos)) {
+                inside = true;
             }
             if (inside) {
                 vote.add(EventResult::PROPAGATE);
@@ -144,88 +423,70 @@ void ContextMenu::hide()
     if (!isOpen()) {
         return;
     }
-    closeSubmenuFrom(0);
+    closeSubmenu();
     Popup::close();
     if (onClosedCb) {
         onClosedCb();
     }
 }
 
-void ContextMenu::closeSubmenuFrom(size_t depth)
+void ContextMenu::closeSubmenu()
 {
-    for (size_t i = depth; i < m_submenuSourceRows.size(); i++) {
-        if (m_submenuSourceRows[i] != nullptr) {
-            m_submenuSourceRows[i]->setBaseStyleProperties({.backgroundColor = getBaseStyleProperties().backgroundColor});
-        }
+    if (m_submenuSourceRow != nullptr) {
+        m_submenuSourceRow->setBaseStyleProperties({.backgroundColor = getBaseStyleProperties().backgroundColor});
+        m_submenuSourceRow = nullptr;
     }
-    m_submenuSourceRows.resize(depth);
-
-    for (size_t i = depth; i < m_submenuStack.size(); i++) {
-        if (m_submenuStack[i] != nullptr) {
-            m_submenuStack[i]->hide();
-        }
+    if (m_submenu != nullptr) {
+        m_submenu->hide();
     }
-    m_submenuStack.resize(depth);
 }
 
-float ContextMenu::computeTotalHeight(const std::vector<ContextMenuItem> &items) const
+void ContextMenu::openSubmenu(SubmenuItemData &submenu, Frame *sourceRow)
 {
-    float h = 0.0f;
-    for (auto &item : items) {
-        h += (item.kind() == ContextMenuItem::Kind::SEPARATOR) ? 8.0f : itemHeight;
+    closeSubmenu();
+
+    if (m_submenu == nullptr) {
+        m_submenu = add<ContextMenu>();
+        m_submenu->closeOnClickOutside = false;
     }
-    return h;
+
+    m_submenu->setBaseStyleProperties(getBaseStyleProperties());
+    m_submenu->m_itemsPtr = &submenu.items;
+    m_submenu->placement = PopupPlacement::RIGHT;
+    m_submenuSourceRow = sourceRow;
+
+    m_submenu->show(sourceRow);
 }
 
 void ContextMenu::buildMainContent()
 {
-    buildContent(this, {});
-    placement = PopupPlacement::BELOW;
-}
+    // TODO: pool/recycle views and window off scroll offset instead of building one per item every show() (see
+    // docs/amethyst/context_menu_plan.md)
+    removeAllChildren();
+    m_views.clear();
+    m_submenu = nullptr;
+    m_submenuSourceRow = nullptr;
 
-void ContextMenu::buildSubmenuAtPath(const std::vector<size_t> &path, UIObject *sourceRow)
-{
-    size_t depth = path.size() - 1;
-    closeSubmenuFrom(depth);
-
-    if (m_submenuStack.size() <= depth) {
-        m_submenuStack.resize(depth + 1, nullptr);
+    std::vector<std::unique_ptr<ItemData>> &itemList = items();
+    auto rowHeight = [this](const ItemData &item) { return item.kind == Kind::SEPARATOR ? SEPARATOR_HEIGHT : itemHeight; };
+    float totalHeight = 0.0f;
+    for (auto &itemPtr : itemList) {
+        totalHeight += rowHeight(*itemPtr);
     }
-
-    if (m_submenuStack[depth] == nullptr) {
-        m_submenuStack[depth] = add<ContextMenu>();
-        m_submenuStack[depth]->closeOnClickOutside = false;
-        m_submenuStack[depth]->setBaseStyleProperties(getBaseStyleProperties());
-    }
-
-    buildContent(m_submenuStack[depth], path);
-    m_submenuStack[depth]->placement = PopupPlacement::RIGHT;
-    m_submenuStack[depth]->Popup::open(sourceRow);
-}
-
-void ContextMenu::buildContent(Popup *popup, const std::vector<size_t> &path)
-{
-    std::vector<ContextMenuItem> &items = itemsAtPath(path);
-    float totalHeight = computeTotalHeight(items);
     float visibleHeight =
         (maxVisibleItems == INT_MAX) ? totalHeight : std::min(totalHeight, static_cast<float>(maxVisibleItems) * itemHeight);
 
-    popup->removeAllChildren();
-    popup->setBaseProperties({
+    setBaseProperties({
         .clipsDescendants = true,
         .size = UDim2::fromOffset(popupWidth, visibleHeight),
         .zIndex = POPUP_ZINDEX,
     });
 
-    UIObject *container = popup;
+    Instance *container = this;
     if (totalHeight > visibleHeight + 0.5f) {
-        popup->removeExtension<UIListLayout>();
-        auto *sf = popup->add<ScrollingFrame>();
+        auto *sf = add<ScrollingFrame>();
         sf->setBaseStyleProperties(getBaseStyleProperties());
-        sf->setBaseProperties({
-            .clipsDescendants = true,
-            .size = UDim2::fromScale(1.0f, 1.0f),
-        });
+        sf->setBaseProperties({.clipsDescendants = true, .size = UDim2::fromScale(1.0f, 1.0f)});
         sf->setScrollingFrameProperties({
             .scrollAxis = ScrollAxis::Y,
             .scrollBarVisibility = ScrollBarVisibility::AUTO,
@@ -234,170 +495,74 @@ void ContextMenu::buildContent(Popup *popup, const std::vector<size_t> &path)
         container = sf;
     }
 
-    auto *layout = container->addExtension<UIListLayout>();
-    layout->fillDirection = FillDirection::FILL_VERTICAL;
-    layout->horizontalFlex = UiFlexAlignment::FILL;
-    layout->innerPadding = UDim::fromOffset(0.0f);
-    layout->sortOrder = SortOrder::SORT_LAYOUT_ORDER;
+    float y = 0.0f;
+    for (size_t idx = 0; idx < itemList.size(); idx++) {
+        ItemData &item = *itemList[idx];
 
-    addItemRows(container, path);
-    popup->markDirty();
-}
-
-void ContextMenu::addItemRows(Instance *container, const std::vector<size_t> &path)
-{
-    std::vector<ContextMenuItem> &items = itemsAtPath(path);
-    size_t depth = path.size();
-
-    Color3 bgColor = getBaseStyleProperties().backgroundColor;
-    float iconSize = itemHeight - ICON_INSET;
-
-    for (size_t idx = 0; idx < items.size(); idx++) {
-        ContextMenuItem &item = items[idx];
-
-        if (item.kind() == ContextMenuItem::Kind::SEPARATOR) {
-            auto *sep = container->add<Frame>();
-            sep->setBaseStyleProperties({
-                .backgroundColor = m_cmProps.separatorColor,
-                .backgroundTransparency = 0.5f,
-                .borderPixelSize = 0.0f,
-            });
-            sep->setBaseProperties({
-                .interactable = false,
-                .layoutOrder = static_cast<LayoutOrder>(idx * 100),
-                .size = UDim2::fromOffset(popupWidth, 8.0f),
-                .zIndex = POPUP_ZINDEX,
-            });
-            continue;
+        std::function<std::unique_ptr<ItemView>()> *factory = nullptr;
+        switch (item.kind) {
+        case Kind::ACTION:
+            factory = &m_rowFactories.action;
+            break;
+        case Kind::TOGGLE:
+            factory = &m_rowFactories.toggle;
+            break;
+        case Kind::SEPARATOR:
+            factory = &m_rowFactories.separator;
+            break;
+        case Kind::SUBMENU:
+            factory = &m_rowFactories.submenu;
+            break;
+        case Kind::RADIO:
+            factory = &m_rowFactories.radio;
+            break;
         }
 
-        bool hasIcon = item.kind() == ContextMenuItem::Kind::TOGGLE || item.kind() == ContextMenuItem::Kind::SUBMENU;
-
-        auto *row = container->add<TextButton>();
-        row->setBaseStyleProperties({
-            .backgroundColor = bgColor,
-            .backgroundTransparency = 0.0f,
-            .borderPixelSize = 0.0f,
-        });
+        float height = rowHeight(item);
+        std::unique_ptr<ItemView> view = (*factory)();
+        Frame *row = view->create(*this);
+        if (container != this) {
+            row->reparent(container);
+        }
         row->setBaseProperties({
-            .layoutOrder = static_cast<LayoutOrder>(idx * 100),
-            .padding = UDim4::fromOffset(ROW_PADDING),
-            .size = UDim2::fromOffset(popupWidth, itemHeight),
+            .position = UDim2::fromOffset(0.0f, y),
+            .size = UDim2(1.0f, 0.0f, 0.0f, height),
             .zIndex = POPUP_ZINDEX,
         });
-        row->setButtonProperties({.autoButtonColor = false});
-        row->setTextStyleProperties(m_textProps);
-        row->setText(buildItemText(item));
+        view->bind(item);
+        m_views.push_back(std::move(view));
+        y += height;
+    }
 
-        ImageLabel *checkIcon = nullptr;
-        if (hasIcon) {
-            bool isToggle = item.kind() == ContextMenuItem::Kind::TOGGLE;
-            auto *icon = row->add<ImageLabel>();
-            icon->setSvg(isToggle ? Icons::CHECK : Icons::ARROW);
-            icon->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
-            icon->setImageStyleProperties({.imageColor = m_textProps.textColor});
-            icon->setBaseProperties({
-                .anchorPoint = {1.0f, 0.5f},
-                .interactable = false,
-                .position = UDim2(1.0f, 0.0f, 0.5f, 0.0f),
-                .size = UDim2::fromOffset(iconSize, iconSize),
-                .visible = isToggle ? std::get<ContextMenuToggle>(item.payload).currentState() : true,
-                .zIndex = POPUP_ZINDEX,
-            });
-            if (isToggle) {
-                checkIcon = icon;
-            }
-        }
+    markDirty();
+}
 
-        if (!item.enabled) {
-            row->setBaseProperties({.interactable = false});
-            continue;
-        }
+void ContextMenu::ActionItemView::activate(ContextMenu &owner, ActionItemData &action)
+{
+    if (action.onActivate) {
+        action.onActivate();
+    }
+    owner.hide();
+}
 
-        Color3 hoverBg = m_cmProps.itemHoverBackground;
-
-        row->onMouseLeaveCb = [this, row, bgColor, hoverBg, depth]() {
-            bool isSubmenuSource = depth < m_submenuSourceRows.size() && m_submenuSourceRows[depth] == row;
-            Color3 newBg = isSubmenuSource ? hoverBg : bgColor;
-            if (row->getBaseStyleProperties().backgroundColor != newBg) {
-                row->setBaseStyleProperties({.backgroundColor = newBg});
-            }
-            return EventResult::CONSUMED;
-        };
-
-        if (item.kind() == ContextMenuItem::Kind::SUBMENU) {
-            std::vector<size_t> fullPath = path;
-            fullPath.push_back(idx);
-            row->onMouseEnterCb = [this, row, hoverBg, fullPath = std::move(fullPath)]() {
-                if (row->getBaseStyleProperties().backgroundColor != hoverBg) {
-                    row->setBaseStyleProperties({.backgroundColor = hoverBg});
-                }
-                buildSubmenuAtPath(fullPath, row);
-                m_submenuSourceRows.push_back(row);
-                return EventResult::CONSUMED;
-            };
-            row->onMouseButton1ClickCb = []() { return EventResult::CONSUMED; };
-        } else {
-            row->onMouseEnterCb = [this, row, hoverBg, depth]() {
-                if (row->getBaseStyleProperties().backgroundColor != hoverBg) {
-                    row->setBaseStyleProperties({.backgroundColor = hoverBg});
-                }
-                closeSubmenuFrom(depth);
-                return EventResult::CONSUMED;
-            };
-        }
-
-        if (item.kind() == ContextMenuItem::Kind::ACTION) {
-            std::function<void()> cb = std::get<ContextMenuAction>(item.payload).onActivate;
-            row->onMouseButton1ClickCb = [this, cb]() {
-                if (cb) {
-                    cb();
-                }
-                hide();
-                return EventResult::CONSUMED;
-            };
-        } else if (item.kind() == ContextMenuItem::Kind::SELECT) {
-            std::string label = item.label;
-            row->onMouseButton1ClickCb = [this, label]() {
-                if (onItemSelected) {
-                    onItemSelected(label);
-                }
-                hide();
-                return EventResult::CONSUMED;
-            };
-        } else if (item.kind() == ContextMenuItem::Kind::TOGGLE) {
-            ContextMenuItem *itemPtr = &items[idx];
-            row->onMouseButton1ClickCb = [itemPtr, checkIcon]() {
-                auto &toggle = std::get<ContextMenuToggle>(itemPtr->payload);
-                toggle.toggle();
-                if (checkIcon != nullptr) {
-                    checkIcon->setBaseProperties({.visible = toggle.currentState()});
-                }
-                return EventResult::CONSUMED;
-            };
-        }
+void ContextMenu::ToggleItemView::toggle(ToggleItemData &item)
+{
+    item.value = !item.value;
+    if (item.onToggled) {
+        item.onToggled(item.value);
     }
 }
 
-std::vector<ContextMenuItem> &ContextMenu::itemsAtPath(const std::vector<size_t> &path)
+void ContextMenu::SubmenuItemView::openSubmenu(ContextMenu &owner, SubmenuItemData &submenu, Frame *sourceRow)
 {
-    std::vector<ContextMenuItem> *items = &m_items;
-    for (size_t idx : path) {
-        items = &std::get<ContextMenuSubmenu>((*items)[idx].payload).items;
-    }
-    return *items;
+    owner.openSubmenu(submenu, sourceRow);
 }
 
-std::string ContextMenu::buildItemText(const ContextMenuItem &item) const
+void ContextMenu::RadioItemView::select(RadioItemData &item)
 {
-    std::string text;
-    text.reserve(item.label.size() + item.shortcutHint.size() + 8);
-    text.append(item.label);
-    if (!item.shortcutHint.empty()) {
-        text.append("    ");
-        text.append(item.shortcutHint);
+    if (item.group != nullptr) {
+        item.group->select(item.value);
     }
-    return text;
 }
 
 } // namespace Amethyst

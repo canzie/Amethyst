@@ -41,7 +41,7 @@ void MenuBar::propagateClassesToEntries()
     }
 }
 
-Dropdown *MenuBar::addMenu(std::string label, std::vector<ContextMenuItem> items)
+Dropdown *MenuBar::addMenu(std::string label, std::vector<std::unique_ptr<ContextMenu::ItemData>> items)
 {
     auto *entry = add<Dropdown>();
     entry->setItems(std::move(items));

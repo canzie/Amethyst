@@ -160,8 +160,9 @@ class Table : public UIObject {
     void ensureColumnSeparatorCapacity(uint32_t count);
     void ensureRowSeparatorCapacity(uint32_t count);
     void arrangeHeader(const vec4 &childClip);
-    void arrangeSeparators(vec2 bodyOrigin, const vec4 &childClip);
-    void arrangeRow(uint32_t logicalRow, uint32_t visualIndex, float y, vec2 bodyOrigin, const vec4 &childClip, bool drawBackground);
+    void arrangeSeparators(const vec4 &childClip);
+    void layoutRowBackground(uint32_t visualIndex, float y);
+    void arrangeRow(uint32_t logicalRow, float y, vec2 bodyOrigin, const vec4 &childClip);
 
     std::vector<TableColumn> m_columns;
 

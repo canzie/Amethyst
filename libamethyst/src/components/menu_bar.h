@@ -8,11 +8,12 @@
 #ifndef AMETHYST__MENU_BAR_H
 #define AMETHYST__MENU_BAR_H
 
-#include "components/context_menu_item.h"
+#include "components/context_menu.h"
 #include "components/dropdown.h"
 #include "components/frame.h"
 #include "components/properties.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -23,7 +24,7 @@ class MenuBar : public Frame {
     MenuBar();
     ~MenuBar() override = default;
 
-    Dropdown *addMenu(std::string label, std::vector<ContextMenuItem> items);
+    Dropdown *addMenu(std::string label, std::vector<std::unique_ptr<ContextMenu::ItemData>> items);
     void clear();
 
     bool setMenuBarProperties(const MenuBarStylePropertiesArgs &props);
