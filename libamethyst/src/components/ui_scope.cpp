@@ -587,12 +587,12 @@ TabBarScope &TabBarScope::tab(std::string_view label, std::function<void(FrameSc
 
 TabBarScope &TabBarScope::tab(std::function<void(TabScope &)> fn)
 {
-    Frame *labelRaw = nullptr;
     auto contentFrame = std::make_unique<Frame>();
     Frame *contentRaw = contentFrame.get();
-    component.addTab(std::move(contentFrame), [&](Frame &lf) { labelRaw = &lf; });
-    TabScope scope(*labelRaw, *contentRaw);
-    fn(scope);
+    component.addTab(std::move(contentFrame), [&](Frame &lf) {
+        TabScope scope(lf, *contentRaw);
+        fn(scope);
+    });
     return *this;
 }
 

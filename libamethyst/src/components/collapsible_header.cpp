@@ -153,6 +153,8 @@ CollapsibleHeader &CollapsibleHeader::header(std::function<void(Frame &)> fn)
 {
     if (fn) {
         fn(*m_headerBackground);
+        m_headerBackground->propagateClassesToChildren();
+        m_indicator->bindPart(ComponentPart::INDICATOR);
     }
     return *this;
 }
