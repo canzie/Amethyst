@@ -43,7 +43,8 @@ void TextButton::resolveStyle()
 {
     resolveBaseStyle(ComponentType::TEXT_BUTTON);
 
-    TextStyleProperties resolved = Style::instance().getTextStyle(ComponentType::TEXT_BUTTON, getClasses(), effectiveGuiState());
+    TextStyleProperties resolved =
+        Style::instance().getTextStyle(ComponentType::TEXT_BUTTON, getClasses(), effectiveGuiState(), m_part);
     if (m_textStyle.apply(resolved)) {
         markDirty();
     }

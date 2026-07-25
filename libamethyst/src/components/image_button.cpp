@@ -20,7 +20,8 @@ void ImageButton::resolveStyle()
 {
     resolveBaseStyle(ComponentType::IMAGE_BUTTON);
 
-    ImageStyleProperties resolved = Style::instance().getImageStyle(ComponentType::IMAGE_BUTTON, getClasses(), effectiveGuiState());
+    ImageStyleProperties resolved =
+        Style::instance().getImageStyle(ComponentType::IMAGE_BUTTON, getClasses(), effectiveGuiState(), m_part);
     if (m_image.resolveImageStyle(resolved)) {
         markDirty();
     }

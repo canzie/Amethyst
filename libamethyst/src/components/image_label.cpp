@@ -22,7 +22,8 @@ void ImageLabel::resolveStyle()
 {
     resolveBaseStyle(ComponentType::IMAGE_LABEL);
 
-    ImageStyleProperties resolved = Style::instance().getImageStyle(ComponentType::IMAGE_LABEL, getClasses(), effectiveGuiState());
+    ImageStyleProperties resolved =
+        Style::instance().getImageStyle(ComponentType::IMAGE_LABEL, getClasses(), effectiveGuiState(), m_part);
     if (m_image.resolveImageStyle(resolved)) {
         markDirty();
     }

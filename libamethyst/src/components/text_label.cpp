@@ -47,7 +47,8 @@ void TextLabel::resolveStyle()
 {
     resolveBaseStyle(ComponentType::TEXT_LABEL);
 
-    TextStyleProperties resolved = Style::instance().getTextStyle(ComponentType::TEXT_LABEL, getClasses(), effectiveGuiState());
+    TextStyleProperties resolved =
+        Style::instance().getTextStyle(ComponentType::TEXT_LABEL, getClasses(), effectiveGuiState(), m_part);
     if (m_textStyle.apply(resolved)) {
         markDirty();
     }
