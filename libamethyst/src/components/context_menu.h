@@ -55,6 +55,13 @@ class ContextMenu : public Popup {
         virtual Frame *create(ContextMenu &owner);
         virtual void bind(ItemData &item) { m_boundItem = &item; }
 
+        /**
+         * @brief Row height this view wants, in pixels. Queried before create()/bind() so the menu can lay out
+         * every row up front; the default is the owning menu's itemHeight.
+         * @param owner The menu this view's row will belong to.
+         */
+        virtual float rowHeight(const ContextMenu &owner) const;
+
         Frame *row() const { return m_row; }
 
         const Kind kind;
@@ -197,6 +204,13 @@ class ContextMenu : public Popup {
     int32_t maxVisibleItems;
     float itemHeight;
     float popupWidth;
+
+    /**
+     * @brief Extra pixel cap on the visible (scrolled) height, applied alongside maxVisibleItems. 0 = no cap.
+     * Set this from the available space below/above the anchor to let the menu grow to fit instead of always
+     * scrolling once past maxVisibleItems.
+     */
+    float maxContentHeight = 0.0f;
 
   protected:
     TextStyleProperties m_textProps{};

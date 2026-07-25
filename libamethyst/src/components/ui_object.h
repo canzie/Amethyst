@@ -158,6 +158,11 @@ class UIObject : public UIBase2D {
     void propagateClassesToChildren();
 
     /**
+     * @brief Apply this node's current GuiState onto every descendant UIObject.
+     */
+    void propagateGuiStateToChildren();
+
+    /**
      * @brief Add multiple style classes already interned as tokens to this node and re-resolve once.
      * @param tokens Interned class tokens to add
      */

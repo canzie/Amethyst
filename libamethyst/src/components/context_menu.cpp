@@ -23,6 +23,23 @@ static constexpr float ICON_INSET = 4.0f;
 static constexpr float ROW_PADDING = 8.0f;
 static constexpr float SEPARATOR_HEIGHT = 4.0f;
 
+static ComponentPart s_partForKind(ContextMenu::Kind kind)
+{
+    switch (kind) {
+    case ContextMenu::Kind::ACTION:
+        return ComponentPart::ACTION;
+    case ContextMenu::Kind::TOGGLE:
+        return ComponentPart::TOGGLE;
+    case ContextMenu::Kind::SEPARATOR:
+        return ComponentPart::SEPARATOR;
+    case ContextMenu::Kind::SUBMENU:
+        return ComponentPart::SUBMENU;
+    case ContextMenu::Kind::RADIO:
+        return ComponentPart::RADIO;
+    }
+    return ComponentPart::NONE;
+}
+
 static std::string s_buildItemText(const std::string &label, const std::string &shortcutHint)
 {
     std::string text;
@@ -51,6 +68,11 @@ Frame *ContextMenu::ItemView::create(ContextMenu &owner)
         }
     }));
     return m_row;
+}
+
+float ContextMenu::ItemView::rowHeight(const ContextMenu &owner) const
+{
+    return owner.itemHeight;
 }
 
 Frame *ContextMenu::ActionItemView::create(ContextMenu &owner)
@@ -191,6 +213,8 @@ class DefaultSeparatorItemView : public ContextMenu::SeparatorItemView {
     }
 
     void bind(ContextMenu::ItemData &) override {}
+
+    float rowHeight(const ContextMenu &) const override { return SEPARATOR_HEIGHT; }
 };
 
 class DefaultSubmenuItemView : public ContextMenu::SubmenuItemView {
@@ -284,11 +308,6 @@ ContextMenu::ContextMenu()
 {
     closeOnClickOutside = false;
     placement = PopupPlacement::BELOW;
-    setBaseStyleProperties({
-        .backgroundColor = Color3{0.18f, 0.18f, 0.18f},
-        .backgroundTransparency = 0.0f,
-        .borderPixelSize = 0.0f,
-    });
     maxVisibleItems = 8;
     itemHeight = 24.0f;
     popupWidth = 180.0f;
@@ -468,13 +487,42 @@ void ContextMenu::buildMainContent()
     m_submenuSourceRow = nullptr;
 
     std::vector<std::unique_ptr<ItemData>> &itemList = items();
-    auto rowHeight = [this](const ItemData &item) { return item.kind == Kind::SEPARATOR ? SEPARATOR_HEIGHT : itemHeight; };
-    float totalHeight = 0.0f;
+
+    std::vector<std::unique_ptr<ItemView>> views;
+    views.reserve(itemList.size());
     for (auto &itemPtr : itemList) {
-        totalHeight += rowHeight(*itemPtr);
+        std::function<std::unique_ptr<ItemView>()> *factory = nullptr;
+        switch (itemPtr->kind) {
+        case Kind::ACTION:
+            factory = &m_rowFactories.action;
+            break;
+        case Kind::TOGGLE:
+            factory = &m_rowFactories.toggle;
+            break;
+        case Kind::SEPARATOR:
+            factory = &m_rowFactories.separator;
+            break;
+        case Kind::SUBMENU:
+            factory = &m_rowFactories.submenu;
+            break;
+        case Kind::RADIO:
+            factory = &m_rowFactories.radio;
+            break;
+        }
+        views.push_back((*factory)());
     }
-    float visibleHeight =
-        (maxVisibleItems == INT_MAX) ? totalHeight : std::min(totalHeight, static_cast<float>(maxVisibleItems) * itemHeight);
+
+    float totalHeight = 0.0f;
+    for (auto &view : views) {
+        totalHeight += view->rowHeight(*this);
+    }
+    float visibleHeight = totalHeight;
+    if (maxVisibleItems != INT_MAX) {
+        visibleHeight = std::min(visibleHeight, static_cast<float>(maxVisibleItems) * itemHeight);
+    }
+    if (maxContentHeight > 0.0f) {
+        visibleHeight = std::min(visibleHeight, maxContentHeight);
+    }
 
     setBaseProperties({
         .clipsDescendants = true,
@@ -497,30 +545,9 @@ void ContextMenu::buildMainContent()
 
     float y = 0.0f;
     for (size_t idx = 0; idx < itemList.size(); idx++) {
-        ItemData &item = *itemList[idx];
-
-        std::function<std::unique_ptr<ItemView>()> *factory = nullptr;
-        switch (item.kind) {
-        case Kind::ACTION:
-            factory = &m_rowFactories.action;
-            break;
-        case Kind::TOGGLE:
-            factory = &m_rowFactories.toggle;
-            break;
-        case Kind::SEPARATOR:
-            factory = &m_rowFactories.separator;
-            break;
-        case Kind::SUBMENU:
-            factory = &m_rowFactories.submenu;
-            break;
-        case Kind::RADIO:
-            factory = &m_rowFactories.radio;
-            break;
-        }
-
-        float height = rowHeight(item);
-        std::unique_ptr<ItemView> view = (*factory)();
-        Frame *row = view->create(*this);
+        ItemView &view = *views[idx];
+        float height = view.rowHeight(*this);
+        Frame *row = view.create(*this);
         if (container != this) {
             row->reparent(container);
         }
@@ -529,10 +556,13 @@ void ContextMenu::buildMainContent()
             .size = UDim2(1.0f, 0.0f, 0.0f, height),
             .zIndex = POPUP_ZINDEX,
         });
-        view->bind(item);
-        m_views.push_back(std::move(view));
+        row->addClasses(getClasses());
+        row->bindPart(s_partForKind(itemList[idx]->kind));
+        row->propagateClassesToChildren();
+        view.bind(*itemList[idx]);
         y += height;
     }
+    m_views = std::move(views);
 
     markDirty();
 }

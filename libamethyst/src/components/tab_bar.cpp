@@ -155,6 +155,7 @@ void TabBar::select(int32_t index)
 
     Frame *oldLabel = m_tabs[m_selectedIndex]->labelFrame;
     oldLabel->setGuiState(static_cast<uint16_t>(oldLabel->getGuiState() & ~GUI_STATE_ACTIVE));
+    oldLabel->propagateGuiStateToChildren();
     m_tabs[m_selectedIndex]->closeButton->setBaseProperties({
         .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, false, false),
     });
@@ -164,6 +165,7 @@ void TabBar::select(int32_t index)
 
     Frame *newLabel = m_tabs[m_selectedIndex]->labelFrame;
     newLabel->setGuiState(static_cast<uint16_t>(newLabel->getGuiState() | GUI_STATE_ACTIVE));
+    newLabel->propagateGuiStateToChildren();
     m_tabs[m_selectedIndex]->closeButton->setBaseProperties({
         .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, true, false),
     });
@@ -295,6 +297,7 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
     tab.button->onMouseEnterCb = [this, tabPtr]() {
         int32_t idx = findTabIndex(tabPtr);
         tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() | GUI_STATE_HOVERED));
+        tabPtr->labelFrame->propagateGuiStateToChildren();
         tabPtr->closeButton->setBaseProperties({
             .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, true),
         });
@@ -304,6 +307,7 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
     tab.button->onMouseLeaveCb = [this, tabPtr]() {
         int32_t idx = findTabIndex(tabPtr);
         tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() & ~GUI_STATE_HOVERED));
+        tabPtr->labelFrame->propagateGuiStateToChildren();
         tabPtr->closeButton->setBaseProperties({
             .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, false),
         });
@@ -312,6 +316,7 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
 
     tab.button->onMouseButton1DownCb = [this, tabPtr](int32_t, int32_t) {
         tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() | GUI_STATE_PRESSED));
+        tabPtr->labelFrame->propagateGuiStateToChildren();
         int32_t idx = findTabIndex(tabPtr);
         if (idx >= 0) select(idx);
         return EventResult::CONSUMED;
@@ -319,6 +324,7 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
 
     tab.button->onMouseButton1UpCb = [tabPtr](int32_t, int32_t) {
         tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() & ~GUI_STATE_PRESSED));
+        tabPtr->labelFrame->propagateGuiStateToChildren();
         return EventResult::CONSUMED;
     };
 
@@ -375,6 +381,7 @@ Instance *TabBar::addTab(std::unique_ptr<Instance> content, std::string_view lab
     tab->label = lbl.get();
     tab->labelFrame->addChild(std::move(lbl));
     tab->labelFrame->propagateClassesToChildren();
+    tab->labelFrame->propagateGuiStateToChildren();
 
     m_tabs.push_back(std::move(tab));
     markAllTabsDirty();
@@ -401,6 +408,7 @@ Instance *TabBar::addTab(std::unique_ptr<Instance> content, std::function<void(F
 
     labelSetup(*tab->labelFrame);
     tab->labelFrame->propagateClassesToChildren();
+    tab->labelFrame->propagateGuiStateToChildren();
 
     m_tabs.push_back(std::move(tab));
     markAllTabsDirty();

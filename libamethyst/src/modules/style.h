@@ -157,6 +157,11 @@ enum class ComponentPart {
     ENTRY,
     HEADER,
     INDICATOR,
+    ACTION,
+    TOGGLE,
+    RADIO,
+    SEPARATOR,
+    SUBMENU,
 };
 
 /**

@@ -109,10 +109,13 @@ struct UnifiedDimension4 {
     UDim bottom{};
     UDim left{};
 
-    static UnifiedDimension4 fromOffset(float _offset)
+    static UnifiedDimension4 fromUDim(UDim uDim1)
     {
-        return {{0.0f, _offset}, {0.0f, _offset}, {0.0f, _offset}, {0.0f, _offset}};
+        return UnifiedDimension4{.top = uDim1, .right = uDim1, .bottom = uDim1, .left = uDim1};
     }
+
+    static UnifiedDimension4 fromOffset(float _offset) { return fromUDim(UDim(0.0f, _offset)); }
+    static UnifiedDimension4 fromScale(float _scale) { return fromUDim(UDim(_scale, 0.0f)); }
 
     vec4 resolve(vec2 parentSize) const
     {

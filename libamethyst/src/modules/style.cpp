@@ -127,6 +127,11 @@ const std::unordered_map<std::string, ComponentPart> &Style::getPartNames()
         {"entry", ComponentPart::ENTRY},
         {"header", ComponentPart::HEADER},
         {"indicator", ComponentPart::INDICATOR},
+        {"action", ComponentPart::ACTION},
+        {"toggle", ComponentPart::TOGGLE},
+        {"radio", ComponentPart::RADIO},
+        {"separator", ComponentPart::SEPARATOR},
+        {"submenu", ComponentPart::SUBMENU},
     };
     return names;
 }

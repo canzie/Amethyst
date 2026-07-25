@@ -112,6 +112,16 @@ void UIObject::propagateClassesToChildren()
     }
 }
 
+void UIObject::propagateGuiStateToChildren()
+{
+    for (auto &child : getChildren()) {
+        if (auto *obj = child->asUiObject()) {
+            obj->setGuiState(m_guiState);
+            obj->propagateGuiStateToChildren();
+        }
+    }
+}
+
 void UIObject::addClass(std::string_view name)
 {
     StyleKey token = Style::classToken(name);
