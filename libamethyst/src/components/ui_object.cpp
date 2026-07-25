@@ -101,6 +101,17 @@ void UIObject::bindPart(ComponentPart part)
     markDirty();
 }
 
+void UIObject::propagateClassesToChildren()
+{
+    for (auto &child : getChildren()) {
+        if (auto *obj = child->asUiObject()) {
+            obj->bindPart(m_part);
+            obj->addClasses(m_classes);
+            obj->propagateClassesToChildren();
+        }
+    }
+}
+
 void UIObject::addClass(std::string_view name)
 {
     StyleKey token = Style::classToken(name);
@@ -110,6 +121,16 @@ void UIObject::addClass(std::string_view name)
     }
     resolveStyle();
     markDirty();
+}
+
+void UIObject::addClasses(std::span<const StyleKey> tokens)
+{
+    for (StyleKey token : tokens) {
+        if (std::ranges::find(m_classes, token) == m_classes.end()) {
+            m_classes.push_back(token);
+        }
+    }
+    resolveStyle();
 }
 
 void UIObject::removeClass(std::string_view name)

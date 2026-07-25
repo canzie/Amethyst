@@ -57,6 +57,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     }
     m_indicator->bindPart(ComponentPart::INDICATOR);
     m_indicator->setClasses(getClasses());
+    m_indicator->propagateClassesToChildren();
 
     if (customHeader != nullptr) {
         m_headerContent = customHeader.get();
@@ -66,10 +67,9 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
         m_headerContent = label.get();
         m_headerBackground->addChild(std::move(label));
     }
-    if (auto *lbl = m_headerContent->as<TextLabel>()) {
-        lbl->bindPart(ComponentPart::HEADER);
-        lbl->setClasses(getClasses());
-    }
+    m_headerContent->bindPart(ComponentPart::HEADER);
+    m_headerContent->setClasses(getClasses());
+    m_headerContent->propagateClassesToChildren();
 }
 
 CollapsibleHeader::~CollapsibleHeader()
@@ -93,9 +93,11 @@ void CollapsibleHeader::resolveStyle()
     }
     if (m_indicator) {
         m_indicator->setClasses(getClasses());
+        m_indicator->propagateClassesToChildren();
     }
-    if (auto *lbl = m_headerContent != nullptr ? m_headerContent->as<TextLabel>() : nullptr) {
-        lbl->setClasses(getClasses());
+    if (m_headerContent) {
+        m_headerContent->setClasses(getClasses());
+        m_headerContent->propagateClassesToChildren();
     }
 }
 

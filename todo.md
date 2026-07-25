@@ -14,3 +14,5 @@
     
     - tab bars custom close button ???
 
+    - check if both .abc and .abc#tab work, or if 1 is overwritten for the last one, --> DOES NOT, FIX IT SO I CAN SINCE ITS GIGA USEFULL FOR PROPEGATING STUFF 
+

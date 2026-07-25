@@ -60,6 +60,7 @@ void TabBar::propagateClassesToTabs()
 {
     for (auto &tab : m_tabs) {
         tab->labelFrame->setClasses(getClasses());
+        tab->labelFrame->propagateClassesToChildren();
     }
 }
 
@@ -373,6 +374,7 @@ Instance *TabBar::addTab(std::unique_ptr<Instance> content, std::string_view lab
     lbl->setText(std::string(label));
     tab->label = lbl.get();
     tab->labelFrame->addChild(std::move(lbl));
+    tab->labelFrame->propagateClassesToChildren();
 
     m_tabs.push_back(std::move(tab));
     markAllTabsDirty();
@@ -398,6 +400,7 @@ Instance *TabBar::addTab(std::unique_ptr<Instance> content, std::function<void(F
     setupTabButton(*tab, static_cast<int32_t>(m_tabs.size()));
 
     labelSetup(*tab->labelFrame);
+    tab->labelFrame->propagateClassesToChildren();
 
     m_tabs.push_back(std::move(tab));
     markAllTabsDirty();

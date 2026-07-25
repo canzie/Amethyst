@@ -153,6 +153,17 @@ class UIObject : public UIBase2D {
     void bindPart(ComponentPart part);
 
     /**
+     * @brief Apply this node's current part and class set onto every descendant UIObject.
+     */
+    void propagateClassesToChildren();
+
+    /**
+     * @brief Add multiple style classes already interned as tokens to this node and re-resolve once.
+     * @param tokens Interned class tokens to add
+     */
+    void addClasses(std::span<const StyleKey> tokens);
+
+    /**
      * @brief Remove a style class from this node and re-resolve.
      * @param name Class name to remove; a no-op if not present
      */
