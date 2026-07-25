@@ -1,28 +1,31 @@
 #include "components/dropdown.h"
 
+#include "components/text_button.h"
 #include "modules/style.h"
 
 namespace Amethyst {
 
 Dropdown::Dropdown()
 {
-    m_ddProps.popupDirection = DropdownDirection::DOWN;
-    m_ddProps.maxVisibleItems = 8;
-    m_ddProps.itemHeight = 24.0f;
-    m_ddProps.popupWidth = 180.0f;
-    m_ddProps.itemFontSize = 14.0f;
-    m_ddProps.popupBackground = Color3{0.18f, 0.18f, 0.18f};
-    m_ddProps.itemTextColor = Color4{0.92f, 0.92f, 0.92f, 1.0f};
-    m_ddProps.itemDisabledColor = Color4{0.45f, 0.45f, 0.45f, 1.0f};
-    m_ddProps.itemHoverBackground = Color3{0.25f, 0.42f, 0.65f};
-    m_ddProps.separatorColor = Color3{0.32f, 0.32f, 0.32f};
-
+    setDropdownProperties({
+        .popupDirection = DropdownDirection::DOWN,
+        .maxVisibleItems = 8,
+        .itemHeight = 24.0f,
+        .popupWidth = 180.0f,
+        .itemFontSize = 14.0f,
+        .popupBackground = Color3{0.18f, 0.18f, 0.18f},
+        .itemTextColor = Color4{0.92f, 0.92f, 0.92f, 1.0f},
+        .itemDisabledColor = Color4{0.45f, 0.45f, 0.45f, 1.0f},
+        .itemHoverBackground = Color3{0.25f, 0.42f, 0.65f},
+        .separatorColor = Color3{0.32f, 0.32f, 0.32f},
+    });
     resolveStyle();
 }
 
 void Dropdown::resolveStyle()
 {
     resolveBaseStyle(ComponentType::DROPDOWN);
+    TextButton::resolveStyle();
 
     DropdownStyleProperties resolved =
         Style::instance().getDropdownStyle(ComponentType::DROPDOWN, getClasses(), effectiveGuiState(), m_part);

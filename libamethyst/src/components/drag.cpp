@@ -5,7 +5,6 @@
 #include "components/window.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
-#include "rendering/geometry_registry.h"
 #include "utils/am_assert.h"
 
 #include <cmath>
@@ -42,6 +41,7 @@ static int64_t s_saturateToInt64(double v)
 Drag::Drag()
 {
     m_field = add<NumberInput>();
+    m_field->setClasses(getClasses());
     m_field->setBaseProperties({
         .interactable = false,
         .position = UDim2::fromOffset(0, 0),
@@ -71,7 +71,7 @@ Drag::~Drag()
 void Drag::resolveStyle()
 {
     resolveBaseStyle(ComponentType::DRAG);
-
+    m_field->setClasses(getClasses());
     DragStyleProperties resolved = Style::instance().getDragStyle(ComponentType::DRAG, getClasses(), effectiveGuiState());
     if (m_dProps.apply(resolved)) {
         markDirty();

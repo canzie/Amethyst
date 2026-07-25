@@ -21,7 +21,7 @@ namespace Amethyst {
 
 static constexpr float ICON_INSET = 4.0f;
 static constexpr float ROW_PADDING = 8.0f;
-static constexpr float SEPARATOR_HEIGHT = 8.0f;
+static constexpr float SEPARATOR_HEIGHT = 4.0f;
 
 static std::string s_buildItemText(const std::string &label, const std::string &shortcutHint)
 {

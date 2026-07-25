@@ -47,13 +47,15 @@ TreeView::TreeView()
     m_scrollFrame = add<ScrollingFrame>();
     m_scrollFrame->propagate(
         static_cast<InteractionCategory>(INTERACTION_CATEGORY_HOVER | INTERACTION_CATEGORY_CLICK | INTERACTION_CATEGORY_MOVE));
+    m_scrollFrame->setBaseStyleProperties({.backgroundTransparency = 1.0f});
 }
 
 void TreeView::resolveStyle()
 {
     resolveBaseStyle(ComponentType::TREE_VIEW);
 
-    TreeViewStyleProperties resolved = Style::instance().getTreeViewStyle(ComponentType::TREE_VIEW, getClasses(), effectiveGuiState());
+    TreeViewStyleProperties resolved =
+        Style::instance().getTreeViewStyle(ComponentType::TREE_VIEW, getClasses(), effectiveGuiState());
     if (m_tvProps.apply(resolved)) {
         markDirty();
     }
@@ -443,6 +445,8 @@ void TreeView::arrangeHeader(const vec4 &childClip)
     uint32_t cols = columnCount();
     ensureHeaderCapacity();
 
+    float headerHeight = m_tvProps.showHeader ? m_tvProps.headerHeight : 0.0f;
+
     m_headerBackground->setBaseStyleProperties({
         .backgroundColor = m_tvProps.headerColor,
         .backgroundTransparency = 0.0f,
@@ -450,7 +454,7 @@ void TreeView::arrangeHeader(const vec4 &childClip)
     m_headerBackground->setBaseProperties({.visible = true});
     m_headerBackground->clipRect = childClip;
     m_headerBackground->markDirty();
-    m_headerBackground->computeAbsolutes({absoluteSize.x, m_tvProps.headerHeight}, absolutePosition, absoluteRotation);
+    m_headerBackground->computeAbsolutes({absoluteSize.x, headerHeight}, absolutePosition, absoluteRotation);
     m_headerBackground->arrange();
 
     for (uint32_t col = 0; col < cols; col++) {
@@ -475,7 +479,7 @@ void TreeView::arrangeHeader(const vec4 &childClip)
         float cellX = m_columnPositions[col];
         float cellWidth = m_columnPositions[col + 1] - m_columnPositions[col];
 
-        lbl->computeAbsolutes({cellWidth, m_tvProps.headerHeight}, absolutePosition + vec2(cellX, 0.0f), absoluteRotation);
+        lbl->computeAbsolutes({cellWidth, headerHeight}, absolutePosition + vec2(cellX, 0.0f), absoluteRotation);
         lbl->arrange();
     }
 }
@@ -491,7 +495,8 @@ void TreeView::arrangeSeparators(const vec4 &childClip)
     }
 }
 
-void TreeView::arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, vec2 bodyOrigin, const vec4 &childClip)
+void TreeView::arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, vec2 bodyOrigin,
+                          const vec4 &childClip)
 {
     uint32_t cols = columnCount();
     uint32_t visualIndex = visibleIndex;
@@ -625,7 +630,7 @@ void TreeView::arrange()
     m_rowHeightPx = m_tvProps.rowHeight > 0.0f ? m_tvProps.rowHeight : DEFAULT_ROW_HEIGHT;
 
     vec4 childClip = computeChildClipRect();
-    float headerH = static_cast<bool>(m_tvProps.showHeader) ? m_tvProps.headerHeight : 0.0f;
+    float headerH = m_tvProps.showHeader ? m_tvProps.headerHeight : 0.0f;
     float totalContentHeight = static_cast<float>(m_visible.size()) * m_rowHeightPx;
 
     m_scrollFrame->setBaseProperties({
