@@ -86,6 +86,12 @@ class Gizmo {
 
     GizmoResult update(const GizmoParams &params);
 
+    /**
+     * @brief Whether a handle is under the cursor or being dragged
+     * @return True while the gizmo would act on a click
+     */
+    bool isHovered() const;
+
     void reset();
 
     Canvas &canvas();

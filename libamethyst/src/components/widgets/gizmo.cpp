@@ -175,7 +175,7 @@ class GizmoCanvas : public Canvas {
         if (auto *window = getWindow()) {
             window->captureMouse(this);
         }
-        return EventResult::CONSUMED;
+        return Canvas::onInputBegan(input);
     }
 
     EventResult onInputEnded(const InputObject &input) override
@@ -188,7 +188,7 @@ class GizmoCanvas : public Canvas {
         if (auto *window = getWindow()) {
             window->releaseMouse(this);
         }
-        return EventResult::CONSUMED;
+        return Canvas::onInputEnded(input);
     }
 };
 
@@ -913,6 +913,7 @@ Gizmo::Gizmo(UIBase2D *parent) : m_impl(std::make_unique<Impl>())
     props.zIndex = 100;
     canvasOwned->setBaseProperties(props);
     canvasOwned->setBaseStyleProperties({.backgroundTransparency = 1.0f});
+    canvasOwned->propagate(INTERACTION_CATEGORY_CLICK);
     m_impl->canvas = static_cast<GizmoCanvas *>(parent->addChild(std::move(canvasOwned)));
 }
 
@@ -935,6 +936,11 @@ void Gizmo::reset()
     m_impl->accumulatedTranslation = vec3(0.0f);
     m_impl->accumulatedScale = vec3(1.0f);
     m_impl->canvas->clear();
+}
+
+bool Gizmo::isHovered() const
+{
+    return m_impl->prevResult.hovered;
 }
 
 Canvas &Gizmo::canvas()
