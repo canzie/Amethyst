@@ -32,14 +32,15 @@ static vec2 s_worldToScreen(const vec3 &world, const mat4 &viewProj, vec2 vpPos,
     if (clip.w <= 0.0001f) {
         return vec2(-10000.0f);
     }
+    // NDC y points down, matching screen y, so neither axis is inverted here
     vec3 ndc = vec3(clip) / clip.w;
-    return vec2(vpPos.x + (ndc.x * 0.5f + 0.5f) * vpSize.x, vpPos.y + (1.0f - (ndc.y * 0.5f + 0.5f)) * vpSize.y);
+    return vec2(vpPos.x + (ndc.x * 0.5f + 0.5f) * vpSize.x, vpPos.y + (ndc.y * 0.5f + 0.5f) * vpSize.y);
 }
 
 static void s_screenToWorldRay(vec2 screen, const mat4 &invViewProj, vec2 vpPos, vec2 vpSize, vec3 &origin, vec3 &dir)
 {
     float ndcX = ((screen.x - vpPos.x) / vpSize.x) * 2.0f - 1.0f;
-    float ndcY = 1.0f - ((screen.y - vpPos.y) / vpSize.y) * 2.0f;
+    float ndcY = ((screen.y - vpPos.y) / vpSize.y) * 2.0f - 1.0f;
 
     vec4 nearPt = invViewProj * vec4(ndcX, ndcY, -1.0f, 1.0f);
     vec4 farPt = invViewProj * vec4(ndcX, ndcY, 1.0f, 1.0f);
