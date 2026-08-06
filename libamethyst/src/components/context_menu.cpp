@@ -59,6 +59,8 @@ Frame *ContextMenu::ItemView::create(ContextMenu &owner)
     m_row->setBaseStyleProperties({.backgroundColor = owner.getBaseStyleProperties().backgroundColor,
                                    .backgroundTransparency = 0.0f,
                                    .borderPixelSize = 0.0f});
+    // a menu is modal, so the press stops here instead of reaching whatever the popup covers
+    m_row->consume(INTERACTION_CATEGORY_CLICK);
     m_row->track(m_row->onHoverChanged.connect([this](bool hovered) {
         if (hovered) {
             m_owner->closeSubmenu();
@@ -312,6 +314,8 @@ ContextMenu::ContextMenu()
     itemHeight = 24.0f;
     popupWidth = 180.0f;
     setTextStyleProperties({.textXAlignment = TextXAlignment::LEFT, .textYAlignment = TextYAlignment::CENTER});
+    // presses landing between rows stop at the menu too
+    consume(INTERACTION_CATEGORY_CLICK);
     m_overlayPtr = nullptr;
 
     m_rowFactories.action = [] { return std::make_unique<DefaultActionItemView>(); };

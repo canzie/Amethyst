@@ -158,6 +158,10 @@ Instance *TreeView::nextCell(std::unique_ptr<Instance> child)
     }
 
     Instance *raw = addChild(std::move(child));
+    // arrangeRow shows the cell once its row takes a pool slot, until then it has no place to be drawn
+    if (auto *obj = raw->asUiObject()) {
+        obj->setBaseProperties({.visible = false});
+    }
     m_cells[idx] = raw;
     m_cursorCol++;
     markDirty();
