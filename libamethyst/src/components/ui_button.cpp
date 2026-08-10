@@ -24,6 +24,9 @@ EventResult UIButton::onInputBegan(const InputObject &input)
     int32_t y = static_cast<int32_t>(input.position.y);
     switch (input.type) {
     case InputType::MOUSE_BUTTON_1:
+        if ((input.modifiers & MOD_DOUBLE_CLICK) != 0) {
+            onMouseButton1DoubleClick(x, y);
+        }
         return onMouseButton1Down(x, y);
     case InputType::MOUSE_BUTTON_2:
         return onMouseButton2Down(x, y);
@@ -41,8 +44,11 @@ EventResult UIButton::onInputEnded(const InputObject &input)
     bool over = containsPoint(vec2(input.position.x, input.position.y));
     switch (input.type) {
     case InputType::MOUSE_BUTTON_1: {
+        // a release is only a click when this button took the press too, so a popup closing under the cursor
+        // does not hand its release to whatever it was covering
+        bool pressed = (getGuiState() & GUI_STATE_PRESSED) != 0;
         EventResult up = onMouseButton1Up(x, y);
-        if (!over) {
+        if (!over || !pressed) {
             return up;
         }
         EventResult click = onMouseButton1Click();
@@ -83,6 +89,14 @@ EventResult UIButton::onMouseButton1Click()
 {
     if (onMouseButton1ClickCb) {
         return onMouseButton1ClickCb();
+    }
+    return EventResult::CONSUMED;
+}
+
+EventResult UIButton::onMouseButton1DoubleClick(int32_t x, int32_t y)
+{
+    if (onMouseButton1DoubleClickCb) {
+        return onMouseButton1DoubleClickCb(x, y);
     }
     return EventResult::CONSUMED;
 }

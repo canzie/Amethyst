@@ -27,6 +27,7 @@ class UIButton : public UIObject {
     virtual EventResult onMouseButton1Down(int32_t x, int32_t y);
     virtual EventResult onMouseButton1Up(int32_t x, int32_t y);
     virtual EventResult onMouseButton1Click();
+    virtual EventResult onMouseButton1DoubleClick(int32_t x, int32_t y);
     virtual EventResult onMouseButton2Down(int32_t x, int32_t y);
     virtual EventResult onMouseButton2Up(int32_t x, int32_t y);
     virtual EventResult onMouseButton2Click();
@@ -41,6 +42,7 @@ class UIButton : public UIObject {
     std::function<EventResult()> onMouseButton1ClickCb;
     std::function<EventResult(int32_t, int32_t)> onMouseButton1DownCb;
     std::function<EventResult(int32_t, int32_t)> onMouseButton1UpCb;
+    std::function<EventResult(int32_t, int32_t)> onMouseButton1DoubleClickCb;
     std::function<EventResult()> onMouseButton2ClickCb;
     std::function<EventResult(int32_t, int32_t)> onMouseButton2DownCb;
     std::function<EventResult(int32_t, int32_t)> onMouseButton2UpCb;

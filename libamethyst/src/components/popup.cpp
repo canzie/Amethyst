@@ -125,9 +125,7 @@ void Popup::openAt(vec2 absolutePoint)
 
     vec2 viewport = m_overlay->absoluteSize;
     vec2 contentSize = getBaseProperties().size.resolve(viewport);
-    vec2 pos = absolutePoint + offset;
-    pos.x = std::clamp(pos.x, 0.0f, std::max(0.0f, viewport.x - contentSize.x));
-    pos.y = std::clamp(pos.y, 0.0f, std::max(0.0f, viewport.y - contentSize.y));
+    vec2 pos = resolvePlacement(absolutePoint, vec2(0.0f), contentSize, viewport);
 
     setBaseProperties({.position = UDim2::fromOffset(pos.x, pos.y), .visible = true});
 

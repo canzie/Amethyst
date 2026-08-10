@@ -108,6 +108,11 @@ Frame *ContextMenu::SubmenuItemView::create(ContextMenu &owner)
             openSubmenu(*m_owner, m_boundItem->as<SubmenuItemData>(), m_row);
         }
     }));
+    row->track(row->onInputBeganCb.connect([this](const InputObject &io) {
+        if (io.type == InputType::MOUSE_BUTTON_1 && m_boundItem != nullptr) {
+            activate(*m_owner, m_boundItem->as<SubmenuItemData>());
+        }
+    }));
     return row;
 }
 
@@ -401,11 +406,7 @@ bool ContextMenu::prepareShow()
             if (!isOpen()) {
                 return;
             }
-            bool inside = containsPoint(pos);
-            if (!inside && m_submenu != nullptr && m_submenu->isOpen() && m_submenu->containsPoint(pos)) {
-                inside = true;
-            }
-            if (inside) {
+            if (containsPointInChain(pos)) {
                 vote.add(EventResult::PROPAGATE);
                 return;
             }
@@ -453,6 +454,19 @@ void ContextMenu::hide()
     }
 }
 
+ContextMenu &ContextMenu::rootMenu()
+{
+    return m_parentMenu != nullptr ? m_parentMenu->rootMenu() : *this;
+}
+
+bool ContextMenu::containsPointInChain(vec2 pos)
+{
+    if (containsPoint(pos)) {
+        return true;
+    }
+    return m_submenu != nullptr && m_submenu->isOpen() && m_submenu->containsPointInChain(pos);
+}
+
 void ContextMenu::closeSubmenu()
 {
     if (m_submenuSourceRow != nullptr) {
@@ -471,6 +485,15 @@ void ContextMenu::openSubmenu(SubmenuItemData &submenu, Frame *sourceRow)
     if (m_submenu == nullptr) {
         m_submenu = add<ContextMenu>();
         m_submenu->closeOnClickOutside = false;
+        m_submenu->m_parentMenu = this;
+
+        // A submenu is the same menu one level down, so it presents its rows the way its parent does
+        m_submenu->addClasses(getClasses());
+        m_submenu->m_rowFactories = m_rowFactories;
+        m_submenu->itemHeight = itemHeight;
+        m_submenu->popupWidth = popupWidth;
+        m_submenu->maxVisibleItems = maxVisibleItems;
+        m_submenu->maxContentHeight = maxContentHeight;
     }
 
     m_submenu->setBaseStyleProperties(getBaseStyleProperties());
@@ -514,6 +537,11 @@ void ContextMenu::buildMainContent()
             break;
         }
         views.push_back((*factory)());
+    }
+
+    // Attached up front so that create() and rowHeight() below both see the item their row is for
+    for (size_t idx = 0; idx < itemList.size(); idx++) {
+        views[idx]->attach(*itemList[idx]);
     }
 
     float totalHeight = 0.0f;
@@ -576,7 +604,18 @@ void ContextMenu::ActionItemView::activate(ContextMenu &owner, ActionItemData &a
     if (action.onActivate) {
         action.onActivate();
     }
-    owner.hide();
+    owner.rootMenu().hide();
+}
+
+void ContextMenu::SubmenuItemView::activate(ContextMenu &owner, SubmenuItemData &submenu)
+{
+    // a row without one is only a way into its submenu, so a click there must not close the menu
+    if (!submenu.onActivate) {
+        return;
+    }
+
+    submenu.onActivate();
+    owner.rootMenu().hide();
 }
 
 void ContextMenu::ToggleItemView::toggle(ToggleItemData &item)

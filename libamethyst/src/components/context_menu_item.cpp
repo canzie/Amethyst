@@ -22,11 +22,13 @@ std::unique_ptr<ContextMenu::ItemData> makeSeparatorItem()
     return std::make_unique<ContextMenuSeparator>();
 }
 
-std::unique_ptr<ContextMenu::ItemData> makeSubmenuItem(std::string label, std::vector<std::unique_ptr<ContextMenu::ItemData>> items)
+std::unique_ptr<ContextMenu::ItemData> makeSubmenuItem(std::string label, std::vector<std::unique_ptr<ContextMenu::ItemData>> items,
+                                                       std::function<void()> onActivate)
 {
     auto item = std::make_unique<ContextMenuSubmenu>();
     item->label = std::move(label);
     item->items = std::move(items);
+    item->onActivate = std::move(onActivate);
     return item;
 }
 

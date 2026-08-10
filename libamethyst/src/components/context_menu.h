@@ -56,8 +56,15 @@ class ContextMenu : public Popup {
         virtual void bind(ItemData &item) { m_boundItem = &item; }
 
         /**
+         * @brief Hands this view the item it will show, ahead of create() and rowHeight()
+         * @param item The item this view will show
+         */
+        void attach(ItemData &item) { m_boundItem = &item; }
+
+        /**
          * @brief Row height this view wants, in pixels. Queried before create()/bind() so the menu can lay out
-         * every row up front; the default is the owning menu's itemHeight.
+         * every row up front; the default is the owning menu's itemHeight. The item is attached by then, so a
+         * view is free to size a row from what it holds.
          * @param owner The menu this view's row will belong to.
          */
         virtual float rowHeight(const ContextMenu &owner) const;
@@ -97,6 +104,10 @@ class ContextMenu : public Popup {
         SubmenuItemData() : ItemData(Kind::SUBMENU) {}
 
         std::vector<std::unique_ptr<ItemData>> items;
+        /**
+         * @brief Run when the row itself is clicked, empty for a row that only opens its submenu
+         */
+        std::function<void()> onActivate;
     };
 
     class RadioItemData : public ItemData {
@@ -140,6 +151,11 @@ class ContextMenu : public Popup {
 
       protected:
         void openSubmenu(ContextMenu &owner, SubmenuItemData &submenu, Frame *sourceRow);
+
+        /**
+         * @brief Runs the row's own action, if it carries one, and closes the menu
+         */
+        void activate(ContextMenu &owner, SubmenuItemData &submenu);
     };
 
     class RadioItemView : public ItemView {
@@ -219,6 +235,18 @@ class ContextMenu : public Popup {
     bool prepareShow();
     void buildMainContent();
 
+    /**
+     * @brief Whether a point lands on this menu or on any menu further down its open submenu chain
+     * @param pos The point to test
+     * @return True if the point belongs to this menu's chain
+     */
+    bool containsPointInChain(vec2 pos);
+
+    /**
+     * @brief The menu this one's submenu chain hangs off, which is this menu when it was opened on its own
+     */
+    ContextMenu &rootMenu();
+
     std::vector<std::unique_ptr<ItemData>> m_items;                // this menu's own item vector
     std::vector<std::unique_ptr<ItemData>> *m_itemsPtr = &m_items; // vector currently being shown: m_items,
                                                                    // or a submenu item's items when opened via openSubmenu()
@@ -227,6 +255,7 @@ class ContextMenu : public Popup {
     std::vector<std::unique_ptr<ItemView>> m_views;
 
     ContextMenu *m_submenu = nullptr;
+    ContextMenu *m_parentMenu = nullptr;
     Frame *m_submenuSourceRow = nullptr;
 
     OverlayLayer *m_overlayPtr;
