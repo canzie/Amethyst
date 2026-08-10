@@ -7,6 +7,7 @@
 #include "modules/text_processor.h"
 #include "rendering/draw_context.h"
 #include "rendering/instance_data.h"
+#include "utils/utf8.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -249,8 +250,11 @@ void UIInput::processKeyboardInput()
             if (m_selectionStart.has_value()) {
                 deleteSelection();
             } else if (m_cursorPosition > 0) {
-                m_text.erase(m_cursorPosition - 1, 1);
-                m_cursorPosition--;
+                // Erase a whole codepoint, not a byte: a multi-byte sequence would
+                // otherwise be left truncated and render as a replacement box.
+                size_t start = Utf8::prevBoundary(m_text, m_cursorPosition);
+                m_text.erase(start, m_cursorPosition - start);
+                m_cursorPosition = start;
                 markDirty();
                 if (onTextChanged) {
                     onTextChanged(m_text);
@@ -264,7 +268,8 @@ void UIInput::processKeyboardInput()
             if (m_selectionStart.has_value()) {
                 deleteSelection();
             } else if (m_cursorPosition < m_text.size()) {
-                m_text.erase(m_cursorPosition, 1);
+                size_t end = Utf8::nextBoundary(m_text, m_cursorPosition);
+                m_text.erase(m_cursorPosition, end - m_cursorPosition);
                 markDirty();
                 if (onTextChanged) {
                     onTextChanged(m_text);
@@ -343,23 +348,9 @@ void UIInput::processKeyboardInput()
     uint32_t codepoint;
     while (InputInterface::pollCharEvent(codepoint)) {
         if (codepoint >= 32 || codepoint == '\n') {
-            char utf8[5] = {0};
-            if (codepoint < 0x80) {
-                utf8[0] = static_cast<char>(codepoint);
-            } else if (codepoint < 0x800) {
-                utf8[0] = static_cast<char>(0xC0 | (codepoint >> 6));
-                utf8[1] = static_cast<char>(0x80 | (codepoint & 0x3F));
-            } else if (codepoint < 0x10000) {
-                utf8[0] = static_cast<char>(0xE0 | (codepoint >> 12));
-                utf8[1] = static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
-                utf8[2] = static_cast<char>(0x80 | (codepoint & 0x3F));
-            } else {
-                utf8[0] = static_cast<char>(0xF0 | (codepoint >> 18));
-                utf8[1] = static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));
-                utf8[2] = static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
-                utf8[3] = static_cast<char>(0x80 | (codepoint & 0x3F));
-            }
-            insertText(utf8);
+            char utf8[Utf8::MAX_SEQUENCE];
+            size_t bytes = Utf8::encode(codepoint, utf8);
+            insertText(std::string(utf8, bytes));
             m_cursorBlinkTimer = 0.0f;
             m_cursorVisible = true;
         }
@@ -423,20 +414,21 @@ void UIInput::deleteSelection()
 
 void UIInput::moveCursor(int delta, bool select)
 {
+    // delta counts codepoints, not bytes, so the caret never lands inside a sequence.
     if (delta < 0) {
         if (m_cursorPosition > 0) {
-            setCursorPosition(m_cursorPosition - 1, select);
+            setCursorPosition(Utf8::prevBoundary(m_text, m_cursorPosition), select);
         }
     } else if (delta > 0) {
         if (m_cursorPosition < m_text.size()) {
-            setCursorPosition(m_cursorPosition + 1, select);
+            setCursorPosition(Utf8::nextBoundary(m_text, m_cursorPosition), select);
         }
     }
 }
 
 void UIInput::setCursorPosition(size_t pos, bool select)
 {
-    pos = std::min(pos, m_text.size());
+    pos = Utf8::alignToBoundary(m_text, std::min(pos, m_text.size()));
 
     if (select) {
         if (!m_selectionStart.has_value()) {
@@ -458,18 +450,22 @@ size_t UIInput::getCursorFromMouseX(int32_t mouseX)
 
     float relativeX = static_cast<float>(mouseX) - m_textStartX;
 
-    if (relativeX <= m_charPositions[0]) {
-        return 0;
-    }
-
-    for (size_t i = 1; i < m_charPositions.size(); ++i) {
-        float midpoint = (m_charPositions[i - 1] + m_charPositions[i]) / 2.0f;
-        if (relativeX < midpoint) {
-            return i - 1;
+    // Walk codepoint boundaries and return the nearest one. m_charPositions is indexed by
+    // byte so the lookups are direct, but only boundaries are valid caret positions.
+    size_t boundary = 0;
+    while (boundary < m_text.size()) {
+        size_t next = Utf8::nextBoundary(m_text, boundary);
+        if (next >= m_charPositions.size()) {
+            break;
         }
+        float midpoint = (m_charPositions[boundary] + m_charPositions[next]) * 0.5f;
+        if (relativeX < midpoint) {
+            return boundary;
+        }
+        boundary = next;
     }
 
-    return std::min(m_text.size(), m_charPositions.size() - 1);
+    return boundary;
 }
 
 void UIInput::copy()
@@ -613,15 +609,22 @@ void UIInput::drawText(DrawContext &ctx)
     if (m_showingPlaceholder) {
         m_charPositions.push_back(0.0f);
     } else {
-        m_charPositions.reserve(shown.size() + 1);
+        // Indexed by byte so caret offsets can be looked up directly. A multi-byte
+        // sequence stores its start x in every one of its byte slots, so a lookup at a
+        // boundary is always the left edge of that codepoint.
+        m_charPositions.assign(shown.size() + 1, 0.0f);
         uint32_t pixelSize = static_cast<uint32_t>(m_tiProps.text.fontSize);
         float currentX = 0.0f;
-        for (size_t i = 0; i <= shown.size(); ++i) {
-            m_charPositions.push_back(currentX);
-            if (i < shown.size()) {
-                currentX += ctx.textProcessor->getCharAdvanceAtlas(static_cast<uint32_t>(shown[i]), pixelSize);
+        size_t i = 0;
+        while (i < shown.size()) {
+            Utf8::Decoded decoded = Utf8::decode(shown, i);
+            for (size_t byte = 0; byte < decoded.bytes && i + byte < shown.size(); ++byte) {
+                m_charPositions[i + byte] = currentX;
             }
+            currentX += ctx.textProcessor->getCharAdvanceAtlas(decoded.codepoint, pixelSize);
+            i += decoded.bytes;
         }
+        m_charPositions[shown.size()] = currentX;
 
         // Glyphs are aligned within the content box, so the caret origin must shift by the
         // same amount; m_charPositions are measured from the text's own left edge.

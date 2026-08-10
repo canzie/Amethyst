@@ -83,8 +83,15 @@ GeometryAllocation *GeometryRegistry::submit(const InstanceData &data)
     m_slotAlive[slotId] = 1;
     m_needsRebuild = true;
 
-    m_handlePool.push_back({slotId, this, true});
-    return &m_handlePool.back();
+    if (slotId >= m_handlePool.size()) {
+        m_handlePool.resize(slotId + 1);
+    }
+    m_handlePool[slotId] = GeometryAllocation{
+        .slotId = slotId,
+        .registry = this,
+        .owning = true,
+    };
+    return &m_handlePool[slotId];
 }
 
 void GeometryRegistry::update(GeometryAllocation &alloc, const InstanceData &data)

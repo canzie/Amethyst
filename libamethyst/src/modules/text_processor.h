@@ -9,7 +9,6 @@
 #include "components/common.h"
 #include "modules/glyph_atlas.h"
 #include "modules/glyph_buffer.h"
-#include "parsers/ttf/ttf_types.h"
 #include "rendering/instance_data.h"
 
 #include "math/math.h"
@@ -28,6 +27,7 @@ struct TextLayoutParams {
     Color4 color = {0.0f, 0.0f, 0.0f, 1.0f};
     float letterSpacing = 0.0f;
     float lineHeight = 1.2f;
+    float tabSize = 4.0f; // tab stop spacing, in space advances
     float strokeThickness = 0.0f;
     Color4 strokeColor = {0.0f, 0.0f, 0.0f, 1.0f};
     TextXAlignment xAlign = TextXAlignment::LEFT;
@@ -103,11 +103,6 @@ class TextProcessor {
     void setGlyphAtlas(GlyphAtlas *atlas) { m_glyphAtlas = atlas; }
 
     /**
-     * @brief Get the font data currently associated with this processor
-     */
-    const TTF::FontData *fontData() const { return m_fontData; }
-
-    /**
      * @brief Layout text using glyph atlas (new implementation)
      * @param text The text to layout
      * @param params Layout parameters
@@ -125,10 +120,15 @@ class TextProcessor {
 
     /**
      * @brief Measure text dimensions using glyph atlas
+     *
+     * Runs the same shaper as layout, so hard breaks (LF/CR/CRLF) and tabs are honoured:
+     * the width is the widest line and the height covers every line. Wrapping is not
+     * applied; measure through the layout path if a wrap width matters.
+     *
      * @param text The text to measure
      * @param pixelSize Font size in pixels
      * @param letterSpacing Additional spacing between characters
-     * @return Width and height of text
+     * @return Width of the widest line, and the total height of all lines
      */
     vec2 measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing = 0.0f) const;
 
@@ -142,7 +142,6 @@ class TextProcessor {
     float getCharAdvanceAtlas(uint32_t codepoint, uint32_t pixelSize, float letterSpacing = 0.0f) const;
 
   private:
-    const TTF::FontData *m_fontData = nullptr;
     GlyphAtlas *m_glyphAtlas = nullptr;
 };
 

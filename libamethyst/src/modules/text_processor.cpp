@@ -6,75 +6,17 @@
 #include "modules/text_processor.h"
 
 #include "utils/profiling.h"
+#include "utils/utf8.h"
 
 #include <algorithm>
 #include <cmath>
 
-#define UTF8_ASCII_MASK  0x80u
-#define UTF8_2BYTE_MASK  0xE0u
-#define UTF8_2BYTE_MARK  0xC0u
-#define UTF8_2BYTE_BITS  0x1Fu
-#define UTF8_3BYTE_MASK  0xF0u
-#define UTF8_3BYTE_MARK  0xE0u
-#define UTF8_3BYTE_BITS  0x0Fu
-#define UTF8_4BYTE_MASK  0xF8u
-#define UTF8_4BYTE_MARK  0xF0u
-#define UTF8_4BYTE_BITS  0x07u
-#define UTF8_CONT_BITS   0x3Fu
-#define UTF8_REPLACEMENT 0xFFFDu
-
 namespace Amethyst {
 
-// Returns {codepoint, bytes_consumed}. On invalid sequence, returns {U+FFFD, 1}.
-static std::pair<uint32_t, size_t> s_decodeUtf8(const std::string &text, size_t pos)
-{
-    auto b = [&](size_t offset) { return static_cast<unsigned char>(text[pos + offset]); };
-
-    unsigned char c = b(0);
-    if (c < UTF8_ASCII_MASK) {
-        return {c, 1};
-    }
-    if ((c & UTF8_2BYTE_MASK) == UTF8_2BYTE_MARK && pos + 1 < text.size()) {
-        return {(uint32_t(c & UTF8_2BYTE_BITS) << 6) | (b(1) & UTF8_CONT_BITS), 2};
-    }
-    if ((c & UTF8_3BYTE_MASK) == UTF8_3BYTE_MARK && pos + 2 < text.size()) {
-        return {(uint32_t(c & UTF8_3BYTE_BITS) << 12) | (uint32_t(b(1) & UTF8_CONT_BITS) << 6) | (b(2) & UTF8_CONT_BITS), 3};
-    }
-    if ((c & UTF8_4BYTE_MASK) == UTF8_4BYTE_MARK && pos + 3 < text.size()) {
-        return {(uint32_t(c & UTF8_4BYTE_BITS) << 18) | (uint32_t(b(1) & UTF8_CONT_BITS) << 12) |
-                    (uint32_t(b(2) & UTF8_CONT_BITS) << 6) | (b(3) & UTF8_CONT_BITS),
-                4};
-    }
-    return {UTF8_REPLACEMENT, 1};
-}
-
-vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing) const
-{
-    AM_PROFILE_FUNCTION();
-    if (!m_glyphAtlas || text.empty()) {
-        return {0.0f, 0.0f};
-    }
-
-    FontMetrics metrics = m_glyphAtlas->getMetrics(pixelSize);
-    float width = 0.0f;
-
-    for (size_t i = 0; i < text.size();) {
-        auto [codepoint, charBytes] = s_decodeUtf8(text, i);
-        i += charBytes;
-        const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(codepoint, pixelSize);
-
-        if (!glyphInfo) {
-            continue;
-        }
-
-        width += glyphInfo->advance;
-        if (i < text.size()) {
-            width += letterSpacing;
-        }
-    }
-
-    return {width, metrics.lineHeight};
-}
+static constexpr uint32_t CP_TAB = 0x09u;
+static constexpr uint32_t CP_LINE_FEED = 0x0Au;
+static constexpr uint32_t CP_CARRIAGE_RETURN = 0x0Du;
+static constexpr uint32_t CP_SPACE = 0x20u;
 
 float TextProcessor::getCharAdvanceAtlas(uint32_t codepoint, uint32_t pixelSize, float letterSpacing) const
 {
@@ -115,6 +57,11 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
     metrics = atlas.getMetrics(pixelSize);
     lineHeightPx = metrics.lineHeight * params.lineHeight;
 
+    // Tab stops are multiples of the space advance, so tabs share the space column grid.
+    const GlyphInfo *spaceInfo = atlas.getGlyph(CP_SPACE, pixelSize);
+    float spaceAdvance = spaceInfo != nullptr ? spaceInfo->advance : params.fontSize * 0.5f;
+    float tabWidth = std::max(params.tabSize, 1.0f) * spaceAdvance;
+
     std::vector<ShapedGlyph> currentLine;
     currentLine.reserve(text.size());
     float currentLineWidth = 0.0f;
@@ -123,22 +70,58 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
     size_t wordStartGlyphIdx = 0;
     float wordStartWidth = 0.0f;
 
-    auto flushLine = [&]() {
-        if (!currentLine.empty()) {
+    // force emits a row even with no glyphs on it, so blank lines do not collapse.
+    auto flushLine = [&](bool force) {
+        if (force || !currentLine.empty()) {
             lineWidths.push_back(currentLineWidth);
             lines.push_back(std::move(currentLine));
             currentLine.clear();
             currentLineWidth = 0.0f;
         }
+        wordStartIdx = 0;
         wordStartGlyphIdx = 0;
         wordStartWidth = 0.0f;
     };
 
+    bool lastWasHardBreak = false;
     size_t i = 0;
     while (i < text.size()) {
-        auto [codepoint, charBytes] = s_decodeUtf8(text, i);
-        const GlyphInfo *glyphInfo = atlas.getGlyph(codepoint, pixelSize);
+        Utf8::Decoded decoded = Utf8::decode(text, i);
+        uint32_t codepoint = decoded.codepoint;
+        size_t charBytes = decoded.bytes;
 
+        // Hard line breaks: LF, CR and CRLF. These never reach the atlas; an unmapped
+        // control codepoint would otherwise rasterize as .notdef and render as a box.
+        if (codepoint == CP_LINE_FEED || codepoint == CP_CARRIAGE_RETURN) {
+            if (codepoint == CP_CARRIAGE_RETURN && i + charBytes < text.size() &&
+                Utf8::decode(text, i + charBytes).codepoint == CP_LINE_FEED) {
+                charBytes += 1;
+            }
+            flushLine(true);
+            lastWasHardBreak = true;
+            i += charBytes;
+            continue;
+        }
+        lastWasHardBreak = false;
+
+        // A tab advances to the next tab stop and produces no ink, so it is resolved here
+        // rather than through a glyph.
+        if (codepoint == CP_TAB) {
+            float advance = tabWidth - std::fmod(currentLineWidth, tabWidth);
+            if (params.wrap && params.bounds.x > 0.0f && currentLineWidth + advance > params.bounds.x &&
+                !currentLine.empty()) {
+                flushLine(false);
+            } else {
+                currentLineWidth += advance;
+            }
+            wordStartIdx = i + charBytes;
+            wordStartGlyphIdx = currentLine.size();
+            wordStartWidth = currentLineWidth;
+            i += charBytes;
+            continue;
+        }
+
+        const GlyphInfo *glyphInfo = atlas.getGlyph(codepoint, pixelSize);
         if (!glyphInfo) {
             i += charBytes;
             continue;
@@ -146,7 +129,7 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
 
         float advance = glyphInfo->advance + params.letterSpacing;
 
-        if (codepoint == ' ') {
+        if (codepoint == CP_SPACE) {
             wordStartIdx = i + charBytes;
             wordStartGlyphIdx = currentLine.size();
             wordStartWidth = currentLineWidth + advance;
@@ -154,24 +137,34 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
 
         if (params.wrap && params.bounds.x > 0.0f) {
             if (currentLineWidth + advance > params.bounds.x && !currentLine.empty()) {
-                if (params.truncate == TextTruncate::SPLIT_WORD || codepoint == ' ') {
-                    flushLine();
+                if (params.truncate == TextTruncate::SPLIT_WORD || codepoint == CP_SPACE) {
+                    flushLine(false);
                 } else if (wordStartGlyphIdx > 0 && wordStartGlyphIdx < currentLine.size()) {
                     float removeWidth = currentLineWidth - wordStartWidth;
+                    size_t resumeIdx = wordStartIdx;
                     currentLine.erase(currentLine.begin() + wordStartGlyphIdx, currentLine.end());
                     currentLineWidth -= removeWidth;
-                    flushLine();
-                    i = wordStartIdx;
+                    flushLine(false);
+                    i = resumeIdx;
                     continue;
                 } else {
-                    flushLine();
+                    flushLine(false);
                 }
             }
         }
 
         if (params.truncate == TextTruncate::AT_END && params.bounds.x > 0.0f && !params.wrap) {
             if (currentLineWidth + advance > params.bounds.x) {
-                break;
+                // Skip to the next hard break so later lines still lay out; without this a
+                // single long line would truncate the rest of the text away.
+                while (i < text.size()) {
+                    uint32_t skipped = Utf8::decode(text, i).codepoint;
+                    if (skipped == CP_LINE_FEED || skipped == CP_CARRIAGE_RETURN) {
+                        break;
+                    }
+                    i = Utf8::nextBoundary(text, i);
+                }
+                continue;
             }
         }
 
@@ -185,7 +178,40 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
         currentLineWidth += advance;
         i += charBytes;
     }
-    flushLine();
+
+    // A trailing hard break leaves an empty final line, matching editor semantics: "a\n"
+    // is two lines, the second empty.
+    flushLine(lastWasHardBreak);
+}
+
+vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing) const
+{
+    AM_PROFILE_FUNCTION();
+    if (m_glyphAtlas == nullptr || text.empty()) {
+        return {0.0f, 0.0f};
+    }
+
+    // Measuring runs the same shaper as layout so that newlines, tabs and line counting
+    // cannot drift between the two.
+    TextLayoutParams params;
+    params.fontSize = static_cast<float>(pixelSize);
+    params.letterSpacing = letterSpacing;
+    params.lineHeight = 1.0f;
+    params.wrap = false;
+
+    std::vector<std::vector<ShapedGlyph>> lines;
+    std::vector<float> lineWidths;
+    FontMetrics metrics;
+    float lineHeightPx = 0.0f;
+    s_shapeText(text, params, *m_glyphAtlas, lines, lineWidths, metrics, lineHeightPx);
+
+    float width = 0.0f;
+    for (float w : lineWidths) {
+        width = std::max(width, w);
+    }
+
+    float height = static_cast<float>(std::max<size_t>(lines.size(), 1)) * lineHeightPx;
+    return {width, height};
 }
 
 std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text, const TextLayoutParams &params) const
