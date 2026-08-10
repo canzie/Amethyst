@@ -26,6 +26,7 @@ struct GlyphInfo {
     float bearingX = 0.0f;
     float bearingY = 0.0f;
     float advance = 0.0f;
+    bool packed = false; // false while only the advance is known; see GlyphAtlas::getAdvance
 };
 
 /**
@@ -56,6 +57,19 @@ class GlyphAtlas {
      * @return Pointer to cached glyph info, or nullptr if glyph is empty
      */
     const GlyphInfo *getGlyph(uint32_t codepoint, uint32_t pixelSize);
+
+    /**
+     * @brief Advance width only, without rasterizing or packing the glyph.
+     *
+     * Measurement must not pull glyphs into the atlas: the atlas is a fixed size and never
+     * evicts, so measuring text that is never drawn would consume it permanently. Entries
+     * created here are upgraded in place if the glyph is later drawn.
+     *
+     * @param codepoint Unicode codepoint
+     * @param pixelSize Font size in pixels
+     * @return Advance width in pixels
+     */
+    float getAdvance(uint32_t codepoint, uint32_t pixelSize);
 
     /**
      * @brief Get font metrics for specified pixel size
@@ -131,6 +145,19 @@ class GlyphAtlas {
 
     SizeGlyphTable &getSizeTable(uint32_t pixelSize);
     bool rasterizeGlyphInfo(uint32_t codepoint, uint32_t pixelSize, GlyphInfo &out);
+
+    struct Entry {
+        GlyphInfo *info = nullptr;
+        bool existed = false;
+    };
+
+    /**
+     * @brief Get the cache entry for a codepoint, creating an empty one if absent.
+     * @param table Per-size table to look in
+     * @param codepoint Unicode codepoint
+     * @return The entry and whether it already held loaded data
+     */
+    static Entry obtainEntry(SizeGlyphTable &table, uint32_t codepoint);
 
     FontLoader *m_fontLoader;
     std::vector<uint8_t> m_pixels;

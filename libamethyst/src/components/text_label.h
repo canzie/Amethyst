@@ -62,6 +62,12 @@ class TextLabel : public UILabel {
     void reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t zIndex, bool visible);
 
     /**
+     * @brief Give the glyph slice back, keeping the quad, and force a re-shape next draw.
+     * @param ctx The draw context providing the geometry registry
+     */
+    void releaseGlyphSlice(DrawContext &ctx);
+
+    /**
      * @brief Release the text quad and its glyph slice.
      * @param ctx The draw context providing the geometry registry
      */

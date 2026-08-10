@@ -108,6 +108,11 @@ allocation at a time, so the slot id is already the handle id.
 
 ## 6. `flush()` rebuilds and re-uploads everything when any allocation appears or disappears
 
+**Still open, but its worst trigger is gone.** The caret used to release and re-submit its
+instance on every blink, so a focused field forced this path twice a second forever.
+`UIInput` now keeps the caret and selection instances alive and toggles their visibility, so
+the remaining cost only fires on genuine create/destroy.
+
 `m_needsRebuild` is set by `submit`, by `release`, and by any zIndex change
 (`geometry_registry.cpp:84`, `:97`, `:132`). On the next `flush()` it re-collects live
 slots, `stable_sort`s all of them, rewrites the whole sorted buffer, and sets
@@ -177,11 +182,20 @@ code.
 - ~~**`s_decodeUtf8` does not validate**~~ — FIXED: decoding moved to `utils/utf8.h`, which
   rejects bad continuation bytes, overlongs, surrogates and out-of-range codepoints,
   yielding U+FFFD and a single-byte step so the loop resynchronises.
+- ~~**`getKerning` calls `setPixelSize` on every invocation**~~ — half fixed:
+  `FontLoader::setPixelSize` now early-outs when the size is unchanged, so it no longer
+  resets the face's size state (and FreeType's caches) on every glyph-cache miss. Kerning
+  itself is still uncached: if it is ever wired into the shaper, cache kern pairs in
+  `SizeGlyphTable` keyed on `(left << 32) | right` rather than calling FreeType per pair.
 - **`GlyphAtlas::getGlyph` returns non-null for zero-size glyphs** (space, and `.notdef`
   when the bitmap is empty) because `rasterizeGlyphInfo` returns `true` with a zero rect
   (`glyph_atlas.cpp:37-43`). Callers must know to check `width > 0` separately
   (`text_processor.cpp:178`), which is easy to get wrong. Consider returning a distinct
   "blank but advancing" state.
+- ~~**`UIInput` re-shapes its text on every draw.**~~ — FIXED: it now keeps a
+  `TextLayoutState` and takes `TextLabel`'s cheap path (shift the quad's translation) when
+  only the origin moved. `m_charPositions` is rebuilt only when the text or font size
+  changed, with the total width cached alongside it for alignment.
 - **`ScrollingFrame` scroll speed is in fixed pixels** (`scrolling_frame.cpp:290`), not
   lines, and `layoutChildren` runs twice whenever a scrollbar appears
   (`scrolling_frame.cpp:124`, `:142`). Culled children are still fully laid out — the flag
@@ -216,13 +230,40 @@ left edge; the hand-rolled UTF-8 encoder is replaced by `Utf8::encode`.
 
 `geometry_registry.{h,cpp}`: handle pool indexed by `slotId`. `release()` is unchanged.
 
+Measurement (perf + correctness):
+
+- `measureTextAtlas` is an allocation-free metrics scan. It briefly went through the full
+  shaper to gain newline handling, which meant a `vector<vector<ShapedGlyph>>` per call; it
+  now walks codepoints directly, handling LF/CR/CRLF and tabs, with no allocation.
+- It takes a `TextLayoutParams` overload, so `tabSize`/`letterSpacing` come from the same
+  struct layout uses instead of a second set of defaults. Tab-stop width is computed by one
+  shared `s_tabWidth` helper, so measured and laid-out widths cannot disagree.
+- `GlyphAtlas::getAdvance` returns an advance via `FT_Get_Advance` without rendering or
+  packing. Entries upgrade in place to packed if the glyph is later drawn, so measuring text
+  that is never drawn no longer consumes the fixed-size atlas.
+- `FontLoader::setPixelSize` early-outs when the size is unchanged. It was calling
+  `FT_Set_Pixel_Sizes` on every cache miss, which resets the face's size state.
+- The FreeType 26.6 and 16.16 fixed-point divisors are now named constants.
+
+`ui_input.cpp` (perf): `drawCursor` and `drawSelection` keep their instances and toggle
+`setVisible` instead of releasing and re-submitting. Both bail out early when there is
+nothing to show and no instance exists yet, so a never-focused field still costs nothing.
+This is what removed the twice-a-second full-layer rebuild described in item 6; the fix
+belongs in the component, since visibility is component-owned state and liveness is the
+registry's.
+
 Not yet compiled or exercised at the time of writing.
 
 ## Suggested order for the rest
 
-1. Atlas dirty-rect upload (item 4), together with the `oldLayout` change it forces.
-2. `TextMeasure` public API (`text_editor_plan.md`), absorbing the caret helpers from
+1. `TextLayoutState` caching in `UIInput` (item 10). Reuses machinery `TextLabel` already
+   has, and it is the largest remaining per-interaction cost in text input.
+2. Atlas dirty-rect upload (item 4), together with the `oldLayout` change it forces.
+3. `TextMeasure` public API (`text_editor_plan.md`), absorbing the caret helpers from
    `UIInput`.
-3. Font id in the atlas key (item 3), while it is still cheap.
-4. Hit-test allocations (item 7) — small and self-contained.
-5. Virtualized text view (`text_editor_plan.md`).
+4. Font id in the atlas key (item 3), while it is still cheap.
+5. Registry rebuild on genuine create/destroy (item 6), if it still shows up in a profile
+   once the churn above is gone.
+6. Hit-test allocations (item 7) — small, self-contained, and user-paced so the payoff is
+   modest.
+7. Virtualized text view (`text_editor_plan.md`).

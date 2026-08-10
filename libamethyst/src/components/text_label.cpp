@@ -110,6 +110,20 @@ void TextLabel::updateTextGeometry(DrawContext &ctx)
         return;
     }
 
+    // Culled labels give their glyphs back: the slice arena is a fixed budget shared by
+    // every label in the registry, so holding quads for text nobody can see is what
+    // exhausts it on long documents. The instance stays alive and merely turns invisible,
+    // so the registry's sort order is untouched.
+    if (isRenderCulled()) {
+        releaseGlyphSlice(ctx);
+        if (m_textAlloc != nullptr) {
+            if (InstanceData *inst = ctx.geometry->getMutable(*m_textAlloc)) {
+                inst->setVisible(false);
+            }
+        }
+        return;
+    }
+
     uint32_t pixelSize = static_cast<uint32_t>(m_textStyle.fontSize);
     if (!m_textLayout.isValid()) {
         m_textSize = ctx.textProcessor->measureTextAtlas(m_text, pixelSize);
@@ -217,11 +231,26 @@ void TextLabel::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t
     s_pushData(ctx.geometry, m_textAlloc, inst);
 }
 
+void TextLabel::releaseGlyphSlice(DrawContext &ctx)
+{
+    if (!m_glyphSlice.isValid()) {
+        return;
+    }
+
+    // The slice belongs to whichever registry created it, which is not necessarily the
+    // one being drawn into.
+    GeometryRegistry *owner = m_textAlloc != nullptr && m_textAlloc->registry != nullptr ? m_textAlloc->registry : ctx.geometry;
+    if (GlyphBuffer *buffer = owner->getGlyphBuffer()) {
+        buffer->destroySlice(m_glyphSlice);
+    }
+    m_glyphSlice = GlyphSliceHandle{};
+    m_textLayout.invalidate();
+}
+
 void TextLabel::releaseText(DrawContext &ctx)
 {
     if (m_glyphSlice.isValid()) {
-        ctx.geometry->glyphBuffer().destroySlice(m_glyphSlice);
-        m_glyphSlice = GlyphSliceHandle{};
+        releaseGlyphSlice(ctx);
     }
     if (m_textAlloc != nullptr) {
         if (m_textAlloc->isValid()) {

@@ -2,14 +2,20 @@
 #include "logging/log.h"
 
 #include <ft2build.h>
+#include FT_ADVANCES_H
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
 
 namespace Amethyst {
 
+// FreeType reports FT_Pos metrics in 26.6 and FT_Fixed in 16.16 fixed point.
+static constexpr float FT_POS_TO_PIXELS = 1.0f / 64.0f;
+static constexpr float FT_FIXED_TO_PIXELS = 1.0f / 65536.0f;
+
 struct FontLoader::Impl {
     FT_Library library = nullptr;
     FT_Face face = nullptr;
+    uint32_t pixelSize = 0;
 };
 
 FontLoader::FontLoader() : m_impl(std::make_unique<Impl>())
@@ -72,10 +78,33 @@ void FontLoader::setPixelSize(uint32_t size)
         return;
     }
 
+    // FT_Set_Pixel_Sizes resets the face's size state, discarding FreeType's own caches.
+    if (m_impl->pixelSize == size) {
+        return;
+    }
+
     FT_Error error = FT_Set_Pixel_Sizes(m_impl->face, 0, size);
     if (error) {
         AM_LOG_ERROR("Failed to set pixel size: {}", size);
+        return;
     }
+    m_impl->pixelSize = size;
+}
+
+float FontLoader::getAdvance(uint32_t codepoint) const
+{
+    if (!m_impl || !m_impl->face) {
+        return 0.0f;
+    }
+
+    FT_UInt glyphIndex = FT_Get_Char_Index(m_impl->face, codepoint);
+
+    FT_Fixed advance = 0;
+    if (FT_Get_Advance(m_impl->face, glyphIndex, FT_LOAD_DEFAULT, &advance) != 0) {
+        return 0.0f;
+    }
+
+    return static_cast<float>(advance) * FT_FIXED_TO_PIXELS;
 }
 
 GlyphBitmap FontLoader::rasterizeGlyph(uint32_t codepoint)
@@ -109,7 +138,7 @@ GlyphBitmap FontLoader::rasterizeGlyph(uint32_t codepoint)
     result.height = bitmap.rows;
     result.bearingX = static_cast<float>(m_impl->face->glyph->bitmap_left);
     result.bearingY = static_cast<float>(m_impl->face->glyph->bitmap_top);
-    result.advance = m_impl->face->glyph->advance.x / 64.0f;
+    result.advance = m_impl->face->glyph->advance.x * FT_POS_TO_PIXELS;
 
     if (bitmap.width > 0 && bitmap.rows > 0) {
         result.buffer.resize(bitmap.width * bitmap.rows);
@@ -128,9 +157,9 @@ FontMetrics FontLoader::getMetrics() const
         return result;
     }
 
-    result.ascender = m_impl->face->size->metrics.ascender / 64.0f;
-    result.descender = m_impl->face->size->metrics.descender / 64.0f;
-    result.lineHeight = m_impl->face->size->metrics.height / 64.0f;
+    result.ascender = m_impl->face->size->metrics.ascender * FT_POS_TO_PIXELS;
+    result.descender = m_impl->face->size->metrics.descender * FT_POS_TO_PIXELS;
+    result.lineHeight = m_impl->face->size->metrics.height * FT_POS_TO_PIXELS;
 
     return result;
 }
@@ -168,7 +197,7 @@ float FontLoader::getKerning(uint32_t leftCodepoint, uint32_t rightCodepoint) co
         return 0.0f;
     }
 
-    return delta.x / 64.0f;
+    return delta.x * FT_POS_TO_PIXELS;
 }
 
 bool FontLoader::isLoaded() const

@@ -48,8 +48,22 @@ class TextSource {
     virtual uint64_t         lineCount() const = 0;
     virtual std::string_view line(uint64_t index) const = 0;  // without the terminator
     virtual uint64_t         byteSize() const = 0;
+
+    // Change detection. Bumped on every edit; per-line so an edit invalidates one row.
+    virtual uint64_t revision() const = 0;
+    virtual uint64_t lineRevision(uint64_t index) const = 0;
 };
 ```
+
+**Change detection must be O(1), never a content comparison.** A row's cached layout is
+valid iff its `lineRevision` is unchanged, so validating the whole viewport is ~120 integer
+compares regardless of document size.
+
+This is deliberately different from `UIInput`, which compares the rendered string itself
+against the previous one. That is the right call for a single-line field — a `memcmp` over
+tens of bytes, with no hash-collision risk, and the string can be moved in since
+`displayText()` already returns by value — but it is O(n) per draw and does not scale. Do
+not reuse it here.
 
 The panel owns the line index: a `std::vector<uint64_t>` of line-start byte offsets, built
 once by a `memchr` loop over the buffer. That scan runs at GB/s, so a 100 MB file indexes
@@ -207,10 +221,14 @@ Two design points matter more than the signatures:
 lineHeight)`. Constraint solving calls it repeatedly with identical arguments and today
 re-shapes every time.
 
-**Split measurement from rasterization.** Measuring needs advances and metrics, not
-bitmaps. Pulling glyphs into the atlas as a side effect of measuring text that may never
-be drawn is how a fixed-size atlas fills with sizes nobody rendered
-(`library_review.md` item 3). A metrics-only path lets `measure` be honestly `const`.
+**Split measurement from rasterization.** Done: `GlyphAtlas::getAdvance` loads the advance
+via `FT_Get_Advance` without rendering or packing, and cache entries upgrade in place to
+packed if the glyph is later drawn. `measureTextAtlas` and `getCharAdvanceAtlas` both go
+through it, so measuring text that is never drawn no longer consumes atlas space.
+
+`measureTextAtlas` still is not `const`-honest — it mutates the atlas cache through the
+pointer — but it no longer has the side effect that mattered. Making it truly `const` needs
+the cache to be `mutable` or the atlas split into a metrics half and a packing half.
 
 `offsetToX` / `xToOffset` are worth exposing before the editor exists: `UIInput` open-codes
 that logic against a per-byte array it rebuilds every frame (`ui_input.cpp:612-628`), and

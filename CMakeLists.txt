@@ -11,6 +11,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
 
+option(AMETHYST_ATLAS_PACKER_SHELF "Use the shelf atlas packer; OFF selects skyline" ON)
 option(AMETHYST_BUILD_TESTAPP "Build the Amethyst test application" ON)
 option(AMETHYST_BUILD_TESTS "Build unit tests" OFF)
 option(AMETHYST_RUN_TESTS "Run unit tests automatically after build" OFF)

@@ -65,34 +65,53 @@ bool GlyphAtlas::rasterizeGlyphInfo(uint32_t codepoint, uint32_t pixelSize, Glyp
     return true;
 }
 
+GlyphAtlas::Entry GlyphAtlas::obtainEntry(SizeGlyphTable &table, uint32_t codepoint)
+{
+    if (codepoint < ASCII_COUNT) {
+        bool existed = table.asciiLoaded[codepoint];
+        table.asciiLoaded[codepoint] = true;
+        return {&table.ascii[codepoint], existed};
+    }
+
+    auto [it, inserted] = table.extended.try_emplace(codepoint);
+    return {&it->second, !inserted};
+}
+
 const GlyphInfo *GlyphAtlas::getGlyph(uint32_t codepoint, uint32_t pixelSize)
 {
     SizeGlyphTable &table = getSizeTable(pixelSize);
+    Entry entry = obtainEntry(table, codepoint);
 
-    if (codepoint < ASCII_COUNT) {
-        if (table.asciiLoaded[codepoint]) {
-            return &table.ascii[codepoint];
-        }
-    } else {
-        auto it = table.extended.find(codepoint);
-        if (it != table.extended.end()) {
-            return &it->second;
-        }
+    if (entry.existed && entry.info->packed) {
+        return entry.info;
     }
 
     GlyphInfo info;
     if (!rasterizeGlyphInfo(codepoint, pixelSize, info)) {
+        // Packing failed, but the advance is still worth keeping so measurement stays right.
+        if (!entry.existed) {
+            m_fontLoader->setPixelSize(pixelSize);
+            entry.info->advance = m_fontLoader->getAdvance(codepoint);
+        }
         return nullptr;
     }
+    info.packed = true;
 
-    if (codepoint < ASCII_COUNT) {
-        table.ascii[codepoint] = info;
-        table.asciiLoaded[codepoint] = true;
-        return &table.ascii[codepoint];
+    *entry.info = info;
+    return entry.info;
+}
+
+float GlyphAtlas::getAdvance(uint32_t codepoint, uint32_t pixelSize)
+{
+    SizeGlyphTable &table = getSizeTable(pixelSize);
+    Entry entry = obtainEntry(table, codepoint);
+
+    if (!entry.existed) {
+        m_fontLoader->setPixelSize(pixelSize);
+        entry.info->advance = m_fontLoader->getAdvance(codepoint);
     }
 
-    auto [it, inserted] = table.extended.emplace(codepoint, info);
-    return &it->second;
+    return entry.info->advance;
 }
 
 FontMetrics GlyphAtlas::getMetrics(uint32_t pixelSize)

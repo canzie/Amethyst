@@ -9,6 +9,7 @@
 #include "components/ui_object.h"
 #include "components/window.h"
 #include "modules/event_signal.h"
+#include "modules/text_processor.h"
 #include "rendering/geometry_registry.h"
 
 #include <cstdint>
@@ -145,6 +146,10 @@ class UIInput : public UIObject {
     bool m_showingPlaceholder = false;
     float m_textBaselineY = 0.0f;
     float m_textStartX = 0.0f;
+
+    TextLayoutState m_textLayout;
+    std::string m_renderedText;
+    float m_textWidth = 0.0f;
 
     TickHandle m_tick;
 };

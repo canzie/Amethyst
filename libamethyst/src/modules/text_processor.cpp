@@ -24,18 +24,23 @@ float TextProcessor::getCharAdvanceAtlas(uint32_t codepoint, uint32_t pixelSize,
         return 0.0f;
     }
 
-    const GlyphInfo *glyphInfo = m_glyphAtlas->getGlyph(codepoint, pixelSize);
-    if (!glyphInfo) {
-        return 0.0f;
-    }
-
-    return glyphInfo->advance + letterSpacing;
+    return m_glyphAtlas->getAdvance(codepoint, pixelSize) + letterSpacing;
 }
 
 struct ShapedGlyph {
     const GlyphInfo *info;
     float localX;
 };
+
+// Shared so measurement and layout can never disagree on where tab stops land.
+static float s_tabWidth(GlyphAtlas &atlas, const TextLayoutParams &params, uint32_t pixelSize)
+{
+    float spaceAdvance = atlas.getAdvance(CP_SPACE, pixelSize);
+    if (spaceAdvance <= 0.0f) {
+        spaceAdvance = params.fontSize * 0.5f;
+    }
+    return std::max(params.tabSize, 1.0f) * spaceAdvance;
+}
 
 static uint16_t s_clampU16(float v)
 {
@@ -57,10 +62,7 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
     metrics = atlas.getMetrics(pixelSize);
     lineHeightPx = metrics.lineHeight * params.lineHeight;
 
-    // Tab stops are multiples of the space advance, so tabs share the space column grid.
-    const GlyphInfo *spaceInfo = atlas.getGlyph(CP_SPACE, pixelSize);
-    float spaceAdvance = spaceInfo != nullptr ? spaceInfo->advance : params.fontSize * 0.5f;
-    float tabWidth = std::max(params.tabSize, 1.0f) * spaceAdvance;
+    float tabWidth = s_tabWidth(atlas, params, pixelSize);
 
     std::vector<ShapedGlyph> currentLine;
     currentLine.reserve(text.size());
@@ -186,32 +188,57 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
 
 vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing) const
 {
+    TextLayoutParams params;
+    params.fontSize = static_cast<float>(pixelSize);
+    params.letterSpacing = letterSpacing;
+    return measureTextAtlas(text, params);
+}
+
+vec2 TextProcessor::measureTextAtlas(const std::string &text, const TextLayoutParams &params) const
+{
     AM_PROFILE_FUNCTION();
     if (m_glyphAtlas == nullptr || text.empty()) {
         return {0.0f, 0.0f};
     }
 
-    // Measuring runs the same shaper as layout so that newlines, tabs and line counting
-    // cannot drift between the two.
-    TextLayoutParams params;
-    params.fontSize = static_cast<float>(pixelSize);
-    params.letterSpacing = letterSpacing;
-    params.lineHeight = 1.0f;
-    params.wrap = false;
+    uint32_t pixelSize = static_cast<uint32_t>(params.fontSize);
+    float letterSpacing = params.letterSpacing;
+    FontMetrics metrics = m_glyphAtlas->getMetrics(pixelSize);
 
-    std::vector<std::vector<ShapedGlyph>> lines;
-    std::vector<float> lineWidths;
-    FontMetrics metrics;
-    float lineHeightPx = 0.0f;
-    s_shapeText(text, params, *m_glyphAtlas, lines, lineWidths, metrics, lineHeightPx);
+    float tabWidth = s_tabWidth(*m_glyphAtlas, params, pixelSize);
 
-    float width = 0.0f;
-    for (float w : lineWidths) {
-        width = std::max(width, w);
+    float maxWidth = 0.0f;
+    float lineWidth = 0.0f;
+    size_t lineCount = 1;
+
+    size_t i = 0;
+    while (i < text.size()) {
+        Utf8::Decoded decoded = Utf8::decode(text, i);
+        i += decoded.bytes;
+
+        if (decoded.codepoint == CP_LINE_FEED || decoded.codepoint == CP_CARRIAGE_RETURN) {
+            if (decoded.codepoint == CP_CARRIAGE_RETURN && i < text.size()) {
+                Utf8::Decoded following = Utf8::decode(text, i);
+                if (following.codepoint == CP_LINE_FEED) {
+                    i += following.bytes;
+                }
+            }
+            maxWidth = std::max(maxWidth, lineWidth);
+            lineWidth = 0.0f;
+            ++lineCount;
+            continue;
+        }
+
+        if (decoded.codepoint == CP_TAB) {
+            lineWidth += tabWidth - std::fmod(lineWidth, tabWidth);
+            continue;
+        }
+
+        lineWidth += m_glyphAtlas->getAdvance(decoded.codepoint, pixelSize) + letterSpacing;
     }
 
-    float height = static_cast<float>(std::max<size_t>(lines.size(), 1)) * lineHeightPx;
-    return {width, height};
+    maxWidth = std::max(maxWidth, lineWidth);
+    return {maxWidth, static_cast<float>(lineCount) * metrics.lineHeight};
 }
 
 std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text, const TextLayoutParams &params) const

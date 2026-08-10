@@ -48,6 +48,13 @@ target_compile_definitions(amethyst PRIVATE
     $<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>
 )
 
+# PUBLIC: atlas_packer.h selects the AtlasPacker alias on this, so anything including
+# the header must see the same definition. Shelf is the default, so only opting out
+# defines anything - a build that never sets this still gets the intended default.
+if(NOT AMETHYST_ATLAS_PACKER_SHELF)
+    target_compile_definitions(amethyst PUBLIC AMETHYST_ATLAS_PACKER_SKYLINE)
+endif()
+
 target_compile_options(amethyst PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic -Werror>
     $<$<CXX_COMPILER_ID:Clang>:-Wno-reorder-init-list -Wno-missing-designated-field-initializers>

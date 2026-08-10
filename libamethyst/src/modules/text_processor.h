@@ -126,6 +126,14 @@ class TextProcessor {
      * applied; measure through the layout path if a wrap width matters.
      *
      * @param text The text to measure
+     * @param params Layout parameters; fontSize, letterSpacing and tabSize are honoured
+     * @return Width of the widest line, and the total height of all lines
+     */
+    vec2 measureTextAtlas(const std::string &text, const TextLayoutParams &params) const;
+
+    /**
+     * @brief Measure text at a pixel size, using default layout parameters otherwise.
+     * @param text The text to measure
      * @param pixelSize Font size in pixels
      * @param letterSpacing Additional spacing between characters
      * @return Width of the widest line, and the total height of all lines

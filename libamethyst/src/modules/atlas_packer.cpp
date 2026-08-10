@@ -3,12 +3,12 @@
 
 namespace Amethyst {
 
-AtlasPacker::AtlasPacker(uint32_t width, uint32_t height) : m_width(width), m_height(height)
+SkylinePacker::SkylinePacker(uint32_t width, uint32_t height) : m_width(width), m_height(height)
 {
     m_skyline.push_back({0, 0, static_cast<int32_t>(m_width)});
 }
 
-std::optional<AtlasRegion> AtlasPacker::packRect(uint32_t width, uint32_t height)
+std::optional<AtlasRegion> SkylinePacker::packRect(uint32_t width, uint32_t height)
 {
     int32_t bestIndex = -1;
     int32_t bestY = INT32_MAX;
@@ -61,7 +61,7 @@ std::optional<AtlasRegion> AtlasPacker::packRect(uint32_t width, uint32_t height
     return AtlasRegion{outX, outY, static_cast<uint16_t>(width), static_cast<uint16_t>(height)};
 }
 
-void AtlasPacker::insertSkylineNode(int32_t index, const SkylineNode &node)
+void SkylinePacker::insertSkylineNode(int32_t index, const SkylineNode &node)
 {
     m_skyline.insert(m_skyline.begin() + index, node);
 
@@ -82,7 +82,7 @@ void AtlasPacker::insertSkylineNode(int32_t index, const SkylineNode &node)
     }
 }
 
-void AtlasPacker::mergeSkylineNodes()
+void SkylinePacker::mergeSkylineNodes()
 {
     for (size_t i = 0; i + 1 < m_skyline.size(); ++i) {
         if (m_skyline[i].y == m_skyline[i + 1].y) {
@@ -93,20 +93,78 @@ void AtlasPacker::mergeSkylineNodes()
     }
 }
 
-void AtlasPacker::reset()
+void SkylinePacker::reset()
 {
     m_skyline.clear();
     m_skyline.push_back({0, 0, static_cast<int32_t>(m_width)});
 }
 
-uint32_t AtlasPacker::getWidth() const
+uint32_t SkylinePacker::getWidth() const
 {
     return m_width;
 }
 
-uint32_t AtlasPacker::getHeight() const
+uint32_t SkylinePacker::getHeight() const
 {
     return m_height;
+}
+
+uint64_t SkylinePacker::footprint() const
+{
+    uint64_t total = 0;
+    for (const SkylineNode &node : m_skyline) {
+        total += static_cast<uint64_t>(node.y) * static_cast<uint64_t>(node.width);
+    }
+    return total;
+}
+
+ShelfPacker::ShelfPacker(uint32_t width, uint32_t height) : m_width(width), m_height(height) {}
+
+std::optional<AtlasRegion> ShelfPacker::packRect(uint32_t width, uint32_t height)
+{
+    if (width > m_width) {
+        return std::nullopt;
+    }
+
+    if (m_x + width > m_width) {
+        m_rowY += m_rowHeight;
+        m_x = 0;
+        m_rowHeight = 0;
+    }
+
+    if (m_rowY + height > m_height) {
+        return std::nullopt;
+    }
+
+    AtlasRegion region{static_cast<uint16_t>(m_x), static_cast<uint16_t>(m_rowY), static_cast<uint16_t>(width),
+                       static_cast<uint16_t>(height)};
+
+    m_x += width;
+    m_rowHeight = std::max(m_rowHeight, height);
+
+    return region;
+}
+
+void ShelfPacker::reset()
+{
+    m_x = 0;
+    m_rowY = 0;
+    m_rowHeight = 0;
+}
+
+uint32_t ShelfPacker::getWidth() const
+{
+    return m_width;
+}
+
+uint32_t ShelfPacker::getHeight() const
+{
+    return m_height;
+}
+
+uint64_t ShelfPacker::footprint() const
+{
+    return static_cast<uint64_t>(m_rowY + m_rowHeight) * static_cast<uint64_t>(m_width);
 }
 
 } // namespace Amethyst

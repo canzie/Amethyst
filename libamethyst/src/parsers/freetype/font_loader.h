@@ -43,6 +43,14 @@ class FontLoader {
     void setPixelSize(uint32_t size);
 
     GlyphBitmap rasterizeGlyph(uint32_t codepoint);
+
+    /**
+     * @brief Advance width for a codepoint without rendering or loading its outline.
+     * @param codepoint Unicode codepoint; unmapped codepoints report the .notdef advance
+     * @return Advance in pixels at the current pixel size
+     */
+    float getAdvance(uint32_t codepoint) const;
+
     FontMetrics getMetrics() const;
     uint32_t getGlyphIndex(uint32_t codepoint) const;
     float getKerning(uint32_t leftCodepoint, uint32_t rightCodepoint) const;

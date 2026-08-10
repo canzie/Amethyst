@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <utility>
 
 namespace Amethyst {
 
@@ -561,6 +562,9 @@ void UIInput::drawText(DrawContext &ctx)
     if (textToRender.empty()) {
         releaseText(ctx);
         m_charPositions.clear();
+        m_renderedText.clear();
+        m_textLayout.invalidate();
+        m_textWidth = 0.0f;
         return;
     }
 
@@ -572,6 +576,37 @@ void UIInput::drawText(DrawContext &ctx)
     params.xAlign = m_tiProps.text.textXAlignment;
     params.yAlign = m_tiProps.text.textYAlignment;
     params.wrap = m_tiProps.multiline;
+
+    TextLayoutState next;
+    next.fontSize = params.fontSize;
+    next.bounds = params.bounds;
+    next.lineHeight = params.lineHeight;
+    next.color = packColor(params.color);
+    next.zIndex = getZIndex() + 1;
+    next.xAlign = params.xAlign;
+    next.yAlign = params.yAlign;
+    next.truncate = params.truncate;
+    next.wrap = params.wrap;
+    next.origin = params.position;
+
+    bool textChanged = textToRender != m_renderedText;
+    bool sizeChanged = m_textLayout.fontSize != next.fontSize;
+    bool registryChanged = m_textAlloc != nullptr && m_textAlloc->registry != ctx.geometry;
+
+    if (!textChanged && !registryChanged && m_textLayout.matches(next)) {
+        if (m_textAlloc != nullptr) {
+            if (InstanceData *inst = ctx.geometry->getMutable(*m_textAlloc)) {
+                inst->translation = inst->translation + (next.origin - m_textLayout.origin);
+                inst->clipRect = clipRect;
+                inst->setVisible(isVisible());
+            }
+        }
+        m_textLayout = next;
+        m_textStartX = alignStartX(m_textWidth);
+        return;
+    }
+
+    m_textLayout = next;
 
     BatchedText batched = ctx.textProcessor->layoutTextBatched(textToRender, params);
     if (batched.glyphs.empty()) {
@@ -605,10 +640,10 @@ void UIInput::drawText(DrawContext &ctx)
         s_pushData(ctx.geometry, m_textAlloc, inst);
     }
 
-    m_charPositions.clear();
     if (m_showingPlaceholder) {
-        m_charPositions.push_back(0.0f);
-    } else {
+        m_charPositions.assign(1, 0.0f);
+        m_textWidth = 0.0f;
+    } else if (textChanged || sizeChanged || m_charPositions.empty()) {
         // Indexed by byte so caret offsets can be looked up directly. A multi-byte
         // sequence stores its start x in every one of its byte slots, so a lookup at a
         // boundary is always the left edge of that codepoint.
@@ -625,69 +660,73 @@ void UIInput::drawText(DrawContext &ctx)
             i += decoded.bytes;
         }
         m_charPositions[shown.size()] = currentX;
-
-        // Glyphs are aligned within the content box, so the caret origin must shift by the
-        // same amount; m_charPositions are measured from the text's own left edge.
-        m_textStartX = alignStartX(currentX);
+        m_textWidth = currentX;
     }
+
+    m_renderedText = m_showingPlaceholder ? m_placeholder : std::move(shown);
+
+    // Glyphs are aligned within the content box, so the caret origin must shift by the
+    // same amount; m_charPositions are measured from the text's own left edge.
+    m_textStartX = alignStartX(m_textWidth);
 }
 
 void UIInput::drawSelection(DrawContext &ctx)
 {
+    vec2 selPos{};
+    vec2 selSize{};
+    bool visible = false;
+
     if (m_focused && m_selectionStart.has_value() && !m_text.empty() && m_charPositions.size() > 1) {
         size_t selStart = std::min(m_cursorPosition, *m_selectionStart);
         size_t selEnd = std::max(m_cursorPosition, *m_selectionStart);
 
         if (selEnd > selStart && selStart < m_charPositions.size() && selEnd < m_charPositions.size()) {
-            vec2 selPos = {m_textStartX + m_charPositions[selStart], m_textBaselineY};
-            vec2 selSize = {m_charPositions[selEnd] - m_charPositions[selStart], m_tiProps.text.fontSize * 1.2f};
-            vec2 centerPos = selPos + selSize * 0.5f;
-
-            InstanceData data{};
-            data.translation = centerPos;
-            data.scale = selSize;
-            data.setFillColor(m_tiProps.selectionColor);
-            data.setPrimitiveType(PRIMITIVE_RECT);
-            data.zIndex = getZIndex();
-
-            s_pushData(ctx.geometry, m_selectionAlloc, data);
-            return;
+            selPos = {m_textStartX + m_charPositions[selStart], m_textBaselineY};
+            selSize = {m_charPositions[selEnd] - m_charPositions[selStart], m_tiProps.text.fontSize * 1.2f};
+            visible = true;
         }
     }
 
-    if (m_selectionAlloc && m_selectionAlloc->isValid()) {
-        ctx.geometry->release(*m_selectionAlloc);
-        m_selectionAlloc = nullptr;
+    if (!visible && m_selectionAlloc == nullptr) {
+        return;
     }
+
+    InstanceData data{};
+    data.translation = selPos + selSize * 0.5f;
+    data.scale = selSize;
+    data.setFillColor(m_tiProps.selectionColor);
+    data.setPrimitiveType(PRIMITIVE_RECT);
+    data.zIndex = getZIndex();
+    data.setVisible(visible);
+
+    s_pushData(ctx.geometry, m_selectionAlloc, data);
 }
 
 void UIInput::drawCursor(DrawContext &ctx)
 {
-    if (m_focused && m_cursorVisible) {
-        float cursorX = 0.0f;
-        if (!m_charPositions.empty()) {
-            cursorX = (m_cursorPosition < m_charPositions.size()) ? m_charPositions[m_cursorPosition] : m_charPositions.back();
-        }
-
-        vec2 cursorPos = {m_textStartX + cursorX, m_textBaselineY};
-        vec2 cursorSize = {1.0f, m_tiProps.text.fontSize * 1.2f};
-        vec2 centerPos = cursorPos + cursorSize * 0.5f;
-
-        InstanceData data{};
-        data.translation = centerPos;
-        data.scale = cursorSize;
-        data.setFillColor(m_tiProps.cursorColor);
-        data.setPrimitiveType(PRIMITIVE_RECT);
-        data.zIndex = getZIndex();
-
-        s_pushData(ctx.geometry, m_cursorAlloc, data);
+    bool visible = m_focused && m_cursorVisible;
+    if (!visible && m_cursorAlloc == nullptr) {
         return;
     }
 
-    if (m_cursorAlloc && m_cursorAlloc->isValid()) {
-        ctx.geometry->release(*m_cursorAlloc);
-        m_cursorAlloc = nullptr;
+    float cursorX = 0.0f;
+    if (!m_charPositions.empty()) {
+        cursorX = (m_cursorPosition < m_charPositions.size()) ? m_charPositions[m_cursorPosition] : m_charPositions.back();
     }
+
+    vec2 cursorPos = {m_textStartX + cursorX, m_textBaselineY};
+    vec2 cursorSize = {1.0f, m_tiProps.text.fontSize * 1.2f};
+    vec2 centerPos = cursorPos + cursorSize * 0.5f;
+
+    InstanceData data{};
+    data.translation = centerPos;
+    data.scale = cursorSize;
+    data.setFillColor(m_tiProps.cursorColor);
+    data.setPrimitiveType(PRIMITIVE_RECT);
+    data.zIndex = getZIndex();
+    data.setVisible(visible);
+
+    s_pushData(ctx.geometry, m_cursorAlloc, data);
 }
 
 void UIInput::drawInput(DrawContext &ctx)
