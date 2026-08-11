@@ -116,10 +116,20 @@ int main()
         totalChars += lines.back().size();
     }
 
-    AM_LOG_INFO("text stress: {} labels ({} slices of {}), ~{} glyph quads of {}", LINE_COUNT, LINE_COUNT,
-                GlyphBuffer::SLICE_CAPACITY, totalChars, GlyphBuffer::GLYPH_CAPACITY);
-    if (LINE_COUNT > GlyphBuffer::SLICE_CAPACITY || totalChars > GlyphBuffer::GLYPH_CAPACITY) {
-        AM_LOG_WARN("over a fixed GlyphBuffer capacity: expect dropped text, not a crash");
+    // Only labels inside the viewport hold glyph quads: TextLabel gives its slice back
+    // when render-culled. So the arena budget is about lines on screen, not lines in the
+    // document; the slice table is what scales with the whole document.
+    size_t avgChars = totalChars / LINE_COUNT;
+    size_t visibleLines = static_cast<size_t>((screenSize.y - 104.0f) / LINE_HEIGHT) + 2;
+    size_t residentQuads = visibleLines * avgChars;
+
+    AM_LOG_INFO("text stress: {} labels, {} slices of {}; ~{} resident quads of {} ({} visible lines x ~{} chars)", LINE_COUNT,
+                LINE_COUNT, GlyphBuffer::SLICE_CAPACITY, residentQuads, GlyphBuffer::GLYPH_CAPACITY, visibleLines, avgChars);
+    if (LINE_COUNT > GlyphBuffer::SLICE_CAPACITY) {
+        AM_LOG_WARN("more labels than SLICE_CAPACITY: slices are per label, so this one does scale with the document");
+    }
+    if (residentQuads > GlyphBuffer::GLYPH_CAPACITY) {
+        AM_LOG_WARN("one screenful exceeds GLYPH_CAPACITY: expect dropped text, not a crash");
     }
 
     UIScope root(window);

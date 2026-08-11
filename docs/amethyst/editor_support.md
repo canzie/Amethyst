@@ -54,8 +54,8 @@ to a slice's current location, read once per instance by the vertex shader
   lookup needs.
 - A run is a whole string's arrangement: `FNT_Run { FNT_PieceArray pieces; Vec2F32 dim;
   F32 ascent; F32 descent; }`, each piece carrying texture coordinates, position and advance.
-  **Entire shaped strings are cached and reused**, keyed by hash — see Gap 10, which we lack
-  entirely.
+  Entire shaped strings are cached and reused, keyed by hash. **Measured and rejected for us**
+  — see the run cache section below: it is an immediate-mode optimisation.
 - The atlas uses a **quadtree region allocator** (`FNT_AtlasRegionNode` with per-quadrant
   occupancy and free space) rather than a skyline packer, so regions *can* be freed.
 - Separate `permanent_arena` / `raster_arena` / `frame_arena` plus a `frame_index`, i.e.
@@ -228,6 +228,68 @@ rasterisations of thrash, and unsafe against live runs.
 - **Never drop a glyph silently.** Today `rasterizeGlyphInfo` logs and fails
   (`glyph_atlas.cpp:47`); a single atlas drops 31 171 glyphs on `extreme`. Order on a miss:
   grow a page, then clear-and-repopulate, then fail loudly.
+
+### The run cache (RAD's FNT_Run): the shaper is allocation-bound, fix that first
+
+Benchmarked against the real `TextProcessor` on 200k lines of neovim C
+(`tools/run_cache_bench.cpp`), across granularity, cache scope and access pattern. A
+persistent, token-granularity cache wins:
+
+| pattern | baseline | token + LRU | hit% | mem |
+|---|---|---|---|---|
+| page, jump a screenful | 71.2 ms | **29.8 ms (0.42x)** | 96.6% | 810 KB |
+| jitter, random jumps | 72.3 ms | **40.9 ms (0.57x)** | 94.7% | 835 KB |
+| sweep, scroll one line | 1.8 ms | **1.2 ms (0.70x)** | 92.5% | 128 KB |
+| redraw, full invalidation | 64.5 ms | **1.2 ms (0.02x)** | 99.9% | 19 KB |
+
+Frame-scoped caching loses everywhere except `redraw` (1.31-1.42x), so RAD's per-frame scoping
+is the wrong choice here; persistent with LRU is what pays.
+
+**But the baseline is the finding.** 825 093 glyphs over ~27 900 line-shapes in 71.2 ms is
+**2.55 us per line**, roughly 85 ns per character to do an advance lookup and emit a 16-byte
+quad - which should be 2-5 ns. `s_shapeText` allocates a `vector<vector<ShapedGlyph>>`, a
+`lineWidths` vector and a reserved scratch buffer, then `layoutTextBatched` fills its own two
+output vectors: about **five heap allocations per line shaped**.
+
+So most of the cache's win is skipping five mallocs, not skipping the glyph loop.
+**Removing the allocations from the shaper is the better fix**: bigger (plausibly 10-20x on the
+same measurement), no hashing, no hash map, no 800 KB, and it speeds up the uncached path,
+which a cache cannot. Do that first, then re-run this bench to see whether the cache still
+earns its place.
+
+Two harness artifacts had previously hidden this, both since fixed: a modelled shaper that
+excluded those allocations (making it ~4x too cheap) and a linear-scan LRU eviction.
+
+### Rejected, with the measurements: quadtree, shelf, guillotine
+
+RAD caches whole shaped strings by hash under the style node. Benchmarked on 200k lines of
+neovim C with a model of our shaper's inner loop (`tools/run_cache_bench.cpp`), across
+granularity (line/word/token/chunk), scope (per-frame/LRU) and access pattern, it loses
+everywhere that matters:
+
+| page pattern | glyphs shaped | hit% | ms | vs baseline |
+|---|---|---|---|---|
+| shape every exposed line | 1 544 223 | - | **6.2** | 1.00x |
+| line, per-frame | 1 508 944 | 11.5% | 10.9 | 1.75x |
+| word, per-frame | 1 172 023 | 67.9% | 22.7 | 3.65x |
+| token, per-frame | 781 958 | **79.1%** | 29.3 | **4.70x** |
+
+A 79% hit rate is 4.7x *slower*. Shaping is an advance lookup plus a 16-byte quad emit per
+character; a cache lookup hashes the bytes (reading all of them anyway), probes a map, and
+copies the quads to place the run at its origin. The bookkeeping exceeds the work avoided,
+and finer granularity makes it worse - `token` has the best hit rate and the worst time.
+
+**Why it works for RAD and not for us:** the one winning configuration is re-shaping the
+*same* lines every frame (`redraw`, per-line, persistent: 99.9% hit, **0.51x**). That is what
+an immediate-mode UI does every frame, and is consistent with RAD's run cache being
+frame-scoped. Amethyst is retained-mode and already skips re-shaping unchanged text via dirty
+flags and `TextLayoutState`, so the run cache addresses a cost our architecture does not pay.
+
+Revisit only if shaping itself becomes expensive - real kerning, HarfBuzz, ligatures, BiDi -
+since the cache pays exactly when shaping cost greatly exceeds hashing cost.
+
+(Caveat on the numbers: LRU rows' times are dominated by a linear-scan eviction in the
+harness and are not comparable; their hit rates are valid.)
 
 ### Rejected, with the measurements
 
