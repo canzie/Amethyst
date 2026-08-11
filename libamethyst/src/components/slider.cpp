@@ -149,8 +149,8 @@ void Slider::setFormat(std::string format)
 void Slider::layoutTrack(float normalizedPos, float thumbWidth, const std::string &valueText,
                          const std::function<void(float)> &applyNormalized)
 {
-    float boxWidth = absoluteSize.x;
-    float boxHeight = absoluteSize.y;
+    float boxWidth = std::max(absoluteSize.x, 0.0f);
+    float boxHeight = std::max(absoluteSize.y, 0.0f);
 
     float trackHeight = m_sProps.trackHeight.resolve(boxHeight);
     float trackY = (boxHeight - trackHeight) * 0.5f;
