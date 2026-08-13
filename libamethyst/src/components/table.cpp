@@ -115,7 +115,7 @@ uint32_t Table::columnCount() const
     return static_cast<uint32_t>(m_columns.size());
 }
 
-uint32_t Table::addRow()
+uint32_t Table::addRow(float height)
 {
     uint32_t cols = columnCount();
     AM_ASSERT(cols > 0, "Must add columns before adding rows");
@@ -133,6 +133,7 @@ uint32_t Table::addRow()
     }
 
     m_displayOrder.push_back(rowIndex);
+    setRowHeight(rowIndex, height);
     m_cursorRow = rowIndex;
     m_cursorCol = 0;
     markDirty();
@@ -215,6 +216,7 @@ void Table::removeRow(uint32_t row)
     }
 
     m_displayOrder.erase(std::remove(m_displayOrder.begin(), m_displayOrder.end(), row), m_displayOrder.end());
+    setRowHeight(row, 0.0f);
     m_rowFreelist.push_back(row);
     markDirty();
 }
@@ -232,6 +234,7 @@ void Table::clear()
 
     m_cells.clear();
     m_displayOrder.clear();
+    m_rowHeights.clear();
     m_rowFreelist.clear();
     m_rowBackgrounds.clear();
     m_rowBgInputConns.clear();
@@ -244,6 +247,49 @@ void Table::clear()
 uint32_t Table::rowCount() const
 {
     return static_cast<uint32_t>(m_displayOrder.size());
+}
+
+float Table::resolveRowHeight(uint32_t logicalRow) const
+{
+    auto it = std::lower_bound(m_rowHeights.begin(), m_rowHeights.end(), logicalRow,
+                               [](const std::pair<uint32_t, float> &entry, uint32_t row) { return entry.first < row; });
+    if (it != m_rowHeights.end() && it->first == logicalRow) {
+        return it->second;
+    }
+    return m_tProps.rowHeight > 0.0f ? m_tProps.rowHeight : FALLBACK_ROW_HEIGHT;
+}
+
+void Table::setRowHeight(uint32_t logicalRow, float height)
+{
+    auto it = std::lower_bound(m_rowHeights.begin(), m_rowHeights.end(), logicalRow,
+                               [](const std::pair<uint32_t, float> &entry, uint32_t row) { return entry.first < row; });
+    bool present = it != m_rowHeights.end() && it->first == logicalRow;
+
+    if (height <= 0.0f) {
+        if (present) {
+            m_rowHeights.erase(it);
+            markDirty();
+        }
+        return;
+    }
+
+    if (present) {
+        it->second = height;
+    } else {
+        m_rowHeights.emplace(it, logicalRow, height);
+    }
+    markDirty();
+}
+
+float Table::contentHeight() const
+{
+    float separator = s_showRowSeparators(m_tProps.separatorMode) ? m_tProps.separatorWidth : 0.0f;
+
+    float total = 0.0f;
+    for (uint32_t row : m_displayOrder) {
+        total += resolveRowHeight(row) + separator;
+    }
+    return total;
 }
 
 void Table::sort(std::function<bool(uint32_t rowA, uint32_t rowB)> comparator)
@@ -319,7 +365,7 @@ void Table::updateSeparators()
     uint32_t neededRowSeps = (s_showRowSeparators(m_tProps.separatorMode) && rows > 1) ? rows - 1 : 0;
     ensureRowSeparatorCapacity(neededRowSeps);
 
-    float rowStride = m_computedRowHeight + m_tProps.separatorWidth;
+    float rowY = 0.0f;
 
     for (uint32_t i = 0; i < static_cast<uint32_t>(m_rowSeparators.size()); i++) {
         Frame *sep = m_rowSeparators[i];
@@ -328,7 +374,9 @@ void Table::updateSeparators()
             continue;
         }
 
-        float yPos = static_cast<float>(i) * rowStride + m_computedRowHeight;
+        float rowHeight = resolveRowHeight(m_displayOrder[i]);
+        float yPos = rowY + rowHeight;
+        rowY = yPos + m_tProps.separatorWidth;
         sep->setBaseStyleProperties({
             .backgroundColor = Color3(m_tProps.separatorColor),
             .backgroundTransparency = 1.0f - m_tProps.separatorColor.a,
@@ -433,7 +481,7 @@ void Table::arrangeSeparators(const vec4 &childClip)
     }
 }
 
-void Table::layoutRowBackground(uint32_t visualIndex, float y)
+void Table::layoutRowBackground(uint32_t visualIndex, float y, float height)
 {
     Frame *bg = m_rowBackgrounds[visualIndex];
     Color4 bgColor = m_tProps.rowBackgroundColor;
@@ -450,13 +498,13 @@ void Table::layoutRowBackground(uint32_t visualIndex, float y)
     });
     bg->setBaseProperties({
         .position = UDim2(0.0f, 0.0f, 0.0f, y),
-        .size = UDim2(1.0f, 0.0f, 0.0f, m_computedRowHeight),
+        .size = UDim2(1.0f, 0.0f, 0.0f, height),
         .visible = true,
         .zIndex = Z_ROW_BG,
     });
 }
 
-void Table::arrangeRow(uint32_t logicalRow, float y, vec2 bodyOrigin, const vec4 &childClip)
+void Table::arrangeRow(uint32_t logicalRow, float y, float height, vec2 bodyOrigin, const vec4 &childClip)
 {
     uint32_t cols = columnCount();
 
@@ -477,7 +525,7 @@ void Table::arrangeRow(uint32_t logicalRow, float y, vec2 bodyOrigin, const vec4
         float paddedX = cellX + m_resolvedPadding.w;
         float paddedY = y + m_resolvedPadding.x;
         float paddedWidth = cellWidth - m_resolvedPadding.w - m_resolvedPadding.y;
-        float paddedHeight = m_computedRowHeight - m_resolvedPadding.x - m_resolvedPadding.z;
+        float paddedHeight = height - m_resolvedPadding.x - m_resolvedPadding.z;
 
         obj->clipRect = childClip;
         obj->computeAbsolutes({paddedWidth, paddedHeight}, bodyOrigin + vec2(paddedX, paddedY), absoluteRotation);
@@ -496,8 +544,6 @@ void Table::arrange()
         return;
     }
 
-    m_computedRowHeight = m_tProps.rowHeight > 0.0f ? m_tProps.rowHeight : FALLBACK_ROW_HEIGHT;
-
     if (flags & FLAG_DIRTY) {
         rebuildColumnPositions();
         updateSeparators();
@@ -506,9 +552,9 @@ void Table::arrange()
 
     vec4 childClip = computeChildClipRect();
     float headerH = m_tProps.showHeader ? m_tProps.headerHeight : 0.0f;
-    float rowStride = m_computedRowHeight + (s_showRowSeparators(m_tProps.separatorMode) ? m_tProps.separatorWidth : 0.0f);
+    float separatorH = s_showRowSeparators(m_tProps.separatorMode) ? m_tProps.separatorWidth : 0.0f;
     uint32_t visibleCount = static_cast<uint32_t>(m_displayOrder.size());
-    float totalContentHeight = static_cast<float>(visibleCount) * rowStride;
+    float totalContentHeight = contentHeight();
 
     if (m_tProps.showHeader) {
         arrangeHeader(childClip);
@@ -517,8 +563,11 @@ void Table::arrange()
     bool showRowBackgrounds = m_tProps.rowBackgroundColor.a > 0.0f || m_tProps.rowAlternateColor.a > 0.0f;
     uint32_t neededBackgrounds = showRowBackgrounds ? visibleCount : 0;
     ensureRowBackgroundCapacity(neededBackgrounds);
+    float backgroundY = 0.0f;
     for (uint32_t vi = 0; vi < neededBackgrounds; vi++) {
-        layoutRowBackground(vi, static_cast<float>(vi) * rowStride);
+        float rowHeight = resolveRowHeight(m_displayOrder[vi]);
+        layoutRowBackground(vi, backgroundY, rowHeight);
+        backgroundY += rowHeight + separatorH;
     }
     for (uint32_t i = neededBackgrounds; i < m_rowBackgrounds.size(); i++) {
         m_rowBackgrounds[i]->setBaseProperties({.visible = false});
@@ -553,9 +602,12 @@ void Table::arrange()
         m_rowBackgrounds[vi]->clipRect = bodyClip;
     }
 
+    float rowY = 0.0f;
     for (uint32_t vi = 0; vi < visibleCount; vi++) {
-        float rowY = static_cast<float>(vi) * rowStride;
-        arrangeRow(m_displayOrder[vi], rowY, bodyOrigin, bodyClip);
+        uint32_t logicalRow = m_displayOrder[vi];
+        float rowHeight = resolveRowHeight(logicalRow);
+        arrangeRow(logicalRow, rowY, rowHeight, bodyOrigin, bodyClip);
+        rowY += rowHeight + separatorH;
     }
 }
 

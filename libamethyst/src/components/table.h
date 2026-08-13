@@ -22,6 +22,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace Amethyst {
@@ -78,9 +79,10 @@ class Table : public UIObject {
 
     /**
      * @brief Create a new row and move the build cursor to (row, 0)
+     * @param height Height of this row in pixels, or 0 to use the table's rowHeight
      * @return Stable row index, never reused across remove/add cycles
      */
-    uint32_t addRow();
+    uint32_t addRow(float height = 0.0f);
 
     /**
      * @brief Add a cell at the cursor position and advance the cursor column. Ownership is transferred to the table's internal
@@ -132,6 +134,12 @@ class Table : public UIObject {
     uint32_t rowCount() const;
 
     /**
+     * @brief The height every alive row occupies together, row separators included
+     * @return The content height in pixels
+     */
+    float contentHeight() const;
+
+    /**
      * @brief Reorder rows by sorting the display order. Only permutes the visual ordering, cell data and row indices stay
      * unchanged. Use getCell() inside the comparator to inspect content
      * @param comparator Receives two logical row indices, returns true if the first should appear before the second
@@ -161,9 +169,24 @@ class Table : public UIObject {
     void ensureRowSeparatorCapacity(uint32_t count);
     void arrangeHeader(const vec4 &childClip);
     void arrangeSeparators(const vec4 &childClip);
-    void layoutRowBackground(uint32_t visualIndex, float y);
-    void arrangeRow(uint32_t logicalRow, float y, vec2 bodyOrigin, const vec4 &childClip);
+    void layoutRowBackground(uint32_t visualIndex, float y, float height);
+    void arrangeRow(uint32_t logicalRow, float y, float height, vec2 bodyOrigin, const vec4 &childClip);
 
+    /**
+     * @brief The height a row lays out at, falling back to the table's rowHeight when it has none of its own
+     * @param logicalRow Logical row index
+     * @return The height in pixels
+     */
+    float resolveRowHeight(uint32_t logicalRow) const;
+
+    /**
+     * @brief Gives one row a height of its own, or drops the one it had when height is 0
+     * @param logicalRow Logical row index
+     * @param height Height in pixels, 0 to inherit the table's rowHeight
+     */
+    void setRowHeight(uint32_t logicalRow, float height);
+
+  private:
     std::vector<TableColumn> m_columns;
 
     // Flat cell storage, cell (row, col) is at m_cells[row * columnCount() + col]. Non-owning pointers, the actual instances are
@@ -176,12 +199,14 @@ class Table : public UIObject {
     // Maps visual row position to logical row index. Sorting permutes this without moving cell data
     std::vector<uint32_t> m_displayOrder;
 
+    // Only the rows whose height differs from the table's rowHeight, sorted by logical row index
+    std::vector<std::pair<uint32_t, float>> m_rowHeights;
+
     uint32_t m_cursorRow = 0;
     uint32_t m_cursorCol = 0;
 
     int32_t m_selectedDisplayIndex = -1;
 
-    float m_computedRowHeight = 0.0f;
     vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f};
     std::vector<float> m_columnPositions;
 

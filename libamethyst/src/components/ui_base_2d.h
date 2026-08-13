@@ -47,8 +47,8 @@ class UIBase2D : public Instance {
     vec2 absolutePosition = vec2(0.0f);
     vec2 absoluteContentPosition = vec2(0.0f);
     Degrees absoluteRotation = 0.0f;
-    vec2 absoluteSize;
-    vec2 absoluteContentSize;
+    vec2 absoluteSize = vec2(0.0f);
+    vec2 absoluteContentSize = vec2(0.0f);
     vec4 clipRect = {0.0f, 0.0f, 0.0f, 0.0f};
 
   protected:

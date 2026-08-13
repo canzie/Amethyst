@@ -1,11 +1,17 @@
 #include "components/ui_image.h"
 
+#include "logging/log.h"
 #include "modules/svg_atlas.h"
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 #include "rendering/instance_data.h"
 
+#include <cmath>
+
 namespace Amethyst {
+
+static constexpr float MIN_SVG_EXTENT = 1.0f;
+static constexpr float MAX_SVG_EXTENT = 2048.0f;
 
 static GeometryAllocation *s_pushData(GeometryRegistry *registry, GeometryAllocation *&alloc, const InstanceData &data)
 {
@@ -61,11 +67,21 @@ void UIImage::resolveSvg(DrawContext &ctx, vec2 absoluteSize)
         return;
     }
 
-    uint32_t w = static_cast<uint32_t>(absoluteSize.x);
-    uint32_t h = static_cast<uint32_t>(absoluteSize.y);
-    if (w == 0 || h == 0) {
+    // the cast below is undefined for NaN, infinity and negatives, so the range is checked while these are still floats
+    bool finite = std::isfinite(absoluteSize.x) && std::isfinite(absoluteSize.y);
+    if (!finite || absoluteSize.x > MAX_SVG_EXTENT || absoluteSize.y > MAX_SVG_EXTENT) {
+        AM_LOG_WARN("refusing to rasterize an SVG at {}x{}, retrying when it is between {} and {}", absoluteSize.x, absoluteSize.y,
+                    MIN_SVG_EXTENT, MAX_SVG_EXTENT);
         return;
     }
+
+    // a size this small is one that has not been laid out yet, which is not worth a warning every frame
+    if (absoluteSize.x < MIN_SVG_EXTENT || absoluteSize.y < MIN_SVG_EXTENT) {
+        return;
+    }
+
+    uint32_t w = static_cast<uint32_t>(absoluteSize.x);
+    uint32_t h = static_cast<uint32_t>(absoluteSize.y);
 
     const SvgEntry *entry = ctx.svgAtlas->loadFromData(m_svgData, w, h);
     if (entry != nullptr) {

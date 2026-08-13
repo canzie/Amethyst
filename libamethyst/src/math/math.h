@@ -15,11 +15,11 @@ struct vec4;
 
 struct vec2 {
     union {
-        float x;
+        float x = 0.0f;
         float r;
     };
     union {
-        float y;
+        float y = 0.0f;
         float g;
     };
 
@@ -88,15 +88,15 @@ inline vec2 operator*(float s, vec2 v)
 
 struct vec3 {
     union {
-        float x;
+        float x = 0.0f;
         float r;
     };
     union {
-        float y;
+        float y = 0.0f;
         float g;
     };
     union {
-        float z;
+        float z = 0.0f;
         float b;
     };
 
@@ -189,19 +189,19 @@ inline vec3 operator*(float s, vec3 v)
 
 struct vec4 {
     union {
-        float x;
+        float x = 0.0f;
         float r;
     };
     union {
-        float y;
+        float y = 0.0f;
         float g;
     };
     union {
-        float z;
+        float z = 0.0f;
         float b;
     };
     union {
-        float w;
+        float w = 0.0f;
         float a;
     };
 

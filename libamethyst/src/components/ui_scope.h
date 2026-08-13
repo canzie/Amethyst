@@ -207,6 +207,7 @@ struct TableScope : UIScope {
     TableScope &column(std::string header, float weight, TableColumnSizing sizing = TableColumnSizing::STRETCH);
     TableScope &column(TableColumn col);
     TableScope &row(std::function<void(TableRowScope &)> fn);
+    TableScope &row(float height, std::function<void(TableRowScope &)> fn);
 };
 
 struct TextInputScope : UIScope {

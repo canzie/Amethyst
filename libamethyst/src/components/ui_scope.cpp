@@ -640,6 +640,11 @@ TableScope &TableScope::column(TableColumn col)
 
 TableScope &TableScope::row(std::function<void(TableRowScope &)> rowFn)
 {
+    return row(0.0f, std::move(rowFn));
+}
+
+TableScope &TableScope::row(float height, std::function<void(TableRowScope &)> rowFn)
+{
     TableRowScope rowScope(component);
     rowFn(rowScope);
 
@@ -652,7 +657,7 @@ TableScope &TableScope::row(std::function<void(TableRowScope &)> rowFn)
         component.resizeColumns(cellCount);
     }
 
-    component.addRow();
+    component.addRow(height);
 
     for (auto &cellFn : rowScope.m_pendingCells) {
         auto container = std::make_unique<Container>();
