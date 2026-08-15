@@ -14,7 +14,12 @@ class UISizeConstraint : public UIExtension {
     explicit UISizeConstraint(UIObject *owner) : UIExtension(owner) {}
     virtual ~UISizeConstraint() = default;
 
-    void apply();
+    /**
+     * @brief A size with this constraint honoured
+     * @param size The size to constrain
+     * @return The constrained size
+     */
+    vec2 constrain(vec2 size) const { return clamp(size, minSize, maxSize); }
 
   public:
     vec2 maxSize;

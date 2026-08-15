@@ -37,6 +37,14 @@ class UIObject : public UIBase2D {
     UIObject &operator=(UIObject &&) = default;
 
     virtual void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation);
+
+    /**
+     * @brief The size this object takes up inside a parent, with margin and constraints honoured
+     * @param parentSize The size of the parent it is placed in
+     * @return The size it will occupy
+     */
+    vec2 resolveSize(vec2 parentSize) const;
+
     void arrange() override;
     InstanceData createInstanceData() const;
     Window *getWindow();
@@ -60,6 +68,12 @@ class UIObject : public UIBase2D {
     {
         auto it = m_extensions.find(std::type_index(typeid(T)));
         return it != m_extensions.end() ? static_cast<T *>(it->second.get()) : nullptr;
+    }
+
+    template <typename T> const T *getExtension() const
+    {
+        auto it = m_extensions.find(std::type_index(typeid(T)));
+        return it != m_extensions.end() ? static_cast<const T *>(it->second.get()) : nullptr;
     }
 
     template <typename T, typename... Args> T *addExtension(Args &&...args)

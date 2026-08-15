@@ -44,7 +44,7 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
     for (auto child : sortedChildren) {
         auto *obj = child->as<UIObject>();
         if (obj != nullptr) {
-            vec2 childSize = obj->getBaseProperties().size.resolve(ownerSize);
+            vec2 childSize = obj->resolveSize(ownerSize);
             totalChildSize += isVertical ? childSize.y : childSize.x;
             validChildren++;
         }
@@ -93,7 +93,7 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
         auto *obj = child->as<UIObject>();
         if (obj == nullptr) continue;
 
-        vec2 childSize = obj->getBaseProperties().size.resolve(ownerSize);
+        vec2 childSize = obj->resolveSize(ownerSize);
         float crossOffset = 0.0f;
 
         if (crossAxisFlex == UiFlexAlignment::FILL) {

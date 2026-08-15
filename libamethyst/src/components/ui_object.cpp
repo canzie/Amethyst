@@ -195,27 +195,37 @@ void UIObject::setClasses(std::span<const StyleKey> tokens)
     markDirty();
 }
 
+vec2 UIObject::resolveSize(vec2 parentSize) const
+{
+    vec2 size = m_uiObjProps.size.resolve(parentSize);
+
+    vec4 m = m_uiObjProps.margin.resolve(parentSize);
+    size -= vec2(m.w + m.y, m.x + m.z);
+
+    if (const auto *sizeConstraint = getExtension<UISizeConstraint>()) {
+        size = sizeConstraint->constrain(size);
+    }
+    if (const auto *arConstraint = getExtension<UIAspectRatioConstraint>()) {
+        size = arConstraint->constrain(size);
+    }
+
+    return size;
+}
+
 void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation)
 {
     AM_PROFILE_FUNCTION();
-    absoluteSize = m_uiObjProps.size.resolve(parentSize);
-    absolutePosition = parentPos + m_uiObjProps.position.resolve(parentSize) - m_uiObjProps.anchorPoint * absoluteSize;
+    absolutePosition = parentPos + m_uiObjProps.position.resolve(parentSize) -
+                       m_uiObjProps.anchorPoint * m_uiObjProps.size.resolve(parentSize);
     absoluteRotation = m_uiObjProps.rotation + parentRotation;
+    absoluteSize = resolveSize(parentSize);
 
     vec4 m = m_uiObjProps.margin.resolve(parentSize);
     absolutePosition += vec2(m.w, m.x);
-    absoluteSize -= vec2(m.w + m.y, m.x + m.z);
 
     vec4 p = m_uiObjProps.padding.resolve(absoluteSize);
     absoluteContentPosition = absolutePosition + vec2(p.w, p.x);
     absoluteContentSize = absoluteSize - vec2(p.w + p.y, p.x + p.z);
-
-    if (auto *sizeConstraint = getExtension<UISizeConstraint>()) {
-        sizeConstraint->apply();
-    }
-    if (auto *arConstraint = getExtension<UIAspectRatioConstraint>()) {
-        arConstraint->apply();
-    }
 }
 
 void UIObject::applyLayoutExtensions()
