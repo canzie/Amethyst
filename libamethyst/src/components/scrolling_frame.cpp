@@ -109,6 +109,17 @@ void ScrollingFrame::layoutChildren(vec2 &absCanvasSize, vec2 viewport)
     }
 }
 
+bool ScrollingFrame::clampScrollOffset()
+{
+    vec2 clamped = clamp(m_scrollOffset, vec2(0.0f), m_maxScroll);
+    if (clamped == m_scrollOffset) {
+        return false;
+    }
+
+    m_scrollOffset = clamped;
+    return true;
+}
+
 void ScrollingFrame::arrange()
 {
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
@@ -117,12 +128,17 @@ void ScrollingFrame::arrange()
 
     applyLayoutExtensions();
 
-    m_scrollOffset = clamp(m_scrollOffset, vec2(0.0f), m_maxScroll);
-
     vec2 viewport = absoluteContentSize;
     vec2 absCanvasSize = m_sfProps.canvasSize.resolve(viewport);
     layoutChildren(absCanvasSize, viewport);
     m_maxScroll = max(absCanvasSize - viewport, vec2(0.0f));
+
+    // the children were placed at an offset taken before this canvas was measured, which a canvas
+    // that has since shrunk can leave sitting past its own end
+    if (clampScrollOffset()) {
+        absCanvasSize = m_sfProps.canvasSize.resolve(viewport);
+        layoutChildren(absCanvasSize, viewport);
+    }
 
     bool barsEnabled = m_sfProps.scrollBarVisibility != ScrollBarVisibility::NEVER && isVisible();
     m_needsVertical =
@@ -141,7 +157,11 @@ void ScrollingFrame::arrange()
         absCanvasSize = m_sfProps.canvasSize.resolve(viewport);
         layoutChildren(absCanvasSize, viewport);
         m_maxScroll = max(absCanvasSize - viewport, vec2(0.0f));
-        m_scrollOffset = clamp(m_scrollOffset, vec2(0.0f), m_maxScroll);
+
+        if (clampScrollOffset()) {
+            absCanvasSize = m_sfProps.canvasSize.resolve(viewport);
+            layoutChildren(absCanvasSize, viewport);
+        }
     }
 
     m_absCanvasSize = absCanvasSize;

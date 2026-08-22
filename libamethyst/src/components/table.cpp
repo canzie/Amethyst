@@ -419,6 +419,9 @@ void Table::ensureRowBackgroundCapacity(uint32_t count)
             if (onRowSelected) {
                 onRowSelected(slot);
             }
+            if ((io.modifiers & MOD_DOUBLE_CLICK) != 0 && onRowActivated) {
+                onRowActivated(slot);
+            }
             if (m_tProps.selectedRowColor.a > 0.0f) {
                 markDirty();
             }

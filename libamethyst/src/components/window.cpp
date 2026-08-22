@@ -5,6 +5,7 @@
 
 #include "components/input_interface.h"
 #include "components/instance.h"
+#include "components/tooltip.h"
 #include "components/ui_base_2d.h"
 #include "components/ui_object.h"
 #include "logging/log.h"
@@ -19,6 +20,7 @@ Window::Window()
     m_overlayLayer = std::make_unique<OverlayLayer>();
     m_overlayLayer->setDisplayOrder(1000);
     m_overlayLayer->parent = this;
+    m_tooltips = std::make_unique<TooltipStack>(this);
 }
 
 Window::~Window()
@@ -321,6 +323,8 @@ void Window::unregisterTick(uint32_t id)
 
 void Window::tick(float deltaTime)
 {
+    m_tooltips->onTick(deltaTime);
+
     // Copy each callback before invoking: a tick may unregister itself (e.g. an input losing
     // focus), which frees its slot mid-iteration.
     uint32_t slots = m_tickCallbacks.slotCount();

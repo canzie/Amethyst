@@ -53,6 +53,12 @@ class ScrollingFrame : public UIObject {
 
   private:
     void layoutChildren(vec2 &absCanvasSize, vec2 viewport);
+
+    /**
+     * @brief Brings the scroll offset back inside the range the current canvas allows
+     * @return Whether the offset had to move
+     */
+    bool clampScrollOffset();
     void arrangeScrollbars();
     void drawScrollbars(DrawContext &ctx);
 

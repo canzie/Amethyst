@@ -19,6 +19,7 @@
 namespace Amethyst {
 
 class Instance;
+class TooltipStack;
 class UIObject;
 class Window;
 
@@ -54,6 +55,7 @@ class Window : public UILayer {
     UIObject *getMouseCapture() const { return m_mouseCapturedBy; }
 
     OverlayLayer *getOverlayLayer() { return m_overlayLayer.get(); }
+    TooltipStack &getTooltips() { return *m_tooltips; }
     std::vector<Instance *> getHittableInstances() override;
 
     /**
@@ -92,6 +94,7 @@ class Window : public UILayer {
     UIObject *m_mouseCapturedBy = nullptr;
     EventConnection m_mouseCapturedByConn;
     std::unique_ptr<OverlayLayer> m_overlayLayer;
+    std::unique_ptr<TooltipStack> m_tooltips;
     FreeList<std::function<void(float)>> m_tickCallbacks;
 };
 

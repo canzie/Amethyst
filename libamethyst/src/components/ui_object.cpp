@@ -5,6 +5,7 @@
 #include "components/extensions/ui_grid_layout.h"
 #include "components/extensions/ui_list_layout.h"
 #include "components/extensions/ui_size_constraint.h"
+#include "components/extensions/ui_tooltip.h"
 #include "components/input_interface.h"
 #include "components/ui_layer.h"
 #include "components/window.h"
@@ -12,6 +13,7 @@
 #include "utils/profiling.h"
 #include <algorithm>
 
+#include <cmath>
 #include <cstdint>
 
 namespace Amethyst {
@@ -195,6 +197,21 @@ void UIObject::setClasses(std::span<const StyleKey> tokens)
     markDirty();
 }
 
+/**
+ * @brief Rounds a rect onto whole pixels by its edges, so that two rects sharing an edge still meet exactly
+ * @param position The rect's top-left corner, replaced with its rounded value
+ * @param size The rect's extent, replaced with the distance between the rounded edges
+ */
+static void s_snapRectToPixels(vec2 &position, vec2 &size)
+{
+    float left = std::round(position.x);
+    float top = std::round(position.y);
+    float right = std::round(position.x + size.x);
+    float bottom = std::round(position.y + size.y);
+    position = {left, top};
+    size = {right - left, bottom - top};
+}
+
 vec2 UIObject::resolveSize(vec2 parentSize) const
 {
     vec2 size = m_uiObjProps.size.resolve(parentSize);
@@ -222,6 +239,11 @@ void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentR
 
     vec4 m = m_uiObjProps.margin.resolve(parentSize);
     absolutePosition += vec2(m.w, m.x);
+
+    // a rotated quad has no axis-aligned edges to land on a pixel boundary, and snapping one makes it step as it turns
+    if (absoluteRotation == 0.0f) {
+        s_snapRectToPixels(absolutePosition, absoluteSize);
+    }
 
     vec4 p = m_uiObjProps.padding.resolve(absoluteSize);
     absoluteContentPosition = absolutePosition + vec2(p.w, p.x);
@@ -325,6 +347,10 @@ Window *UIObject::getWindow()
 
 EventResult UIObject::onMouseEnter()
 {
+    if (auto *tooltip = getExtension<UITooltip>()) {
+        tooltip->handleMouseEnter();
+    }
+
     onHoverChanged.fire(true);
     setGuiState(static_cast<uint16_t>(m_guiState | GUI_STATE_HOVERED));
     return consumes(INTERACTION_CATEGORY_HOVER) ? EventResult::CONSUMED : EventResult::PROPAGATE;
@@ -375,6 +401,10 @@ int32_t UIObject::getZIndex() const
 
 EventResult UIObject::onMouseLeave()
 {
+    if (auto *tooltip = getExtension<UITooltip>()) {
+        tooltip->handleMouseLeave();
+    }
+
     onHoverChanged.fire(false);
     setGuiState(static_cast<uint16_t>(m_guiState & ~GUI_STATE_HOVERED));
     return consumes(INTERACTION_CATEGORY_HOVER) ? EventResult::CONSUMED : EventResult::PROPAGATE;
@@ -384,6 +414,9 @@ EventResult UIObject::onMouseMoved(int32_t x, int32_t y)
 {
     if (auto *drag = getExtension<UIDragDetector>()) {
         drag->handleMouseMove(x, y);
+    }
+    if (auto *tooltip = getExtension<UITooltip>()) {
+        tooltip->handleMouseMove(x, y);
     }
 
     InputObject input{};

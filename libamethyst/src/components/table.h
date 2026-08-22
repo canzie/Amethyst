@@ -157,6 +157,11 @@ class Table : public UIObject {
 
     std::function<void(uint32_t)> onRowSelected;
 
+    /**
+     * @brief Invoked with the row a double click landed on, after that row has been selected
+     */
+    std::function<void(uint32_t)> onRowActivated;
+
   protected:
     TableStyleProperties m_tProps;
 
