@@ -55,7 +55,7 @@ bool UIObject::setBaseProperties(BasePropertiesArgs props)
 {
     bool changed = m_uiObjProps.apply(props);
     if (changed) {
-        markDirty();
+        markSubtreeDirty();
     }
     return changed;
 }
@@ -219,11 +219,13 @@ vec2 UIObject::resolveSize(vec2 parentSize) const
     vec4 m = m_uiObjProps.margin.resolve(parentSize);
     size -= vec2(m.w + m.y, m.x + m.z);
 
-    if (const auto *sizeConstraint = getExtension<UISizeConstraint>()) {
-        size = sizeConstraint->constrain(size);
-    }
-    if (const auto *arConstraint = getExtension<UIAspectRatioConstraint>()) {
-        size = arConstraint->constrain(size);
+    if (!m_extensions.empty()) {
+        if (const auto *sizeConstraint = getExtension<UISizeConstraint>()) {
+            size = sizeConstraint->constrain(size);
+        }
+        if (const auto *arConstraint = getExtension<UIAspectRatioConstraint>()) {
+            size = arConstraint->constrain(size);
+        }
     }
 
     return size;
@@ -232,6 +234,10 @@ vec2 UIObject::resolveSize(vec2 parentSize) const
 void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation)
 {
     AM_PROFILE_FUNCTION();
+    const vec2 previousPosition = absolutePosition;
+    const vec2 previousSize = absoluteSize;
+    const Degrees previousRotation = absoluteRotation;
+
     absolutePosition = parentPos + m_uiObjProps.position.resolve(parentSize) -
                        m_uiObjProps.anchorPoint * m_uiObjProps.size.resolve(parentSize);
     absoluteRotation = m_uiObjProps.rotation + parentRotation;
@@ -248,10 +254,21 @@ void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentR
     vec4 p = m_uiObjProps.padding.resolve(absoluteSize);
     absoluteContentPosition = absolutePosition + vec2(p.w, p.x);
     absoluteContentSize = absoluteSize - vec2(p.w + p.y, p.x + p.z);
+
+    // the parent assigns clipRect just before this call, so comparing it here is
+    // what catches a clip change that leaves this object's own rect untouched
+    if (absolutePosition != previousPosition || absoluteSize != previousSize ||
+        absoluteRotation != previousRotation || clipRect != m_appliedClipRect) {
+        m_appliedClipRect = clipRect;
+        markDirty();
+    }
 }
 
 void UIObject::applyLayoutExtensions()
 {
+    if (m_extensions.empty()) {
+        return;
+    }
     if (auto *gridLayout = getExtension<UIGridLayout>()) {
         gridLayout->apply(m_children);
     } else if (auto *listLayout = getExtension<UIListLayout>()) {
@@ -372,7 +389,7 @@ void UIObject::setRenderCulled(bool culled)
 {
     if (m_renderCulled != culled) {
         m_renderCulled = culled;
-        markDirty();
+        markSubtreeDirty();
     }
 }
 
@@ -382,9 +399,9 @@ int32_t UIObject::getAbsoluteZIndex() const
         return m_uiObjProps.zIndex;
     }
 
-    if (auto *obj = parent->as<UIObject>()) {
+    if (auto *obj = parent->asUiObject()) {
         return obj->getAbsoluteZIndex() + m_uiObjProps.zIndex;
-    } else if (auto *layer = parent->as<UILayer>()) {
+    } else if (auto *layer = parent->asLayer()) {
         return layer->getDisplayOrder() + m_uiObjProps.zIndex;
     }
 

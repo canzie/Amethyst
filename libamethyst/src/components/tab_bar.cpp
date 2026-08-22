@@ -506,7 +506,7 @@ void TabBar::addTab(std::unique_ptr<Tab> tab)
     if (auto *layer = tab->content->as<UILayer>()) {
         layer->setDisplayOrder(2);
     }
-    tab->content->markDirty();
+    tab->content->markSubtreeDirty();
     setupTabButton(*tab, static_cast<int32_t>(m_tabs.size()));
     m_tabs.push_back(std::move(tab));
     markAllTabsDirty();
@@ -612,7 +612,7 @@ void TabBar::arrange()
     if (flags & FLAG_DIRTY) {
         markAllTabsDirty();
         if (auto *selected = getSelectedContent()) {
-            selected->markDirty();
+            selected->markSubtreeDirty();
         }
     }
 

@@ -60,7 +60,18 @@ class Instance {
     virtual bool isHitTestVisible() const { return false; }
     virtual bool getClipsDescendants() const { return false; }
 
+    /**
+     * @brief Marks this node for repaint and its ancestors for traversal.
+     */
     void markDirty();
+
+    /**
+     * @brief Marks this node and every descendant for repaint.
+     *
+     * For changes descendants inherit, such as visibility, clipping or geometry.
+     */
+    void markSubtreeDirty();
+
     void markChildrenDirty();
 
     template <typename T> T *as() { return dynamic_cast<T *>(this); }

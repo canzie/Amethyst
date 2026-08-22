@@ -34,6 +34,7 @@ Instance *Instance::addChild(std::unique_ptr<Instance> child)
     Instance *raw = child.get();
     raw->parent = this;
     m_children.push_back(std::move(child));
+    raw->markSubtreeDirty();
     return raw;
 }
 
@@ -44,6 +45,7 @@ std::unique_ptr<Instance> Instance::removeChild(Instance *child)
         std::unique_ptr<Instance> result = std::move(*it);
         m_children.erase(it);
         result->parent = nullptr;
+        markDirty();
         return result;
     }
     return nullptr;
@@ -100,7 +102,11 @@ void Instance::markDirty()
     for (Instance *p = parent; p && !(p->flags & FLAG_CHILD_DIRTY); p = p->parent) {
         p->flags |= FLAG_CHILD_DIRTY;
     }
+}
 
+void Instance::markSubtreeDirty()
+{
+    markDirty();
     markChildrenDirty();
 }
 

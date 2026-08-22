@@ -219,13 +219,11 @@ void CollapsibleHeader::arrangeHeaderBar()
 
     vec4 childClip = computeChildClipRect();
     m_headerBackground->clipRect = childClip;
-    m_headerBackground->markDirty();
     m_headerBackground->computeAbsolutes({absoluteSize.x, m_chProps.headerHeight}, absolutePosition, absoluteRotation);
     m_headerBackground->arrange();
 
     m_headerButton->setBaseProperties({.zIndex = Z_HEADER_BUTTON});
     m_headerButton->clipRect = childClip;
-    m_headerButton->markDirty();
     m_headerButton->computeAbsolutes({absoluteSize.x, m_chProps.headerHeight}, absolutePosition, absoluteRotation);
     m_headerButton->arrange();
 }

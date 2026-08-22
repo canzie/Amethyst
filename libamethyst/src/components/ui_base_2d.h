@@ -53,6 +53,7 @@ class UIBase2D : public Instance {
 
   protected:
     GeometryAllocation *m_geometryAlloc = nullptr;
+    vec4 m_appliedClipRect = {0.0f, 0.0f, 0.0f, 0.0f};
 };
 
 } // namespace Amethyst
