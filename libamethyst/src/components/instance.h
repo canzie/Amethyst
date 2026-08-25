@@ -72,7 +72,7 @@ class Instance {
      */
     void markSubtreeDirty();
 
-    void markChildrenDirty();
+    virtual void markChildrenDirty();
 
     template <typename T> T *as() { return dynamic_cast<T *>(this); }
     template <typename T> const T *as() const { return dynamic_cast<const T *>(this); }

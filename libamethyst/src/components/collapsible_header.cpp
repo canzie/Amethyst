@@ -279,6 +279,15 @@ void CollapsibleHeader::draw(DrawContext &ctx)
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }
 
+void CollapsibleHeader::markChildrenDirty()
+{
+    Instance::markChildrenDirty();
+
+    m_headerBackground->markChildrenDirty();
+    m_headerBackground->flags |= FLAG_DIRTY;
+    m_headerButton->flags |= FLAG_DIRTY;
+}
+
 std::vector<Instance *> CollapsibleHeader::getHittableInstances()
 {
     std::vector<Instance *> result;
