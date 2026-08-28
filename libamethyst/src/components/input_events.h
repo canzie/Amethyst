@@ -43,6 +43,8 @@ enum KeyCode {
     KEY_DOWN = 264,
     KEY_HOME = 268,
     KEY_END = 269,
+    KEY_PAGE_UP = 266,
+    KEY_PAGE_DOWN = 267,
     KEY_ENTER = 257,
     KEY_ESCAPE = 256,
     KEY_TAB = 258,

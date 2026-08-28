@@ -387,6 +387,29 @@ struct TextInputStyleProperties : TextInputStyleFields<FieldShape::Plain> {
     operator TextInputStylePropertiesArgs() const;
 };
 
+template <FieldShape Shape> struct TextAreaStyleFields {
+    template <typename T> using F = AmField<Shape, T>;
+
+    F<TextStyleProperties> text{};
+    F<Color4> selectionColor{};
+    F<Color4> cursorColor{};
+    F<float> cursorBlinkRate{};
+    F<bool> readOnly{};
+    F<float> tabSize{};
+};
+
+using TextAreaStylePropertiesArgs = TextAreaStyleFields<FieldShape::Args>;
+using TextAreaStyleOverrideMask = TextAreaStyleFields<FieldShape::Mask>;
+
+struct TextAreaStyleProperties : TextAreaStyleFields<FieldShape::Plain> {
+    TextAreaStyleOverrideMask overridden;
+
+    bool apply(const TextAreaStyleProperties &src);
+    bool apply(const TextAreaStylePropertiesArgs &src);
+
+    operator TextAreaStylePropertiesArgs() const;
+};
+
 template <FieldShape Shape> struct TableStyleFields {
     template <typename T> using F = AmField<Shape, T>;
 

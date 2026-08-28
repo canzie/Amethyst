@@ -141,6 +141,7 @@ enum class ComponentType {
     RADIO_BUTTON,
     COLLAPSIBLE_HEADER,
     TEXT_INPUT,
+    TEXT_AREA,
     DRAG,
     MENU_BAR,
     SPLINE,
@@ -338,6 +339,17 @@ class Style {
      */
     TextInputStyleProperties getTextInputStyle(ComponentType type, std::span<const StyleKey> classes = {},
                                                uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
+
+    /**
+     * @brief Resolve the text-area style for a component type, class set, pseudo-state and part.
+     * @param type Component type whose inheritance chain is walked
+     * @param classes Class hashes carried by the node, in any order
+     * @param state Currently active GuiState bits (GUI_STATE_NONE if idle)
+     * @param part The node's sub-part, ComponentPart::NONE if it isn't a part
+     * @return Fully-resolved text-area style, with the text sub-style populated
+     */
+    TextAreaStyleProperties getTextAreaStyle(ComponentType type, std::span<const StyleKey> classes = {},
+                                             uint16_t state = GUI_STATE_NONE, ComponentPart part = ComponentPart::NONE);
 
     /**
      * @brief Resolve the image tint style for a component type, class set, pseudo-state and part.

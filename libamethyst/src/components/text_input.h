@@ -5,13 +5,13 @@
 #ifndef AMETHYST__TEXT_INPUT_H
 #define AMETHYST__TEXT_INPUT_H
 
-#include "components/ui_input.h"
+#include "components/ui_text_field.h"
 
 namespace Amethyst {
 
 struct DrawContext;
 
-class TextInput : public UIInput {
+class TextInput : public UITextField {
   public:
     TextInput();
     virtual ~TextInput() = default;

@@ -169,6 +169,11 @@
     X(CURSOR_COLOR, cursorColor, Color4)               \
     X(CURSOR_BLINK_RATE, cursorBlinkRate, float)
 
+#define AM_TEXT_AREA_STYLE_FIELDS(X)               \
+    X(SELECTION_COLOR, selectionColor, Color4)     \
+    X(CURSOR_COLOR, cursorColor, Color4)           \
+    X(CURSOR_BLINK_RATE, cursorBlinkRate, float)
+
 #define AM_MENU_BAR_STYLE_FIELDS(X)              \
     X(ENTRY_PADDING_X, entryPaddingX, float)     \
     X(ENTRY_PADDING_Y, entryPaddingY, float)     \

@@ -434,6 +434,18 @@ TextInputStyleProperties Style::getTextInputStyle(ComponentType type, std::span<
     return r;
 }
 
+TextAreaStyleProperties Style::getTextAreaStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state,
+                                                ComponentPart part)
+{
+    const DenseSet &d = resolveSet(type, classes, state, part);
+    TextAreaStyleProperties r;
+    r.text = getTextStyle(type, classes, state, part);
+#define X(PROP, field, Type) r.field = std::get<Type>(d[static_cast<size_t>(StyleProperty::PROP)]);
+    AM_TEXT_AREA_STYLE_FIELDS(X)
+#undef X
+    return r;
+}
+
 ImageStyleProperties Style::getImageStyle(ComponentType type, std::span<const StyleKey> classes, uint16_t state, ComponentPart part)
 {
     const DenseSet &d = resolveSet(type, classes, state, part);
@@ -520,6 +532,7 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
                                                              ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 2> collapsibleHeader = {ComponentType::COLLAPSIBLE_HEADER, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 2> textInput = {ComponentType::TEXT_INPUT, ComponentType::UI_OBJECT};
+    static const std::array<ComponentType, 2> textArea = {ComponentType::TEXT_AREA, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 2> drag = {ComponentType::DRAG, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 3> menuBar = {ComponentType::MENU_BAR, ComponentType::FRAME, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 2> spline = {ComponentType::SPLINE, ComponentType::UI_OBJECT};
@@ -565,6 +578,8 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
         return collapsibleHeader;
     case ComponentType::TEXT_INPUT:
         return textInput;
+    case ComponentType::TEXT_AREA:
+        return textArea;
     case ComponentType::DRAG:
         return drag;
     case ComponentType::MENU_BAR:
@@ -599,6 +614,7 @@ const std::unordered_map<std::string, ComponentType> &Style::getComponentTypeNam
         {"radio-button", ComponentType::RADIO_BUTTON},
         {"collapsible-header", ComponentType::COLLAPSIBLE_HEADER},
         {"text-input", ComponentType::TEXT_INPUT},
+        {"text-area", ComponentType::TEXT_AREA},
         {"drag", ComponentType::DRAG},
         {"menu-bar", ComponentType::MENU_BAR},
         {"spline", ComponentType::SPLINE},

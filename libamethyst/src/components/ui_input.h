@@ -1,49 +1,34 @@
 /*
- * Base class for editable text-input fields (text, number, color, ...)
+ * Base class for keyboard-editable components (single-line fields, text areas, ...)
  */
 
 #ifndef AMETHYST__UI_INPUT_H
 #define AMETHYST__UI_INPUT_H
 
-#include "components/properties.h"
+#include "components/input_events.h"
 #include "components/ui_object.h"
 #include "components/window.h"
 #include "modules/event_signal.h"
-#include "modules/text_processor.h"
-#include "rendering/geometry_registry.h"
 
 #include <cstdint>
 #include <functional>
-#include <optional>
-#include <string>
-#include <string_view>
 
 namespace Amethyst {
 
-struct DrawContext;
-
 /**
- * @brief Editable single-line text field: caret, selection, clipboard and rendering.
+ * @brief Focusable component that receives keyboard text input and runs a blinking cursor.
  *
- * Owns the full text-editing core. Concrete inputs subclass it and customise behaviour
- * through a few hooks: which theme type to resolve, which edits to accept, how to render
- * the buffer, and what to do when an edit is committed.
+ * Covers what every editable text surface shares: taking and dropping keyboard focus,
+ * dismissing itself when a press lands elsewhere, blinking the cursor, delivering key and
+ * character events while focused, and showing an I-beam under the mouse. Subclasses own the
+ * text itself and decide what each key does.
  */
 class UIInput : public UIObject {
   public:
     virtual ~UIInput();
 
-    void update(float deltaTime);
-
-    std::string getText() const { return m_text; }
-    void setText(const std::string &text);
-    void clearText();
-
-    void setPlaceholder(std::string placeholder);
-    const std::string &getPlaceholder() const { return m_placeholder; }
-
     /**
-     * @brief Give this field keyboard focus, as if it had been clicked.
+     * @brief Give this component keyboard focus, as if it had been clicked.
      */
     void focus();
 
@@ -54,28 +39,12 @@ class UIInput : public UIObject {
 
     bool isFocused() const { return m_focused; }
 
-    /**
-     * @brief Select the entire buffer, as if the user pressed Ctrl+A.
-     */
-    void selectAll();
-
-    bool setTextInputProperties(const TextInputStylePropertiesArgs &props);
-    const TextInputStyleProperties &getTextInputProperties() const { return m_tiProps; }
-
-    std::function<void(const std::string &)> onTextChanged;
-    std::function<void()> onEnterPressed;
+  public:
     std::function<void()> onFocusGained;
     std::function<void()> onFocusLost;
 
   protected:
     UIInput();
-
-    /**
-     * @brief Render the field: background, text, selection, caret and children.
-     *
-     * Subclasses call this from their own draw() override.
-     */
-    void drawInput(DrawContext &ctx);
 
     EventResult onInputBegan(const InputObject &input) override;
     EventResult onInputEnded(const InputObject &input) override;
@@ -84,74 +53,50 @@ class UIInput : public UIObject {
     EventResult onMouseLeave() override;
 
     /**
-     * @brief Decide whether a candidate buffer is allowed after an edit.
-     * @param candidate The full text the buffer would hold once the edit is applied
-     * @return True to accept the edit, false to reject it
+     * @brief A key was pressed or auto-repeated while this component holds focus.
+     * @param event The key, its action and the active modifiers
      */
-    virtual bool acceptText(std::string_view candidate) const
-    {
-        (void)candidate;
-        return true;
-    }
+    virtual void onKeyPressed(const KeyEvent &event) { (void)event; }
 
     /**
-     * @brief Text actually drawn for the buffer; overridden for masking (e.g. passwords).
-     * @return The string to render, one display char per buffer char
+     * @brief A character was committed by the keyboard while this component holds focus.
+     * @param codepoint The Unicode codepoint typed
      */
-    virtual std::string displayText() const { return m_text; }
+    virtual void onCharacterTyped(uint32_t codepoint) { (void)codepoint; }
+
+    /**
+     * @brief Put the cursor at a window-space point, from a click or a selection drag.
+     * @param position Point in window space
+     * @param extendSelection True to keep the existing anchor and select up to the point
+     */
+    virtual void moveCursorToPoint(vec2 position, bool extendSelection) = 0;
 
     /**
      * @brief Invoked when an edit is committed (Enter pressed or focus lost).
      */
     virtual void onCommit() {}
 
-    TextInputStyleProperties m_tiProps;
+    /**
+     * @brief Show the cursor and restart its blink, so it stays solid while typing.
+     */
+    void resetCursorBlink();
+
+    bool isCursorVisible() const { return m_cursorVisible; }
+
+    void setCursorBlinkRate(float seconds) { m_cursorBlinkRate = seconds; }
 
   private:
-    void processKeyboardInput();
-    void insertText(const std::string &text);
-    void deleteSelection();
-    void moveCursor(int delta, bool select);
-    void setCursorPosition(size_t pos, bool select);
-    size_t getCursorFromMouseX(int32_t mouseX);
+    void onUpdate(float deltaTime);
 
-    void copy();
-    void paste();
-    void cut();
-
-    void releaseText(DrawContext &ctx);
-    void drawText(DrawContext &ctx);
-    void drawSelection(DrawContext &ctx);
-    void drawCursor(DrawContext &ctx);
-
-    std::string m_text;
-    std::string m_placeholder;
-    size_t m_cursorPosition = 0;
-    std::optional<size_t> m_selectionStart;
+  private:
     bool m_focused = false;
     bool m_hovered = false;
-    float m_cursorBlinkTimer = 0.0f;
     bool m_cursorVisible = true;
     bool m_draggingSelection = false;
+    float m_cursorBlinkTimer = 0.0f;
+    float m_cursorBlinkRate = 0.5f;
 
     EventConnection m_pressConn;
-
-    GeometryAllocation *m_textAlloc = nullptr;
-    GlyphSliceHandle m_glyphSlice;
-    GeometryAllocation *m_selectionAlloc = nullptr;
-    GeometryAllocation *m_cursorAlloc = nullptr;
-
-    vec2 m_textSize = {0.0f, 0.0f};
-    std::vector<float> m_charPositions;
-    bool m_showingPlaceholder = false;
-    float m_textBaselineY = 0.0f;
-    float m_textStartX = 0.0f;
-
-    TextLayoutState m_textLayout;
-    std::string m_renderedText;
-    float m_textWidth = 0.0f;
-    FontId m_font;
-
     TickHandle m_tick;
 };
 

@@ -522,6 +522,44 @@ TextInputStyleProperties::operator TextInputStylePropertiesArgs() const
     return out;
 }
 
+bool TextAreaStyleProperties::apply(const TextAreaStyleProperties &src)
+{
+    bool changed = false;
+    AM_APPLY_PLAIN(selectionColor)
+    AM_APPLY_PLAIN(cursorColor)
+    AM_APPLY_PLAIN(cursorBlinkRate)
+    if (text.apply(src.text)) {
+        changed = true;
+    }
+    return changed;
+}
+
+bool TextAreaStyleProperties::apply(const TextAreaStylePropertiesArgs &src)
+{
+    bool changed = false;
+    AM_APPLY_ARGS(selectionColor)
+    AM_APPLY_ARGS(cursorColor)
+    AM_APPLY_ARGS(cursorBlinkRate)
+    AM_APPLY_ARGS(readOnly)
+    AM_APPLY_ARGS(tabSize)
+    if (text.apply(src.text)) {
+        changed = true;
+    }
+    return changed;
+}
+
+TextAreaStyleProperties::operator TextAreaStylePropertiesArgs() const
+{
+    TextAreaStylePropertiesArgs out;
+    out.text = text;
+    AM_TO_ARGS(selectionColor)
+    AM_TO_ARGS(cursorColor)
+    AM_TO_ARGS(cursorBlinkRate)
+    AM_TO_ARGS(readOnly)
+    AM_TO_ARGS(tabSize)
+    return out;
+}
+
 bool TableStyleProperties::apply(const TableStyleProperties &src)
 {
     bool changed = false;

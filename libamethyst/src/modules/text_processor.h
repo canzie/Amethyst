@@ -13,6 +13,7 @@
 
 #include "math/math.h"
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace Amethyst {
@@ -94,6 +95,38 @@ struct BatchedText {
 };
 
 /**
+ * @brief What a row of text is laid out with, when the caller places the row itself.
+ */
+struct TextRowLayoutParams {
+    FontId font{};
+    float fontSize = 14.0f;
+    float letterSpacing = 0.0f;
+    float tabSize = 4.0f; // tab stop spacing, in space advances
+};
+
+/**
+ * @brief One glyph's ink box within a row, relative to the row's top-left corner.
+ */
+struct TextRowGlyph {
+    const GlyphInfo *info = nullptr;
+    float x = 0.0f;
+    float y = 0.0f;
+};
+
+/**
+ * @brief A row of text laid out on one line, with the pen position of every byte offset.
+ *
+ * `columnX` has one entry per byte plus one past the end, so a caret offset maps to an x
+ * without a second walk. A multi-byte sequence stores its own start x in each of its byte
+ * slots, so a lookup at a codepoint boundary is the left edge of that codepoint.
+ */
+struct TextRowLayout {
+    std::vector<TextRowGlyph> glyphs;
+    std::vector<float> columnX;
+    float width = 0.0f;
+};
+
+/**
  * @brief Processes text strings into CharacterInstance data for rendering
  */
 class TextProcessor {
@@ -118,6 +151,26 @@ class TextProcessor {
      * @return The bbox quad plus bbox-relative glyph quads and per-line ranges.
      */
     BatchedText layoutTextBatched(const std::string &text, const TextLayoutParams &params) const;
+
+    /**
+     * @brief Lay out one row of text on a single line, with no wrapping or alignment.
+     *
+     * Hard breaks are not honoured: a row is already one line. The caller places the row and
+     * turns the glyphs into quads, so it decides scrolling, clipping and per-glyph colour.
+     *
+     * @param text The row's bytes, without a terminator
+     * @param params Font and spacing to lay the row out with
+     * @param out Receives the glyphs, the per-byte pen positions and the row's width
+     */
+    void layoutTextRow(std::string_view text, const TextRowLayoutParams &params, TextRowLayout &out) const;
+
+    /**
+     * @brief Vertical metrics of a font at a pixel size.
+     * @param font Face to read; an invalid id uses the registry default
+     * @param pixelSize Font size in pixels
+     * @return Ascender, descender and line height in pixels
+     */
+    FontMetrics getMetricsAtlas(FontId font, uint32_t pixelSize) const;
 
     /**
      * @brief Measure text dimensions using glyph atlas

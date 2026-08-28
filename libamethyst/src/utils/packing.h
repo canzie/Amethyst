@@ -36,6 +36,17 @@ inline uint16_t packFloatToHalf(float f)
     return packHalf1x16(f);
 }
 
+inline uint16_t clampToU16(float v)
+{
+    if (v <= 0.0f) {
+        return 0;
+    }
+    if (v >= 65535.0f) {
+        return 65535;
+    }
+    return static_cast<uint16_t>(v + 0.5f);
+}
+
 inline uint32_t packU16x2(uint16_t low, uint16_t high)
 {
     return static_cast<uint32_t>(low) | (static_cast<uint32_t>(high) << 16);

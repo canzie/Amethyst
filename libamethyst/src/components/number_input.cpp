@@ -1,7 +1,5 @@
 #include "components/number_input.h"
 
-#include "modules/style.h"
-
 #include <cstdlib>
 
 namespace Amethyst {
@@ -13,12 +11,7 @@ NumberInput::NumberInput()
 
 void NumberInput::resolveStyle()
 {
-    resolveBaseStyle(ComponentType::TEXT_INPUT);
-
-    TextInputStyleProperties resolved = Style::instance().getTextInputStyle(ComponentType::TEXT_INPUT, getClasses(), effectiveGuiState());
-    if (m_tiProps.apply(resolved)) {
-        markDirty();
-    }
+    resolveTextInputStyle(ComponentType::TEXT_INPUT);
 }
 
 void NumberInput::draw(DrawContext &ctx)

@@ -5,6 +5,7 @@
 
 #include "modules/text_processor.h"
 
+#include "utils/packing.h"
 #include "utils/profiling.h"
 #include "utils/utf8.h"
 
@@ -33,24 +34,13 @@ struct ShapedGlyph {
 };
 
 // Shared so measurement and layout can never disagree on where tab stops land.
-static float s_tabWidth(GlyphAtlas &atlas, const TextLayoutParams &params, uint32_t pixelSize)
+static float s_tabWidth(GlyphAtlas &atlas, FontId font, uint32_t pixelSize, float fontSize, float tabSize)
 {
-    float spaceAdvance = atlas.getAdvance(params.font, CP_SPACE, pixelSize);
+    float spaceAdvance = atlas.getAdvance(font, CP_SPACE, pixelSize);
     if (spaceAdvance <= 0.0f) {
-        spaceAdvance = params.fontSize * 0.5f;
+        spaceAdvance = fontSize * 0.5f;
     }
-    return std::max(params.tabSize, 1.0f) * spaceAdvance;
-}
-
-static uint16_t s_clampU16(float v)
-{
-    if (v <= 0.0f) {
-        return 0;
-    }
-    if (v >= 65535.0f) {
-        return 65535;
-    }
-    return static_cast<uint16_t>(v + 0.5f);
+    return std::max(tabSize, 1.0f) * spaceAdvance;
 }
 
 static void s_shapeText(const std::string &text, const TextLayoutParams &params, GlyphAtlas &atlas,
@@ -62,7 +52,7 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
     metrics = atlas.getMetrics(params.font, pixelSize);
     lineHeightPx = metrics.lineHeight * params.lineHeight;
 
-    float tabWidth = s_tabWidth(atlas, params, pixelSize);
+    float tabWidth = s_tabWidth(atlas, params.font, pixelSize, params.fontSize, params.tabSize);
 
     std::vector<ShapedGlyph> currentLine;
     currentLine.reserve(text.size());
@@ -186,6 +176,66 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
     flushLine(lastWasHardBreak);
 }
 
+FontMetrics TextProcessor::getMetricsAtlas(FontId font, uint32_t pixelSize) const
+{
+    if (m_glyphAtlas == nullptr) {
+        return {};
+    }
+    return m_glyphAtlas->getMetrics(font, pixelSize);
+}
+
+void TextProcessor::layoutTextRow(std::string_view text, const TextRowLayoutParams &params, TextRowLayout &out) const
+{
+    AM_PROFILE_FUNCTION();
+    out.glyphs.clear();
+    out.columnX.assign(text.size() + 1, 0.0f);
+    out.width = 0.0f;
+
+    if (m_glyphAtlas == nullptr) {
+        return;
+    }
+
+    uint32_t pixelSize = static_cast<uint32_t>(params.fontSize);
+    FontMetrics metrics = m_glyphAtlas->getMetrics(params.font, pixelSize);
+
+    float tabWidth = s_tabWidth(*m_glyphAtlas, params.font, pixelSize, params.fontSize, params.tabSize);
+
+    float penX = 0.0f;
+    size_t i = 0;
+    while (i < text.size()) {
+        Utf8::Decoded decoded = Utf8::decode(text, i);
+        for (size_t byte = 0; byte < decoded.bytes && i + byte < text.size(); byte++) {
+            out.columnX[i + byte] = penX;
+        }
+
+        if (decoded.codepoint == CP_TAB) {
+            penX += tabWidth - std::fmod(penX, tabWidth);
+            i += decoded.bytes;
+            continue;
+        }
+
+        const GlyphInfo *info = m_glyphAtlas->getGlyph(params.font, decoded.codepoint, pixelSize);
+        if (info == nullptr) {
+            i += decoded.bytes;
+            continue;
+        }
+
+        if (info->width > 0 && info->height > 0) {
+            TextRowGlyph glyph;
+            glyph.info = info;
+            glyph.x = penX + info->bearingX;
+            glyph.y = metrics.ascender - info->bearingY;
+            out.glyphs.push_back(glyph);
+        }
+
+        penX += info->advance + params.letterSpacing;
+        i += decoded.bytes;
+    }
+
+    out.columnX[text.size()] = penX;
+    out.width = penX;
+}
+
 vec2 TextProcessor::measureTextAtlas(const std::string &text, FontId font, uint32_t pixelSize, float letterSpacing) const
 {
     TextLayoutParams params;
@@ -206,7 +256,7 @@ vec2 TextProcessor::measureTextAtlas(const std::string &text, const TextLayoutPa
     float letterSpacing = params.letterSpacing;
     FontMetrics metrics = m_glyphAtlas->getMetrics(params.font, pixelSize);
 
-    float tabWidth = s_tabWidth(*m_glyphAtlas, params, pixelSize);
+    float tabWidth = s_tabWidth(*m_glyphAtlas, params.font, pixelSize, params.fontSize, params.tabSize);
 
     float maxWidth = 0.0f;
     float lineWidth = 0.0f;
@@ -405,8 +455,8 @@ BatchedText TextProcessor::layoutTextBatched(const std::string &text, const Text
                 float relY = baseline - glyphInfo->bearingY - boxY;
 
                 GlyphQuad quad;
-                quad.posMin = packU16x2(s_clampU16(relX), s_clampU16(relY));
-                quad.posMax = packU16x2(s_clampU16(relX + glyphInfo->width), s_clampU16(relY + glyphInfo->height));
+                quad.posMin = packU16x2(clampToU16(relX), clampToU16(relY));
+                quad.posMax = packU16x2(clampToU16(relX + glyphInfo->width), clampToU16(relY + glyphInfo->height));
                 quad.uvMin = packU16x2(glyphInfo->x, glyphInfo->y);
                 quad.uvMax = packU16x2(static_cast<uint16_t>(glyphInfo->x + glyphInfo->width),
                                        static_cast<uint16_t>(glyphInfo->y + glyphInfo->height));

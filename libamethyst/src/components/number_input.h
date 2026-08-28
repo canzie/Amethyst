@@ -5,7 +5,7 @@
 #ifndef AMETHYST__NUMBER_INPUT_H
 #define AMETHYST__NUMBER_INPUT_H
 
-#include "components/ui_input.h"
+#include "components/ui_text_field.h"
 
 #include <cstdint>
 
@@ -21,7 +21,7 @@ struct DrawContext;
  * the current text as a real number, and the inherited onTextChanged / onFocusLost to know
  * when it changed.
  */
-class NumberInput : public UIInput {
+class NumberInput : public UITextField {
   public:
     NumberInput();
     virtual ~NumberInput() = default;

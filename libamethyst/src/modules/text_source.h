@@ -6,6 +6,7 @@
 #ifndef AMETHYST__TEXT_SOURCE_H
 #define AMETHYST__TEXT_SOURCE_H
 
+#include <compare>
 #include <cstdint>
 #include <string_view>
 
@@ -22,6 +23,7 @@ struct TextPosition {
     uint64_t column = 0;
 
     bool operator==(const TextPosition &) const = default;
+    auto operator<=>(const TextPosition &) const = default;
 };
 
 /**
