@@ -411,7 +411,7 @@ BatchedText TextProcessor::layoutTextBatched(const std::string &text, const Text
                 quad.uvMax = packU16x2(static_cast<uint16_t>(glyphInfo->x + glyphInfo->width),
                                        static_cast<uint16_t>(glyphInfo->y + glyphInfo->height));
                 quad.color = glyphColor;
-                quad.page = glyphInfo->page;
+                quad.textureId = m_glyphAtlas->getTextureId(glyphInfo->page).id;
 
                 out.glyphs.push_back(quad);
                 glyphLine.glyphCount++;

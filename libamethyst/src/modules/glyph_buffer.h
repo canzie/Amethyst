@@ -25,7 +25,7 @@ struct GlyphQuad {
     uint32_t uvMin = 0;
     uint32_t uvMax = 0;
     uint32_t color = 0xFFFFFFFF;
-    uint32_t page = 0;
+    uint32_t textureId = UINT32_MAX;
     uint32_t flags = 0;
     uint32_t unused = 0;
 };

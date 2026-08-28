@@ -29,7 +29,7 @@ struct GlyphQuad {
     uint uvMin;
     uint uvMax;
     uint color;
-    uint page;
+    uint textureId;
     uint flags;
     uint unused;
 };
@@ -336,9 +336,9 @@ void main()
         vec2 luv = (local - pmin) / (pmax - pmin);
         vec2 amin = vec2(float(g.uvMin & 0xFFFFu), float(g.uvMin >> 16u));
         vec2 amax = vec2(float(g.uvMax & 0xFFFFu), float(g.uvMax >> 16u));
-        uint page = nonuniformEXT(g.page);
-        vec2 atlasSize = vec2(textureSize(gTextures[page], 0));
-        float cov = textureLod(gTextures[page], mix(amin, amax, luv) / atlasSize, 0.0).r;
+        uint texture = nonuniformEXT(g.textureId);
+        vec2 atlasSize = vec2(textureSize(gTextures[texture], 0));
+        float cov = textureLod(gTextures[texture], mix(amin, amax, luv) / atlasSize, 0.0).r;
 
         vec4 glyphColor = unpackUnorm4x8(g.color);
         float alpha = cov * glyphColor.a;

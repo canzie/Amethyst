@@ -44,6 +44,7 @@ GlyphAtlas::SizeGlyphTable &GlyphAtlas::getSizeTable(FontId font, uint32_t pixel
 
 bool GlyphAtlas::placeGlyph(uint16_t page, const GlyphBitmap &bitmap, GlyphInfo &out)
 {
+    AM_ASSERT(!m_pages.empty(), "glyph requested before the atlas was given its texture source");
     out.page = page;
 
     if (bitmap.width == 0 || bitmap.height == 0) {
