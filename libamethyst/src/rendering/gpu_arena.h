@@ -88,6 +88,12 @@ class BlockAllocator {
     void rebuildFreelist(uint32_t usedEnd);
 
     /**
+     * @brief Raise the capacity, offering the added slots as free space. Live blocks do not move.
+     * @param newCapacity Total number of slots the arena manages; ignored if not larger.
+     */
+    void grow(uint32_t newCapacity);
+
+    /**
      * @brief Total number of slots the arena manages.
      * @return Arena capacity in slots.
      */

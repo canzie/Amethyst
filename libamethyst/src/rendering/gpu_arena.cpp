@@ -98,6 +98,21 @@ void BlockAllocator::rebuildFreelist(uint32_t usedEnd)
     }
 }
 
+void BlockAllocator::grow(uint32_t newCapacity)
+{
+    if (newCapacity <= m_capacity) {
+        return;
+    }
+
+    uint32_t added = newCapacity - m_capacity;
+    if (!m_free.empty() && m_free.back().offset + m_free.back().length == m_capacity) {
+        m_free.back().length += added;
+    } else {
+        m_free.push_back({m_capacity, added});
+    }
+    m_capacity = newCapacity;
+}
+
 void GpuArena::init(AmethystBackend &backend, const AmBufferDesc &desc, GrowthPolicy policy)
 {
     m_backend = &backend;

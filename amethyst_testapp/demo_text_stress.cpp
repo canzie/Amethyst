@@ -4,7 +4,7 @@
 // LINE_COUNT and font size variety are the knobs. Both fixed capacities in
 // GlyphBuffer are per GeometryRegistry, so they bound the whole document rather than
 // the visible part: one slice per label against SLICE_CAPACITY, and every label's
-// glyphs against GLYPH_CAPACITY, whether or not the label is scrolled into view. The
+// glyphs against the glyph arena, whether or not the label is scrolled into view. The
 // demo logs where it stands against both on startup.
 
 #include "amethyst/Amethyst.h"
@@ -70,7 +70,7 @@ int main()
     }
 
     AmethystContext amCtx;
-    if (!amCtx.loadFont(AMETHYST_ASSETS_DIR "/fonts/OpenSans-Regular.ttf")) {
+    if (!amCtx.loadFont(AMETHYST_ASSETS_DIR "/fonts/OpenSans-Regular.ttf").isValid()) {
         AM_LOG_ERROR("Failed to load font");
         return 1;
     }
@@ -124,12 +124,12 @@ int main()
     size_t residentQuads = visibleLines * avgChars;
 
     AM_LOG_INFO("text stress: {} labels, {} slices of {}; ~{} resident quads of {} ({} visible lines x ~{} chars)", LINE_COUNT,
-                LINE_COUNT, GlyphBuffer::SLICE_CAPACITY, residentQuads, GlyphBuffer::GLYPH_CAPACITY, visibleLines, avgChars);
+                LINE_COUNT, GlyphBuffer::SLICE_CAPACITY, residentQuads, GlyphBuffer::GLYPH_MAX, visibleLines, avgChars);
     if (LINE_COUNT > GlyphBuffer::SLICE_CAPACITY) {
         AM_LOG_WARN("more labels than SLICE_CAPACITY: slices are per label, so this one does scale with the document");
     }
-    if (residentQuads > GlyphBuffer::GLYPH_CAPACITY) {
-        AM_LOG_WARN("one screenful exceeds GLYPH_CAPACITY: expect dropped text, not a crash");
+    if (residentQuads > GlyphBuffer::GLYPH_MAX) {
+        AM_LOG_WARN("one screenful exceeds GLYPH_MAX: expect dropped text, not a crash");
     }
 
     UIScope root(window);

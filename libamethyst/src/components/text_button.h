@@ -72,6 +72,7 @@ class TextButton : public UIButton {
     GeometryAllocation *m_textAlloc = nullptr;
     GlyphSliceHandle m_glyphSlice;
     TextLayoutState m_textLayout;
+    FontId m_font;
 };
 
 } // namespace Amethyst

@@ -14,7 +14,7 @@
 namespace Amethyst {
 
 /**
- * @brief One glyph's screen rect and atlas region for batched text.
+ * @brief One glyph's screen rect, atlas region, colour and atlas page for batched text.
  *
  * Positions are u16 pixels relative to the label bbox top-left; UVs are u16 atlas pixel
  * coordinates. Both are stored as packed half2 pairs (low 16 = x, high 16 = y).
@@ -24,7 +24,13 @@ struct GlyphQuad {
     uint32_t posMax = 0;
     uint32_t uvMin = 0;
     uint32_t uvMax = 0;
+    uint32_t color = 0xFFFFFFFF;
+    uint32_t page = 0;
+    uint32_t flags = 0;
+    uint32_t unused = 0;
 };
+
+static_assert(sizeof(GlyphQuad) == 32, "GlyphQuad must stay one memory sector wide");
 
 /**
  * @brief A run of glyphs forming one visual line, relative to the slice's glyph run.
@@ -57,12 +63,17 @@ struct GlyphSliceHandle {
  *
  * Created lazily by a registry on its first slice and destroyed with it. A slice is a
  * contiguous run of GlyphQuads plus its per-line ranges, addressed through a stable handle
- * into the slice table. Capacities are fixed; on exhaustion the buffer compacts once and,
- * if still full, drops the slice.
+ * into the slice table.
+ *
+ * The glyph arena starts at GLYPH_FLOOR and doubles up to GLYPH_MAX, which is past what a
+ * viewport of visible text can hold at any resolution and font size. Reaching it means
+ * something laid out more than it can show. Line and slice capacities are fixed, since a
+ * run of visible rows needs far fewer of both than of glyphs.
  */
 class GlyphBuffer {
   public:
-    static constexpr uint32_t GLYPH_CAPACITY = 1u << 14;
+    static constexpr uint32_t GLYPH_FLOOR = 1u << 15;
+    static constexpr uint32_t GLYPH_MAX = 1u << 18;
     static constexpr uint32_t LINE_CAPACITY = 1u << 13;
     static constexpr uint32_t SLICE_CAPACITY = 1u << 11;
 
@@ -154,6 +165,12 @@ class GlyphBuffer {
      */
     bool hasLiveSlices() const { return m_liveCount > 0; }
 
+    /**
+     * @brief Slots the glyph arena currently spans, which consumers must match to upload it.
+     * @return Glyph arena capacity in quads
+     */
+    uint32_t glyphCapacity() const { return m_glyphAlloc.capacity(); }
+
   private:
     struct Block {
         uint32_t offset = BlockAllocator::INVALID;
@@ -180,6 +197,21 @@ class GlyphBuffer {
      */
     bool ensureBlockCapacity(BlockAllocator &alloc, void *arena, uint32_t elemSize, Block &block, uint32_t needed,
                              uint32_t minBlock, DirtyRange &dirty);
+
+    /**
+     * @brief Fit a slice's glyphs, compacting and then enlarging the arena if it will not fit.
+     * @param block Glyph block to fit, updated in place
+     * @param needed Glyph slots the slice requires
+     * @return True once the block holds `needed` slots, false at the ceiling
+     */
+    bool fitGlyphBlock(Block &block, uint32_t needed);
+
+    /**
+     * @brief Double the glyph arena until it spans `needed` slots, capped at GLYPH_MAX.
+     * @param needed Slots the arena must span
+     * @return True if the arena grew, false if it is already at the ceiling
+     */
+    bool growGlyphArena(uint32_t needed);
 
     std::vector<GlyphQuad> m_glyphs;
     std::vector<GlyphLine> m_lines;

@@ -46,6 +46,7 @@ void TextButton::resolveStyle()
     TextStyleProperties resolved =
         Style::instance().getTextStyle(ComponentType::TEXT_BUTTON, getClasses(), effectiveGuiState(), m_part);
     if (m_textStyle.apply(resolved)) {
+        m_font = FontRegistry::instance().findFont(m_textStyle.fontFamily);
         markDirty();
     }
 }
@@ -64,6 +65,7 @@ bool TextButton::setTextStyleProperties(const TextStylePropertiesArgs &props)
 {
     bool changed = m_textStyle.apply(props);
     if (changed) {
+        m_font = FontRegistry::instance().findFont(m_textStyle.fontFamily);
         m_textLayout.invalidate();
         markDirty();
     }
@@ -109,7 +111,7 @@ void TextButton::updateTextGeometry(DrawContext &ctx)
 
     uint32_t pixelSize = static_cast<uint32_t>(m_textStyle.fontSize);
     if (!m_textLayout.isValid()) {
-        m_textSize = ctx.textProcessor->measureTextAtlas(m_text, pixelSize);
+        m_textSize = ctx.textProcessor->measureTextAtlas(m_text, m_font, pixelSize);
     }
 
     float effectiveFontSize = m_textStyle.fontSize;
@@ -174,6 +176,7 @@ void TextButton::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_
     params.yAlign = m_textStyle.textYAlignment;
     params.truncate = m_textStyle.textTruncate;
     params.wrap = static_cast<bool>(m_textStyle.textWrapped);
+    params.font = m_font;
 
     BatchedText batched = ctx.textProcessor->layoutTextBatched(m_text, params);
     if (batched.glyphs.empty()) {
@@ -201,7 +204,6 @@ void TextButton::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_
     inst.setFillColor(m_textStyle.textColor);
     inst.setPrimitiveType(PRIMITIVE_TEXT);
     inst.setGlyphSlice(m_glyphSlice.id);
-    inst.textureId = ctx.glyphAtlas->getTextureId().id;
     inst.zIndex = zIndex;
     inst.clipRect = clipRect;
     inst.setVisible(visible);

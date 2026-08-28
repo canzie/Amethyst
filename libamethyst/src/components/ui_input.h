@@ -150,6 +150,7 @@ class UIInput : public UIObject {
     TextLayoutState m_textLayout;
     std::string m_renderedText;
     float m_textWidth = 0.0f;
+    FontId m_font;
 
     TickHandle m_tick;
 };

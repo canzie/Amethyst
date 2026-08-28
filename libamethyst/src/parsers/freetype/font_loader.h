@@ -29,6 +29,16 @@ struct FontMetrics {
     float lineHeight = 0.0f;
 };
 
+/**
+ * @brief The family and style a font file declares for itself.
+ */
+struct FontDescription {
+    std::string family;
+    std::string style;
+    bool bold = false;
+    bool italic = false;
+};
+
 class FontLoader {
   public:
     FontLoader();
@@ -50,6 +60,12 @@ class FontLoader {
      * @return Advance in pixels at the current pixel size
      */
     float getAdvance(uint32_t codepoint) const;
+
+    /**
+     * @brief The family and style the loaded file names itself.
+     * @return The declared description, empty if no font is loaded
+     */
+    FontDescription getDescription() const;
 
     FontMetrics getMetrics() const;
     uint32_t getGlyphIndex(uint32_t codepoint) const;

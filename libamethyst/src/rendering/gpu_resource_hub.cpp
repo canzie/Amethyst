@@ -42,14 +42,15 @@ void GpuResourceHub::init(AmethystBackend &backend)
     m_backend = &backend;
     s_active = this;
 
-    const size_t glyphBytes = GlyphBuffer::GLYPH_CAPACITY * sizeof(GlyphQuad);
+    const size_t glyphBytes = GlyphBuffer::GLYPH_FLOOR * sizeof(GlyphQuad);
+    const size_t maxGlyphBytes = GlyphBuffer::GLYPH_MAX * sizeof(GlyphQuad);
     const size_t lineBytes = GlyphBuffer::LINE_CAPACITY * sizeof(GlyphLine);
     const size_t sliceBytes = GlyphBuffer::SLICE_CAPACITY * sizeof(GlyphSlice);
 
     m_instances.init(backend, {INSTANCE_ARENA_BYTES, AmBufferUsage::STORAGE, AmBufferMemory::HOST_VISIBLE, 0},
                      GrowthPolicy::doubleUntil(INSTANCE_ARENA_MAX_BYTES));
     m_glyphs.init(backend, {4 * glyphBytes, AmBufferUsage::STORAGE, AmBufferMemory::HOST_VISIBLE, 2},
-                  GrowthPolicy::doubleUntil(32 * glyphBytes));
+                  GrowthPolicy::doubleUntil(2 * maxGlyphBytes));
     m_lines.init(backend, {8 * lineBytes, AmBufferUsage::STORAGE, AmBufferMemory::HOST_VISIBLE, 3},
                  GrowthPolicy::doubleUntil(64 * lineBytes));
     m_slices.init(backend, {8 * sliceBytes, AmBufferUsage::STORAGE, AmBufferMemory::HOST_VISIBLE, 4},
@@ -170,7 +171,7 @@ GpuResourceHub::TextBlocks *GpuResourceHub::obtainTextBlocks(GeometryRegistry *r
     }
 
     TextBlocks blocks;
-    blocks.glyph = m_glyphs.alloc(GlyphBuffer::GLYPH_CAPACITY * sizeof(GlyphQuad));
+    blocks.glyph = m_glyphs.alloc(GlyphBuffer::GLYPH_FLOOR * sizeof(GlyphQuad));
     blocks.line = m_lines.alloc(GlyphBuffer::LINE_CAPACITY * sizeof(GlyphLine));
     blocks.slice = m_slices.alloc(GlyphBuffer::SLICE_CAPACITY * sizeof(GlyphSlice));
 
@@ -235,9 +236,23 @@ void GpuResourceHub::syncText(void *cmdBuffer, GlyphBuffer &glyphBuffer, TextBlo
         DirtyRange dirty;
     };
 
+    // The glyph arena doubles as views grow, so the block backing it has to follow.
+    DirtyRange glyphDirty = glyphBuffer.glyphDirty();
+    size_t glyphBytes = static_cast<size_t>(glyphBuffer.glyphCapacity()) * sizeof(GlyphQuad);
+    if (glyphBytes > blocks.glyph.capacity) {
+        ArenaBlock grown = m_glyphs.alloc(glyphBytes);
+        if (!grown.isValid()) {
+            AM_LOG_ERROR("Failed to grow the glyph block to {} bytes", glyphBytes);
+            glyphBuffer.clearDirty();
+            return;
+        }
+        m_glyphs.free(blocks.glyph);
+        blocks.glyph = grown;
+        glyphDirty.add(0, glyphBuffer.glyphCapacity());
+    }
+
     UploadSlot slots[3] = {
-        {&m_glyphs, &blocks.glyph, reinterpret_cast<const uint8_t *>(glyphBuffer.glyphData()), sizeof(GlyphQuad),
-         glyphBuffer.glyphDirty()},
+        {&m_glyphs, &blocks.glyph, reinterpret_cast<const uint8_t *>(glyphBuffer.glyphData()), sizeof(GlyphQuad), glyphDirty},
         {&m_lines, &blocks.line, reinterpret_cast<const uint8_t *>(glyphBuffer.lineData()), sizeof(GlyphLine),
          glyphBuffer.lineDirty()},
         {&m_slices, &blocks.slice, reinterpret_cast<const uint8_t *>(glyphBuffer.sliceData()), sizeof(GlyphSlice),

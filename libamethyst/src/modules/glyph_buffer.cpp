@@ -14,14 +14,53 @@ static constexpr uint32_t MIN_LINE_BLOCK = 1;
 
 GlyphBuffer::GlyphBuffer()
 {
-    m_glyphs.resize(GLYPH_CAPACITY);
+    m_glyphs.resize(GLYPH_FLOOR);
     m_lines.resize(LINE_CAPACITY);
     m_slices.resize(SLICE_CAPACITY);
 
     m_records.reserve(SLICE_CAPACITY);
 
-    m_glyphAlloc.init(GLYPH_CAPACITY);
+    m_glyphAlloc.init(GLYPH_FLOOR);
     m_lineAlloc.init(LINE_CAPACITY);
+}
+
+bool GlyphBuffer::growGlyphArena(uint32_t needed)
+{
+    uint32_t capacity = m_glyphAlloc.capacity();
+    if (capacity >= GLYPH_MAX) {
+        return false;
+    }
+
+    uint32_t target = capacity;
+    while (target < needed && target < GLYPH_MAX) {
+        target *= 2;
+    }
+    target = std::min(target, GLYPH_MAX);
+    if (target <= capacity) {
+        return false;
+    }
+
+    m_glyphs.resize(target);
+    m_glyphAlloc.grow(target);
+    return true;
+}
+
+bool GlyphBuffer::fitGlyphBlock(Block &block, uint32_t needed)
+{
+    if (ensureBlockCapacity(m_glyphAlloc, m_glyphs.data(), sizeof(GlyphQuad), block, needed, MIN_GLYPH_BLOCK, m_glyphDirty)) {
+        return true;
+    }
+
+    compact();
+    if (ensureBlockCapacity(m_glyphAlloc, m_glyphs.data(), sizeof(GlyphQuad), block, needed, MIN_GLYPH_BLOCK, m_glyphDirty)) {
+        return true;
+    }
+
+    // ensureBlockCapacity may ask for twice what the slice needs, so leave room for that.
+    if (!growGlyphArena(m_glyphAlloc.capacity() + 2 * needed)) {
+        return false;
+    }
+    return ensureBlockCapacity(m_glyphAlloc, m_glyphs.data(), sizeof(GlyphQuad), block, needed, MIN_GLYPH_BLOCK, m_glyphDirty);
 }
 
 GlyphSliceHandle GlyphBuffer::createSlice()
@@ -104,12 +143,7 @@ void GlyphBuffer::reserve(GlyphSliceHandle handle, uint32_t glyphCapacity)
         return;
     }
 
-    if (!ensureBlockCapacity(m_glyphAlloc, m_glyphs.data(), sizeof(GlyphQuad), rec.glyph, glyphCapacity, MIN_GLYPH_BLOCK,
-                             m_glyphDirty)) {
-        compact();
-        ensureBlockCapacity(m_glyphAlloc, m_glyphs.data(), sizeof(GlyphQuad), rec.glyph, glyphCapacity, MIN_GLYPH_BLOCK,
-                            m_glyphDirty);
-    }
+    fitGlyphBlock(rec.glyph, glyphCapacity);
 }
 
 void GlyphBuffer::updateSlice(GlyphSliceHandle handle, const GlyphQuad *glyphs, uint32_t glyphCount, const GlyphLine *lines,
@@ -128,14 +162,11 @@ void GlyphBuffer::updateSlice(GlyphSliceHandle handle, const GlyphQuad *glyphs, 
 
     AM_ASSERT(lineCount > 0 && lineCount < 65536, "GlyphBuffer::updateSlice lineCount out of range");
 
-    if (!ensureBlockCapacity(m_glyphAlloc, m_glyphs.data(), sizeof(GlyphQuad), rec.glyph, glyphCount, MIN_GLYPH_BLOCK,
-                             m_glyphDirty)) {
-        compact();
-        if (!ensureBlockCapacity(m_glyphAlloc, m_glyphs.data(), sizeof(GlyphQuad), rec.glyph, glyphCount, MIN_GLYPH_BLOCK,
-                                 m_glyphDirty)) {
-            AM_LOG_ERROR("GlyphBuffer glyph arena exhausted, dropping update of {} glyphs", glyphCount);
-            return;
-        }
+    if (!fitGlyphBlock(rec.glyph, glyphCount)) {
+        AM_LOG_ERROR("GlyphBuffer glyph arena at its {} quad ceiling, dropping update of {} glyphs. A slice this large means "
+                     "text was laid out beyond what the viewport shows.",
+                     GLYPH_MAX, glyphCount);
+        return;
     }
 
     if (!ensureBlockCapacity(m_lineAlloc, m_lines.data(), sizeof(GlyphLine), rec.line, lineCount, MIN_LINE_BLOCK, m_lineDirty)) {

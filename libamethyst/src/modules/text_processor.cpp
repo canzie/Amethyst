@@ -18,13 +18,13 @@ static constexpr uint32_t CP_LINE_FEED = 0x0Au;
 static constexpr uint32_t CP_CARRIAGE_RETURN = 0x0Du;
 static constexpr uint32_t CP_SPACE = 0x20u;
 
-float TextProcessor::getCharAdvanceAtlas(uint32_t codepoint, uint32_t pixelSize, float letterSpacing) const
+float TextProcessor::getCharAdvanceAtlas(FontId font, uint32_t codepoint, uint32_t pixelSize, float letterSpacing) const
 {
     if (!m_glyphAtlas) {
         return 0.0f;
     }
 
-    return m_glyphAtlas->getAdvance(codepoint, pixelSize) + letterSpacing;
+    return m_glyphAtlas->getAdvance(font, codepoint, pixelSize) + letterSpacing;
 }
 
 struct ShapedGlyph {
@@ -35,7 +35,7 @@ struct ShapedGlyph {
 // Shared so measurement and layout can never disagree on where tab stops land.
 static float s_tabWidth(GlyphAtlas &atlas, const TextLayoutParams &params, uint32_t pixelSize)
 {
-    float spaceAdvance = atlas.getAdvance(CP_SPACE, pixelSize);
+    float spaceAdvance = atlas.getAdvance(params.font, CP_SPACE, pixelSize);
     if (spaceAdvance <= 0.0f) {
         spaceAdvance = params.fontSize * 0.5f;
     }
@@ -59,7 +59,7 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
 {
     AM_PROFILE_FUNCTION();
     uint32_t pixelSize = static_cast<uint32_t>(params.fontSize);
-    metrics = atlas.getMetrics(pixelSize);
+    metrics = atlas.getMetrics(params.font, pixelSize);
     lineHeightPx = metrics.lineHeight * params.lineHeight;
 
     float tabWidth = s_tabWidth(atlas, params, pixelSize);
@@ -123,7 +123,7 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
             continue;
         }
 
-        const GlyphInfo *glyphInfo = atlas.getGlyph(codepoint, pixelSize);
+        const GlyphInfo *glyphInfo = atlas.getGlyph(params.font, codepoint, pixelSize);
         if (!glyphInfo) {
             i += charBytes;
             continue;
@@ -186,9 +186,10 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
     flushLine(lastWasHardBreak);
 }
 
-vec2 TextProcessor::measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing) const
+vec2 TextProcessor::measureTextAtlas(const std::string &text, FontId font, uint32_t pixelSize, float letterSpacing) const
 {
     TextLayoutParams params;
+    params.font = font;
     params.fontSize = static_cast<float>(pixelSize);
     params.letterSpacing = letterSpacing;
     return measureTextAtlas(text, params);
@@ -203,7 +204,7 @@ vec2 TextProcessor::measureTextAtlas(const std::string &text, const TextLayoutPa
 
     uint32_t pixelSize = static_cast<uint32_t>(params.fontSize);
     float letterSpacing = params.letterSpacing;
-    FontMetrics metrics = m_glyphAtlas->getMetrics(pixelSize);
+    FontMetrics metrics = m_glyphAtlas->getMetrics(params.font, pixelSize);
 
     float tabWidth = s_tabWidth(*m_glyphAtlas, params, pixelSize);
 
@@ -234,7 +235,7 @@ vec2 TextProcessor::measureTextAtlas(const std::string &text, const TextLayoutPa
             continue;
         }
 
-        lineWidth += m_glyphAtlas->getAdvance(decoded.codepoint, pixelSize) + letterSpacing;
+        lineWidth += m_glyphAtlas->getAdvance(params.font, decoded.codepoint, pixelSize) + letterSpacing;
     }
 
     maxWidth = std::max(maxWidth, lineWidth);
@@ -271,7 +272,6 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
     }
 
     uint32_t packedColor = packColor(params.color);
-    uint32_t textureId = m_glyphAtlas->getTextureId().id;
 
     for (size_t lineIdx = 0; lineIdx < lines.size(); lineIdx++) {
         float lineWidth = lineWidths[lineIdx];
@@ -305,7 +305,7 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
             inst.fillColor = packedColor;
             inst.setUvRect(vec4(uvMinX, uvMinY, uvMaxX, uvMaxY));
             inst.setPrimitiveType(PRIMITIVE_TEXT);
-            inst.textureId = textureId;
+            inst.textureId = m_glyphAtlas->getTextureId(glyphInfo->page).id;
             inst.setTextRich(true);
 
             result.push_back(inst);
@@ -378,6 +378,8 @@ BatchedText TextProcessor::layoutTextBatched(const std::string &text, const Text
     out.glyphs.reserve(glyphTotal);
     out.lines.reserve(lines.size());
 
+    uint32_t glyphColor = packColor(params.color);
+
     {
         AM_PROFILE_SCOPE("emit batched glyphs");
         for (size_t lineIdx = 0; lineIdx < lines.size(); lineIdx++) {
@@ -408,6 +410,8 @@ BatchedText TextProcessor::layoutTextBatched(const std::string &text, const Text
                 quad.uvMin = packU16x2(glyphInfo->x, glyphInfo->y);
                 quad.uvMax = packU16x2(static_cast<uint16_t>(glyphInfo->x + glyphInfo->width),
                                        static_cast<uint16_t>(glyphInfo->y + glyphInfo->height));
+                quad.color = glyphColor;
+                quad.page = glyphInfo->page;
 
                 out.glyphs.push_back(quad);
                 glyphLine.glyphCount++;

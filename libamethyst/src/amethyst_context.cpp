@@ -4,7 +4,7 @@
 
 namespace Amethyst {
 
-AmethystContext::AmethystContext() : m_glyphAtlas(&m_fontLoader)
+AmethystContext::AmethystContext()
 {
     m_textProcessor.setGlyphAtlas(&m_glyphAtlas);
     m_drawCtx.textProcessor = &m_textProcessor;
@@ -12,17 +12,30 @@ AmethystContext::AmethystContext() : m_glyphAtlas(&m_fontLoader)
     m_drawCtx.svgAtlas = &m_svgAtlas;
 }
 
-bool AmethystContext::loadFont(const std::string &path)
+AmethystContext::~AmethystContext()
 {
-    return m_fontLoader.loadFont(path);
+    FontRegistry::instance().shutdown();
+}
+
+FontId AmethystContext::loadFont(std::string_view name, const std::string &path)
+{
+    return FontRegistry::instance().loadFont(name, path);
+}
+
+FontId AmethystContext::loadFont(const std::string &path)
+{
+    return FontRegistry::instance().loadFont(path);
 }
 
 void AmethystContext::init(AmethystBackend &backend)
 {
     m_backend = &backend;
 
-    m_glyphAtlas.setTextureId(backend.createTexture({m_glyphAtlas.getWidth(), m_glyphAtlas.getHeight(), AmTextureFormat::R8}));
     m_svgAtlas.setTextureId(backend.createTexture({m_svgAtlas.getWidth(), m_svgAtlas.getHeight(), AmTextureFormat::RGBA8}));
+
+    m_glyphAtlas.init([&backend] {
+        return backend.createTexture({GlyphAtlas::PAGE_SIZE, GlyphAtlas::PAGE_SIZE, AmTextureFormat::R8});
+    });
 
     m_resourceHub.init(backend);
 }
@@ -33,9 +46,11 @@ void AmethystContext::syncShared(void *cmdBuffer)
         return;
     }
 
-    if (m_glyphAtlas.isDirty()) {
-        m_backend->uploadTexture(cmdBuffer, m_glyphAtlas.getTextureId(), m_glyphAtlas.getPixels());
-        m_glyphAtlas.clearDirty();
+    for (uint16_t page = 0; page < m_glyphAtlas.pageCount(); page++) {
+        if (m_glyphAtlas.isDirty(page)) {
+            m_backend->uploadTexture(cmdBuffer, m_glyphAtlas.getTextureId(page), m_glyphAtlas.getPixels(page));
+            m_glyphAtlas.clearDirty(page);
+        }
     }
 
     if (m_svgAtlas.isDirty()) {

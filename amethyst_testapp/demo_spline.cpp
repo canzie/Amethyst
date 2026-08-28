@@ -37,7 +37,7 @@ int main()
     }
 
     AmethystContext amCtx;
-    if (!amCtx.loadFont(AMETHYST_ASSETS_DIR "/fonts/OpenSans-Regular.ttf")) {
+    if (!amCtx.loadFont(AMETHYST_ASSETS_DIR "/fonts/OpenSans-Regular.ttf").isValid()) {
         AM_LOG_ERROR("Failed to load font");
         return 1;
     }

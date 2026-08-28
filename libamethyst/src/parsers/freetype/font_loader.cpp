@@ -13,29 +13,30 @@ static constexpr float FT_POS_TO_PIXELS = 1.0f / 64.0f;
 static constexpr float FT_FIXED_TO_PIXELS = 1.0f / 65536.0f;
 
 struct FontLoader::Impl {
-    FT_Library library = nullptr;
     FT_Face face = nullptr;
     uint32_t pixelSize = 0;
 };
 
-FontLoader::FontLoader() : m_impl(std::make_unique<Impl>())
+// FT_Library owns the module list and memory manager, so every face shares one.
+static FT_Library s_freetype()
 {
-    FT_Error error = FT_Init_FreeType(&m_impl->library);
-    if (error) {
-        AM_LOG_ERROR("Failed to initialize FreeType library");
-        m_impl.reset();
-    }
+    static FT_Library library = [] {
+        FT_Library created = nullptr;
+        if (FT_Init_FreeType(&created) != 0) {
+            AM_LOG_ERROR("Failed to initialize FreeType library");
+            return static_cast<FT_Library>(nullptr);
+        }
+        return created;
+    }();
+    return library;
 }
+
+FontLoader::FontLoader() : m_impl(std::make_unique<Impl>()) {}
 
 FontLoader::~FontLoader()
 {
-    if (m_impl) {
-        if (m_impl->face) {
-            FT_Done_Face(m_impl->face);
-        }
-        if (m_impl->library) {
-            FT_Done_FreeType(m_impl->library);
-        }
+    if (m_impl && m_impl->face) {
+        FT_Done_Face(m_impl->face);
     }
 }
 
@@ -51,8 +52,8 @@ FontLoader &FontLoader::operator=(FontLoader &&other) noexcept
 
 bool FontLoader::loadFont(const std::string &path)
 {
-    if (!m_impl || !m_impl->library) {
-        AM_LOG_ERROR("FreeType library not initialized");
+    FT_Library library = s_freetype();
+    if (!m_impl || library == nullptr) {
         return false;
     }
 
@@ -61,7 +62,7 @@ bool FontLoader::loadFont(const std::string &path)
         m_impl->face = nullptr;
     }
 
-    FT_Error error = FT_New_Face(m_impl->library, path.c_str(), 0, &m_impl->face);
+    FT_Error error = FT_New_Face(library, path.c_str(), 0, &m_impl->face);
     if (error) {
         AM_LOG_ERROR("Failed to load font from path: {}", path);
         return false;
@@ -69,6 +70,24 @@ bool FontLoader::loadFont(const std::string &path)
 
     AM_LOG_INFO("Successfully loaded font: {}", path);
     return true;
+}
+
+FontDescription FontLoader::getDescription() const
+{
+    FontDescription description;
+    if (!m_impl || !m_impl->face) {
+        return description;
+    }
+
+    if (m_impl->face->family_name != nullptr) {
+        description.family = m_impl->face->family_name;
+    }
+    if (m_impl->face->style_name != nullptr) {
+        description.style = m_impl->face->style_name;
+    }
+    description.bold = (m_impl->face->style_flags & FT_STYLE_FLAG_BOLD) != 0;
+    description.italic = (m_impl->face->style_flags & FT_STYLE_FLAG_ITALIC) != 0;
+    return description;
 }
 
 void FontLoader::setPixelSize(uint32_t size)

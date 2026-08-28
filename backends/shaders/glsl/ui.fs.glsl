@@ -28,6 +28,10 @@ struct GlyphQuad {
     uint posMax;
     uint uvMin;
     uint uvMax;
+    uint color;
+    uint page;
+    uint flags;
+    uint unused;
 };
 
 struct GlyphLine {
@@ -246,7 +250,7 @@ float sdEllipse(vec2 p, vec2 ab)
     return length(r - p) * sign(p.y - r.y);
 }
 
-vec3 gradientSrgbToLinear(vec3 c)
+vec3 srgbToLinear(vec3 c)
 {
     return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
 }
@@ -260,7 +264,7 @@ float gradientStopT(Gradient grad, uint i)
 vec4 gradientStopColor(Gradient grad, uint i)
 {
     vec4 c = unpackUnorm4x8(grad.stopColor[i]);
-    return vec4(gradientSrgbToLinear(c.rgb), c.a);
+    return vec4(srgbToLinear(c.rgb), c.a);
 }
 
 vec4 evalGradient(uint slot, vec2 uv)
@@ -332,14 +336,16 @@ void main()
         vec2 luv = (local - pmin) / (pmax - pmin);
         vec2 amin = vec2(float(g.uvMin & 0xFFFFu), float(g.uvMin >> 16u));
         vec2 amax = vec2(float(g.uvMax & 0xFFFFu), float(g.uvMax >> 16u));
-        vec2 atlasSize = vec2(textureSize(gTextures[fragTextureId], 0));
-        float cov = textureLod(gTextures[fragTextureId], mix(amin, amax, luv) / atlasSize, 0.0).r;
+        uint page = nonuniformEXT(g.page);
+        vec2 atlasSize = vec2(textureSize(gTextures[page], 0));
+        float cov = textureLod(gTextures[page], mix(amin, amax, luv) / atlasSize, 0.0).r;
 
-        float alpha = cov * fragFillColor.a;
+        vec4 glyphColor = unpackUnorm4x8(g.color);
+        float alpha = cov * glyphColor.a;
         if (alpha < 0.001) {
             discard;
         }
-        outColor = vec4(fragFillColor.rgb, alpha);
+        outColor = vec4(srgbToLinear(glyphColor.rgb), alpha);
         return;
     }
 

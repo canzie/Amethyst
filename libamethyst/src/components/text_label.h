@@ -77,6 +77,7 @@ class TextLabel : public UILabel {
     GlyphSliceHandle m_glyphSlice;
     TextLayoutState m_textLayout;
     vec2 m_textSize = {0.0f, 0.0f};
+    FontId m_font;
 };
 
 } // namespace Amethyst

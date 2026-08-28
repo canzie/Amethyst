@@ -23,6 +23,7 @@ namespace Amethyst {
 struct TextLayoutParams {
     vec2 position = {0.0f, 0.0f};
     vec2 bounds = {0.0f, 0.0f};
+    FontId font{};
     float fontSize = 14.0f;
     Color4 color = {0.0f, 0.0f, 0.0f, 1.0f};
     float letterSpacing = 0.0f;
@@ -134,20 +135,22 @@ class TextProcessor {
     /**
      * @brief Measure text at a pixel size, using default layout parameters otherwise.
      * @param text The text to measure
+     * @param font Face to measure against; an invalid id uses the registry default
      * @param pixelSize Font size in pixels
      * @param letterSpacing Additional spacing between characters
      * @return Width of the widest line, and the total height of all lines
      */
-    vec2 measureTextAtlas(const std::string &text, uint32_t pixelSize, float letterSpacing = 0.0f) const;
+    vec2 measureTextAtlas(const std::string &text, FontId font, uint32_t pixelSize, float letterSpacing = 0.0f) const;
 
     /**
      * @brief Get advance width for a character using glyph atlas
+     * @param font Face to measure against; an invalid id uses the registry default
      * @param codepoint Unicode codepoint
      * @param pixelSize Font size in pixels
      * @param letterSpacing Additional spacing
      * @return Advance width in pixels
      */
-    float getCharAdvanceAtlas(uint32_t codepoint, uint32_t pixelSize, float letterSpacing = 0.0f) const;
+    float getCharAdvanceAtlas(FontId font, uint32_t codepoint, uint32_t pixelSize, float letterSpacing = 0.0f) const;
 
   private:
     GlyphAtlas *m_glyphAtlas = nullptr;

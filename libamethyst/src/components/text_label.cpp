@@ -50,6 +50,7 @@ void TextLabel::resolveStyle()
     TextStyleProperties resolved =
         Style::instance().getTextStyle(ComponentType::TEXT_LABEL, getClasses(), effectiveGuiState(), m_part);
     if (m_textStyle.apply(resolved)) {
+        m_font = FontRegistry::instance().findFont(m_textStyle.fontFamily);
         markDirty();
     }
 }
@@ -68,6 +69,7 @@ bool TextLabel::setTextStyleProperties(const TextStylePropertiesArgs &props)
 {
     bool changed = m_textStyle.apply(props);
     if (changed) {
+        m_font = FontRegistry::instance().findFont(m_textStyle.fontFamily);
         m_textLayout.invalidate();
         markDirty();
     }
@@ -126,7 +128,7 @@ void TextLabel::updateTextGeometry(DrawContext &ctx)
 
     uint32_t pixelSize = static_cast<uint32_t>(m_textStyle.fontSize);
     if (!m_textLayout.isValid()) {
-        m_textSize = ctx.textProcessor->measureTextAtlas(m_text, pixelSize);
+        m_textSize = ctx.textProcessor->measureTextAtlas(m_text, m_font, pixelSize);
     }
 
     float effectiveFontSize = m_textStyle.fontSize;
@@ -182,6 +184,7 @@ void TextLabel::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t
     TextLayoutParams params;
     params.position = absoluteContentPosition;
     params.bounds = absoluteContentSize;
+    params.font = m_font;
     params.fontSize = effectiveFontSize;
     params.color = m_textStyle.textColor;
     params.lineHeight = m_textStyle.lineHeight;
@@ -223,7 +226,6 @@ void TextLabel::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t
     inst.setFillColor(m_textStyle.textColor);
     inst.setPrimitiveType(PRIMITIVE_TEXT);
     inst.setGlyphSlice(m_glyphSlice.id);
-    inst.textureId = ctx.glyphAtlas->getTextureId().id;
     inst.zIndex = zIndex;
     inst.clipRect = clipRect;
     inst.setVisible(visible);

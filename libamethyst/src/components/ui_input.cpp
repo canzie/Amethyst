@@ -69,6 +69,7 @@ bool UIInput::setTextInputProperties(const TextInputStylePropertiesArgs &props)
 {
     bool changed = m_tiProps.apply(props);
     if (changed) {
+        m_font = FontRegistry::instance().findFont(m_tiProps.text.fontFamily);
         markDirty();
     }
     return changed;
@@ -571,6 +572,7 @@ void UIInput::drawText(DrawContext &ctx)
     TextLayoutParams params;
     params.position = absoluteContentPosition;
     params.bounds = absoluteContentSize;
+    params.font = m_font;
     params.fontSize = m_tiProps.text.fontSize;
     params.color = colorToUse;
     params.xAlign = m_tiProps.text.textXAlignment;
@@ -632,7 +634,6 @@ void UIInput::drawText(DrawContext &ctx)
         inst.setFillColor(colorToUse);
         inst.setPrimitiveType(PRIMITIVE_TEXT);
         inst.setGlyphSlice(m_glyphSlice.id);
-        inst.textureId = ctx.glyphAtlas->getTextureId().id;
         inst.zIndex = getZIndex() + 1;
         inst.clipRect = clipRect;
         inst.setVisible(isVisible());
@@ -656,7 +657,7 @@ void UIInput::drawText(DrawContext &ctx)
             for (size_t byte = 0; byte < decoded.bytes && i + byte < shown.size(); ++byte) {
                 m_charPositions[i + byte] = currentX;
             }
-            currentX += ctx.textProcessor->getCharAdvanceAtlas(decoded.codepoint, pixelSize);
+            currentX += ctx.textProcessor->getCharAdvanceAtlas(m_font, decoded.codepoint, pixelSize);
             i += decoded.bytes;
         }
         m_charPositions[shown.size()] = currentX;
