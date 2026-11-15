@@ -184,9 +184,16 @@ int main()
     uint64_t lastRevision = UINT64_MAX;
     int frameCount = 0;
     double lastTime = glfwGetTime();
+    double lastUpdateTime = glfwGetTime();
 
     while (!glfwWindowShouldClose(ctx.window)) {
         glfwPollEvents();
+
+        double currentUpdateTime = glfwGetTime();
+        float deltaTime = static_cast<float>(currentUpdateTime - lastUpdateTime);
+        lastUpdateTime = currentUpdateTime;
+
+        window.tick(deltaTime);
 
         TextPosition cursor = editor->getCursorPosition();
         if (cursor != lastCursor || source.revision() != lastRevision) {

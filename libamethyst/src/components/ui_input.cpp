@@ -21,13 +21,8 @@ UIInput::~UIInput()
 
 void UIInput::focus()
 {
-    if (m_focused) {
-        return;
-    }
-    m_focused = true;
-    setGuiState(static_cast<uint16_t>(getGuiState() | GUI_STATE_FOCUSED));
-    InputInterface::clearKeyEvents();
-
+    // Subscribing needs a window, which a node focused before it was parented does not have
+    // yet, so every focus retries rather than only the one that takes focus.
     Window *win = getWindow();
     OverlayLayer *overlay = win != nullptr ? win->getOverlayLayer() : nullptr;
     if (overlay != nullptr && !m_pressConn.connected()) {
@@ -42,6 +37,13 @@ void UIInput::focus()
     if (win != nullptr && !m_tick.active()) {
         m_tick = win->registerTick([this](float dt) { onUpdate(dt); });
     }
+
+    if (m_focused) {
+        return;
+    }
+    m_focused = true;
+    setGuiState(static_cast<uint16_t>(getGuiState() | GUI_STATE_FOCUSED));
+    InputInterface::clearKeyEvents();
 
     if (onFocusGained) {
         onFocusGained();

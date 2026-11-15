@@ -78,6 +78,11 @@ class AmethystContext {
      */
     AmTextureId getGlyphAtlasTexture(uint16_t page = 0) const { return m_glyphAtlas.getTextureId(page); }
 
+    /**
+     * @brief The shaper text is laid out and measured through.
+     */
+    const TextProcessor &getTextProcessor() const { return m_textProcessor; }
+
   private:
     AmethystBackend *m_backend = nullptr;
     GlyphAtlas m_glyphAtlas;
