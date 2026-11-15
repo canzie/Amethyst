@@ -173,11 +173,11 @@ class ContextMenu : public Popup {
      * this ContextMenu build your own ItemView subclass for that kind instead.
      */
     struct RowFactories {
-        std::function<std::unique_ptr<ItemView>()> action;
-        std::function<std::unique_ptr<ItemView>()> toggle;
-        std::function<std::unique_ptr<ItemView>()> separator;
-        std::function<std::unique_ptr<ItemView>()> submenu;
-        std::function<std::unique_ptr<ItemView>()> radio;
+        std::function<std::unique_ptr<ItemView>()> action = {};
+        std::function<std::unique_ptr<ItemView>()> toggle = {};
+        std::function<std::unique_ptr<ItemView>()> separator = {};
+        std::function<std::unique_ptr<ItemView>()> submenu = {};
+        std::function<std::unique_ptr<ItemView>()> radio = {};
     };
 
     void setItems(std::vector<std::unique_ptr<ItemData>> items);
