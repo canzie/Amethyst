@@ -37,10 +37,24 @@ class GpuResourceHub {
     void init(AmethystBackend &backend);
 
     /**
-     * @brief Flush the shared gradient buffer. Call once per frame, before any window's syncWindow().
+     * @brief Start a new frame and flush the shared gradient buffer.
+     *
+     * Call exactly once per frame, before any window's syncWindow(), outside a render pass. It
+     * advances the frame counter that decides when freed blocks may be reused, see
+     * setFramesInFlight().
      * @param cmdBuffer Backend-native command buffer, forwarded to upload calls.
      */
     void syncShared(void *cmdBuffer);
+
+    /**
+     * @brief How many frames the GPU may still be reading while the CPU prepares the next one.
+     *
+     * A block freed in one frame stays untouched for this many syncShared() calls so the frames
+     * still in flight never see another registry's data in it. Must be at least the swapchain
+     * loop's frames in flight; defaults to GpuArena::DEFAULT_RETIRE_LATENCY.
+     * @param frames Frames in flight.
+     */
+    void setFramesInFlight(uint32_t frames);
 
     /**
      * @brief Flush dirty registry and text data for one window's registries and rebuild its draw list.
@@ -89,7 +103,7 @@ class GpuResourceHub {
     GeometryBlocks *obtainGeometryBlocks(GeometryRegistry *registry);
     TextBlocks *obtainTextBlocks(GeometryRegistry *registry);
     void syncGeometry(void *cmdBuffer, GeometryRegistry &registry, GeometryBlocks &blocks);
-    void syncText(void *cmdBuffer, GlyphBuffer &glyphBuffer, TextBlocks &blocks);
+    bool syncText(void *cmdBuffer, GlyphBuffer &glyphBuffer, TextBlocks &blocks);
 
     static GpuResourceHub *s_active;
 

@@ -213,6 +213,12 @@ class GlyphBuffer {
      */
     bool growGlyphArena(uint32_t needed);
 
+    /**
+     * @brief Point a slice's GPU entry at its blocks' current offsets after a relocation.
+     * @param id Slice id whose entry to rewrite
+     */
+    void refreshSliceEntry(uint32_t id);
+
     std::vector<GlyphQuad> m_glyphs;
     std::vector<GlyphLine> m_lines;
     std::vector<GlyphSlice> m_slices;

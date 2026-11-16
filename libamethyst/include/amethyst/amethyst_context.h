@@ -50,17 +50,32 @@ class AmethystContext {
     /**
      * @brief Flush the glyph/SVG atlas textures and the shared gradient buffer.
      *
-     * Call once per frame, before syncWindow() for any of that frame's windows.
+     * Call exactly once per frame, before syncWindow() for any of that frame's windows, after
+     * waiting on the fence of the frame that last used cmdBuffer. It records texture copies and
+     * barriers, so cmdBuffer must not be inside a render pass (Vulkan: call it before
+     * vkCmdBeginRendering). It also starts a new frame for the GPU buffer arenas, see
+     * setFramesInFlight().
      * @param cmdBuffer Backend-native command buffer, forwarded to upload calls.
      */
     void syncShared(void *cmdBuffer);
 
     /**
      * @brief Flush dirty registry/text data for one window and rebuild its draw list.
+     *
+     * Like syncShared(), call it outside a render pass: a backend may record uploads into cmdBuffer.
      * @param cmdBuffer Backend-native command buffer, forwarded to upload calls.
      * @param window Window whose registries to flush.
      */
     void syncWindow(void *cmdBuffer, Window &window);
+
+    /**
+     * @brief How many frames the GPU may still be reading while the next one is prepared.
+     *
+     * Freed GPU buffer blocks are only reused after this many syncShared() calls. Match the
+     * swapchain loop's frames in flight (default 2).
+     * @param frames Frames in flight.
+     */
+    void setFramesInFlight(uint32_t frames) { m_resourceHub.setFramesInFlight(frames); }
 
     void draw(UIBase2D &root);
 

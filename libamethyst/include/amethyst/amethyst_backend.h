@@ -37,7 +37,8 @@ class AmethystBackend {
      *
      * On a HOST_VISIBLE buffer this is a memcpy into mapped memory plus flush; cmdBuffer is
      * unused. On a DEVICE_LOCAL buffer it is a staged copy that may submit and stall on its
-     * own transfer, independent of cmdBuffer.
+     * own transfer, independent of cmdBuffer. A backend that records the copy into cmdBuffer
+     * instead must do so outside a render pass.
      */
     virtual void uploadBufferRange(void *cmdBuffer, AmBufferId id, const void *data, size_t offsetBytes, size_t sizeBytes) = 0;
 
@@ -48,6 +49,11 @@ class AmethystBackend {
     /**
      * @brief Upload the full pixel contents of a texture. cmdBuffer is the backend-native
      *        command buffer the copy is recorded into (e.g. VkCommandBuffer).
+     *
+     * The copy and its layout transitions are transfer commands, so cmdBuffer must not be
+     * inside a render pass (Vulkan: outside vkCmdBeginRendering/vkCmdBeginRenderPass). Called at
+     * most once per texture per frame; the backend may recycle the staging memory after its
+     * frames in flight have passed.
      */
     virtual void uploadTexture(void *cmdBuffer, AmTextureId id, const uint8_t *pixels) = 0;
 

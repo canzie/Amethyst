@@ -12,13 +12,26 @@
 
 namespace Amethyst {
 
+/**
+ * @brief Quantise a [0, 1] channel to 8 bits, rounding to nearest.
+ *
+ * Out of range values clamp (colour arithmetic easily overshoots 1.0, which would otherwise
+ * wrap to 0, and casting a negative float to unsigned is undefined); NaN maps to 0.
+ */
+inline uint32_t packUnorm8(float v)
+{
+    if (!(v > 0.0f)) {
+        return 0;
+    }
+    if (v >= 1.0f) {
+        return 255;
+    }
+    return static_cast<uint32_t>(v * 255.0f + 0.5f);
+}
+
 inline uint32_t packColor(const Color4 &c)
 {
-    uint32_t r = static_cast<uint32_t>(c.r * 255.0f) & 0xFF;
-    uint32_t g = static_cast<uint32_t>(c.g * 255.0f) & 0xFF;
-    uint32_t b = static_cast<uint32_t>(c.b * 255.0f) & 0xFF;
-    uint32_t a = static_cast<uint32_t>(c.a * 255.0f) & 0xFF;
-    return r | (g << 8) | (b << 16) | (a << 24);
+    return packUnorm8(c.r) | (packUnorm8(c.g) << 8) | (packUnorm8(c.b) << 16) | (packUnorm8(c.a) << 24);
 }
 
 inline uint32_t packColor(const Color3 &c)

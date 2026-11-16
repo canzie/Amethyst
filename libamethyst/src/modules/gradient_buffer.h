@@ -47,6 +47,12 @@ class GradientBuffer {
      */
     void sync(void *cmdBuffer);
 
+    /** @brief Start a new frame, letting slots freed long enough ago be reused, see GpuArena::free(). */
+    void advanceFrame() { m_arena.advanceFrame(); }
+
+    /** @brief Frames a swept slot stays untouched before it can be reused. */
+    void setRetireLatency(uint32_t frames) { m_arena.setRetireLatency(frames); }
+
   private:
     /**
      * @brief 64-byte GPU gradient record, one cache line.

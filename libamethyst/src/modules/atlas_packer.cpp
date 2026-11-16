@@ -10,6 +10,12 @@ SkylinePacker::SkylinePacker(uint32_t width, uint32_t height) : m_width(width), 
 
 std::optional<AtlasRegion> SkylinePacker::packRect(uint32_t width, uint32_t height)
 {
+    // the span walk below only checks height while it consumes width, so a zero width would
+    // skip the bounds check entirely
+    if (width == 0 || width > m_width || height > m_height) {
+        return std::nullopt;
+    }
+
     int32_t bestIndex = -1;
     int32_t bestY = INT32_MAX;
     int32_t bestWidth = INT32_MAX;
@@ -122,27 +128,30 @@ ShelfPacker::ShelfPacker(uint32_t width, uint32_t height) : m_width(width), m_he
 
 std::optional<AtlasRegion> ShelfPacker::packRect(uint32_t width, uint32_t height)
 {
-    if (width > m_width) {
+    if (width > m_width || height > m_height) {
         return std::nullopt;
     }
 
-    if (m_x + width > m_width) {
-        m_rowY += m_rowHeight;
-        m_x = 0;
-        m_rowHeight = 0;
+    // work on copies so a rect that does not fit leaves the open row usable for smaller ones
+    uint32_t x = m_x;
+    uint32_t rowY = m_rowY;
+    uint32_t rowHeight = m_rowHeight;
+    if (width > m_width - x) {
+        rowY += rowHeight;
+        x = 0;
+        rowHeight = 0;
     }
 
-    if (m_rowY + height > m_height) {
+    if (height > m_height - std::min(rowY, m_height)) {
         return std::nullopt;
     }
 
-    AtlasRegion region{static_cast<uint16_t>(m_x), static_cast<uint16_t>(m_rowY), static_cast<uint16_t>(width),
+    m_x = x + width;
+    m_rowY = rowY;
+    m_rowHeight = std::max(rowHeight, height);
+
+    return AtlasRegion{static_cast<uint16_t>(x), static_cast<uint16_t>(rowY), static_cast<uint16_t>(width),
                        static_cast<uint16_t>(height)};
-
-    m_x += width;
-    m_rowHeight = std::max(m_rowHeight, height);
-
-    return region;
 }
 
 void ShelfPacker::reset()

@@ -135,9 +135,14 @@ struct ArenaBlock {
  * Owns the AmBufferId and a byte-granular free list. Growth decisions happen here; the
  * backend only executes growBuffer and rebinds the descriptor recorded in the desc. The
  * arena holds no CPU mirror: producers own the canonical data and pass it to upload().
+ *
+ * free() is deferred: a frame still in flight on the GPU may read the block, so it only
+ * becomes allocatable again after advanceFrame() has been called retireLatency times.
  */
 class GpuArena {
   public:
+    static constexpr uint32_t DEFAULT_RETIRE_LATENCY = 2;
+
     /**
      * @brief Create the backend buffer and adopt its growth policy.
      * @param backend Backend the buffer lives on.
@@ -154,10 +159,42 @@ class GpuArena {
     ArenaBlock alloc(size_t size);
 
     /**
-     * @brief Return a block to the free list, coalescing with adjacent free blocks.
+     * @brief Retire a block. It returns to the free list once the frames that may still read it
+     *        have finished, see advanceFrame().
      * @param block Block previously returned by alloc.
      */
     void free(const ArenaBlock &block);
+
+    /**
+     * @brief Mark the start of a new frame and release retired blocks that are old enough.
+     */
+    void advanceFrame();
+
+    /**
+     * @brief Number of advanceFrame() calls a freed block waits before it can be reused.
+     * @param frames Frames in flight on the GPU; 0 releases blocks immediately.
+     */
+    void setRetireLatency(uint32_t frames) { m_retireLatency = frames; }
+
+    /**
+     * @brief Bytes freed but not yet reusable because a frame in flight may still read them.
+     * @return Total size of retired blocks
+     */
+    size_t retiredBytes() const;
+
+    /**
+     * @brief Bytes on the free list, ready to be handed out again.
+     * @return Total size of free blocks below the tail
+     */
+    size_t freeBytes() const;
+
+    /**
+     * @brief Number of separate free blocks, i.e. how fragmented the arena is.
+     * @return Free list length
+     */
+    size_t freeBlockCount() const { return m_freeList.size(); }
+
+    size_t capacity() const { return m_capacity; }
 
     /**
      * @brief Upload bytes into the arena's backend buffer.
@@ -176,14 +213,23 @@ class GpuArena {
         size_t size;
     };
 
+    struct RetiredBlock {
+        ArenaBlock block;
+        uint64_t releaseFrame;
+    };
+
     bool grow(size_t neededCapacity);
+    void release(const ArenaBlock &block);
 
     AmethystBackend *m_backend = nullptr;
     AmBufferId m_id;
     GrowthPolicy m_policy;
     size_t m_size = 0;
     size_t m_capacity = 0;
-    std::vector<FreeBlock> m_freeList;
+    std::vector<FreeBlock> m_freeList; // sorted by offset, never two adjacent entries
+    std::vector<RetiredBlock> m_retired;
+    uint64_t m_frame = 0;
+    uint32_t m_retireLatency = DEFAULT_RETIRE_LATENCY;
 };
 
 } // namespace Amethyst

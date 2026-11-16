@@ -37,6 +37,8 @@ struct AmVulkanInitInfo {
     VkExtent2D extent;
     const char *vertexShaderPath;
     const char *fragmentShaderPath;
+    // frames the swapchain loop keeps in flight; sizes the per-texture staging ring
+    uint32_t framesInFlight = 2;
 };
 
 struct BufferRecord {
@@ -48,14 +50,22 @@ struct BufferRecord {
     bool alive = false;
 };
 
+struct StagingBuffer {
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+    void *mapped = nullptr;
+};
+
 struct TextureRecord {
     VkImage image = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE;
     VkImageView view = VK_NULL_HANDLE;
     VkSampler sampler = VK_NULL_HANDLE;
-    VkBuffer stagingBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory stagingMemory = VK_NULL_HANDLE;
-    void *stagingMapped = nullptr;
+    // one staging buffer per frame in flight, used round robin: a copy recorded in an earlier
+    // frame may still be pending when the next upload writes its pixels
+    std::vector<StagingBuffer> staging;
+    uint32_t nextStaging = 0;
+    bool uploaded = false; // false while the image is still in VK_IMAGE_LAYOUT_UNDEFINED
     AmTextureDesc desc;
 };
 
@@ -91,6 +101,7 @@ class AmVulkanBackend : public AmethystBackend {
     void uploadDeviceLocal(VkBuffer dst, const void *data, size_t offsetBytes, size_t sizeBytes);
     void destroyBufferRecord(BufferRecord &record);
     void destroyTextureRecord(TextureRecord &record);
+    bool createStagingBuffer(size_t size, StagingBuffer &out);
     VkShaderModule loadShaderModule(const char *path);
     void setupGLFWCallbacks();
     static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
@@ -111,6 +122,8 @@ class AmVulkanBackend : public AmethystBackend {
     VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE;
     VkShaderModule m_vertShader = VK_NULL_HANDLE;
     VkShaderModule m_fragShader = VK_NULL_HANDLE;
+
+    VkDeviceSize m_nonCoherentAtomSize = 1;
 
     std::vector<BufferRecord> m_buffers;
     std::vector<uint32_t> m_bufferFreeSlots;

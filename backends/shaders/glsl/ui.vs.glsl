@@ -84,6 +84,9 @@ const uint INSTANCE_FLAG_VISIBLE = 0x00000001u;
 const uint INSTANCE_FLAG_TEXT_RICH = 0x00000002u;
 const uint INSTANCE_FLAG_GRADIENT = 0x00000004u;
 const uint INVALID_GRADIENT = 0xFFFFFFFFu;
+// FrameDrawEntry::NO_TEXT / an invalid GlyphSliceHandle
+const uint NO_TEXT = 0xFFFFFFFFu;
+const uint INVALID_SLICE = 0xFFFFFFFFu;
 
 vec3 srgbToLinear(vec3 c) {
     return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
@@ -164,7 +167,18 @@ void main()
     fragLineHeight = 0.0;
 
     if (textBatched) {
+        // no glyph data on the GPU for this registry, or no slice behind this label: the
+        // offsets would index another registry's (or no) slice, so draw nothing
+        if (pc.sliceOffset == NO_TEXT || inst.shapeData[0] == INVALID_SLICE) {
+            gl_Position = vec4(0.0, 0.0, 0.0, 0.0);
+            return;
+        }
         GlyphSlice sl = slices[pc.sliceOffset + inst.shapeData[0]];
+        // a slice that never received an update has no lines to look up
+        if ((sl.packed & 0xFFFFu) == 0u) {
+            gl_Position = vec4(0.0, 0.0, 0.0, 0.0);
+            return;
+        }
         fragGlyphBase = pc.glyphOffset + sl.firstGlyph;
         fragLineBase = pc.lineOffset + sl.firstLine;
         fragLineCount = sl.packed & 0xFFFFu;
