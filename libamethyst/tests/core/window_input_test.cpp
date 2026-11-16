@@ -1,6 +1,7 @@
 #include "common/ui_test_helpers.h"
 
 #include "components/container.h"
+#include "components/text_label.h"
 
 #include <gtest/gtest.h>
 
@@ -212,4 +213,120 @@ TEST(WindowLifetime, OverlayChildrenDieBeforeWindowInternals)
     });
     win.reset();
     EXPECT_TRUE(sawWindow);
+}
+
+namespace {
+
+struct InputModeFixture : ::testing::Test {
+    TestWindow win;
+    TestButton *below = nullptr;
+    TestNode *above = nullptr;
+    int belowClicks = 0;
+    int abovePresses = 0;
+    bool aboveHovered = false;
+    bool belowHovered = false;
+    std::vector<EventConnection> conns;
+
+    void SetUp() override
+    {
+        below = win->add<TestButton>();
+        place(below, 0, 0, 100, 100);
+        below->onMouseButton1ClickCb = [this] {
+            ++belowClicks;
+            return EventResult::CONSUMED;
+        };
+        above = win->add<TestNode>();
+        place(above, 0, 0, 100, 100);
+        above->setBaseProperties({.zIndex = 5});
+        conns.push_back(above->onInputBeganCb.connect([this](const InputObject &) { ++abovePresses; }));
+        conns.push_back(above->onHoverChanged.connect([this](bool h) { aboveHovered = h; }));
+        conns.push_back(below->onHoverChanged.connect([this](bool h) { belowHovered = h; }));
+    }
+};
+
+} // namespace
+
+TEST_F(InputModeFixture, ConsumeIsTheDefaultAndBlocksWhatIsBehind)
+{
+    win.layout();
+    win.move(50, 50);
+    win.click(50, 50);
+    EXPECT_EQ(abovePresses, 1);
+    EXPECT_TRUE(aboveHovered);
+    EXPECT_EQ(belowClicks, 0);
+    EXPECT_FALSE(belowHovered);
+}
+
+TEST_F(InputModeFixture, PropagateHearsTheEventAndPassesItOn)
+{
+    above->propagate(INTERACTION_CATEGORY_ALL);
+    win.layout();
+    win.move(50, 50);
+    win.click(50, 50);
+    EXPECT_EQ(abovePresses, 1);
+    EXPECT_TRUE(aboveHovered);
+    EXPECT_EQ(belowClicks, 1);
+    EXPECT_TRUE(belowHovered);
+}
+
+TEST_F(InputModeFixture, IgnoreIsInvisibleToTheMouse)
+{
+    above->ignore(INTERACTION_CATEGORY_ALL);
+    win.layout();
+    win.move(50, 50);
+    win.click(50, 50);
+    EXPECT_EQ(abovePresses, 0);
+    EXPECT_FALSE(aboveHovered);
+    EXPECT_EQ(belowClicks, 1);
+    EXPECT_TRUE(belowHovered);
+}
+
+TEST_F(InputModeFixture, ChildrenOfAnIgnoredNodeStillReceiveInput)
+{
+    above->ignore(INTERACTION_CATEGORY_ALL);
+    auto *child = above->add<TestButton>();
+    place(child, 0, 0, 50, 50);
+    int childClicks = 0;
+    child->onMouseButton1ClickCb = [&] {
+        ++childClicks;
+        return EventResult::CONSUMED;
+    };
+    win.layout();
+    win.click(10, 10);
+    EXPECT_EQ(childClicks, 1);
+    EXPECT_EQ(belowClicks, 0);
+    win.click(80, 80);
+    EXPECT_EQ(belowClicks, 1);
+}
+
+TEST_F(InputModeFixture, ConsumeAfterIgnoreRestoresTheNode)
+{
+    above->ignore(INTERACTION_CATEGORY_CLICK);
+    above->consume(INTERACTION_CATEGORY_CLICK);
+    EXPECT_FALSE(above->ignores(INTERACTION_CATEGORY_CLICK));
+    win.layout();
+    win.click(50, 50);
+    EXPECT_EQ(abovePresses, 1);
+    EXPECT_EQ(belowClicks, 0);
+}
+
+TEST(InputModeDefaults, LabelsPropagate)
+{
+    TestWindow win;
+    auto *button = win->add<TestButton>();
+    place(button, 0, 0, 100, 100);
+    int clicks = 0;
+    button->onMouseButton1ClickCb = [&] {
+        ++clicks;
+        return EventResult::CONSUMED;
+    };
+    auto *label = button->add<TextLabel>();
+    place(label, 0, 0, 100, 100);
+    bool labelHovered = false;
+    auto conn = label->onHoverChanged.connect([&](bool h) { labelHovered = h; });
+    win.layout();
+    win.move(50, 50);
+    win.click(50, 50);
+    EXPECT_TRUE(labelHovered);
+    EXPECT_EQ(clicks, 1);
 }

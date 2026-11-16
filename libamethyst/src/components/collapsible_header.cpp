@@ -38,6 +38,9 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_headerBackground->parent = this;
     m_headerBackground->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
     m_headerBackground->bindPart(ComponentPart::HEADER);
+    // the background lies over the toggle button as a surface for header content, so it hears input
+    // without taking it from the button; controls placed on it still take their own clicks
+    m_headerBackground->propagate(INTERACTION_CATEGORY_ALL);
     m_headerBackground->setClasses(getClasses());
 
     m_headerButton = std::make_unique<InvisibleButton>();

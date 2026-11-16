@@ -29,5 +29,4 @@
 
 ### Platform
     - content scale / UI scale: lay out in logical pixels, rasterize glyphs and svgs at physical size (4k testapp renders tiny, the engine compensates itself)
-    - input filter design: rows/headers need to know about clicks/hover inside them (text in a table or tree cell, the collapsible header title) without cell content giving up its input; replaces the removed click-through helper. 2 DISABLED tests in tests/widgets mark it
     - UIButton callbacks -> EventSignals, same api style as UIObject's signals

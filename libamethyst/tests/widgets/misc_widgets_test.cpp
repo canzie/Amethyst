@@ -36,6 +36,11 @@ TEST(CollapsibleHeaderInput, ControlsOnTheHeaderTakeTheirClicks)
     win.click(270, 15);
     EXPECT_EQ(buttonClicks, 1);
     EXPECT_EQ(toggles, 0);
+
+    // the title text is a label, so it lets the click through to the header
+    win.click(100, 15);
+    EXPECT_EQ(toggles, 1);
+    EXPECT_EQ(buttonClicks, 1);
 }
 
 TEST(TooltipSurface, PreviousOwnersContentIsCleared)

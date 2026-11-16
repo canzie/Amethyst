@@ -131,9 +131,21 @@ static HoverHit s_fillHoverStackRecursive(const std::vector<Instance *> &instanc
             continue;
         }
 
+        UIObject *obj = inst->asUiObject();
+        // an ignored node is transparent: only what its children hit counts
+        if (obj != nullptr && obj->ignores(INTERACTION_CATEGORY_HOVER)) {
+            if (childHit == HoverHit::OPAQUE) {
+                return HoverHit::OPAQUE;
+            }
+            if (childHit == HoverHit::TRANSPARENT) {
+                result = HoverHit::TRANSPARENT;
+            }
+            continue;
+        }
+
         HoverHit hit = childHit;
         if (pointInside) {
-            if (auto *obj = inst->asUiObject()) {
+            if (obj != nullptr) {
                 if (count < capacity) {
                     stack[count++] = obj;
                 }
@@ -154,7 +166,8 @@ static HoverHit s_fillHoverStackRecursive(const std::vector<Instance *> &instanc
     return result;
 }
 
-template <typename Fn> static bool s_dispatchRecursive(const std::vector<Instance *> &instances, const vec2 &point, Fn &&fn)
+template <typename Fn>
+static bool s_dispatchRecursive(const std::vector<Instance *> &instances, const vec2 &point, InteractionCategory category, Fn &&fn)
 {
     std::vector<Instance *> sorted(instances.begin(), instances.end());
     std::stable_sort(sorted.begin(), sorted.end(), [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
@@ -177,7 +190,7 @@ template <typename Fn> static bool s_dispatchRecursive(const std::vector<Instanc
         if (shouldCheckChildren) {
             auto hittable = inst->getHittableInstances();
             if (!hittable.empty()) {
-                if (s_dispatchRecursive(std::move(hittable), point, fn)) {
+                if (s_dispatchRecursive(std::move(hittable), point, category, fn)) {
                     return true;
                 }
                 if (!Instance::isAlive(alive)) {
@@ -187,7 +200,7 @@ template <typename Fn> static bool s_dispatchRecursive(const std::vector<Instanc
         }
 
         if (pointInside) {
-            if (auto *obj = inst->asUiObject()) {
+            if (auto *obj = inst->asUiObject(); obj != nullptr && !obj->ignores(category)) {
                 if (fn(obj) == EventResult::CONSUMED || !Instance::isAlive(alive)) {
                     return true;
                 }
@@ -203,7 +216,7 @@ Instance *Window::findClickedObject(int32_t x, int32_t y)
     AM_PROFILE_FUNCTION();
     vec2 point(x, y);
     Instance *result = nullptr;
-    s_dispatchRecursive(getHittableInstances(), point, [&result](UIObject *obj) {
+    s_dispatchRecursive(getHittableInstances(), point, INTERACTION_CATEGORY_SCROLL, [&result](UIObject *obj) {
         result = obj;
         return EventResult::CONSUMED;
     });
@@ -251,7 +264,7 @@ void Window::onMouseButton(int button, int action, int mods, int32_t x, int32_t 
             press.released = press.object == captured;
             captured->onInputEnded(input);
         } else {
-            s_dispatchRecursive(getHittableInstances(), vec2(x, y), [&](UIObject *obj) -> EventResult {
+            s_dispatchRecursive(getHittableInstances(), vec2(x, y), INTERACTION_CATEGORY_CLICK, [&](UIObject *obj) -> EventResult {
                 if (obj == press.object) {
                     press.released = true;
                 }
@@ -278,7 +291,7 @@ void Window::onMouseButton(int button, int action, int mods, int32_t x, int32_t 
         }
     }
 
-    s_dispatchRecursive(getHittableInstances(), point, [&](UIObject *obj) -> EventResult {
+    s_dispatchRecursive(getHittableInstances(), point, INTERACTION_CATEGORY_CLICK, [&](UIObject *obj) -> EventResult {
         std::weak_ptr<bool> alive = obj->aliveToken();
         EventResult result = obj->onInputBegan(input);
         if (result == EventResult::CONSUMED && Instance::isAlive(alive)) {
@@ -427,7 +440,7 @@ void Window::onMouseScroll(float xoffset, float yoffset, int32_t x, int32_t y)
 
     while (target) {
         auto *uiObject = target->asUiObject();
-        if (uiObject) {
+        if (uiObject != nullptr && !uiObject->ignores(INTERACTION_CATEGORY_SCROLL)) {
             std::weak_ptr<bool> alive = target->aliveToken();
             EventResult result = EventResult::PROPAGATE;
             if (yoffset > 0) {

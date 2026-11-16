@@ -12,7 +12,9 @@ namespace Amethyst {
 
 class UILabel : public UIObject {
   public:
-    UILabel() = default;
+    // labels are display content: they still get hover (styles, tooltips) but every event carries on
+    // to what is behind them or above them, so text over a row or a button never swallows its input
+    UILabel() { propagate(INTERACTION_CATEGORY_ALL); }
     virtual ~UILabel() = default;
 };
 

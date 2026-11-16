@@ -7,13 +7,11 @@ namespace Amethyst {
 
 ImageLabel::ImageLabel()
 {
-    propagate(INTERACTION_CATEGORY_MOVE);
     resolveStyle();
 }
 
 ImageLabel::ImageLabel(const std::string &svgData)
 {
-    propagate(INTERACTION_CATEGORY_MOVE);
     resolveStyle();
     m_image.setSvg(svgData);
 }

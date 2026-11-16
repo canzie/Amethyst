@@ -101,16 +101,32 @@ class UIObject : public UIBase2D {
     bool getClipsDescendants() const override { return static_cast<bool>(m_uiObjProps.clipsDescendants); }
 
     /**
-     * @brief Sets the propagate flag for the given category.
+     * @brief This node receives events of the category, then lets them continue to what is behind
+     * it and to its ancestors.
      * @param cat The interaction category to set.
      */
     void propagate(InteractionCategory cat);
 
     /**
-     * @brief Sets the consume flag for the given category.
+     * @brief This node receives events of the category and stops them there. The default.
      * @param cat The interaction category to set.
      */
     void consume(InteractionCategory cat);
+
+    /**
+     * @brief This node is skipped for events of the category, as if it were not there: no hover
+     * state, no signals, no tooltip. Its children are still hit-tested. For overlays that must stay
+     * invisible to the mouse (drag ghosts, drop hints).
+     * @param cat The interaction category to set.
+     */
+    void ignore(InteractionCategory cat);
+
+    /**
+     * @brief Returns whether the node is skipped for the given category.
+     * @param cat The interaction category to query.
+     * @return True if the ignore flag is set.
+     */
+    bool ignores(InteractionCategory cat) const;
 
     /**
      * @brief Returns whether the consume flag is set for the given category.
@@ -330,6 +346,7 @@ class UIObject : public UIBase2D {
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;
     uint8_t m_eventConsumptionFlags;
+    uint8_t m_eventIgnoreFlags = 0;
     std::vector<EventConnection> m_connections;
 };
 

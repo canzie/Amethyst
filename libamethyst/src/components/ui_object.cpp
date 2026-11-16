@@ -413,10 +413,26 @@ vec4 UIObject::computeChildClipRect() const
     return clip;
 }
 
-void UIObject::propagate(InteractionCategory cat) { m_eventConsumptionFlags &= ~cat; }
-void UIObject::consume(InteractionCategory cat) { m_eventConsumptionFlags |= cat; }
-bool UIObject::consumes(InteractionCategory cat) const { return m_eventConsumptionFlags & cat; }
-bool UIObject::propagates(InteractionCategory cat) const { return !(m_eventConsumptionFlags & cat); }
+void UIObject::propagate(InteractionCategory cat)
+{
+    m_eventConsumptionFlags &= ~cat;
+    m_eventIgnoreFlags &= ~cat;
+}
+
+void UIObject::consume(InteractionCategory cat)
+{
+    m_eventConsumptionFlags |= cat;
+    m_eventIgnoreFlags &= ~cat;
+}
+
+void UIObject::ignore(InteractionCategory cat)
+{
+    m_eventIgnoreFlags |= cat;
+}
+
+bool UIObject::ignores(InteractionCategory cat) const { return (m_eventIgnoreFlags & cat) != 0; }
+bool UIObject::consumes(InteractionCategory cat) const { return (m_eventConsumptionFlags & cat) != 0 && !ignores(cat); }
+bool UIObject::propagates(InteractionCategory cat) const { return (m_eventConsumptionFlags & cat) == 0 && !ignores(cat); }
 
 Window *UIObject::getWindow()
 {

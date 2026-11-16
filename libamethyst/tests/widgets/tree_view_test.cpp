@@ -72,9 +72,7 @@ struct TreeFixture : ::testing::Test {
 
 } // namespace
 
-// labels consume clicks, so text covering the row hides it from the row; disabled until the row can
-// observe input inside it without taking it from the cell content (see todo.md)
-TEST_F(TreeFixture, DISABLED_ClickOnCellTextSelectsRow)
+TEST_F(TreeFixture, ClickOnCellTextSelectsRow)
 {
     tree->clear();
     for (int i = 0; i < 3; i++) {
