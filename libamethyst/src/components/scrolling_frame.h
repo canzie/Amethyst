@@ -44,6 +44,12 @@ class ScrollingFrame : public UIObject {
      */
     vec2 getScrollOffset() const { return m_scrollOffset; }
 
+    /**
+     * @brief Scroll the way a mouse wheel does, along the frame's scroll axis.
+     * @param notches Wheel steps, positive towards the start; each moves by scrollSpeed pixels
+     */
+    void scrollByWheel(float notches);
+
   protected:
     EventResult onMouseScrollUp() override;
     EventResult onMouseScrollDown() override;

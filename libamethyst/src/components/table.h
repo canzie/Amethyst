@@ -35,7 +35,9 @@ enum class TableColumnSizing {
 struct TableColumn {
     std::string header{};
     TableColumnSizing sizing = TableColumnSizing::STRETCH;
+    // STRETCH: share of the width left after fixed columns. FIXED: the column's width in pixels
     float weight = 1.0f;
+    // bounds in pixels for either sizing, maxWidth 0 = unbounded
     float minWidth = 0.0f;
     float maxWidth = 0.0f;
     TextXAlignment labelAlign = TextXAlignment::LEFT;
@@ -155,14 +157,48 @@ class Table : public UIObject {
     bool setTableProperties(const TableStylePropertiesArgs &props);
     const TableStyleProperties &getTableProperties() const { return m_tProps; }
 
+    static constexpr int32_t NO_ROW_SELECTION = -1;
+
+    /**
+     * @brief The logical row at a visual position, after sorting
+     * @param displayIndex Visual position, 0 = top
+     * @return The logical row index, or NO_ROW_SELECTION past the last row
+     */
+    int32_t displayToRow(uint32_t displayIndex) const;
+
+    /**
+     * @brief The visual position a logical row is shown at
+     * @param row Logical row index
+     * @return The visual position, or NO_ROW_SELECTION if the row is not alive
+     */
+    int32_t rowToDisplay(uint32_t row) const;
+
+    /**
+     * @brief The selected logical row, which follows the row through sort() and is dropped when it is removed
+     * @return The logical row index, or NO_ROW_SELECTION
+     */
+    int32_t selectedRow() const { return m_selectedRow; }
+
+    /**
+     * @brief Select a logical row without firing onRowSelected
+     * @param row Logical row index, or NO_ROW_SELECTION to clear the selection
+     */
+    void setSelectedRow(int32_t row);
+
+    /**
+     * @brief Invoked with the logical row a click selected
+     */
     std::function<void(uint32_t)> onRowSelected;
 
     /**
-     * @brief Invoked with the row a double click landed on, after that row has been selected
+     * @brief Invoked with the logical row a double click landed on, after that row has been selected
      */
     std::function<void(uint32_t)> onRowActivated;
 
   protected:
+    EventResult onMouseScrollUp() override;
+    EventResult onMouseScrollDown() override;
+
     TableStyleProperties m_tProps;
 
   private:
@@ -210,7 +246,7 @@ class Table : public UIObject {
     uint32_t m_cursorRow = 0;
     uint32_t m_cursorCol = 0;
 
-    int32_t m_selectedDisplayIndex = -1;
+    int32_t m_selectedRow = NO_ROW_SELECTION;
 
     vec4 m_resolvedPadding = {0.0f, 0.0f, 0.0f, 0.0f};
     std::vector<float> m_columnPositions;
