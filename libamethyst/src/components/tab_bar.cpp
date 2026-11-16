@@ -9,6 +9,7 @@
 #include "utils/am_assert.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace Amethyst {
 
@@ -135,9 +136,51 @@ int32_t TabBar::findTabIndex(const Tab *tab) const
 
 int32_t TabBar::indexFromPosition(float pos) const
 {
+    // tabs start at tabOffset, see layoutTabs
     float stride = m_tbProps.tabWidth + m_tbProps.tabSpacing;
-    int32_t idx = static_cast<int32_t>(pos / stride);
+    if (stride <= 0.0f || m_tabs.empty()) {
+        return 0;
+    }
+    int32_t idx = static_cast<int32_t>(std::floor((pos - m_tbProps.tabOffset) / stride));
     return std::clamp(idx, 0, static_cast<int32_t>(m_tabs.size()) - 1);
+}
+
+void TabBar::setTabActive(Tab &tab, bool active)
+{
+    uint16_t state = tab.labelFrame->getGuiState();
+    state = active ? static_cast<uint16_t>(state | GUI_STATE_ACTIVE) : static_cast<uint16_t>(state & ~GUI_STATE_ACTIVE);
+    tab.labelFrame->setGuiState(state);
+    tab.labelFrame->propagateGuiStateToChildren();
+    bool hovered = (state & GUI_STATE_HOVERED) != 0;
+    tab.closeButton->setBaseProperties({.visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, active, hovered)});
+}
+
+void TabBar::afterTabRemoved(int32_t removedIdx, int32_t newSelected)
+{
+    bool removedWasSelected = removedIdx == m_selectedIndex;
+    int32_t oldSelected = m_selectedIndex;
+
+    if (m_tabs.empty()) {
+        m_selectedIndex = 0;
+    } else if (removedWasSelected) {
+        m_selectedIndex = std::clamp(newSelected, 0, static_cast<int32_t>(m_tabs.size()) - 1);
+    } else if (m_selectedIndex > removedIdx) {
+        m_selectedIndex--;
+    }
+    m_lastSelectedIndex = oldSelected;
+
+    if (!m_tabs.empty()) {
+        setTabActive(*m_tabs[m_selectedIndex], true);
+    }
+    markAllTabsDirty();
+    markDirty();
+
+    // a shifted index is not a new selection, another tab taking over from the removed one is
+    if (removedWasSelected && !m_tabs.empty()) {
+        if (std::function<void(int32_t)> changed = onSelectionChanged; changed != nullptr) {
+            changed(m_selectedIndex);
+        }
+    }
 }
 
 Instance *TabBar::getSelectedContent() const
@@ -153,25 +196,17 @@ void TabBar::select(int32_t index)
     if (index < 0 || index >= static_cast<int32_t>(m_tabs.size())) return;
     if (index == m_selectedIndex) return;
 
-    Frame *oldLabel = m_tabs[m_selectedIndex]->labelFrame;
-    oldLabel->setGuiState(static_cast<uint16_t>(oldLabel->getGuiState() & ~GUI_STATE_ACTIVE));
-    oldLabel->propagateGuiStateToChildren();
-    m_tabs[m_selectedIndex]->closeButton->setBaseProperties({
-        .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, false, false),
-    });
+    if (m_selectedIndex >= 0 && m_selectedIndex < static_cast<int32_t>(m_tabs.size())) {
+        setTabActive(*m_tabs[m_selectedIndex], false);
+    }
 
     m_lastSelectedIndex = m_selectedIndex;
     m_selectedIndex = index;
+    setTabActive(*m_tabs[m_selectedIndex], true);
+    markDirty();
 
-    Frame *newLabel = m_tabs[m_selectedIndex]->labelFrame;
-    newLabel->setGuiState(static_cast<uint16_t>(newLabel->getGuiState() | GUI_STATE_ACTIVE));
-    newLabel->propagateGuiStateToChildren();
-    m_tabs[m_selectedIndex]->closeButton->setBaseProperties({
-        .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, true, false),
-    });
-
-    if (onSelectionChanged) {
-        onSelectionChanged(m_selectedIndex);
+    if (std::function<void(int32_t)> changed = onSelectionChanged; changed != nullptr) {
+        changed(m_selectedIndex);
     }
 }
 
@@ -255,23 +290,37 @@ void TabBar::setupTabDragCallbacks(Tab &tab)
         int32_t currentIdx = findTabIndex(tabPtr);
         if (currentIdx < 0) return;
 
-        vec2 relPos = absPos - absolutePosition;
-        float dragPos = isVertical() ? relPos.y : relPos.x;
+        // where the dragged tab's centre now is, wherever along it the tab was grabbed
+        vec2 tabPos = tabPtr->button->getBaseProperties().position.offset;
+        float dragPos = isVertical() ? tabPos.y : tabPos.x;
         int32_t targetIdx = indexFromPosition(dragPos + m_tbProps.tabWidth * 0.5f);
 
         if (targetIdx != currentIdx) {
+            // the dragged tab moves to the target slot and every tab between shifts one over, so a fast drag
+            // across several tabs keeps their order
+            auto first = m_tabs.begin();
+            if (currentIdx < targetIdx) {
+                std::rotate(first + currentIdx, first + currentIdx + 1, first + targetIdx + 1);
+            } else {
+                std::rotate(first + targetIdx, first + currentIdx, first + currentIdx + 1);
+            }
+
             if (m_selectedIndex == currentIdx) {
                 m_selectedIndex = targetIdx;
-                m_lastSelectedIndex = targetIdx;
-            } else if (m_selectedIndex == targetIdx) {
-                m_selectedIndex = currentIdx;
-                m_lastSelectedIndex = currentIdx;
+            } else if (currentIdx < targetIdx && m_selectedIndex > currentIdx && m_selectedIndex <= targetIdx) {
+                m_selectedIndex--;
+            } else if (targetIdx < currentIdx && m_selectedIndex >= targetIdx && m_selectedIndex < currentIdx) {
+                m_selectedIndex++;
             }
-            std::swap(m_tabs[currentIdx], m_tabs[targetIdx]);
-            m_tabs[currentIdx]->labelFrame->markDirty();
-            m_tabs[currentIdx]->button->markDirty();
-            m_tabs[targetIdx]->labelFrame->markDirty();
-            m_tabs[targetIdx]->button->markDirty();
+            // the same tab stays selected, only its index moved
+            m_lastSelectedIndex = m_selectedIndex;
+
+            int32_t lo = std::min(currentIdx, targetIdx);
+            int32_t hi = std::max(currentIdx, targetIdx);
+            for (int32_t i = lo; i <= hi; i++) {
+                m_tabs[i]->labelFrame->markDirty();
+                m_tabs[i]->button->markDirty();
+            }
         }
     };
 
@@ -329,8 +378,16 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
     };
 
     tab.closeButton->onMouseButton1ClickCb = [this, tabPtr]() {
-        if (onTabClosed) onTabClosed(tabPtr->content.get());
-        removeTab(tabPtr->content.get());
+        // the callback may remove the tab itself or destroy this bar, so it runs from a copy and the tab is looked
+        // up again by its content afterwards
+        Instance *content = tabPtr->content.get();
+        std::weak_ptr<bool> alive = aliveToken();
+        if (std::function<void(Instance *)> closed = onTabClosed; closed != nullptr) {
+            closed(content);
+        }
+        if (isAlive(alive)) {
+            removeTab(content);
+        }
         return EventResult::CONSUMED;
     };
 }
@@ -339,9 +396,8 @@ void TabBar::setupTabButton(Tab &tab, int32_t index)
 {
     ensureTabComponents(tab);
     tab.button->parent = this;
-    if (index == m_selectedIndex) {
-        tab.labelFrame->setGuiState(static_cast<uint16_t>(tab.labelFrame->getGuiState() | GUI_STATE_ACTIVE));
-    }
+    // a tab arriving from another bar may still carry that bar's active state
+    setTabActive(tab, index == m_selectedIndex);
     setupTabDragCallbacks(tab);
     setupTabInteractionCallbacks(tab);
 }
@@ -428,29 +484,8 @@ std::unique_ptr<Instance> TabBar::removeTab(Instance *content)
     removedContent->parent = nullptr;
     m_tabs.erase(it);
 
-    int32_t oldSelected = m_selectedIndex;
-
-    if (m_tabs.empty()) {
-        m_selectedIndex = 0;
-    } else if (m_selectedIndex == removedIdx) {
-        m_selectedIndex = std::min(m_selectedIndex, static_cast<int32_t>(m_tabs.size()) - 1);
-    } else if (m_selectedIndex > removedIdx) {
-        m_selectedIndex--;
-    }
-
-    m_lastSelectedIndex = oldSelected;
-    markAllTabsDirty();
-
-    if (!m_tabs.empty()) {
-        Frame *label = m_tabs[m_selectedIndex]->labelFrame;
-        label->setGuiState(static_cast<uint16_t>(label->getGuiState() | GUI_STATE_ACTIVE));
-    }
-
-    if (m_selectedIndex != oldSelected && onSelectionChanged) {
-        onSelectionChanged(m_selectedIndex);
-    }
-
-    markDirty();
+    // the tab that slid into the removed one's place takes over
+    afterTabRemoved(removedIdx, removedIdx);
     return removedContent;
 }
 
@@ -488,15 +523,11 @@ std::unique_ptr<TabBar::Tab> TabBar::extractTab(Instance *content)
 
     auto extracted = std::move(*it);
     m_tabs.erase(it);
+    // the torn tab is no longer this bar's selection, wherever it lands next
+    setTabActive(*extracted, false);
 
-    if (m_tabs.empty()) {
-        m_selectedIndex = 0;
-    } else if (m_selectedIndex >= removedIdx) {
-        m_selectedIndex = std::max(0, m_selectedIndex - 1);
-    }
-
-    markAllTabsDirty();
-    markDirty();
+    // the neighbour on the left takes over, like the order the tab was dragged out of
+    afterTabRemoved(removedIdx, removedIdx - 1);
     return extracted;
 }
 
