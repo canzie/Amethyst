@@ -296,8 +296,8 @@ int main()
             },
             [](Amethyst::TableScope &t) {
                 t.component.name = "Test Table";
-                t.component.onRowSelected = [](uint32_t displayIndex) {
-                    AM_LOG_INFO("Table row selected: {}", displayIndex);
+                t.component.onRowSelected = [](uint32_t row) {
+                    AM_LOG_INFO("Table row selected: {}", row);
                 };
                 t.column("Label", 0.3f).column("Color", 0.2f).column("Slider", 0.5f);
 
