@@ -16,12 +16,16 @@ namespace Amethyst {
  *   text-button.primary, .danger { background-color: #4772b3; corner-radius: 4px; }
  *
  * Selectors: bare type (text-button), .class (.danger), type.class (table.compact),
- * type#part (tab-bar#tab) and .class#part (.primary#tab) for built-in sub-parts of
- * compositing components. A trailing :pseudo qualifies a .class or #part selector
+ * and for built-in sub-parts of compositing components #part (#header), type#part
+ * (tab-bar#tab), .class#part (.primary#tab) and type.class#part (tab-bar.primary#tab).
+ * In a part selector the type names the component that owns the part (a TabBar's tab
+ * label is a Frame, but `tab-bar#tab` targets it), and the class may sit on the part
+ * itself or on its owner: `.abc#tab` styles the tabs of a TabBar carrying `.abc`, while
+ * a plain `.abc` rule only styles the TabBar. A trailing :pseudo qualifies any selector
  * by one of the fixed GuiState bits: :hover, :pressed, :disabled, :focused, :active.
- * Pseudo-states are not supported on bare type selectors. When two rules at the
- * same specificity both match the active state, the one declared later in the file
- * wins.
+ * Specificity is CSS's (parts, classes + pseudos, types); at equal specificity the
+ * declaration that comes later in the file wins. Descendant combinators are not
+ * supported.
  *
  * Variables: an @property directive on its own line binds a name to a literal
  * (@property accent #4772b3), and @name expands to that literal wherever it
@@ -31,7 +35,9 @@ namespace Amethyst {
  *
  * Values: lengths require px (corner-radius: 4px), ratios are unitless 0..1
  * (background-transparency: 0.5), dimensions take px/% (padding: 50% + 8px), colors
- * are #rgb / #rrggbb / #rrggbbaa or rgb()/rgba(). Spacing shorthand:
+ * are #rgb / #rgba / #rrggbb / #rrggbbaa or rgb(r, g, b) / rgba(r, g, b, a) with
+ * 0..255 channels and a 0..1 (or percentage) alpha. A malformed value logs a warning
+ * and drops its declaration, unknown at-rules are skipped. Spacing shorthand:
  *   padding: 10px               -> all sides
  *   padding: 10px 20px          -> vertical, horizontal
  *   padding: 10px 20px 30px 40px -> top, right, bottom, left

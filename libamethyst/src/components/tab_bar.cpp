@@ -59,9 +59,22 @@ void TabBar::resolveStyle()
 
 void TabBar::propagateClassesToTabs()
 {
+    // inherited, not assigned: classes set on a tab frame through labelSetup survive, and a class
+    // removed from the bar leaves the tabs too
+    std::vector<StyleKey> classes = getEffectiveClasses();
     for (auto &tab : m_tabs) {
-        tab->labelFrame->setClasses(getClasses());
+        tab->labelFrame->setInheritedStyle(classes);
         tab->labelFrame->propagateClassesToChildren();
+    }
+}
+
+void TabBar::markChildrenDirty()
+{
+    // tab buttons and contents are owned through m_tabs rather than the child list
+    Instance::markChildrenDirty();
+    for (auto &tab : m_tabs) {
+        tab->button->markSubtreeDirty();
+        tab->content->markSubtreeDirty();
     }
 }
 
@@ -234,8 +247,8 @@ void TabBar::ensureTabComponents(Tab &tab)
         .size = UDim2::fromScale(1.0f),
     });
     tab.labelFrame = static_cast<Frame *>(tab.button->addChild(std::move(newFrame)));
-    tab.labelFrame->bindPart(ComponentPart::TAB);
-    tab.labelFrame->setClasses(getClasses());
+    tab.labelFrame->bindPart(ComponentPart::TAB, ComponentType::TAB_BAR);
+    tab.labelFrame->setInheritedStyle(getEffectiveClasses());
     tab.labelFrame->setBaseStyleProperties({.cornerRadius = m_tbProps.tabCornerRadius});
 
     auto closeBtn = std::make_unique<TextButton>();
@@ -639,6 +652,7 @@ void TabBar::arrange()
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }
+    refreshStyleIfStale();
 
     if (flags & FLAG_DIRTY) {
         markAllTabsDirty();

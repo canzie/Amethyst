@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -162,14 +163,41 @@ class UIObject : public UIBase2D {
 
     /**
      * @brief Bind this node as the given named sub-part (e.g. a TabBar's "tab") and re-resolve.
-     * @param part The part this node is bound as
+     * An own part always wins over one inherited through propagateClassesToChildren().
+     * @param part The part this node is bound as, NONE to unbind
+     * @param owner Component type owning the part, matched by `type#part`; defaults to the part's usual owner
      */
-    void bindPart(ComponentPart part);
+    void bindPart(ComponentPart part, std::optional<ComponentType> owner = std::nullopt);
 
     /**
-     * @brief Apply this node's current part and class set onto every descendant UIObject.
+     * @brief Hand this node's class set (own and inherited) and its part down to every descendant
+     * UIObject as their inherited style. Descendants keep their own classes and own part, and a
+     * later call replaces what was inherited before, so a class removed here leaves them too.
      */
     void propagateClassesToChildren();
+
+    /**
+     * @brief Replace the classes and part this node inherits from the component that owns it.
+     * Inherited classes only match part rules (`.abc#tab`); the inherited part applies when the
+     * node has no part of its own.
+     * @param classes Class tokens of the owner
+     * @param part Part inherited from the owner, NONE for none
+     * @param owner Component type owning that part
+     */
+    void setInheritedStyle(std::span<const StyleKey> classes, ComponentPart part = ComponentPart::NONE,
+                           ComponentType owner = ComponentType::UI_OBJECT);
+
+    /**
+     * @brief Classes this node inherited from its owner via setInheritedStyle().
+     * @return Span over the inherited class tokens
+     */
+    std::span<const StyleKey> getInheritedClasses() const { return m_part.inheritedClasses; }
+
+    /**
+     * @brief The part this node resolves as: its own if bound, otherwise the inherited one.
+     * @return The effective part, NONE if the node is not a part
+     */
+    ComponentPart getPart() const { return m_part.part; }
 
     /**
      * @brief Apply this node's current GuiState onto every descendant UIObject.
@@ -220,6 +248,12 @@ class UIObject : public UIBase2D {
      */
     std::span<const StyleKey> getClasses() const { return m_classes; }
 
+    /**
+     * @brief Own and inherited classes together, deduplicated; what this node hands to descendants.
+     * @return The combined class tokens
+     */
+    std::vector<StyleKey> getEffectiveClasses() const;
+
   protected:
     /**
      * @brief Apply an attached layout extension
@@ -227,14 +261,25 @@ class UIObject : public UIBase2D {
     void applyLayoutExtensions();
 
     /**
-     * @brief GuiState bits including the DISABLED bit derived from `!interactable`.
+     * @brief GuiState bits including the DISABLED bit derived from `!interactable`. Parts skip that
+     * derivation: compositing widgets make their decorative parts non-interactable so the input
+     * reaches the widget, which is structure rather than a disabled state, and parts get their
+     * pseudo-state handed down from the owner instead.
      * @return The bitmask resolveStyle() should resolve against
      */
     uint16_t effectiveGuiState() const;
 
     /**
+     * @brief Re-run resolveStyle() if the effective GuiState or the theme generation changed since
+     * the last resolve. UIObject::arrange() calls it; arrange() overrides that do not chain up
+     * must call it themselves, before laying out.
+     */
+    void refreshStyleIfStale();
+
+    /**
      * @brief Resolve and merge BaseStyleProperties for a component type, honoring any
-     * instance-level overrides pinned by a prior setBaseStyleProperties() call.
+     * instance-level overrides pinned by a prior setBaseStyleProperties() call. Also applies
+     * the theme padding unless padding was set through setBaseProperties().
      * @param type Component type to resolve against
      */
     void resolveBaseStyle(ComponentType type);
@@ -266,10 +311,21 @@ class UIObject : public UIBase2D {
     BaseProperties m_uiObjProps;
     BaseStyleProperties m_baseStyle;
     std::vector<StyleKey> m_classes;
-    ComponentPart m_part = ComponentPart::NONE;
+    // effective part (own, else inherited) with the inherited classes; passed straight to the Style getters
+    StylePart m_part;
     uint16_t m_guiState = GUI_STATE_NONE;
     uint16_t m_lastResolvedGuiState = GUI_STATE_NONE;
+    uint64_t m_styleGeneration = 0;
     bool m_renderCulled = false;
+    bool m_paddingPinned = false;
+
+  private:
+    void updateEffectivePart();
+
+    ComponentPart m_ownPart = ComponentPart::NONE;
+    ComponentType m_ownPartOwner = ComponentType::UI_OBJECT;
+    ComponentPart m_inheritedPart = ComponentPart::NONE;
+    ComponentType m_inheritedPartOwner = ComponentType::UI_OBJECT;
 
   private:
     std::unordered_map<std::type_index, std::unique_ptr<UIExtension>> m_extensions;

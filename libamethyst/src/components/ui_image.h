@@ -7,6 +7,8 @@
 
 #include "components/properties.h"
 
+#include <array>
+#include <cstdint>
 #include <string>
 
 namespace Amethyst {
@@ -38,10 +40,21 @@ public:
 private:
   void resolveSvg(DrawContext &ctx, vec2 absoluteSize);
 
+public:
+  /**
+   * @brief The solid tint an SVG instance is drawn with: the color itself, or for a gradient its
+   * first stop times the tint, since SVG instances have no room for a gradient slot.
+   */
+  static Color4 svgTint(const Color4 &color);
+
+private:
+
   ImageStyleProperties m_imgStyle;
   AmTextureId m_image;
   std::string m_svgData;
   bool m_svgResolved = false;
+  std::array<uint32_t, 2> m_svgSize{};
+  std::array<uint32_t, 2> m_svgFailedSize{};
   vec4 m_svgUvRect = {0.0f, 0.0f, 1.0f, 1.0f};
   GeometryAllocation *m_alloc = nullptr;
 };

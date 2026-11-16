@@ -34,6 +34,7 @@ class TabBar : public UIObject {
 
     void draw(DrawContext &ctx) override;
     void arrange() override;
+    void markChildrenDirty() override;
     void resolveStyle() override;
     std::vector<Instance *> getHittableInstances() override;
 

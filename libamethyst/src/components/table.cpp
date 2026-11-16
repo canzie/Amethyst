@@ -413,12 +413,12 @@ void Table::ensureHeaderCapacity()
 
     if (m_headerBackground == nullptr) {
         m_headerBackground = add<Frame>();
-        m_headerBackground->bindPart(ComponentPart::HEADER);
+        m_headerBackground->bindPart(ComponentPart::HEADER, ComponentType::TABLE);
     }
 
     while (m_headerLabels.size() < cols) {
         TextLabel *lbl = add<TextLabel>();
-        lbl->bindPart(ComponentPart::HEADER);
+        lbl->bindPart(ComponentPart::HEADER, ComponentType::TABLE);
         m_headerLabels.push_back(lbl);
     }
 }
@@ -564,6 +564,7 @@ void Table::arrange()
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }
+    refreshStyleIfStale();
 
     uint32_t cols = columnCount();
     if (cols == 0) {

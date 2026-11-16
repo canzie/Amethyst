@@ -372,6 +372,7 @@ void Spline::arrange()
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }
+    refreshStyleIfStale();
 
     syncHandles();
 

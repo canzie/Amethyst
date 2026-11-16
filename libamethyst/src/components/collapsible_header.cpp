@@ -240,6 +240,7 @@ void CollapsibleHeader::arrange()
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }
+    refreshStyleIfStale();
 
     arrangeHeaderBar();
 

@@ -47,12 +47,18 @@ UIObject::UIObject()
     m_baseStyle.borderColor = Color3{0.0f, 0.0f, 0.0f};
     m_baseStyle.borderTransparency = 0.0f;
     m_baseStyle.cornerRadius = 0.0f;
+
+    // components resolve in their constructors against the theme installed now
+    m_styleGeneration = Style::generation();
 }
 
 UIObject::~UIObject() {}
 
 bool UIObject::setBaseProperties(BasePropertiesArgs props)
 {
+    if (props.padding.has_value()) {
+        m_paddingPinned = true;
+    }
     bool changed = m_uiObjProps.apply(props);
     if (changed) {
         markSubtreeDirty();
@@ -74,7 +80,7 @@ void UIObject::resolveStyle() {}
 uint16_t UIObject::effectiveGuiState() const
 {
     uint16_t s = m_guiState;
-    if (!static_cast<bool>(m_uiObjProps.interactable)) {
+    if (!static_cast<bool>(m_uiObjProps.interactable) && m_part.part == ComponentPart::NONE) {
         s = static_cast<uint16_t>(s | GUI_STATE_DISABLED);
     }
     return s;
@@ -90,25 +96,83 @@ void UIObject::setGuiState(uint16_t state)
 
 void UIObject::resolveBaseStyle(ComponentType type)
 {
-    BaseStyleProperties resolved = Style::instance().getBaseStyle(type, getClasses(), effectiveGuiState(), m_part);
+    uint16_t state = effectiveGuiState();
+    BaseStyleProperties resolved = Style::instance().getBaseStyle(type, getClasses(), state, m_part);
     if (m_baseStyle.apply(resolved)) {
         markDirty();
     }
+    if (!m_paddingPinned) {
+        UDim4 padding = Style::instance().getPadding(type, getClasses(), state, m_part);
+        if (padding != m_uiObjProps.padding) {
+            m_uiObjProps.padding = padding;
+            markSubtreeDirty();
+        }
+    }
 }
 
-void UIObject::bindPart(ComponentPart part)
+void UIObject::refreshStyleIfStale()
 {
-    m_part = part;
+    uint16_t state = effectiveGuiState();
+    uint64_t generation = Style::generation();
+    if (state == m_lastResolvedGuiState && generation == m_styleGeneration) {
+        return;
+    }
+    m_lastResolvedGuiState = state;
+    m_styleGeneration = generation;
+    resolveStyle();
+}
+
+void UIObject::updateEffectivePart()
+{
+    if (m_ownPart != ComponentPart::NONE) {
+        m_part.part = m_ownPart;
+        m_part.owner = m_ownPartOwner;
+    } else {
+        m_part.part = m_inheritedPart;
+        m_part.owner = m_inheritedPartOwner;
+    }
+}
+
+void UIObject::bindPart(ComponentPart part, std::optional<ComponentType> owner)
+{
+    m_ownPart = part;
+    m_ownPartOwner = owner.value_or(defaultPartOwner(part));
+    updateEffectivePart();
     resolveStyle();
     markDirty();
 }
 
+void UIObject::setInheritedStyle(std::span<const StyleKey> classes, ComponentPart part, ComponentType owner)
+{
+    bool sameClasses = std::ranges::equal(classes, m_part.inheritedClasses);
+    if (sameClasses && part == m_inheritedPart && owner == m_inheritedPartOwner) {
+        return;
+    }
+    m_part.inheritedClasses.assign(classes.begin(), classes.end());
+    m_inheritedPart = part;
+    m_inheritedPartOwner = owner;
+    updateEffectivePart();
+    resolveStyle();
+    markDirty();
+}
+
+std::vector<StyleKey> UIObject::getEffectiveClasses() const
+{
+    std::vector<StyleKey> out = m_classes;
+    for (StyleKey token : m_part.inheritedClasses) {
+        if (std::ranges::find(out, token) == out.end()) {
+            out.push_back(token);
+        }
+    }
+    return out;
+}
+
 void UIObject::propagateClassesToChildren()
 {
+    std::vector<StyleKey> classes = getEffectiveClasses();
     for (auto &child : getChildren()) {
         if (auto *obj = child->asUiObject()) {
-            obj->bindPart(m_part);
-            obj->addClasses(m_classes);
+            obj->setInheritedStyle(classes, m_part.part, m_part.owner);
             obj->propagateClassesToChildren();
         }
     }
@@ -283,11 +347,7 @@ void UIObject::arrange()
         return;
     }
 
-    uint16_t currentGuiState = effectiveGuiState();
-    if (currentGuiState != m_lastResolvedGuiState) {
-        resolveStyle();
-        m_lastResolvedGuiState = currentGuiState;
-    }
+    refreshStyleIfStale();
 
     applyLayoutExtensions();
 

@@ -3,8 +3,11 @@
 #include "modules/style.h"
 #include "modules/style_properties.def"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
+#include <cerrno>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
@@ -62,10 +65,23 @@ static std::vector<std::string_view> s_splitWhitespace(std::string_view sv)
     return out;
 }
 
-static float s_parseNumber(std::string_view sv)
+// Every value parser returns nullopt on malformed input after logging why; the declaration is then
+// dropped, CSS-style, so a typo keeps the cascaded value instead of silently painting black.
+
+static std::optional<float> s_parseNumber(std::string_view sv)
 {
+    sv = s_trim(sv);
+    if (sv.empty()) {
+        return std::nullopt;
+    }
     std::string s(sv);
-    return std::strtof(s.c_str(), nullptr);
+    char *end = nullptr;
+    errno = 0;
+    float v = std::strtof(s.c_str(), &end);
+    if (end != s.c_str() + s.size() || errno == ERANGE || !std::isfinite(v)) {
+        return std::nullopt;
+    }
+    return v;
 }
 
 static bool s_endsWith(std::string_view sv, std::string_view suffix)
@@ -73,193 +89,225 @@ static bool s_endsWith(std::string_view sv, std::string_view suffix)
     return sv.size() >= suffix.size() && sv.substr(sv.size() - suffix.size()) == suffix;
 }
 
-static uint32_t s_parseHexDigits(std::string_view hex)
+static bool s_isHexDigits(std::string_view hex)
 {
-    return static_cast<uint32_t>(std::strtoul(std::string(hex).c_str(), nullptr, 16));
+    return !hex.empty() &&
+           std::all_of(hex.begin(), hex.end(), [](char c) { return std::isxdigit(static_cast<unsigned char>(c)) != 0; });
 }
 
-static std::string s_expandShortHex(std::string_view hex)
+/**
+ * @brief Parse #rgb, #rgba, #rrggbb or #rrggbbaa into normalized channels.
+ * @param sv The value, starting at '#'
+ * @param out Receives r, g, b, a in [0, 1]; a is 1 when the value carries no alpha
+ * @return False (after logging) on a bad digit or length
+ */
+static bool s_parseHexColor(std::string_view sv, std::array<float, 4> &out)
 {
-    std::string out;
-    out.reserve(hex.size() * 2);
-    for (char c : hex) {
-        out.push_back(c);
-        out.push_back(c);
-    }
-    return out;
-}
-
-static bool s_parseRgbCall(std::string_view sv, std::array<int, 4> &out, int &count)
-{
-    size_t open = sv.find('(');
-    size_t close = sv.find(')');
-    if (open == std::string_view::npos || close == std::string_view::npos || close < open) {
+    std::string_view hex = sv.substr(1);
+    if (!s_isHexDigits(hex) || (hex.size() != 3 && hex.size() != 4 && hex.size() != 6 && hex.size() != 8)) {
+        AM_LOG_WARN("Invalid hex color '{}': expected #rgb, #rgba, #rrggbb or #rrggbbaa", std::string(sv));
         return false;
     }
-    std::vector<std::string_view> parts = s_split(sv.substr(open + 1, close - open - 1), ',');
-    count = 0;
-    for (std::string_view p : parts) {
-        if (p.empty() || count >= 4) {
-            continue;
+    std::string expanded;
+    if (hex.size() <= 4) {
+        for (char c : hex) {
+            expanded.push_back(c);
+            expanded.push_back(c);
         }
-        out[count++] = static_cast<int>(std::strtol(std::string(p).c_str(), nullptr, 10));
+        hex = expanded;
     }
-    return count >= 3;
+    uint32_t bits = static_cast<uint32_t>(std::strtoul(std::string(hex).c_str(), nullptr, 16));
+    if (hex.size() == 6) {
+        bits = (bits << 8) | 0xFFu;
+    }
+    out = {((bits >> 24) & 0xFF) / 255.0f, ((bits >> 16) & 0xFF) / 255.0f, ((bits >> 8) & 0xFF) / 255.0f, (bits & 0xFF) / 255.0f};
+    return true;
 }
 
-static Color3 s_parseColor3(std::string_view sv)
+/**
+ * @brief Parse rgb(r, g, b) / rgba(r, g, b, a). Channels are 0..255; alpha is CSS's 0..1 (or a
+ * percentage), and a whole number above 1 is read as the legacy 0..255 form the bundled themes use.
+ * @param sv The value text
+ * @param out Receives r, g, b, a in [0, 1]
+ * @return False (after logging) when the call is malformed
+ */
+static bool s_parseRgbCall(std::string_view sv, std::array<float, 4> &out)
+{
+    bool hasAlpha = sv.starts_with("rgba(");
+    if (!hasAlpha && !sv.starts_with("rgb(")) {
+        return false;
+    }
+    if (!s_endsWith(sv, ")")) {
+        AM_LOG_WARN("Unterminated color call '{}'", std::string(sv));
+        return false;
+    }
+    size_t open = sv.find('(');
+    std::vector<std::string_view> parts = s_split(sv.substr(open + 1, sv.size() - open - 2), ',');
+    size_t expected = hasAlpha ? 4 : 3;
+    if (parts.size() != expected) {
+        AM_LOG_WARN("Color call '{}' expects {} components, got {}", std::string(sv), expected, parts.size());
+        return false;
+    }
+    for (size_t i = 0; i < 3; ++i) {
+        std::optional<float> channel = s_parseNumber(parts[i]);
+        if (!channel.has_value()) {
+            AM_LOG_WARN("Invalid color channel '{}' in '{}'", std::string(parts[i]), std::string(sv));
+            return false;
+        }
+        if (*channel < 0.0f || *channel > 255.0f) {
+            AM_LOG_WARN("Color channel {} out of 0..255 in '{}'; clamping", *channel, std::string(sv));
+        }
+        out[i] = std::clamp(std::round(*channel), 0.0f, 255.0f) / 255.0f;
+    }
+    out[3] = 1.0f;
+    if (hasAlpha) {
+        std::string_view alphaText = parts[3];
+        bool percent = s_endsWith(alphaText, "%");
+        std::optional<float> alpha = s_parseNumber(percent ? alphaText.substr(0, alphaText.size() - 1) : alphaText);
+        if (!alpha.has_value()) {
+            AM_LOG_WARN("Invalid alpha '{}' in '{}'", std::string(alphaText), std::string(sv));
+            return false;
+        }
+        float a = *alpha;
+        if (percent) {
+            a /= 100.0f;
+        } else if (a > 1.0f && alphaText.find('.') == std::string_view::npos) {
+            a /= 255.0f;
+        }
+        if (a < 0.0f || a > 1.0f) {
+            AM_LOG_WARN("Alpha out of range in '{}'; clamping", std::string(sv));
+        }
+        out[3] = std::clamp(a, 0.0f, 1.0f);
+    }
+    return true;
+}
+
+static bool s_parseColorChannels(std::string_view sv, std::array<float, 4> &out)
 {
     sv = s_trim(sv);
     if (!sv.empty() && sv[0] == '#') {
-        std::string_view hex = sv.substr(1);
-        std::string expanded;
-        if (hex.size() == 3) {
-            expanded = s_expandShortHex(hex);
-            hex = expanded;
-        }
-        return Color3::fromHex(s_parseHexDigits(hex.substr(0, 6)));
+        return s_parseHexColor(sv, out);
     }
-    std::array<int, 4> rgb{};
-    int count = 0;
-    if (s_parseRgbCall(sv, rgb, count)) {
-        return Color3::fromRgb(static_cast<uint8_t>(rgb[0]), static_cast<uint8_t>(rgb[1]), static_cast<uint8_t>(rgb[2]));
+    if (s_parseRgbCall(sv, out)) {
+        return true;
     }
-    AM_LOG_WARN("Invalid color3 value: {}", std::string(sv));
-    return Color3(1.0f, 1.0f, 1.0f);
+    if (!sv.starts_with("rgb")) {
+        AM_LOG_WARN("Invalid color value: {}", std::string(sv));
+    }
+    return false;
 }
 
-static Color4 s_parseColor4(std::string_view sv)
+static std::optional<Color3> s_parseColor3(std::string_view sv)
 {
-    sv = s_trim(sv);
-    if (!sv.empty() && sv[0] == '#') {
-        std::string_view hex = sv.substr(1);
-        std::string expanded;
-        if (hex.size() == 3) {
-            expanded = s_expandShortHex(hex);
-            hex = expanded;
-        }
-        bool hasAlpha = hex.size() >= 8;
-        return Color4::fromHex(s_parseHexDigits(hex.substr(0, hasAlpha ? 8 : 6)), hasAlpha);
+    std::array<float, 4> c{};
+    if (!s_parseColorChannels(sv, c)) {
+        return std::nullopt;
     }
-    std::array<int, 4> rgb{};
-    int count = 0;
-    if (s_parseRgbCall(sv, rgb, count)) {
-        uint8_t a = count >= 4 ? static_cast<uint8_t>(rgb[3]) : 255;
-        return Color4::fromRgb(static_cast<uint8_t>(rgb[0]), static_cast<uint8_t>(rgb[1]), static_cast<uint8_t>(rgb[2]), a);
+    if (c[3] != 1.0f) {
+        AM_LOG_WARN("Alpha ignored on an opaque color property: {}", std::string(s_trim(sv)));
     }
-    AM_LOG_WARN("Invalid color4 value: {}", std::string(sv));
-    return Color4(0.0f, 0.0f, 0.0f, 1.0f);
+    return Color3(c[0], c[1], c[2]);
 }
 
-static float s_parseLength(std::string_view sv)
+static std::optional<Color4> s_parseColor4(std::string_view sv)
+{
+    std::array<float, 4> c{};
+    if (!s_parseColorChannels(sv, c)) {
+        return std::nullopt;
+    }
+    return Color4(c[0], c[1], c[2], c[3]);
+}
+
+static std::optional<float> s_parseLength(std::string_view sv)
 {
     sv = s_trim(sv);
+    std::optional<float> v;
     if (s_endsWith(sv, "px")) {
-        return s_parseNumber(sv.substr(0, sv.size() - 2));
+        v = s_parseNumber(sv.substr(0, sv.size() - 2));
+    } else {
+        v = s_parseNumber(sv);
+        if (v.has_value() && *v != 0.0f) {
+            AM_LOG_WARN("Length value missing 'px' unit: {}", std::string(sv));
+        }
     }
-    AM_LOG_WARN("Length value missing 'px' unit: {}", std::string(sv));
-    return s_parseNumber(sv);
+    if (!v.has_value()) {
+        AM_LOG_WARN("Invalid length: {}", std::string(sv));
+    }
+    return v;
 }
 
-static float s_parseRatio(std::string_view sv)
+static std::optional<float> s_parseRatio(std::string_view sv)
 {
     sv = s_trim(sv);
+    std::optional<float> v;
     if (s_endsWith(sv, "px")) {
         AM_LOG_WARN("Ratio value should be unitless (0..1): {}", std::string(sv));
-        return s_parseNumber(sv.substr(0, sv.size() - 2));
+        v = s_parseNumber(sv.substr(0, sv.size() - 2));
+    } else if (s_endsWith(sv, "%")) {
+        v = s_parseNumber(sv.substr(0, sv.size() - 1));
+        if (v.has_value()) {
+            *v /= 100.0f;
+        }
+    } else {
+        v = s_parseNumber(sv);
     }
-    if (s_endsWith(sv, "%")) {
-        return s_parseNumber(sv.substr(0, sv.size() - 1)) / 100.0f;
+    if (!v.has_value()) {
+        AM_LOG_WARN("Invalid ratio: {}", std::string(sv));
     }
-    return s_parseNumber(sv);
+    return v;
 }
 
-static UDim s_parseUDim(std::string_view sv)
+static std::optional<UDim> s_parseUDim(std::string_view sv)
 {
     float scale = 0.0f;
     float offset = 0.0f;
     bool sawUnit = false;
     for (std::string_view term : s_split(sv, '+')) {
-        if (term.empty()) {
-            continue;
-        }
+        std::optional<float> v;
         if (s_endsWith(term, "%")) {
-            scale += s_parseNumber(term.substr(0, term.size() - 1)) / 100.0f;
+            v = s_parseNumber(term.substr(0, term.size() - 1));
+            if (v.has_value()) {
+                scale += *v / 100.0f;
+            }
             sawUnit = true;
         } else if (s_endsWith(term, "px")) {
-            offset += s_parseNumber(term.substr(0, term.size() - 2));
+            v = s_parseNumber(term.substr(0, term.size() - 2));
+            if (v.has_value()) {
+                offset += *v;
+            }
             sawUnit = true;
         } else {
-            offset += s_parseNumber(term);
+            v = s_parseNumber(term);
+            if (v.has_value()) {
+                offset += *v;
+            }
+        }
+        if (!v.has_value()) {
+            AM_LOG_WARN("Invalid dimension term '{}' in: {}", std::string(term), std::string(sv));
+            return std::nullopt;
         }
     }
-    if (!sawUnit) {
+    if (!sawUnit && offset != 0.0f) {
         AM_LOG_WARN("Dimension value missing 'px' or '%' unit: {}", std::string(sv));
     }
     return UDim{scale, offset};
 }
 
-static BorderMode s_parseBorderMode(std::string_view sv)
+/**
+ * @brief Look a keyword up in a fixed table, warning when it isn't one of them.
+ */
+template <typename T, size_t N>
+static std::optional<T> s_parseKeyword(std::string_view sv, const std::array<std::pair<std::string_view, T>, N> &table,
+                                       std::string_view what)
 {
     sv = s_trim(sv);
-    if (sv == "outline") {
-        return BorderMode::OUTLINE;
+    for (const auto &[name, value] : table) {
+        if (sv == name) {
+            return value;
+        }
     }
-    if (sv == "middle") {
-        return BorderMode::MIDDLE;
-    }
-    if (sv == "inset") {
-        return BorderMode::INSET;
-    }
-    return BorderMode::OUTLINE;
-}
-
-static TextXAlignment s_parseTextXAlignment(std::string_view sv)
-{
-    sv = s_trim(sv);
-    if (sv == "left") {
-        return TextXAlignment::LEFT;
-    }
-    if (sv == "center") {
-        return TextXAlignment::CENTER;
-    }
-    if (sv == "right") {
-        return TextXAlignment::RIGHT;
-    }
-    return TextXAlignment::LEFT;
-}
-
-static TextYAlignment s_parseTextYAlignment(std::string_view sv)
-{
-    sv = s_trim(sv);
-    if (sv == "top") {
-        return TextYAlignment::TOP;
-    }
-    if (sv == "center") {
-        return TextYAlignment::CENTER;
-    }
-    if (sv == "bottom") {
-        return TextYAlignment::BOTTOM;
-    }
-    return TextYAlignment::TOP;
-}
-
-static ImageScaleType s_parseImageScaleType(std::string_view sv)
-{
-    sv = s_trim(sv);
-    if (sv == "stretch") {
-        return ImageScaleType::STRETCH;
-    }
-    if (sv == "tile") {
-        return ImageScaleType::TILE;
-    }
-    if (sv == "fit") {
-        return ImageScaleType::FIT;
-    }
-    if (sv == "crop") {
-        return ImageScaleType::CROP;
-    }
-    return ImageScaleType::STRETCH;
+    AM_LOG_WARN("Unknown {} '{}'", what, std::string(sv));
+    return std::nullopt;
 }
 
 static std::string_view s_unquote(std::string_view sv)
@@ -271,104 +319,154 @@ static std::string_view s_unquote(std::string_view sv)
     return sv;
 }
 
-static StyleValue s_parse_COLOR3(std::string_view sv, Style &)
+using ParsedValue = std::optional<StyleValue>;
+
+template <typename T> static ParsedValue s_wrap(const std::optional<T> &v)
 {
-    return StyleValue(s_parseColor3(sv));
+    if (!v.has_value()) {
+        return std::nullopt;
+    }
+    return StyleValue(*v);
 }
 
-static StyleValue s_parse_COLOR4(std::string_view sv, Style &)
+static ParsedValue s_parse_COLOR3(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseColor4(sv));
+    return s_wrap(s_parseColor3(sv));
 }
 
-static StyleValue s_parse_LENGTH(std::string_view sv, Style &)
+static ParsedValue s_parse_COLOR4(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseLength(sv));
+    return s_wrap(s_parseColor4(sv));
 }
 
-static uint32_t s_lengthToRadius(std::string_view sv)
+static ParsedValue s_parse_LENGTH(std::string_view sv, Style &)
 {
-    return static_cast<uint32_t>(s_parseLength(sv) + 0.5f);
+    return s_wrap(s_parseLength(sv));
+}
+
+// corner radii are packed as unsigned pixels, so a negative or absurd length is clamped while it is still a float
+static std::optional<uint32_t> s_lengthToRadius(std::string_view sv)
+{
+    std::optional<float> v = s_parseLength(sv);
+    if (!v.has_value()) {
+        return std::nullopt;
+    }
+    constexpr float MAX_RADIUS = 65535.0f;
+    if (*v < 0.0f || *v > MAX_RADIUS) {
+        AM_LOG_WARN("Corner radius {} out of range; clamping to 0..{}", *v, MAX_RADIUS);
+    }
+    return static_cast<uint32_t>(std::clamp(*v, 0.0f, MAX_RADIUS) + 0.5f);
 }
 
 // Corner shorthand follows CSS border-radius ordering (top-left, top-right, bottom-right, bottom-left):
 // one value sets all four, two set the tl/br and tr/bl diagonals, four set each corner.
-static StyleValue s_parse_CORNERS(std::string_view sv, Style &)
+static ParsedValue s_parse_CORNERS(std::string_view sv, Style &)
 {
     std::vector<std::string_view> tokens = s_splitWhitespace(sv);
+    if (tokens.size() != 1 && tokens.size() != 2 && tokens.size() != 4) {
+        AM_LOG_WARN("Corner-radius shorthand expects 1, 2 or 4 values: {}", std::string(sv));
+        return std::nullopt;
+    }
+    std::array<uint32_t, 4> r{};
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        std::optional<uint32_t> v = s_lengthToRadius(tokens[i]);
+        if (!v.has_value()) {
+            return std::nullopt;
+        }
+        r[i] = *v;
+    }
     if (tokens.size() == 1) {
-        return StyleValue(uvec4(s_lengthToRadius(tokens[0])));
+        return StyleValue(uvec4(r[0]));
     }
     if (tokens.size() == 2) {
-        uint32_t d0 = s_lengthToRadius(tokens[0]);
-        uint32_t d1 = s_lengthToRadius(tokens[1]);
-        return StyleValue(uvec4(d0, d1, d0, d1));
+        return StyleValue(uvec4(r[0], r[1], r[0], r[1]));
     }
-    if (tokens.size() == 4) {
-        return StyleValue(uvec4(s_lengthToRadius(tokens[0]), s_lengthToRadius(tokens[1]), s_lengthToRadius(tokens[2]),
-                                s_lengthToRadius(tokens[3])));
-    }
-    AM_LOG_WARN("Corner-radius shorthand expects 1, 2 or 4 values: {}", std::string(sv));
-    return StyleValue(uvec4(0u));
+    return StyleValue(uvec4(r[0], r[1], r[2], r[3]));
 }
 
-static StyleValue s_parse_RATIO(std::string_view sv, Style &)
+static ParsedValue s_parse_RATIO(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseRatio(sv));
+    return s_wrap(s_parseRatio(sv));
 }
 
-static StyleValue s_parse_UDIM(std::string_view sv, Style &)
+static ParsedValue s_parse_UDIM(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseUDim(sv));
+    return s_wrap(s_parseUDim(sv));
 }
 
-static StyleValue s_parse_BMODE(std::string_view sv, Style &)
+static ParsedValue s_parse_BMODE(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseBorderMode(sv));
+    static constexpr std::array<std::pair<std::string_view, BorderMode>, 3> table = {{
+        {"outline", BorderMode::OUTLINE},
+        {"middle", BorderMode::MIDDLE},
+        {"inset", BorderMode::INSET},
+    }};
+    return s_wrap(s_parseKeyword(sv, table, "border-mode"));
 }
 
-static StyleValue s_parse_XALIGN(std::string_view sv, Style &)
+static ParsedValue s_parse_XALIGN(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseTextXAlignment(sv));
+    static constexpr std::array<std::pair<std::string_view, TextXAlignment>, 3> table = {{
+        {"left", TextXAlignment::LEFT},
+        {"center", TextXAlignment::CENTER},
+        {"right", TextXAlignment::RIGHT},
+    }};
+    return s_wrap(s_parseKeyword(sv, table, "text-x-alignment"));
 }
 
-static StyleValue s_parse_YALIGN(std::string_view sv, Style &)
+static ParsedValue s_parse_YALIGN(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseTextYAlignment(sv));
+    static constexpr std::array<std::pair<std::string_view, TextYAlignment>, 3> table = {{
+        {"top", TextYAlignment::TOP},
+        {"center", TextYAlignment::CENTER},
+        {"bottom", TextYAlignment::BOTTOM},
+    }};
+    return s_wrap(s_parseKeyword(sv, table, "text-y-alignment"));
 }
 
-static StyleValue s_parse_FONT(std::string_view sv, Style &style)
+static ParsedValue s_parse_FONT(std::string_view sv, Style &style)
 {
     return StyleValue(FontHandle{style.internFont(s_unquote(sv))});
 }
 
-static StyleValue s_parse_ISCALE(std::string_view sv, Style &)
+static ParsedValue s_parse_ISCALE(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseImageScaleType(sv));
+    static constexpr std::array<std::pair<std::string_view, ImageScaleType>, 4> table = {{
+        {"stretch", ImageScaleType::STRETCH},
+        {"tile", ImageScaleType::TILE},
+        {"fit", ImageScaleType::FIT},
+        {"crop", ImageScaleType::CROP},
+    }};
+    return s_wrap(s_parseKeyword(sv, table, "image-scale-type"));
 }
 
-static StyleValue s_parse_SIZE2(std::string_view sv, Style &)
+static ParsedValue s_parse_SIZE2(std::string_view sv, Style &)
 {
     std::vector<std::string_view> tokens = s_splitWhitespace(sv);
-    if (tokens.size() == 2) {
-        return StyleValue(vec2(s_parseLength(tokens[0]), s_parseLength(tokens[1])));
+    if (tokens.size() != 1 && tokens.size() != 2) {
+        AM_LOG_WARN("Size value expects 1 or 2 length values: {}", std::string(sv));
+        return std::nullopt;
     }
-    if (tokens.size() == 1) {
-        float v = s_parseLength(tokens[0]);
-        return StyleValue(vec2(v, v));
+    std::optional<float> x = s_parseLength(tokens[0]);
+    std::optional<float> y = tokens.size() == 2 ? s_parseLength(tokens[1]) : x;
+    if (!x.has_value() || !y.has_value()) {
+        return std::nullopt;
     }
-    AM_LOG_WARN("Size value expects 1 or 2 length values: {}", std::string(sv));
-    return StyleValue(vec2(0.0f));
+    return StyleValue(vec2(*x, *y));
 }
 
-static StyleValue s_parse_NUMBER(std::string_view sv, Style &)
+static ParsedValue s_parse_NUMBER(std::string_view sv, Style &)
 {
-    return StyleValue(s_parseNumber(s_trim(sv)));
+    std::optional<float> v = s_parseNumber(sv);
+    if (!v.has_value()) {
+        AM_LOG_WARN("Invalid number: {}", std::string(s_trim(sv)));
+    }
+    return s_wrap(v);
 }
 
 struct PropParser {
     StyleProperty prop;
-    StyleValue (*parse)(std::string_view, Style &);
+    ParsedValue (*parse)(std::string_view, Style &);
 };
 
 static const std::unordered_map<std::string, PropParser> &s_propParsers()
@@ -419,27 +517,27 @@ static void s_parseSpacing(std::string_view value, std::vector<Decl> &out, Style
                            StyleProperty bottom, StyleProperty left)
 {
     std::vector<std::string_view> tokens = s_splitWhitespace(value);
-    if (tokens.size() == 1) {
-        UDim v = s_parseUDim(tokens[0]);
-        out.push_back({top, StyleValue(v)});
-        out.push_back({right, StyleValue(v)});
-        out.push_back({bottom, StyleValue(v)});
-        out.push_back({left, StyleValue(v)});
-    } else if (tokens.size() == 2) {
-        UDim vertical = s_parseUDim(tokens[0]);
-        UDim horizontal = s_parseUDim(tokens[1]);
-        out.push_back({top, StyleValue(vertical)});
-        out.push_back({bottom, StyleValue(vertical)});
-        out.push_back({left, StyleValue(horizontal)});
-        out.push_back({right, StyleValue(horizontal)});
-    } else if (tokens.size() == 4) {
-        out.push_back({top, StyleValue(s_parseUDim(tokens[0]))});
-        out.push_back({right, StyleValue(s_parseUDim(tokens[1]))});
-        out.push_back({bottom, StyleValue(s_parseUDim(tokens[2]))});
-        out.push_back({left, StyleValue(s_parseUDim(tokens[3]))});
-    } else {
+    if (tokens.size() != 1 && tokens.size() != 2 && tokens.size() != 4) {
         AM_LOG_WARN("Spacing shorthand expects 1, 2 or 4 values: {}", std::string(value));
+        return;
     }
+    std::array<UDim, 4> v{};
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        std::optional<UDim> d = s_parseUDim(tokens[i]);
+        if (!d.has_value()) {
+            return;
+        }
+        v[i] = *d;
+    }
+    if (tokens.size() == 1) {
+        v = {v[0], v[0], v[0], v[0]};
+    } else if (tokens.size() == 2) {
+        v = {v[0], v[1], v[0], v[1]};
+    }
+    out.push_back({top, StyleValue(v[0])});
+    out.push_back({right, StyleValue(v[1])});
+    out.push_back({bottom, StyleValue(v[2])});
+    out.push_back({left, StyleValue(v[3])});
 }
 
 static void s_parseDeclaration(std::string_view key, std::string_view value, std::vector<Decl> &out, Style &style)
@@ -461,7 +559,12 @@ static void s_parseDeclaration(std::string_view key, std::string_view value, std
         AM_LOG_WARN("Unknown style property: {}", std::string(key));
         return;
     }
-    out.push_back({it->second.prop, it->second.parse(value, style)});
+    ParsedValue parsed = it->second.parse(value, style);
+    if (!parsed.has_value()) {
+        AM_LOG_WARN("Dropping declaration '{}: {}'", std::string(key), std::string(value));
+        return;
+    }
+    out.push_back({it->second.prop, std::move(*parsed)});
 }
 
 static std::vector<Decl> s_parseBlock(std::string_view block, Style &style, const VarMap &vars)
@@ -495,11 +598,8 @@ static std::vector<Decl> s_parseBlock(std::string_view block, Style &style, cons
  * left to right. Comma-separated lists are split into simple selectors before this stage.
  */
 struct SelectorSpec {
-    std::optional<ComponentType> type;
-    StyleKey classToken = 0;
+    StyleSelector selector;
     std::string className;
-    ComponentPart part = ComponentPart::NONE;
-    uint16_t stateBit = GUI_STATE_NONE;
     bool valid = false;
 };
 
@@ -529,6 +629,10 @@ static SelectorSpec s_parseSelector(std::string_view sel)
         AM_LOG_WARN("Empty selector");
         return out;
     }
+    if (std::any_of(sel.begin(), sel.end(), [](char c) { return std::isspace(static_cast<unsigned char>(c)) != 0; })) {
+        AM_LOG_WARN("Selector contains whitespace; descendant combinators are not supported: {}", std::string(sel));
+        return out;
+    }
 
     const auto &typeNames = Style::getComponentTypeNames();
 
@@ -542,11 +646,9 @@ static SelectorSpec s_parseSelector(std::string_view sel)
             AM_LOG_WARN("Unknown component type in selector: {}", std::string(typePart));
             return out;
         }
-        out.type = typeIt->second;
+        out.selector.type = typeIt->second;
     }
 
-    bool sawClass = false;
-    bool sawPart = false;
     bool sawPseudo = false;
     std::string_view pseudoName;
 
@@ -561,51 +663,46 @@ static SelectorSpec s_parseSelector(std::string_view sel)
             AM_LOG_WARN("Malformed selector segment in: {}", std::string(sel));
             return out;
         }
+        if (sawPseudo) {
+            AM_LOG_WARN("A pseudo-state must end the selector: {}", std::string(sel));
+            return out;
+        }
 
         if (sigil == '.') {
-            if (sawClass) {
+            if (out.selector.cls.has_value()) {
                 AM_LOG_WARN("Selector names more than one class: {}", std::string(sel));
                 return out;
             }
-            sawClass = true;
+            if (out.selector.part != ComponentPart::NONE) {
+                AM_LOG_WARN("A class must come before the #part: {}", std::string(sel));
+                return out;
+            }
             out.className = std::string(seg);
-            out.classToken = Style::classToken(out.className);
+            out.selector.cls = Style::classToken(out.className);
         } else if (sigil == '#') {
-            if (sawPart) {
+            if (out.selector.part != ComponentPart::NONE) {
                 AM_LOG_WARN("Selector names more than one part: {}", std::string(sel));
                 return out;
             }
-            sawPart = true;
             const auto &partNames = Style::getPartNames();
             auto partIt = partNames.find(std::string(seg));
             if (partIt == partNames.end()) {
                 AM_LOG_WARN("Unknown part name in selector: {}", std::string(seg));
                 return out;
             }
-            out.part = partIt->second;
+            out.selector.part = partIt->second;
         } else { // ':'
-            if (sawPseudo) {
-                AM_LOG_WARN("Chained pseudo-states are not supported: {}", std::string(sel));
-                return out;
-            }
             sawPseudo = true;
             pseudoName = seg;
         }
     }
 
-    if (sawPseudo) {
-        if (!s_parsePseudoState(pseudoName, out.stateBit)) {
-            AM_LOG_WARN("Unknown pseudo-state ':{}'; skipping rule", std::string(pseudoName));
-            return out;
-        }
-        if (!sawClass && !sawPart) {
-            AM_LOG_WARN("Pseudo-states are not supported on bare type selectors; use a class or #part instead: ':{}'",
-                        std::string(pseudoName));
-            return out;
-        }
+    if (sawPseudo && !s_parsePseudoState(pseudoName, out.selector.state)) {
+        AM_LOG_WARN("Unknown pseudo-state ':{}'; skipping rule", std::string(pseudoName));
+        return out;
     }
 
-    if (!out.type.has_value() && !sawClass && !sawPart) {
+    if (!out.selector.type.has_value() && !out.selector.cls.has_value() && out.selector.part == ComponentPart::NONE) {
         AM_LOG_WARN("Selector names no type, class or part: {}", std::string(sel));
         return out;
     }
@@ -619,79 +716,102 @@ static void s_applySelector(const SelectorSpec &sel, const std::vector<Decl> &de
     if (!sel.valid) {
         return;
     }
-
-    bool hasType = sel.type.has_value();
-    bool hasClass = sel.classToken != 0;
-    bool hasPart = sel.part != ComponentPart::NONE;
-
-    if (hasType && !hasClass && !hasPart) {
-        for (const auto &[prop, value] : decls) {
-            style.addTypeValue(*sel.type, prop, value);
-        }
-        return;
+    if (sel.selector.cls.has_value()) {
+        style.registerClassName(*sel.selector.cls, sel.className);
     }
-
-    if (!hasType && hasClass && !hasPart) {
-        style.registerClassName(sel.classToken, sel.className);
-        uint32_t o = order++;
-        for (const auto &[prop, value] : decls) {
-            style.addClassRule(sel.classToken, o, prop, value, sel.stateBit);
-        }
-        return;
+    uint32_t o = order++;
+    for (const auto &[prop, value] : decls) {
+        style.addRule(sel.selector, o, prop, value);
     }
-
-    if (hasType && hasClass && !hasPart) {
-        style.registerClassName(sel.classToken, sel.className);
-        uint32_t o = order++;
-        for (const auto &[prop, value] : decls) {
-            style.addTypeClassRule(*sel.type, sel.classToken, o, prop, value, sel.stateBit);
-        }
-        return;
-    }
-
-    if (hasType && !hasClass && hasPart) {
-        uint32_t o = order++;
-        for (const auto &[prop, value] : decls) {
-            style.addPartRule(sel.part, o, prop, value, sel.stateBit);
-        }
-        return;
-    }
-
-    if (!hasType && hasClass && hasPart) {
-        style.registerClassName(sel.classToken, sel.className);
-        uint32_t o = order++;
-        for (const auto &[prop, value] : decls) {
-            style.addClassPartRule(sel.classToken, sel.part, o, prop, value, sel.stateBit);
-        }
-        return;
-    }
-
-    AM_LOG_WARN("Unsupported selector combination (type+class+part, or a bare #part)");
 }
 
+/**
+ * @brief Strip block and line comments, leaving quoted strings and parenthesised values (which may
+ * hold a "//" of their own, e.g. a URL) untouched.
+ */
 static std::string s_stripComments(std::string_view src)
 {
     std::string out;
     out.reserve(src.size());
+    char quote = 0;
+    int parenDepth = 0;
     for (size_t i = 0; i < src.size();) {
-        if (i + 1 < src.size() && src[i] == '/' && src[i + 1] == '*') {
-            i += 2;
-            while (i + 1 < src.size() && !(src[i] == '*' && src[i + 1] == '/')) {
-                ++i;
+        char c = src[i];
+        if (quote != 0) {
+            out.push_back(c);
+            if (c == quote) {
+                quote = 0;
+            } else if (c == '\n') {
+                quote = 0; // an unterminated string ends with its line rather than eating the file
             }
-            i += 2;
+            ++i;
+            continue;
+        }
+        if (i + 1 < src.size() && c == '/' && src[i + 1] == '*') {
+            size_t end = src.find("*/", i + 2);
+            if (end == std::string_view::npos) {
+                AM_LOG_WARN("Unterminated block comment");
+                break;
+            }
+            i = end + 2;
             out.push_back(' ');
-        } else if (i + 1 < src.size() && src[i] == '/' && src[i + 1] == '/') {
-            i += 2;
+            continue;
+        }
+        if (parenDepth == 0 && i + 1 < src.size() && c == '/' && src[i + 1] == '/') {
             while (i < src.size() && src[i] != '\n') {
                 ++i;
             }
-        } else {
-            out.push_back(src[i]);
-            ++i;
+            continue;
         }
+        if (c == '"' || c == '\'') {
+            quote = c;
+        } else if (c == '(') {
+            ++parenDepth;
+        } else if (c == ')' && parenDepth > 0) {
+            --parenDepth;
+        } else if (c == '\n' || c == ';' || c == '{' || c == '}') {
+            parenDepth = 0; // a stray '(' never outlives its declaration
+        }
+        out.push_back(c);
+        ++i;
     }
     return out;
+}
+
+/**
+ * @brief Skip a brace-delimited block, nested braces included.
+ * @param bracePos Position of the block's opening '{'
+ * @return Position just after its matching '}', or the end of the source
+ */
+static size_t s_skipBlock(std::string_view src, size_t bracePos)
+{
+    int depth = 0;
+    for (size_t i = bracePos; i < src.size(); ++i) {
+        if (src[i] == '{') {
+            ++depth;
+        } else if (src[i] == '}' && --depth == 0) {
+            return i + 1;
+        }
+    }
+    return src.size();
+}
+
+/**
+ * @brief Skip an at-rule this parser does not know: up to its ';', or past its {...} block if the
+ * block comes first, so the rule after it is not swallowed into the at-rule's prelude.
+ * @return Position just after the skipped at-rule
+ */
+static size_t s_skipUnknownAtRule(std::string_view src, size_t pos)
+{
+    size_t semi = src.find(';', pos);
+    size_t brace = src.find('{', pos);
+    if (semi != std::string_view::npos && (brace == std::string_view::npos || semi < brace)) {
+        return semi + 1;
+    }
+    if (brace == std::string_view::npos) {
+        return src.size();
+    }
+    return s_skipBlock(src, brace);
 }
 
 static Style s_parseSource(std::string_view rawSource)
@@ -724,6 +844,9 @@ static Style s_parseSource(std::string_view rawSource)
             }
             std::string_view name = rest.substr(0, sep);
             std::string_view literal = s_trim(rest.substr(sep));
+            if (!literal.empty() && literal.back() == ';') {
+                literal = s_trim(literal.substr(0, literal.size() - 1));
+            }
             if (name.empty() || literal.empty()) {
                 AM_LOG_WARN("Malformed @property directive: {}", std::string(directive));
             } else {
@@ -733,6 +856,16 @@ static Style s_parseSource(std::string_view rawSource)
                 }
             }
             pos = eol == std::string_view::npos ? src.size() : eol + 1;
+            continue;
+        }
+
+        if (src[pos] == '@') {
+            size_t nameEnd = pos + 1;
+            while (nameEnd < src.size() && s_isVariableNameChar(src[nameEnd])) {
+                ++nameEnd;
+            }
+            AM_LOG_WARN("Unsupported at-rule '{}'; skipping it", std::string(src.substr(pos, nameEnd - pos)));
+            pos = s_skipUnknownAtRule(src, pos);
             continue;
         }
 
@@ -746,6 +879,13 @@ static Style s_parseSource(std::string_view rawSource)
             AM_LOG_WARN("Unterminated rule body");
             break;
         }
+        // a '{' before the closing brace means a nested block, which the syntax has no use for
+        size_t nested = src.find('{', braceOpen + 1);
+        if (nested != std::string_view::npos && nested < braceClose) {
+            AM_LOG_WARN("Nested '{{' in rule body; skipping rule");
+            pos = s_skipBlock(src, braceOpen);
+            continue;
+        }
 
         std::string_view selectorList = src.substr(pos, braceOpen - pos);
         std::string_view block = src.substr(braceOpen + 1, braceClose - braceOpen - 1);
@@ -754,6 +894,7 @@ static Style s_parseSource(std::string_view rawSource)
         std::vector<Decl> decls = s_parseBlock(block, style, vars);
         for (std::string_view selText : s_split(selectorList, ',')) {
             if (selText.empty()) {
+                AM_LOG_WARN("Empty entry in selector list: {}", std::string(s_trim(selectorList)));
                 continue;
             }
             SelectorSpec sel = s_parseSelector(selText);
