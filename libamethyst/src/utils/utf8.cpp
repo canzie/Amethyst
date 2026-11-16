@@ -108,7 +108,21 @@ size_t alignToBoundary(std::string_view text, size_t pos)
     if (!s_isContinuation(static_cast<unsigned char>(text[pos]))) {
         return pos;
     }
-    return prevBoundary(text, pos);
+
+    // Only snap back if pos really is inside a valid sequence. A stray continuation byte
+    // is its own one-byte unit to nextBoundary/decode, so it must be a boundary here too,
+    // or a caret stepped forward onto it gets pulled back and can never pass it.
+    size_t start = pos;
+    for (size_t steps = 0; start > 0 && steps < MAX_SEQUENCE - 1; ++steps) {
+        --start;
+        if (!s_isContinuation(static_cast<unsigned char>(text[start]))) {
+            break;
+        }
+    }
+    if (start < pos && start + decode(text, start).bytes > pos) {
+        return start;
+    }
+    return pos;
 }
 
 size_t encode(uint32_t codepoint, char out[MAX_SEQUENCE])

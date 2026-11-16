@@ -183,6 +183,7 @@ class TextArea : public UIInput {
         uint32_t rowCount = 0;
         uint16_t font = FontId::INVALID;
         float fontSize = 0.0f;
+        float lineHeight = 0.0f;
         float tabSize = 0.0f;
         uint32_t color = 0;
 
@@ -211,6 +212,9 @@ class TextArea : public UIInput {
     std::vector<TextRowLayout> m_rows;
     RowShapeState m_rowShape;
     uint64_t m_rowsFirstLine = 0;
+    // false once an edit has made m_rows stale; they keep their buffers for the next reshape
+    // but must not answer rowForLine until then
+    bool m_rowsCurrent = false;
     mutable TextRowLayout m_probeRow;
     mutable uint64_t m_probeLine = UINT64_MAX;
 

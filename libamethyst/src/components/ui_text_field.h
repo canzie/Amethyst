@@ -33,6 +33,13 @@ class UITextField : public UIInput {
     virtual ~UITextField();
 
     std::string getText() const { return m_text; }
+
+    /**
+     * @brief Replace the buffer programmatically.
+     *
+     * Not passed through acceptText() or maxLength, so callers may show formatted values.
+     * A single-line field turns line breaks into spaces, since it cannot show them.
+     */
     void setText(const std::string &text);
     void clearText();
 
@@ -43,6 +50,14 @@ class UITextField : public UIInput {
      * @brief Select the entire buffer, as if the user pressed Ctrl+A.
      */
     void selectAll();
+
+    /**
+     * @brief True if a non-empty span is selected; a click leaves an anchor at the caret
+     * without selecting anything.
+     */
+    bool hasSelection() const { return m_selectionStart.has_value() && *m_selectionStart != m_cursorPosition; }
+
+    size_t getCursorPosition() const { return m_cursorPosition; }
 
     bool setTextInputProperties(const TextInputStylePropertiesArgs &props);
     const TextInputStyleProperties &getTextInputProperties() const { return m_tiProps; }
@@ -92,6 +107,12 @@ class UITextField : public UIInput {
     TextInputStyleProperties m_tiProps;
 
   private:
+    /**
+     * @brief Normalise line breaks for this field: CRLF/CR become LF, and a single-line
+     * field turns each break into a space.
+     */
+    std::string sanitizeLineBreaks(std::string_view text) const;
+
     void insertText(const std::string &text);
     void deleteSelection();
     void moveCursor(int delta, bool select);

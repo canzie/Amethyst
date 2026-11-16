@@ -12,9 +12,22 @@ namespace Amethyst {
 static constexpr float FT_POS_TO_PIXELS = 1.0f / 64.0f;
 static constexpr float FT_FIXED_TO_PIXELS = 1.0f / 65536.0f;
 
+// The face is owned here rather than by FontLoader, so dropping an Impl for any reason
+// (destruction, move-assignment over a loaded loader) releases it.
 struct FontLoader::Impl {
     FT_Face face = nullptr;
     uint32_t pixelSize = 0;
+
+    Impl() = default;
+    Impl(const Impl &) = delete;
+    Impl &operator=(const Impl &) = delete;
+
+    ~Impl()
+    {
+        if (face != nullptr) {
+            FT_Done_Face(face);
+        }
+    }
 };
 
 // FT_Library owns the module list and memory manager, so every face shares one.
@@ -33,12 +46,7 @@ static FT_Library s_freetype()
 
 FontLoader::FontLoader() : m_impl(std::make_unique<Impl>()) {}
 
-FontLoader::~FontLoader()
-{
-    if (m_impl && m_impl->face) {
-        FT_Done_Face(m_impl->face);
-    }
-}
+FontLoader::~FontLoader() = default;
 
 FontLoader::FontLoader(FontLoader &&other) noexcept : m_impl(std::move(other.m_impl)) {}
 
@@ -57,10 +65,12 @@ bool FontLoader::loadFont(const std::string &path)
         return false;
     }
 
-    if (m_impl->face) {
+    if (m_impl->face != nullptr) {
         FT_Done_Face(m_impl->face);
         m_impl->face = nullptr;
     }
+    // the new face has no size yet, so the next setPixelSize must not early-out
+    m_impl->pixelSize = 0;
 
     FT_Error error = FT_New_Face(library, path.c_str(), 0, &m_impl->face);
     if (error) {

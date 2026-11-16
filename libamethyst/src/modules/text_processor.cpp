@@ -289,7 +289,8 @@ vec2 TextProcessor::measureTextAtlas(const std::string &text, const TextLayoutPa
     }
 
     maxWidth = std::max(maxWidth, lineWidth);
-    return {maxWidth, static_cast<float>(lineCount) * metrics.lineHeight};
+    // same line pitch as s_shapeText, so a measured block is exactly as tall as its layout
+    return {maxWidth, static_cast<float>(lineCount) * metrics.lineHeight * params.lineHeight};
 }
 
 std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text, const TextLayoutParams &params) const

@@ -51,6 +51,8 @@ void TextLabel::resolveStyle()
         Style::instance().getTextStyle(ComponentType::TEXT_LABEL, getClasses(), effectiveGuiState(), m_part);
     if (m_textStyle.apply(resolved)) {
         m_font = FontRegistry::instance().findFont(m_textStyle.fontFamily);
+        // a restyle can change size or family, and m_textSize is only remeasured on an invalid layout
+        m_textLayout.invalidate();
         markDirty();
     }
 }
@@ -108,7 +110,15 @@ void TextLabel::draw(DrawContext &ctx)
 
 void TextLabel::updateTextGeometry(DrawContext &ctx)
 {
-    if (ctx.textProcessor == nullptr || ctx.geometry == nullptr || ctx.glyphAtlas == nullptr || m_text.empty()) {
+    if (ctx.textProcessor == nullptr || ctx.geometry == nullptr || ctx.glyphAtlas == nullptr) {
+        return;
+    }
+
+    // clearing the text has to drop the glyphs of the previous string, not just skip drawing
+    if (m_text.empty()) {
+        releaseText(ctx);
+        m_textSize = {0.0f, 0.0f};
+        m_textLayout.invalidate();
         return;
     }
 
@@ -126,9 +136,13 @@ void TextLabel::updateTextGeometry(DrawContext &ctx)
         return;
     }
 
-    uint32_t pixelSize = static_cast<uint32_t>(m_textStyle.fontSize);
     if (!m_textLayout.isValid()) {
-        m_textSize = ctx.textProcessor->measureTextAtlas(m_text, m_font, pixelSize);
+        // measured with the same line height the layout uses, so textScaled fits the real block
+        TextLayoutParams measure;
+        measure.font = m_font;
+        measure.fontSize = static_cast<float>(static_cast<uint32_t>(m_textStyle.fontSize));
+        measure.lineHeight = m_textStyle.lineHeight;
+        m_textSize = ctx.textProcessor->measureTextAtlas(m_text, measure);
     }
 
     float effectiveFontSize = m_textStyle.fontSize;
@@ -142,6 +156,7 @@ void TextLabel::updateTextGeometry(DrawContext &ctx)
     bool glyphVisible = isVisible();
 
     TextLayoutState next;
+    next.font = m_font.index;
     next.fontSize = effectiveFontSize;
     next.bounds = absoluteContentSize;
     next.lineHeight = m_textStyle.lineHeight;
