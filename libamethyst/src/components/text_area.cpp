@@ -111,6 +111,7 @@ bool TextArea::setTextAreaProperties(const TextAreaStylePropertiesArgs &props)
 void TextArea::invalidateRows()
 {
     m_rowShape = RowShapeState{};
+    m_rowsCurrent = false;
     m_probeLine = UINT64_MAX;
 }
 
@@ -247,7 +248,7 @@ uint32_t TextArea::fullyVisibleRowCount() const
 
 const TextRowLayout &TextArea::rowForLine(uint64_t line) const
 {
-    if (line >= m_rowsFirstLine && line - m_rowsFirstLine < m_rows.size()) {
+    if (m_rowsCurrent && line >= m_rowsFirstLine && line - m_rowsFirstLine < m_rows.size()) {
         return m_rows[line - m_rowsFirstLine];
     }
 
@@ -699,6 +700,7 @@ bool TextArea::layoutVisibleRows()
         bool had = !m_rows.empty();
         m_rows.clear();
         m_rowShape = RowShapeState{};
+        m_rowsCurrent = false;
         return had;
     }
 
@@ -719,6 +721,7 @@ bool TextArea::layoutVisibleRows()
     next.rowCount = static_cast<uint32_t>(rows);
     next.font = m_font.index;
     next.fontSize = m_taProps.text.fontSize;
+    next.lineHeight = m_taProps.text.lineHeight;
     next.tabSize = m_taProps.tabSize;
     next.color = packColor(m_taProps.text.textColor);
 
@@ -740,6 +743,7 @@ bool TextArea::layoutVisibleRows()
     for (uint64_t i = 0; i < rows; i++) {
         m_textProcessor->layoutTextRow(m_source->line(m_firstVisibleLine + i), params, m_rows[i]);
     }
+    m_rowsCurrent = true;
     return true;
 }
 
@@ -984,6 +988,7 @@ void TextArea::draw(DrawContext &ctx)
         if (m_anchor.has_value()) {
             m_anchor = clampPosition(*m_anchor);
         }
+        invalidateRows();
         markDirty();
     }
 

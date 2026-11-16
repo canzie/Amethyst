@@ -47,6 +47,7 @@ struct TextLayoutParams {
  * with the snapshot but is excluded from matches().
  */
 struct TextLayoutState {
+    uint16_t font = FontId::INVALID;
     float fontSize = 0.0f;
     vec2 bounds = {0.0f, 0.0f};
     float lineHeight = 0.0f;
@@ -65,7 +66,7 @@ struct TextLayoutState {
      */
     bool matches(const TextLayoutState &o) const
     {
-        return fontSize == o.fontSize && bounds == o.bounds && lineHeight == o.lineHeight && color == o.color &&
+        return font == o.font && fontSize == o.fontSize && bounds == o.bounds && lineHeight == o.lineHeight && color == o.color &&
                zIndex == o.zIndex && xAlign == o.xAlign && yAlign == o.yAlign && truncate == o.truncate && wrap == o.wrap;
     }
 
@@ -180,8 +181,8 @@ class TextProcessor {
      * applied; measure through the layout path if a wrap width matters.
      *
      * @param text The text to measure
-     * @param params Layout parameters; fontSize, letterSpacing and tabSize are honoured
-     * @return Width of the widest line, and the total height of all lines
+     * @param params Layout parameters; font, fontSize, letterSpacing, lineHeight and tabSize are honoured
+     * @return Width of the widest line, and the total height of all lines (lineCount * line height * lineHeight)
      */
     vec2 measureTextAtlas(const std::string &text, const TextLayoutParams &params) const;
 

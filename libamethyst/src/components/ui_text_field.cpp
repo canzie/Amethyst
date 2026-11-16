@@ -93,10 +93,28 @@ void UITextField::setPlaceholder(std::string placeholder)
     }
 }
 
+std::string UITextField::sanitizeLineBreaks(std::string_view text) const
+{
+    std::string out;
+    out.reserve(text.size());
+    for (size_t i = 0; i < text.size(); i++) {
+        char ch = text[i];
+        if (ch == '\r' || ch == '\n') {
+            if (ch == '\r' && i + 1 < text.size() && text[i + 1] == '\n') {
+                i++;
+            }
+            out.push_back(m_tiProps.multiline ? '\n' : ' ');
+        } else {
+            out.push_back(ch);
+        }
+    }
+    return out;
+}
+
 void UITextField::setText(const std::string &text)
 {
-    m_text = text;
-    m_cursorPosition = std::min(m_cursorPosition, m_text.size());
+    m_text = sanitizeLineBreaks(text);
+    m_cursorPosition = Utf8::alignToBoundary(m_text, std::min(m_cursorPosition, m_text.size()));
     m_selectionStart = std::nullopt;
     markDirty();
     if (onTextChanged) {
@@ -122,18 +140,25 @@ void UITextField::moveCursorToPoint(vec2 position, bool extendSelection)
 
 void UITextField::onKeyPressed(const KeyEvent &event)
 {
-    if (m_tiProps.readOnly) {
-        return;
-    }
-
-    bool ctrl = event.mods & MOD_CONTROL;
-    bool shift = event.mods & MOD_SHIFT;
+    // read-only still navigates, selects and copies; only the edits below check it
+    bool editable = !m_tiProps.readOnly;
+    bool ctrl = (event.mods & MOD_CONTROL) != 0;
+    bool shift = (event.mods & MOD_SHIFT) != 0;
 
     switch (event.key) {
     case KEY_BACKSPACE:
-        if (m_selectionStart.has_value()) {
+        if (!editable) {
+            break;
+        }
+        resetCursorBlink();
+        if (hasSelection()) {
             deleteSelection();
-        } else if (m_cursorPosition > 0) {
+            break;
+        }
+        // an empty anchor left by a click must not outlive the edit, or it turns into a
+        // selection once the caret moves away from it
+        m_selectionStart = std::nullopt;
+        if (m_cursorPosition > 0) {
             // Erase a whole codepoint, not a byte: a multi-byte sequence would
             // otherwise be left truncated and render as a replacement box.
             size_t start = Utf8::prevBoundary(m_text, m_cursorPosition);
@@ -144,13 +169,19 @@ void UITextField::onKeyPressed(const KeyEvent &event)
                 onTextChanged(m_text);
             }
         }
-        resetCursorBlink();
         break;
 
     case KEY_DELETE:
-        if (m_selectionStart.has_value()) {
+        if (!editable) {
+            break;
+        }
+        resetCursorBlink();
+        if (hasSelection()) {
             deleteSelection();
-        } else if (m_cursorPosition < m_text.size()) {
+            break;
+        }
+        m_selectionStart = std::nullopt;
+        if (m_cursorPosition < m_text.size()) {
             size_t end = Utf8::nextBoundary(m_text, m_cursorPosition);
             m_text.erase(m_cursorPosition, end - m_cursorPosition);
             markDirty();
@@ -158,7 +189,6 @@ void UITextField::onKeyPressed(const KeyEvent &event)
                 onTextChanged(m_text);
             }
         }
-        resetCursorBlink();
         break;
 
     case KEY_LEFT:
@@ -194,27 +224,32 @@ void UITextField::onKeyPressed(const KeyEvent &event)
         break;
 
     case KEY_V:
-        if (ctrl) {
+        if (ctrl && editable) {
             paste();
         }
         break;
 
     case KEY_X:
-        if (ctrl) {
+        if (ctrl && editable) {
             cut();
         }
         break;
 
     case KEY_ENTER:
+        if (!editable) {
+            break;
+        }
+        resetCursorBlink();
         if (m_tiProps.multiline) {
             insertText("\n");
         } else {
             onCommit();
-            if (onEnterPressed) {
-                onEnterPressed();
+            // last thing touched: the handler may destroy this field (and the std::function
+            // with it), so it is called through a copy and nothing follows it
+            if (auto onEnter = onEnterPressed; onEnter != nullptr) {
+                onEnter();
             }
         }
-        resetCursorBlink();
         break;
 
     default:
@@ -228,7 +263,7 @@ void UITextField::onCharacterTyped(uint32_t codepoint)
         return;
     }
 
-    if (codepoint >= 32 || codepoint == '\n') {
+    if (codepoint >= 32 || (codepoint == '\n' && m_tiProps.multiline)) {
         char utf8[Utf8::MAX_SEQUENCE];
         size_t bytes = Utf8::encode(codepoint, utf8);
         insertText(std::string(utf8, bytes));
@@ -242,29 +277,41 @@ void UITextField::insertText(const std::string &text)
         return;
     }
 
+    std::string insert = sanitizeLineBreaks(text);
+
     std::string candidate = m_text;
     size_t insertAt = m_cursorPosition;
-    if (m_selectionStart.has_value()) {
+    if (hasSelection()) {
         size_t start = std::min(m_cursorPosition, *m_selectionStart);
         size_t end = std::max(m_cursorPosition, *m_selectionStart);
         candidate.erase(start, end - start);
         insertAt = start;
     }
-    candidate.insert(insertAt, text);
 
-    if (m_tiProps.maxLength >= 0 && static_cast<int32_t>(candidate.size()) > m_tiProps.maxLength) {
-        return;
+    // maxLength counts codepoints, and an over-long paste keeps the part that fits rather
+    // than being dropped whole
+    if (m_tiProps.maxLength >= 0) {
+        size_t limit = static_cast<size_t>(m_tiProps.maxLength);
+        size_t existing = Utf8::count(candidate);
+        size_t room = existing < limit ? limit - existing : 0;
+        size_t cut = 0;
+        for (size_t taken = 0; cut < insert.size() && taken < room; taken++) {
+            cut = Utf8::nextBoundary(insert, cut);
+        }
+        insert.resize(cut);
+        if (insert.empty()) {
+            return;
+        }
     }
+
+    candidate.insert(insertAt, insert);
     if (!acceptText(candidate)) {
         return;
     }
 
-    if (m_selectionStart.has_value()) {
-        deleteSelection();
-    }
-
-    m_text.insert(m_cursorPosition, text);
-    m_cursorPosition += text.size();
+    m_text = std::move(candidate);
+    m_cursorPosition = insertAt + insert.size();
+    m_selectionStart = std::nullopt;
     markDirty();
 
     if (onTextChanged) {
@@ -274,7 +321,8 @@ void UITextField::insertText(const std::string &text)
 
 void UITextField::deleteSelection()
 {
-    if (!m_selectionStart.has_value()) {
+    if (!hasSelection()) {
+        m_selectionStart = std::nullopt;
         return;
     }
 
@@ -349,7 +397,7 @@ size_t UITextField::getCursorFromMouseX(int32_t mouseX)
 
 void UITextField::copy()
 {
-    if (!m_selectionStart.has_value()) {
+    if (!hasSelection()) {
         return;
     }
 
@@ -374,7 +422,7 @@ void UITextField::paste()
 
 void UITextField::cut()
 {
-    if (m_tiProps.readOnly || !m_selectionStart.has_value()) {
+    if (m_tiProps.readOnly || !hasSelection()) {
         return;
     }
 
@@ -457,6 +505,7 @@ void UITextField::drawText(DrawContext &ctx)
     params.wrap = m_tiProps.multiline;
 
     TextLayoutState next;
+    next.font = m_font.index;
     next.fontSize = params.fontSize;
     next.bounds = params.bounds;
     next.lineHeight = params.lineHeight;
@@ -469,7 +518,7 @@ void UITextField::drawText(DrawContext &ctx)
     next.origin = params.position;
 
     bool textChanged = textToRender != m_renderedText;
-    bool sizeChanged = m_textLayout.fontSize != next.fontSize;
+    bool sizeChanged = m_textLayout.fontSize != next.fontSize || m_textLayout.font != next.font;
     bool registryChanged = m_textAlloc != nullptr && m_textAlloc->registry != ctx.geometry;
 
     if (!textChanged && !registryChanged && m_textLayout.matches(next)) {
@@ -524,21 +573,34 @@ void UITextField::drawText(DrawContext &ctx)
     } else if (textChanged || sizeChanged || m_charPositions.empty()) {
         // Indexed by byte so caret offsets can be looked up directly. A multi-byte
         // sequence stores its start x in every one of its byte slots, so a lookup at a
-        // boundary is always the left edge of that codepoint.
+        // boundary is always the left edge of that codepoint. The row layout uses the same
+        // advances and tab stops as the shaper that drew the glyphs, so the caret sits
+        // where the text is. Each hard break restarts x at 0 for its line.
+        // todo: a multiline field still puts the caret on the first line's y, and wrapped
+        //  rows are not reflected here at all.
         m_charPositions.assign(shown.size() + 1, 0.0f);
-        uint32_t pixelSize = static_cast<uint32_t>(m_tiProps.text.fontSize);
-        float currentX = 0.0f;
-        size_t i = 0;
-        while (i < shown.size()) {
-            Utf8::Decoded decoded = Utf8::decode(shown, i);
-            for (size_t byte = 0; byte < decoded.bytes && i + byte < shown.size(); ++byte) {
-                m_charPositions[i + byte] = currentX;
+        TextRowLayoutParams rowParams;
+        rowParams.font = m_font;
+        rowParams.fontSize = m_tiProps.text.fontSize;
+        rowParams.letterSpacing = params.letterSpacing;
+        rowParams.tabSize = params.tabSize;
+
+        TextRowLayout row;
+        float widest = 0.0f;
+        size_t lineStart = 0;
+        while (lineStart <= shown.size()) {
+            size_t lineEnd = shown.find('\n', lineStart);
+            if (lineEnd == std::string::npos) {
+                lineEnd = shown.size();
             }
-            currentX += ctx.textProcessor->getCharAdvanceAtlas(m_font, decoded.codepoint, pixelSize);
-            i += decoded.bytes;
+            ctx.textProcessor->layoutTextRow(std::string_view(shown).substr(lineStart, lineEnd - lineStart), rowParams, row);
+            for (size_t byte = 0; byte < row.columnX.size(); byte++) {
+                m_charPositions[lineStart + byte] = row.columnX[byte];
+            }
+            widest = std::max(widest, row.width);
+            lineStart = lineEnd + 1;
         }
-        m_charPositions[shown.size()] = currentX;
-        m_textWidth = currentX;
+        m_textWidth = widest;
     }
 
     m_renderedText = m_showingPlaceholder ? m_placeholder : std::move(shown);
@@ -554,7 +616,7 @@ void UITextField::drawSelection(DrawContext &ctx)
     vec2 selSize{};
     bool visible = false;
 
-    if (isFocused() && m_selectionStart.has_value() && !m_text.empty() && m_charPositions.size() > 1) {
+    if (isFocused() && hasSelection() && !m_text.empty() && m_charPositions.size() > 1) {
         size_t selStart = std::min(m_cursorPosition, *m_selectionStart);
         size_t selEnd = std::max(m_cursorPosition, *m_selectionStart);
 
@@ -575,6 +637,7 @@ void UITextField::drawSelection(DrawContext &ctx)
     data.setFillColor(m_tiProps.selectionColor);
     data.setPrimitiveType(PRIMITIVE_RECT);
     data.zIndex = getZIndex();
+    data.clipRect = clipRect;
     data.setVisible(visible);
 
     s_pushData(ctx.geometry, m_selectionAlloc, data);
@@ -602,6 +665,7 @@ void UITextField::drawCursor(DrawContext &ctx)
     data.setFillColor(m_tiProps.cursorColor);
     data.setPrimitiveType(PRIMITIVE_RECT);
     data.zIndex = getZIndex();
+    data.clipRect = clipRect;
     data.setVisible(visible);
 
     s_pushData(ctx.geometry, m_cursorAlloc, data);

@@ -99,14 +99,27 @@ void InputInterface::setCursorLocked(bool locked)
 void InputInterface::onKey(int key, int scancode, int action, int mods)
 {
     s_modifiers = mods;
+
+    // a full ring drops the newest event; writing anyway would make head == tail and lose
+    // everything still queued
+    size_t next = (s_keyBufferHead + 1) & (KEY_BUFFER_SIZE - 1);
+    if (next == s_keyBufferTail) {
+        return;
+    }
     s_keyBuffer[s_keyBufferHead] = KeyEvent{key, scancode, static_cast<KeyAction>(action), mods};
-    s_keyBufferHead = (s_keyBufferHead + 1) & (KEY_BUFFER_SIZE - 1);
+    s_keySequence[s_keyBufferHead] = s_nextSequence++;
+    s_keyBufferHead = next;
 }
 
 void InputInterface::onChar(uint32_t codepoint)
 {
+    size_t next = (s_charBufferHead + 1) & (CHAR_BUFFER_SIZE - 1);
+    if (next == s_charBufferTail) {
+        return;
+    }
     s_charBuffer[s_charBufferHead] = codepoint;
-    s_charBufferHead = (s_charBufferHead + 1) & (CHAR_BUFFER_SIZE - 1);
+    s_charSequence[s_charBufferHead] = s_nextSequence++;
+    s_charBufferHead = next;
 }
 
 bool InputInterface::pollKeyEvent(KeyEvent &outEvent)
@@ -129,6 +142,23 @@ bool InputInterface::pollCharEvent(uint32_t &outCodepoint)
     outCodepoint = s_charBuffer[s_charBufferTail];
     s_charBufferTail = (s_charBufferTail + 1) & (CHAR_BUFFER_SIZE - 1);
     return true;
+}
+
+bool InputInterface::pollTextInputEvent(TextInputEvent &outEvent)
+{
+    bool hasKey = s_keyBufferTail != s_keyBufferHead;
+    bool hasChar = s_charBufferTail != s_charBufferHead;
+    if (!hasKey && !hasChar) {
+        return false;
+    }
+
+    bool keyFirst = hasKey && (!hasChar || s_keySequence[s_keyBufferTail] < s_charSequence[s_charBufferTail]);
+    if (keyFirst) {
+        outEvent.kind = TextInputEvent::Kind::KEY;
+        return pollKeyEvent(outEvent.key);
+    }
+    outEvent.kind = TextInputEvent::Kind::CHAR;
+    return pollCharEvent(outEvent.codepoint);
 }
 
 void InputInterface::clearKeyEvents()

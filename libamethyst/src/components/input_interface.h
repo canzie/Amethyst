@@ -32,6 +32,20 @@ enum CursorShape {
     CURSOR_COUNT
 };
 
+/**
+ * @brief One keyboard event in arrival order: either a key action or a typed character.
+ */
+struct TextInputEvent {
+    enum class Kind : uint8_t {
+        KEY,
+        CHAR
+    };
+
+    Kind kind = Kind::KEY;
+    KeyEvent key{};         // valid when kind == KEY
+    uint32_t codepoint = 0; // valid when kind == CHAR
+};
+
 class InputInterface {
   public:
     static void registerWindow(Window *window);
@@ -67,6 +81,18 @@ class InputInterface {
 
     static bool pollKeyEvent(KeyEvent &outEvent);
     static bool pollCharEvent(uint32_t &outCodepoint);
+
+    /**
+     * @brief Pop whichever of the next key and the next character arrived first.
+     *
+     * Text editing needs keys and characters interleaved as typed: draining all keys before
+     * all characters turns 'a', Enter, 'b' within one frame into "\nab".
+     *
+     * @param outEvent Receives the event
+     * @return False if both queues are empty
+     */
+    static bool pollTextInputEvent(TextInputEvent &outEvent);
+
     static void clearKeyEvents();
 
     // WIP stopgap: caches the last mods bitmask seen by any input handler until modifiers
@@ -96,11 +122,16 @@ class InputInterface {
     static inline int s_lastClickButton = -1;
     static inline Window *s_lastClickWindow = nullptr;
 
+    // both queues stamp their entries from one counter, so they can be merged back in order
+    static inline uint64_t s_nextSequence = 0;
+
     static inline std::array<KeyEvent, KEY_BUFFER_SIZE> s_keyBuffer;
+    static inline std::array<uint64_t, KEY_BUFFER_SIZE> s_keySequence;
     static inline size_t s_keyBufferHead = 0;
     static inline size_t s_keyBufferTail = 0;
 
     static inline std::array<uint32_t, CHAR_BUFFER_SIZE> s_charBuffer;
+    static inline std::array<uint64_t, CHAR_BUFFER_SIZE> s_charSequence;
     static inline size_t s_charBufferHead = 0;
     static inline size_t s_charBufferTail = 0;
 };

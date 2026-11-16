@@ -39,6 +39,11 @@ class UIInput : public UIObject {
 
     bool isFocused() const { return m_focused; }
 
+    /**
+     * @brief The input currently holding keyboard focus, or null.
+     */
+    static UIInput *getFocusedInput() { return s_focusedInput; }
+
   public:
     std::function<void()> onFocusGained;
     std::function<void()> onFocusLost;
@@ -89,6 +94,9 @@ class UIInput : public UIObject {
     void onUpdate(float deltaTime);
 
   private:
+    // one input owns the keyboard at a time; a real focus manager would replace this
+    static inline UIInput *s_focusedInput = nullptr;
+
     bool m_focused = false;
     bool m_hovered = false;
     bool m_cursorVisible = true;

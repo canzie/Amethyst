@@ -6,6 +6,7 @@
 #include "components/window.h"
 
 #include <cstdint>
+#include <memory>
 
 namespace Amethyst {
 
@@ -13,6 +14,9 @@ UIInput::UIInput() = default;
 
 UIInput::~UIInput()
 {
+    if (s_focusedInput == this) {
+        s_focusedInput = nullptr;
+    }
     m_tick.unregister();
     if (m_hovered) {
         InputInterface::setCursorShape(CURSOR_ARROW);
@@ -41,7 +45,18 @@ void UIInput::focus()
     if (m_focused) {
         return;
     }
+
+    // the key queue is global, so two focused inputs would both drain it
+    if (s_focusedInput != nullptr && s_focusedInput != this) {
+        std::weak_ptr<bool> alive = aliveToken();
+        s_focusedInput->loseFocus();
+        if (!isAlive(alive) || m_focused) {
+            return;
+        }
+    }
+
     m_focused = true;
+    s_focusedInput = this;
     setGuiState(static_cast<uint16_t>(getGuiState() | GUI_STATE_FOCUSED));
     InputInterface::clearKeyEvents();
 
@@ -57,6 +72,9 @@ void UIInput::loseFocus()
         return;
     }
     m_focused = false;
+    if (s_focusedInput == this) {
+        s_focusedInput = nullptr;
+    }
     setGuiState(static_cast<uint16_t>(getGuiState() & ~GUI_STATE_FOCUSED));
     m_cursorVisible = false;
     m_pressConn.disconnect();
@@ -140,16 +158,24 @@ void UIInput::onUpdate(float deltaTime)
         return;
     }
 
-    KeyEvent keyEvent;
-    while (InputInterface::pollKeyEvent(keyEvent)) {
-        if (keyEvent.action == KEY_ACTION_PRESS || keyEvent.action == KEY_ACTION_REPEAT) {
-            onKeyPressed(keyEvent);
+    // keys and characters in the order they were typed, so Enter between two letters lands
+    // between them. A handler may commit, drop focus or destroy this node, which ends the drain.
+    std::weak_ptr<bool> alive = aliveToken();
+    TextInputEvent event;
+    while (m_focused && InputInterface::pollTextInputEvent(event)) {
+        if (event.kind == TextInputEvent::Kind::KEY) {
+            if (event.key.action == KEY_ACTION_PRESS || event.key.action == KEY_ACTION_REPEAT) {
+                onKeyPressed(event.key);
+            }
+        } else {
+            onCharacterTyped(event.codepoint);
+        }
+        if (!isAlive(alive)) {
+            return;
         }
     }
-
-    uint32_t codepoint;
-    while (InputInterface::pollCharEvent(codepoint)) {
-        onCharacterTyped(codepoint);
+    if (!m_focused) {
+        return;
     }
 
     m_cursorBlinkTimer += deltaTime;
