@@ -144,7 +144,6 @@ void ScrollingFrame::arrange()
     }
 
     bool barsEnabled = m_sfProps.scrollBarVisibility != ScrollBarVisibility::NEVER && isVisible();
-    // ALWAYS keeps a bar on every scroll axis even with nothing to scroll; AUTO only shows one when there is
     bool always = m_sfProps.scrollBarVisibility == ScrollBarVisibility::ALWAYS;
     m_needsVertical = barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) &&
                       (always || m_maxScroll.y > 0.0f);

@@ -15,15 +15,11 @@
 #include "components/ui_button.h"
 #include "modules/event_signal.h"
 #include <cstdint>
-#include <limits>
 
 namespace Amethyst {
 
 class RadioGroup {
   public:
-    // a group starts with nothing selected; with 0 here every value-0 radio would start checked
-    static constexpr int32_t NO_SELECTION = std::numeric_limits<int32_t>::min();
-
     void select(int32_t v)
     {
         if (value == v) {
@@ -33,10 +29,7 @@ class RadioGroup {
         onChanged.fire();
     }
 
-    void clear() { select(NO_SELECTION); }
-    bool hasSelection() const { return value != NO_SELECTION; }
-
-    int32_t value = NO_SELECTION;
+    int32_t value = 0;
     EventSignal<void()> onChanged;
 };
 

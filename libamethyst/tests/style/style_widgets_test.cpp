@@ -191,15 +191,17 @@ TEST_F(ThemedFixture, PropagationKeepsAChildsOwnPart)
 
 // --- radio buttons --------------------------------------------------------------------------
 
-TEST(RadioGroupTest, StartsWithNothingSelected)
+TEST(RadioGroupTest, StartsOnTheFirstValueAndNotifiesChanges)
 {
     RadioGroup group;
-    EXPECT_FALSE(group.hasSelection());
-    EXPECT_NE(group.value, 0);
+    EXPECT_EQ(group.value, 0);
+    int changes = 0;
+    auto conn = group.onChanged.connect([&] { ++changes; });
     group.select(0);
-    EXPECT_TRUE(group.hasSelection());
-    group.clear();
-    EXPECT_FALSE(group.hasSelection());
+    EXPECT_EQ(changes, 0);
+    group.select(2);
+    EXPECT_EQ(group.value, 2);
+    EXPECT_EQ(changes, 1);
 }
 
 TEST_F(ThemedFixture, DefaultThemeGivesSelectedRadioALook)

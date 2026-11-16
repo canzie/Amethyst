@@ -296,9 +296,10 @@ enum class ColorPickerShape {
 };
 
 enum class ScrollBarVisibility {
-    NONE,
-    ALWAYS,
+    // a bar only on an axis whose content overflows; first so a value-initialised field gets it
     AUTO,
+    // a bar on every scroll axis, even when the content fits
+    ALWAYS,
     NEVER,
 };
 
