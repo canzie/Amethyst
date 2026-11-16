@@ -299,7 +299,7 @@ class UIObject : public UIBase2D {
      * @brief The press this node consumed was released somewhere else (over another node, or
      * outside every node). Lets press-tracking components drop their pressed state.
      */
-    virtual void onPressCancelled(InputType type) { (void)type; }
+    virtual void onPressCancelled([[maybe_unused]] InputType type) {}
 
   public:
     EventSignal<void(bool hovered)> onHoverChanged;
