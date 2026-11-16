@@ -174,7 +174,7 @@ InstanceData Spline::makeInstance(const QuadBezier &seg, float thickness, Color4
     data.setPrimitiveType(PRIMITIVE_CANVAS_BEZIER);
     data.setFillColor(color);
     data.setBorderMode(BorderMode::MIDDLE);
-    data.zIndex = getZIndex();
+    data.zIndex = drawZ();
     data.setVisible(isVisible());
 
     float halfThick = thickness * 0.5f;

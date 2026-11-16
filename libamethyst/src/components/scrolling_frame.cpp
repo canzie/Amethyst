@@ -11,6 +11,7 @@
 
 namespace Amethyst {
 
+// among the frame's children, so the bars draw over the content
 static constexpr int32_t Z_SCROLLBAR = 100;
 static constexpr int32_t Z_SCROLLBAR_THUMB = 101;
 
@@ -197,18 +198,10 @@ void ScrollingFrame::arrangeScrollbars()
 
     if (m_needsVertical) {
         if (m_verticalBar == nullptr) {
-            m_verticalBar = std::make_unique<Frame>();
-            m_verticalBar->parent = this;
-            m_verticalBar->name = "vertical bar";
-            m_verticalBar->setBaseProperties({.zIndex = Z_SCROLLBAR});
-            m_verticalBar->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
+            m_verticalBar = makeScrollbarPart(Z_SCROLLBAR, "vertical bar");
         }
         if (m_verticalThumb == nullptr) {
-            m_verticalThumb = std::make_unique<Frame>();
-            m_verticalThumb->parent = this;
-            m_verticalThumb->setBaseProperties({.zIndex = Z_SCROLLBAR_THUMB});
-            m_verticalThumb->name = "vertical thumb";
-            m_verticalThumb->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
+            m_verticalThumb = makeScrollbarPart(Z_SCROLLBAR_THUMB, "vertical thumb");
         }
 
         float trackHeight = absoluteSize.y - (m_needsHorizontal ? m_sfProps.scrollBarThickness : 0.0f);
@@ -246,18 +239,10 @@ void ScrollingFrame::arrangeScrollbars()
 
     if (m_needsHorizontal) {
         if (m_horizontalBar == nullptr) {
-            m_horizontalBar = std::make_unique<Frame>();
-            m_horizontalBar->parent = this;
-            m_horizontalBar->name = "Horizontal Bar";
-            m_horizontalBar->setBaseProperties({.zIndex = Z_SCROLLBAR});
-            m_horizontalBar->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
+            m_horizontalBar = makeScrollbarPart(Z_SCROLLBAR, "Horizontal Bar");
         }
         if (m_horizontalThumb == nullptr) {
-            m_horizontalThumb = std::make_unique<Frame>();
-            m_horizontalThumb->parent = this;
-            m_horizontalThumb->setBaseProperties({.zIndex = Z_SCROLLBAR_THUMB});
-            m_horizontalThumb->name = "Horizontal Thumb";
-            m_horizontalThumb->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
+            m_horizontalThumb = makeScrollbarPart(Z_SCROLLBAR_THUMB, "Horizontal Thumb");
         }
 
         float trackWidth = absoluteSize.x - (m_needsVertical ? m_sfProps.scrollBarThickness : 0.0f);
@@ -290,6 +275,27 @@ void ScrollingFrame::arrangeScrollbars()
     } else {
         m_horizontalBar.reset();
         m_horizontalThumb.reset();
+    }
+}
+
+std::unique_ptr<Frame> ScrollingFrame::makeScrollbarPart(int32_t zIndex, const char *partName)
+{
+    auto part = std::make_unique<Frame>();
+    adoptPart(part.get());
+    part->name = partName;
+    part->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f), .zIndex = zIndex});
+    // the bars only show the scroll position; input goes to whatever lies under them
+    part->ignore(INTERACTION_CATEGORY_ALL);
+    return part;
+}
+
+void ScrollingFrame::collectDrawChildren(std::vector<Instance *> &out)
+{
+    UIObject::collectDrawChildren(out);
+    for (Frame *part : {m_verticalBar.get(), m_verticalThumb.get(), m_horizontalBar.get(), m_horizontalThumb.get()}) {
+        if (part != nullptr) {
+            out.push_back(part);
+        }
     }
 }
 

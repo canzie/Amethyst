@@ -23,7 +23,6 @@ class Slider : public UIObject {
 
     void draw(DrawContext &ctx) override;
     void arrange() override;
-    std::vector<Instance *> getHittableInstances() override;
     void resolveStyle() override;
 
     bool setSliderProperties(const SliderStylePropertiesArgs &props);

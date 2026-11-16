@@ -14,6 +14,11 @@
 
 namespace Amethyst {
 
+// local draw layers over the node's own quad (see UIObject::drawZ): selection under the text, caret on top
+static constexpr uint32_t SELECTION_DRAW_LAYER = 1;
+static constexpr uint32_t TEXT_DRAW_LAYER = 2;
+static constexpr uint32_t CARET_DRAW_LAYER = 3;
+
 static GeometryAllocation *s_pushData(GeometryRegistry *registry, GeometryAllocation *&alloc, const InstanceData &data)
 {
     if (alloc == nullptr) {
@@ -505,7 +510,6 @@ void UITextField::drawText(DrawContext &ctx)
     next.bounds = params.bounds;
     next.lineHeight = params.lineHeight;
     next.color = packColor(params.color);
-    next.zIndex = getZIndex() + 1;
     next.xAlign = params.xAlign;
     next.yAlign = params.yAlign;
     next.truncate = params.truncate;
@@ -523,6 +527,7 @@ void UITextField::drawText(DrawContext &ctx)
                 inst->clipRect = clipRect;
                 inst->setVisible(isVisible());
             }
+            ctx.geometry->setZIndex(*m_textAlloc, drawZ(TEXT_DRAW_LAYER));
         }
         m_textLayout = next;
         m_textStartX = alignStartX(m_textWidth);
@@ -555,7 +560,7 @@ void UITextField::drawText(DrawContext &ctx)
         inst.setFillColor(colorToUse);
         inst.setPrimitiveType(PRIMITIVE_TEXT);
         inst.setGlyphSlice(m_glyphSlice.id);
-        inst.zIndex = getZIndex() + 1;
+        inst.zIndex = drawZ(TEXT_DRAW_LAYER);
         inst.clipRect = clipRect;
         inst.setVisible(isVisible());
 
@@ -629,7 +634,7 @@ void UITextField::drawSelection(DrawContext &ctx)
     data.scale = selSize;
     data.setFillColor(m_tiProps.selectionColor);
     data.setPrimitiveType(PRIMITIVE_RECT);
-    data.zIndex = getZIndex();
+    data.zIndex = drawZ(SELECTION_DRAW_LAYER);
     data.clipRect = clipRect;
     data.setVisible(visible);
 
@@ -657,7 +662,7 @@ void UITextField::drawCursor(DrawContext &ctx)
     data.scale = cursorSize;
     data.setFillColor(m_tiProps.cursorColor);
     data.setPrimitiveType(PRIMITIVE_RECT);
-    data.zIndex = getZIndex();
+    data.zIndex = drawZ(CARET_DRAW_LAYER);
     data.clipRect = clipRect;
     data.setVisible(visible);
 

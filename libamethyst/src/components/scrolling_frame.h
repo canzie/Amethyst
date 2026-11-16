@@ -9,6 +9,7 @@
 #include "components/properties.h"
 #include "components/ui_object.h"
 #include <memory>
+#include <vector>
 
 namespace Amethyst {
 
@@ -22,6 +23,7 @@ class ScrollingFrame : public UIObject {
     void draw(DrawContext &ctx) override;
     void arrange() override;
     void resolveStyle() override;
+    void collectDrawChildren(std::vector<Instance *> &out) override;
 
     const ScrollingFrameStyleProperties &getScrollingFrameProperties() { return m_sfProps; }
     bool setScrollingFrameProperties(const ScrollingFrameStylePropertiesArgs &props);
@@ -67,6 +69,13 @@ class ScrollingFrame : public UIObject {
     bool clampScrollOffset();
     void arrangeScrollbars();
     void drawScrollbars(DrawContext &ctx);
+
+    /**
+     * @brief Create one scrollbar piece, as a part drawn above the content and invisible to input
+     * @param zIndex Its order among the frame's children
+     * @param partName Debug name
+     */
+    std::unique_ptr<Frame> makeScrollbarPart(int32_t zIndex, const char *partName);
 
     vec2 m_scrollOffset = {0.0f, 0.0f};
     vec2 m_maxScroll = {0.0f, 0.0f};

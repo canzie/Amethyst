@@ -244,13 +244,6 @@ void Slider::arrange()
     }
 }
 
-std::vector<Instance *> Slider::getHittableInstances()
-{
-    auto result = Instance::getHittableInstances();
-    result.push_back(m_track);
-    return result;
-}
-
 SliderFloat::SliderFloat() : Slider(NumberKind::FLOATING, "%.3f") {}
 
 void SliderFloat::updateComponents()

@@ -57,7 +57,8 @@ void GeometryRegistry::resortRegistries()
     if (s_registries.size() <= 1) {
         return;
     }
-    std::sort(s_registries.begin(), s_registries.end(), [](GeometryRegistry *a, GeometryRegistry *b) {
+    // stable, so registries tied on display order keep their order; hit-testing relies on it
+    std::stable_sort(s_registries.begin(), s_registries.end(), [](GeometryRegistry *a, GeometryRegistry *b) {
         return a->m_owningLayer->getDisplayOrder() < b->m_owningLayer->getDisplayOrder();
     });
 }
@@ -123,6 +124,16 @@ InstanceData *GeometryRegistry::getMutable(const GeometryAllocation &alloc)
         m_dirtySlotList.push_back(alloc.slotId);
     }
     return &m_slotData[alloc.slotId];
+}
+
+void GeometryRegistry::setZIndex(const GeometryAllocation &alloc, int32_t zIndex)
+{
+    AM_ASSERT(alloc.isValid(), "Trying to move an invalid allocation");
+    AM_ASSERT(alloc.slotId < static_cast<uint32_t>(m_slotData.size()), "Slot ID out of bounds");
+    if (m_slotData[alloc.slotId].zIndex != zIndex) {
+        m_slotData[alloc.slotId].zIndex = zIndex;
+        m_needsRebuild = true;
+    }
 }
 
 void GeometryRegistry::release(GeometryAllocation &alloc)

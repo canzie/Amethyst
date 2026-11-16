@@ -13,8 +13,8 @@
 
 namespace Amethyst {
 
-// level with the header background and listed before it, so whatever sits on the header is hit first and only
-// clicks that pass through it reach the toggle button
+// level with the header background and listed before it, so the background (and whatever sits on it) draws
+// above the button and is hit first: only clicks that pass through it reach the toggle button
 static constexpr int32_t Z_HEADER_BUTTON = 1;
 
 CollapsibleHeader::CollapsibleHeader() : CollapsibleHeader(nullptr, nullptr) {}
@@ -35,7 +35,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     resolveStyle();
 
     m_headerBackground = std::make_unique<Frame>();
-    m_headerBackground->parent = this;
+    adoptPart(m_headerBackground.get());
     m_headerBackground->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
     m_headerBackground->bindPart(ComponentPart::HEADER);
     // the background lies over the toggle button as a surface for header content, so it hears input
@@ -46,7 +46,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_headerBackground->setInheritedStyle(getEffectiveClasses());
 
     m_headerButton = std::make_unique<InvisibleButton>();
-    m_headerButton->parent = this;
+    adoptPart(m_headerButton.get());
     m_headerButton->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
     m_headerButton->track(m_headerButton->onMouseButton1ClickCb.connect([this]() { toggle(); }));
 
@@ -111,6 +111,7 @@ void CollapsibleHeader::toggle()
 {
     m_chProps.expanded = !static_cast<bool>(m_chProps.expanded);
     markDirty();
+    markDrawOrderDirty();
     if (onToggled) {
         onToggled(static_cast<bool>(m_chProps.expanded));
     }
@@ -121,6 +122,7 @@ void CollapsibleHeader::expand()
     if (!static_cast<bool>(m_chProps.expanded)) {
         m_chProps.expanded = true;
         markDirty();
+        markDrawOrderDirty();
         if (onToggled) {
             onToggled(true);
         }
@@ -132,6 +134,7 @@ void CollapsibleHeader::collapse()
     if (static_cast<bool>(m_chProps.expanded)) {
         m_chProps.expanded = false;
         markDirty();
+        markDrawOrderDirty();
         if (onToggled) {
             onToggled(false);
         }
@@ -143,6 +146,7 @@ bool CollapsibleHeader::setCollapsibleHeaderProperties(const CollapsibleHeaderSt
     bool changed = m_chProps.apply(props);
     if (changed) {
         markDirty();
+        markDrawOrderDirty();
     }
     return changed;
 }
@@ -295,20 +299,15 @@ void CollapsibleHeader::markChildrenDirty()
     m_headerButton->flags |= FLAG_DIRTY;
 }
 
-std::vector<Instance *> CollapsibleHeader::getHittableInstances()
+void CollapsibleHeader::collectDrawChildren(std::vector<Instance *> &out)
 {
-    std::vector<Instance *> result;
-    result.push_back(m_headerButton.get());
+    out.push_back(m_headerButton.get());
     // the whole header, so controls placed on it through header() can be hit
-    result.push_back(m_headerBackground.get());
+    out.push_back(m_headerBackground.get());
 
     if (static_cast<bool>(m_chProps.expanded)) {
-        for (auto &child : m_children) {
-            result.push_back(child.get());
-        }
+        UIObject::collectDrawChildren(out);
     }
-
-    return result;
 }
 
 } // namespace Amethyst

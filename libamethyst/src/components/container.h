@@ -11,7 +11,6 @@ class Container : public UIObject {
   public:
     Container();
     void draw(DrawContext &ctx) override;
-    std::vector<Instance *> getHittableInstances() override;
 
   protected:
     EventResult onMouseScrollUp() override { return EventResult::PROPAGATE; }

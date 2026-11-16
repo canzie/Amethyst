@@ -38,7 +38,12 @@ using namespace Amethyst;        // everything is in namespace Amethyst
 
 Enums you'll touch often (all have a leading `NONE` = "unset"): `BorderMode{OUTLINE,MIDDLE,INSET}`,
 `TextXAlignment{LEFT,CENTER,RIGHT}`, `TextYAlignment{TOP,CENTER,BOTTOM}`, `AutomaticSize{OFF,X,Y,XY}`,
-`ZIndexBehavior{GLOBAL,SIBLING}`, `EventResult{CONSUMED,PROPAGATE}`.
+`ZIndexBehavior{RELATIVE,ABSOLUTE}`, `EventResult{CONSUMED,PROPAGATE}`.
+
+`zIndex` orders a node among its siblings (RELATIVE, the default): a layer draws depth-first, a node
+before its children, siblings by (zIndex, child order), so a subtree never interleaves with a neighbouring
+one. ABSOLUTE lifts a node and its subtree out of that walk and places it layer-wide by its zIndex
+(negative below all tree content, otherwise above). Hit-testing is the exact reverse of the draw order.
 
 ## Context + backend lifecycle (engine integration)
 

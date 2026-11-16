@@ -94,9 +94,32 @@ class UIObject : public UIBase2D {
     void setRenderCulled(bool culled);
     bool isRenderCulled() const { return m_renderCulled; }
 
-    int32_t getRelativeZIndex() const { return m_uiObjProps.zIndex; }
-    int32_t getAbsoluteZIndex() const;
-    int32_t getZIndex() const override;
+    /**
+     * @brief z values each node owns in its layer's geometry: local layer 0 is the node's own quad,
+     * the rest are for what it draws on top of it (text, selection, caret).
+     */
+    static constexpr int32_t DRAW_LAYERS_PER_NODE = 4;
+
+    int32_t getZIndex() const override { return m_uiObjProps.zIndex; }
+
+    /**
+     * @brief Position in its layer's draw order, assigned by UILayer::ensureDrawOrder().
+     */
+    uint32_t getDrawOrder() const { return m_drawOrder; }
+
+    /**
+     * @brief Called by the layer's draw order pass; marks the node dirty when the order moved.
+     */
+    void setDrawOrder(uint32_t order);
+
+    /**
+     * @brief The InstanceData::zIndex for one of this node's allocations.
+     * @param localLayer Which of the node's own z values, below DRAW_LAYERS_PER_NODE
+     */
+    int32_t drawZ(uint32_t localLayer = 0) const
+    {
+        return static_cast<int32_t>(m_drawOrder) * DRAW_LAYERS_PER_NODE + static_cast<int32_t>(localLayer);
+    }
     bool isHitTestVisible() const override { return m_uiObjProps.visible && m_uiObjProps.interactable; }
     bool getClipsDescendants() const override { return static_cast<bool>(m_uiObjProps.clipsDescendants); }
 
@@ -334,6 +357,7 @@ class UIObject : public UIBase2D {
     uint64_t m_styleGeneration = 0;
     bool m_renderCulled = false;
     bool m_paddingPinned = false;
+    uint32_t m_drawOrder = 0;
 
   private:
     void updateEffectivePart();

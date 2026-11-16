@@ -21,7 +21,7 @@ class CollapsibleHeader : public UIObject {
     void arrange() override;
     void computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation) override;
     void resolveStyle() override;
-    std::vector<Instance *> getHittableInstances() override;
+    void collectDrawChildren(std::vector<Instance *> &out) override;
     void markChildrenDirty() override;
 
     void toggle();

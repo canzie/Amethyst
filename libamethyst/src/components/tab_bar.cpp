@@ -334,6 +334,7 @@ void TabBar::setupTabDragCallbacks(Tab &tab)
                 m_tabs[i]->labelFrame->markDirty();
                 m_tabs[i]->button->markDirty();
             }
+            markDrawOrderDirty();
         }
     };
 
@@ -397,7 +398,7 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
 void TabBar::setupTabButton(Tab &tab, int32_t index)
 {
     ensureTabComponents(tab);
-    tab.button->parent = this;
+    adoptPart(tab.button.get());
     // a tab arriving from another bar may still carry that bar's active state
     setTabActive(tab, index == m_selectedIndex);
     setupTabDragCallbacks(tab);
@@ -418,7 +419,7 @@ Instance *TabBar::addTab(std::unique_ptr<Instance> content, std::string_view lab
     auto existing = std::find_if(m_tabs.begin(), m_tabs.end(), [raw](const auto &t) { return t->content.get() == raw; });
     if (existing != m_tabs.end()) return raw;
 
-    content->parent = this;
+    adoptPart(content.get());
 
     if (auto *layer = raw->as<UILayer>()) {
         layer->setDisplayOrder(2);
@@ -454,7 +455,7 @@ Instance *TabBar::addTab(std::unique_ptr<Instance> content, std::function<void(F
     auto existing = std::find_if(m_tabs.begin(), m_tabs.end(), [raw](const auto &t) { return t->content.get() == raw; });
     if (existing != m_tabs.end()) return raw;
 
-    content->parent = this;
+    adoptPart(content.get());
 
     if (auto *layer = raw->as<UILayer>()) {
         layer->setDisplayOrder(2);
@@ -480,10 +481,10 @@ std::unique_ptr<Instance> TabBar::removeTab(Instance *content)
     if (it == m_tabs.end()) return nullptr;
 
     int32_t removedIdx = static_cast<int32_t>(std::distance(m_tabs.begin(), it));
-    (*it)->button->parent = nullptr;
+    releasePart((*it)->button.get());
 
     auto removedContent = std::move((*it)->content);
-    removedContent->parent = nullptr;
+    releasePart(removedContent.get());
     m_tabs.erase(it);
 
     // the tab that slid into the removed one's place takes over
@@ -502,8 +503,8 @@ Instance *TabBar::getTabContent(int32_t index) const
 std::vector<std::unique_ptr<TabBar::Tab>> TabBar::removeAllTabs()
 {
     for (auto &tab : m_tabs) {
-        tab->button->parent = nullptr;
-        tab->content->parent = nullptr;
+        releasePart(tab->button.get());
+        releasePart(tab->content.get());
     }
     std::vector<std::unique_ptr<Tab>> result = std::move(m_tabs);
     m_tabs.clear();
@@ -520,8 +521,8 @@ std::unique_ptr<TabBar::Tab> TabBar::extractTab(Instance *content)
     }
 
     int32_t removedIdx = static_cast<int32_t>(std::distance(m_tabs.begin(), it));
-    (*it)->button->parent = nullptr;
-    (*it)->content->parent = nullptr;
+    releasePart((*it)->button.get());
+    releasePart((*it)->content.get());
 
     auto extracted = std::move(*it);
     m_tabs.erase(it);
@@ -535,7 +536,7 @@ std::unique_ptr<TabBar::Tab> TabBar::extractTab(Instance *content)
 
 void TabBar::addTab(std::unique_ptr<Tab> tab)
 {
-    tab->content->parent = this;
+    adoptPart(tab->content.get());
     if (auto *layer = tab->content->as<UILayer>()) {
         layer->setDisplayOrder(2);
     }
@@ -623,17 +624,15 @@ void TabBar::layoutContent()
     }
 }
 
-std::vector<Instance *> TabBar::getHittableInstances()
+void TabBar::collectDrawChildren(std::vector<Instance *> &out)
 {
-    std::vector<Instance *> result;
-    result.reserve(m_tabs.size() * 2);
-
+    // the buttons go into the overlay registry when there is one, so they sit above the contents
     for (auto &tab : m_tabs) {
-        result.push_back(tab->button.get());
-        result.push_back(tab->content.get());
+        out.push_back(tab->content.get());
     }
-
-    return result;
+    for (auto &tab : m_tabs) {
+        out.push_back(tab->button.get());
+    }
 }
 
 void TabBar::arrange()

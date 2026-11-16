@@ -192,10 +192,10 @@ class TreeView : public UIObject {
     void collapseAll();
 
     /**
-     * @brief Collect all hittable instances (disclosures, row backgrounds, cell children).
-     * @return Vector of non-owning pointers to hittable instances
+     * @brief The row backgrounds (holding the cells) below everything, then the children, then the
+     * column separators; the scrolling frame sorts last so its scrollbars cover the rows.
      */
-    std::vector<Instance *> getHittableInstances() override;
+    void collectDrawChildren(std::vector<Instance *> &out) override;
 
     bool setTreeViewProperties(const TreeViewStylePropertiesArgs &props);
     const TreeViewStyleProperties &getTreeViewProperties() const { return m_tvProps; }
@@ -211,6 +211,9 @@ class TreeView : public UIObject {
     std::function<void(uint32_t, bool)> onRowToggled;
 
   protected:
+    EventResult onMouseScrollUp() override;
+    EventResult onMouseScrollDown() override;
+
     TreeViewStyleProperties m_tvProps;
 
   private:

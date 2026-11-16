@@ -168,9 +168,8 @@ enum class StartCorner {
 };
 
 enum class ZIndexBehavior {
-    NONE,
-    GLOBAL,
-    SIBLING,
+    RELATIVE, // zIndex orders the node among its siblings; the subtree draws contiguously inside its parent's
+    ABSOLUTE, // the node and its subtree leave tree order and are placed layer-wide by zIndex (negative below the tree)
 };
 
 enum class TextDirection {

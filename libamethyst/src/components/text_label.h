@@ -45,12 +45,13 @@ class TextLabel : public UILabel {
     void updateTextGeometry(DrawContext &ctx);
 
     /**
-     * @brief Shifts the text quad in place (cheap path, only the origin moved).
+     * @brief Shifts the text quad in place (cheap path, only the origin or the draw order moved).
      * @param ctx The draw context providing the geometry registry
      * @param delta The amount to move the quad by
+     * @param zIndex The z to give the text quad
      * @param visible Whether the text should be visible
      */
-    void repositionGlyphs(DrawContext &ctx, vec2 delta, bool visible);
+    void repositionGlyphs(DrawContext &ctx, vec2 delta, int32_t zIndex, bool visible);
 
     /**
      * @brief Lays the text out from scratch and re-uploads the glyph slice (expensive path).

@@ -3,6 +3,7 @@
  */
 
 #include "components/instance.h"
+#include "components/ui_layer.h"
 #include "utils/am_assert.h"
 #include "utils/profiling.h"
 #include <algorithm>
@@ -12,6 +13,10 @@ namespace Amethyst {
 Instance::~Instance()
 {
     onDestroy.fire(this);
+    // the layer may hold this node in its draw order (absolute roots, nested layers), which must not outlive it
+    if (parent != nullptr) {
+        parent->markDrawOrderDirty();
+    }
     for (auto &child : m_children) {
         child->parent = nullptr;
     }
@@ -37,6 +42,7 @@ Instance *Instance::addChild(std::unique_ptr<Instance> child)
     raw->parent = this;
     m_children.push_back(std::move(child));
     raw->markSubtreeDirty();
+    markDrawOrderDirty();
     return raw;
 }
 
@@ -48,6 +54,7 @@ std::unique_ptr<Instance> Instance::removeChild(Instance *child)
         m_children.erase(it);
         result->parent = nullptr;
         markDirty();
+        markDrawOrderDirty();
         return result;
     }
     return nullptr;
@@ -58,17 +65,44 @@ std::vector<std::unique_ptr<Instance>> Instance::removeAllChildren()
     for (auto &child : m_children) {
         child->parent = nullptr;
     }
+    markDrawOrderDirty();
     return std::move(m_children);
 }
 
-std::vector<Instance *> Instance::getHittableInstances()
+void Instance::collectDrawChildren(std::vector<Instance *> &out)
 {
-    std::vector<Instance *> result;
-    result.reserve(m_children.size());
     for (auto &child : m_children) {
-        result.push_back(child.get());
+        out.push_back(child.get());
     }
-    return result;
+}
+
+void Instance::collectSortedDrawChildren(std::vector<Instance *> &out)
+{
+    out.clear();
+    collectDrawChildren(out);
+    std::stable_sort(out.begin(), out.end(), [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
+}
+
+void Instance::markDrawOrderDirty()
+{
+    for (Instance *node = this; node != nullptr; node = node->parent) {
+        if (UILayer *layer = node->asLayer(); layer != nullptr) {
+            layer->invalidateDrawOrder();
+            return;
+        }
+    }
+}
+
+void Instance::adoptPart(Instance *part)
+{
+    part->parent = this;
+    markDrawOrderDirty();
+}
+
+void Instance::releasePart(Instance *part)
+{
+    markDrawOrderDirty();
+    part->parent = nullptr;
 }
 
 void Instance::markChildrenDirty()
