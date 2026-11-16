@@ -34,8 +34,12 @@ void Popup::attachToOverlay()
     m_logicalOwner = parent;
     reparent(m_overlay);
     m_ownerDestroyConn = m_logicalOwner->onDestroy.once([this](Instance *) {
+        // onClosed may already take this popup down
+        std::weak_ptr<bool> alive = aliveToken();
         close();
-        m_overlay->removeChild(this);
+        if (isAlive(alive)) {
+            m_overlay->removeChild(this);
+        }
     });
 }
 
@@ -57,24 +61,61 @@ void Popup::ensureConnected()
     });
 }
 
-vec2 Popup::resolvePlacement(vec2 anchorPos, vec2 anchorSize, vec2 contentSize, vec2 viewport) const
+static vec2 s_placeAgainst(PopupPlacement placement, vec2 anchorPos, vec2 anchorSize, vec2 contentSize)
 {
-    vec2 pos;
     switch (placement) {
     case PopupPlacement::ABOVE:
-        pos = {anchorPos.x, anchorPos.y - contentSize.y};
-        break;
+        return {anchorPos.x, anchorPos.y - contentSize.y};
     case PopupPlacement::LEFT:
-        pos = {anchorPos.x - contentSize.x, anchorPos.y};
-        break;
+        return {anchorPos.x - contentSize.x, anchorPos.y};
     case PopupPlacement::RIGHT:
-        pos = {anchorPos.x + anchorSize.x, anchorPos.y};
-        break;
+        return {anchorPos.x + anchorSize.x, anchorPos.y};
     default:
-        pos = {anchorPos.x, anchorPos.y + anchorSize.y};
-        break;
+        return {anchorPos.x, anchorPos.y + anchorSize.y};
     }
-    pos += offset;
+}
+
+static PopupPlacement s_opposite(PopupPlacement placement)
+{
+    switch (placement) {
+    case PopupPlacement::ABOVE:
+        return PopupPlacement::BELOW;
+    case PopupPlacement::LEFT:
+        return PopupPlacement::RIGHT;
+    case PopupPlacement::RIGHT:
+        return PopupPlacement::LEFT;
+    default:
+        return PopupPlacement::ABOVE;
+    }
+}
+
+/**
+ * @brief How far a rect sticks out of the viewport along the axis a placement opens on
+ */
+static float s_overflow(PopupPlacement placement, vec2 pos, vec2 contentSize, vec2 viewport)
+{
+    bool horizontal = placement == PopupPlacement::LEFT || placement == PopupPlacement::RIGHT;
+    float start = horizontal ? pos.x : pos.y;
+    float extent = horizontal ? contentSize.x : contentSize.y;
+    float limit = horizontal ? viewport.x : viewport.y;
+    return std::max(0.0f, -start) + std::max(0.0f, start + extent - limit);
+}
+
+vec2 Popup::resolvePlacement(vec2 anchorPos, vec2 anchorSize, vec2 contentSize, vec2 viewport) const
+{
+    vec2 pos = s_placeAgainst(placement, anchorPos, anchorSize, contentSize) + offset;
+
+    // clamping alone would slide a popup that does not fit back over its anchor (a submenu over its own row), so
+    // open on the other side first when that side has more room
+    float overflow = s_overflow(placement, pos, contentSize, viewport);
+    if (overflow > 0.0f) {
+        PopupPlacement flipped = s_opposite(placement);
+        vec2 flippedPos = s_placeAgainst(flipped, anchorPos, anchorSize, contentSize) + offset;
+        if (s_overflow(flipped, flippedPos, contentSize, viewport) < overflow) {
+            pos = flippedPos;
+        }
+    }
+
     pos.x = std::clamp(pos.x, 0.0f, std::max(0.0f, viewport.x - contentSize.x));
     pos.y = std::clamp(pos.y, 0.0f, std::max(0.0f, viewport.y - contentSize.y));
     return pos;

@@ -107,10 +107,8 @@ void Dropdown::close()
     if (!isOpen()) {
         return;
     }
+    // hiding the menu reports the close through the menu's onClosedCb, wired up in open()
     m_contextMenu->hide();
-    if (onClosedCb) {
-        onClosedCb();
-    }
 }
 
 void Dropdown::syncContextMenu()
