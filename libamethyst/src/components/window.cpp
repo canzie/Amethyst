@@ -96,12 +96,11 @@ void Window::arrange()
     }
 }
 
+// TRANSPARENT mirrors a propagated click: lower siblings still see the cursor
 enum class HoverHit : uint8_t {
-    MISS,
-    // something in the subtree is hovered, but nothing there consumes hover, so lower siblings
-    // still see the cursor, mirroring how a propagated click falls through to them
-    TRANSPARENT,
-    OPAQUE,
+    MISS,        // nothing in the subtree is under the cursor
+    TRANSPARENT, // something is hovered, but nothing there consumes hover
+    OPAQUE,      // a hover consumer was hit, siblings below are blocked
 };
 
 static HoverHit s_fillHoverStackRecursive(const std::vector<Instance *> &instances, const vec2 &point, UIObject **stack,
