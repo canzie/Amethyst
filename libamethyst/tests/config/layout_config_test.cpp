@@ -1,4 +1,4 @@
-#include "test_macros.h"
+#include <gtest/gtest.h>
 
 #include "parsers/config/layout_config.h"
 
@@ -12,10 +12,8 @@ static std::filesystem::path s_tempPath()
     return std::filesystem::temp_directory_path() / "amethyst_layout_config_test.conf";
 }
 
-static void testRoundTripDockLayout()
+TEST(LayoutConfig, RoundTripDockLayout)
 {
-    TEST_SUITE("LayoutConfig");
-
     DockLayoutConfig dock;
     DockNodeConfig root;
     root.axis = "vertical";
@@ -68,10 +66,8 @@ static void testRoundTripDockLayout()
     std::filesystem::remove(path);
 }
 
-static void testRoundTripTabBar()
+TEST(LayoutConfig, RoundTripTabBar)
 {
-    TEST_SUITE("LayoutConfig");
-
     TabBarConfig tab;
     tab.selectedTab = "settings";
 
@@ -92,31 +88,26 @@ static void testRoundTripTabBar()
     std::filesystem::remove(path);
 }
 
-static void testMissingFileReturnsFalse()
+TEST(LayoutConfig, MissingFileReturnsFalse)
 {
-    TEST_SUITE("LayoutConfig");
     LayoutConfig cfg;
     ASSERT_FALSE(cfg.loadFromFile("/nonexistent/path/layout.conf"));
 }
 
-static void testSaveWithoutLoadReturnsFalse()
+TEST(LayoutConfig, SaveWithoutLoadReturnsFalse)
 {
-    TEST_SUITE("LayoutConfig");
     LayoutConfig cfg;
     ASSERT_FALSE(cfg.save());
 }
 
-static void testUnknownEntryReturnsNull()
+TEST(LayoutConfig, UnknownEntryReturnsNull)
 {
-    TEST_SUITE("LayoutConfig");
     LayoutConfig cfg;
     ASSERT_EQ(cfg.get("nonexistent"), nullptr);
 }
 
-static void testOverwriteEntry()
+TEST(LayoutConfig, OverwriteEntry)
 {
-    TEST_SUITE("LayoutConfig");
-
     TabBarConfig tab1;
     tab1.selectedTab = "first";
 
@@ -130,20 +121,4 @@ static void testOverwriteEntry()
     auto *entry = cfg.get("tabs");
     ASSERT_TRUE(entry != nullptr);
     ASSERT_EQ(entry->tabBar.selectedTab, "second");
-}
-
-int main()
-{
-    std::printf("=== LayoutConfig ===\n");
-    int beforeFail;
-
-    beforeFail = g_failed; RUN_TEST(testRoundTripDockLayout);
-    beforeFail = g_failed; RUN_TEST(testRoundTripTabBar);
-    beforeFail = g_failed; RUN_TEST(testMissingFileReturnsFalse);
-    beforeFail = g_failed; RUN_TEST(testSaveWithoutLoadReturnsFalse);
-    beforeFail = g_failed; RUN_TEST(testUnknownEntryReturnsNull);
-    beforeFail = g_failed; RUN_TEST(testOverwriteEntry);
-
-    std::printf("\n=== Results: %d passed, %d failed ===\n", g_passed, g_failed);
-    return g_failed > 0 ? 1 : 0;
 }
