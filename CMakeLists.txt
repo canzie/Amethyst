@@ -16,6 +16,12 @@ option(AMETHYST_BUILD_TESTAPP "Build the Amethyst test application" ON)
 option(AMETHYST_BUILD_TESTS "Build unit tests" OFF)
 option(AMETHYST_RUN_TESTS "Run unit tests automatically after build" OFF)
 option(AMETHYST_TEST_VALGRIND "Run tests under valgrind" OFF)
+option(AMETHYST_SANITIZE "Build everything with AddressSanitizer and UBSan (GCC/Clang)" OFF)
+
+if(AMETHYST_SANITIZE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif()
 
 add_subdirectory(libamethyst)
 add_subdirectory(backends)

@@ -39,6 +39,11 @@ class Instance {
     Instance() = default;
     virtual ~Instance();
 
+    /**
+     * @brief Move this node under @p newParent. Passing nullptr destroys the node (it is
+     * removed from its parent and nothing else owns it). Moving a node under itself or one of
+     * its own descendants is refused.
+     */
     void reparent(Instance *newParent);
     virtual Instance *addChild(std::unique_ptr<Instance> child);
     virtual std::unique_ptr<Instance> removeChild(Instance *child);
@@ -101,6 +106,23 @@ class Instance {
     Instance *findFirstDescendant(const std::string &descendantName) const;
 
     const std::vector<std::unique_ptr<Instance>> &getChildren() const { return m_children; }
+
+    /**
+     * @brief Weak token that stops reading alive once this node is destroyed. Take one before
+     * calling into user code that may delete the node (event callbacks), check it after.
+     */
+    std::weak_ptr<bool> aliveToken() const { return onDestroy.aliveToken(); }
+
+    static bool isAlive(const std::weak_ptr<bool> &token)
+    {
+        auto alive = token.lock();
+        return alive != nullptr && *alive;
+    }
+
+    /**
+     * @brief True if this node is @p other or one of its descendants.
+     */
+    bool isSelfOrDescendantOf(const Instance *other) const;
 
   public:
     uint8_t flags = FLAG_NONE;

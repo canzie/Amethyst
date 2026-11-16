@@ -34,9 +34,11 @@ class UIButton : public UIObject {
     EventResult onMouseEnter() override;
     EventResult onMouseLeave() override;
     EventResult onMouseMoved(int32_t x, int32_t y) override;
+    void onPressCancelled(InputType type) override;
 
   protected:
     ButtonProperties m_btnProps;
+    bool m_button2Pressed = false;
 
   public:
     std::function<EventResult()> onMouseButton1ClickCb;

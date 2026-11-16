@@ -773,9 +773,10 @@ DropdownScope &DropdownScope::radio(std::string label, RadioGroup *group, int32_
 DropdownScope &DropdownScope::items(std::vector<std::string> labels)
 {
     for (auto &label : labels) {
-        pendingItems.emplace_back(makeActionItem(label, [this, label]() {
-            if (component.onItemSelected) {
-                component.onItemSelected(label);
+        // the scope lives on the stack only while the menu is built; the item outlives it
+        pendingItems.emplace_back(makeActionItem(label, [target = &component, label]() {
+            if (target->onItemSelected != nullptr) {
+                target->onItemSelected(label);
             }
         }));
     }
@@ -820,9 +821,10 @@ ContextMenuScope &ContextMenuScope::radio(std::string label, RadioGroup *group, 
 ContextMenuScope &ContextMenuScope::items(std::vector<std::string> labels)
 {
     for (auto &label : labels) {
-        pendingItems.emplace_back(makeActionItem(label, [this, label]() {
-            if (component.onItemSelected) {
-                component.onItemSelected(label);
+        // the scope lives on the stack only while the menu is built; the item outlives it
+        pendingItems.emplace_back(makeActionItem(label, [target = &component, label]() {
+            if (target->onItemSelected != nullptr) {
+                target->onItemSelected(label);
             }
         }));
     }

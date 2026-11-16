@@ -19,9 +19,11 @@ Instance::~Instance()
 
 void Instance::reparent(Instance *newParent)
 {
-    AM_ASSERT(newParent != this, "An instance cannot be its own parent");
+    AM_ASSERT(newParent == nullptr || !newParent->isSelfOrDescendantOf(this),
+              "An instance cannot be reparented under itself or one of its descendants");
     AM_ASSERT(parent, "reparent requires an existing parent; use addChild or add<T> for initial parenting");
-    if (parent == newParent) return;
+    if (parent == nullptr || parent == newParent) return;
+    if (newParent != nullptr && newParent->isSelfOrDescendantOf(this)) return;
 
     auto self = parent->removeChild(this);
     if (newParent) {
@@ -76,6 +78,16 @@ void Instance::markChildrenDirty()
         m_children[i]->markChildrenDirty();
         m_children[i]->flags |= FLAG_DIRTY;
     }
+}
+
+bool Instance::isSelfOrDescendantOf(const Instance *other) const
+{
+    for (const Instance *node = this; node != nullptr; node = node->parent) {
+        if (node == other) {
+            return true;
+        }
+    }
+    return false;
 }
 
 Instance *Instance::findFirstChild(const std::string &childName) const

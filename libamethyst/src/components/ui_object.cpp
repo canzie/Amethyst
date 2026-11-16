@@ -368,8 +368,11 @@ EventResult UIObject::onMouseEnter()
         tooltip->handleMouseEnter();
     }
 
-    onHoverChanged.fire(true);
+    // state first so handlers see it; a handler may then destroy this node
     setGuiState(static_cast<uint16_t>(m_guiState | GUI_STATE_HOVERED));
+    if (!onHoverChanged.fire(true)) {
+        return EventResult::CONSUMED;
+    }
     return consumes(INTERACTION_CATEGORY_HOVER) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
@@ -422,17 +425,24 @@ EventResult UIObject::onMouseLeave()
         tooltip->handleMouseLeave();
     }
 
-    onHoverChanged.fire(false);
+    // state first so handlers see it; a handler may then destroy this node
     setGuiState(static_cast<uint16_t>(m_guiState & ~GUI_STATE_HOVERED));
+    if (!onHoverChanged.fire(false)) {
+        return EventResult::CONSUMED;
+    }
     return consumes(INTERACTION_CATEGORY_HOVER) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 EventResult UIObject::onMouseMoved(int32_t x, int32_t y)
 {
-    if (auto *drag = getExtension<UIDragDetector>()) {
+    std::weak_ptr<bool> alive = aliveToken();
+    if (auto *drag = getExtension<UIDragDetector>(); drag != nullptr) {
         drag->handleMouseMove(x, y);
+        if (!isAlive(alive)) {
+            return EventResult::CONSUMED;
+        }
     }
-    if (auto *tooltip = getExtension<UITooltip>()) {
+    if (auto *tooltip = getExtension<UITooltip>(); tooltip != nullptr) {
         tooltip->handleMouseMove(x, y);
     }
 
@@ -446,29 +456,46 @@ EventResult UIObject::onMouseMoved(int32_t x, int32_t y)
 
 EventResult UIObject::onInputBegan(const InputObject &input)
 {
+    // Every step below can run user code that destroys this node; stop touching it if so and
+    // report the event as handled so dispatch does not carry on into freed ancestors.
+    std::weak_ptr<bool> alive = aliveToken();
     if (input.type == InputType::MOUSE_BUTTON_1) {
-        if (auto *drag = getExtension<UIDragDetector>()) {
+        if (auto *drag = getExtension<UIDragDetector>(); drag != nullptr) {
             drag->handleMouseDown(static_cast<int32_t>(input.position.x), static_cast<int32_t>(input.position.y));
+            if (!isAlive(alive)) {
+                return EventResult::CONSUMED;
+            }
         }
     }
-    onInputBeganCb.fire(input);
+    if (!onInputBeganCb.fire(input) || !isAlive(alive)) {
+        return EventResult::CONSUMED;
+    }
     return consumes(INTERACTION_CATEGORY_CLICK) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 EventResult UIObject::onInputChanged(const InputObject &input)
 {
-    onInputChangedCb.fire(input);
+    std::weak_ptr<bool> alive = aliveToken();
+    if (!onInputChangedCb.fire(input) || !isAlive(alive)) {
+        return EventResult::CONSUMED;
+    }
     return consumes(INTERACTION_CATEGORY_MOVE) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 EventResult UIObject::onInputEnded(const InputObject &input)
 {
+    std::weak_ptr<bool> alive = aliveToken();
     if (input.type == InputType::MOUSE_BUTTON_1) {
-        if (auto *drag = getExtension<UIDragDetector>()) {
+        if (auto *drag = getExtension<UIDragDetector>(); drag != nullptr) {
             drag->handleMouseUp(static_cast<int32_t>(input.position.x), static_cast<int32_t>(input.position.y));
+            if (!isAlive(alive)) {
+                return EventResult::CONSUMED;
+            }
         }
     }
-    onInputEndedCb.fire(input);
+    if (!onInputEndedCb.fire(input) || !isAlive(alive)) {
+        return EventResult::CONSUMED;
+    }
     return consumes(INTERACTION_CATEGORY_CLICK) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 

@@ -250,6 +250,12 @@ class UIObject : public UIBase2D {
     virtual EventResult onInputChanged(const InputObject &input);
     virtual EventResult onInputEnded(const InputObject &input);
 
+    /**
+     * @brief The press this node consumed was released somewhere else (over another node, or
+     * outside every node). Lets press-tracking components drop their pressed state.
+     */
+    virtual void onPressCancelled(InputType type) { (void)type; }
+
   public:
     EventSignal<void(bool hovered)> onHoverChanged;
     EventSignal<void(const InputObject &)> onInputBeganCb;

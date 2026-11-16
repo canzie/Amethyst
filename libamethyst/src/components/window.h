@@ -79,18 +79,37 @@ class Window : public UILayer {
 
   private:
     Instance *findClickedObject(int32_t x, int32_t y);
-    void purgeFromHoverStacks(Instance *dead);
+    void updateHover(int32_t x, int32_t y);
 
   private:
     static constexpr uint8_t MAX_HOVER_DEPTH = 16;
 
+    // Hovered nodes are held weakly: an enter/leave handler may destroy any of them, and a
+    // destroyed node must neither get further events nor leave a subscription behind.
+    struct HoverEntry {
+        UIObject *object = nullptr;
+        std::weak_ptr<bool> alive;
+    };
+
     struct HoverStack {
-        std::array<UIObject *, MAX_HOVER_DEPTH> items;
+        std::array<HoverEntry, MAX_HOVER_DEPTH> items;
         uint8_t count = 0;
     };
 
     HoverStack m_hoverCurrent;
     HoverStack m_hoverPrevious;
+    // The node that consumed each button's press, so it can be told when the release lands
+    // elsewhere instead of being left in its pressed state.
+    struct PressRecord {
+        UIObject *object = nullptr;
+        std::weak_ptr<bool> alive;
+        bool released = false;
+    };
+    std::array<PressRecord, 3> m_pressTargets;
+
+    vec2 m_lastMousePosition = vec2(0.0f);
+    bool m_hasMousePosition = false;
+    bool m_hoverStale = false;
     UIObject *m_mouseCapturedBy = nullptr;
     EventConnection m_mouseCapturedByConn;
     std::unique_ptr<OverlayLayer> m_overlayLayer;

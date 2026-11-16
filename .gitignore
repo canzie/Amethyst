@@ -51,3 +51,4 @@ build/*
 libamethyst/vendor/*
 logs/
 .log
+build-asan/
