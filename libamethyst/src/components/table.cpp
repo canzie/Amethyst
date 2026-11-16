@@ -1,5 +1,7 @@
 #include "components/table.h"
 
+#include "components/click_through.h"
+#include "components/column_sizing.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
 #include "utils/am_assert.h"
@@ -158,6 +160,7 @@ Instance *Table::nextCell(std::unique_ptr<Instance> child)
     if (auto *obj = raw->asUiObject()) {
         obj->setBaseProperties({.zIndex = Z_ABOVE_CONTENT});
     }
+    passClicksThroughPassiveContent(raw);
     m_cursorCol++;
     markDirty();
     return raw;
@@ -188,6 +191,7 @@ void Table::setCell(uint32_t row, uint32_t col, std::unique_ptr<Instance> child)
     if (auto *obj = raw->asUiObject()) {
         obj->setBaseProperties({.zIndex = Z_ABOVE_CONTENT});
     }
+    passClicksThroughPassiveContent(raw);
     markDirty();
 }
 
@@ -216,6 +220,9 @@ void Table::removeRow(uint32_t row)
     }
 
     m_displayOrder.erase(std::remove(m_displayOrder.begin(), m_displayOrder.end(), row), m_displayOrder.end());
+    if (m_selectedRow == static_cast<int32_t>(row)) {
+        m_selectedRow = NO_ROW_SELECTION;
+    }
     setRowHeight(row, 0.0f);
     m_rowFreelist.push_back(row);
     markDirty();
@@ -240,7 +247,7 @@ void Table::clear()
     m_rowBgInputConns.clear();
     m_cursorRow = 0;
     m_cursorCol = 0;
-    m_selectedDisplayIndex = -1;
+    m_selectedRow = NO_ROW_SELECTION;
     markDirty();
 }
 
@@ -298,27 +305,37 @@ void Table::sort(std::function<bool(uint32_t rowA, uint32_t rowB)> comparator)
     markDirty();
 }
 
+int32_t Table::displayToRow(uint32_t displayIndex) const
+{
+    if (displayIndex >= m_displayOrder.size()) {
+        return NO_ROW_SELECTION;
+    }
+    return static_cast<int32_t>(m_displayOrder[displayIndex]);
+}
+
+int32_t Table::rowToDisplay(uint32_t row) const
+{
+    auto it = std::find(m_displayOrder.begin(), m_displayOrder.end(), row);
+    if (it == m_displayOrder.end()) {
+        return NO_ROW_SELECTION;
+    }
+    return static_cast<int32_t>(std::distance(m_displayOrder.begin(), it));
+}
+
+void Table::setSelectedRow(int32_t row)
+{
+    if (row != NO_ROW_SELECTION && rowToDisplay(static_cast<uint32_t>(row)) == NO_ROW_SELECTION) {
+        row = NO_ROW_SELECTION;
+    }
+    if (row != m_selectedRow) {
+        m_selectedRow = row;
+        markDirty();
+    }
+}
+
 void Table::rebuildColumnPositions()
 {
-    m_columnPositions.clear();
-    uint32_t cols = columnCount();
-    m_columnPositions.reserve(cols + 1);
-    m_columnPositions.push_back(0.0f);
-
-    float totalWidth = absoluteSize.x;
-    float weightTotal = 0.0f;
-    for (const auto &col : m_columns) {
-        weightTotal += col.weight;
-    }
-    if (weightTotal <= 0.0f) {
-        weightTotal = 1.0f;
-    }
-
-    float x = 0.0f;
-    for (const auto &col : m_columns) {
-        x += (col.weight / weightTotal) * totalWidth;
-        m_columnPositions.push_back(x);
-    }
+    distributeColumnWidths(m_columns, TableColumnSizing::FIXED, absoluteSize.x, m_columnPositions);
 }
 
 void Table::ensureColumnSeparatorCapacity(uint32_t count)
@@ -412,18 +429,24 @@ void Table::ensureRowBackgroundCapacity(uint32_t count)
         uint32_t slot = static_cast<uint32_t>(m_rowBackgrounds.size());
         Frame *bg = m_scrollFrame->add<Frame>();
         m_rowBgInputConns.push_back(bg->onInputBeganCb.connect([this, slot](const InputObject &io) {
-            if (io.type != InputType::MOUSE_BUTTON_1) {
+            if (io.type != InputType::MOUSE_BUTTON_1 || slot >= m_displayOrder.size()) {
                 return;
             }
-            m_selectedDisplayIndex = static_cast<int32_t>(slot);
-            if (onRowSelected) {
-                onRowSelected(slot);
+            uint32_t row = m_displayOrder[slot];
+            bool doubleClick = (io.modifiers & MOD_DOUBLE_CLICK) != 0;
+            m_selectedRow = static_cast<int32_t>(row);
+            markDirty();
+
+            // the callbacks may clear, rebuild or destroy this table (and reassign themselves), so each one runs
+            // from a copy and nothing of this table is touched once it is gone
+            std::weak_ptr<bool> alive = aliveToken();
+            if (std::function<void(uint32_t)> selected = onRowSelected; selected != nullptr) {
+                selected(row);
             }
-            if ((io.modifiers & MOD_DOUBLE_CLICK) != 0 && onRowActivated) {
-                onRowActivated(slot);
-            }
-            if (m_tProps.selectedRowColor.a > 0.0f) {
-                markDirty();
+            if (doubleClick && isAlive(alive)) {
+                if (std::function<void(uint32_t)> activated = onRowActivated; activated != nullptr) {
+                    activated(row);
+                }
             }
         }));
         m_rowBackgrounds.push_back(bg);
@@ -491,7 +514,7 @@ void Table::layoutRowBackground(uint32_t visualIndex, float y, float height)
     if (visualIndex % 2 == 1 && m_tProps.rowAlternateColor.a > 0.0f) {
         bgColor = m_tProps.rowAlternateColor;
     }
-    if (static_cast<int32_t>(visualIndex) == m_selectedDisplayIndex && m_tProps.selectedRowColor.a > 0.0f) {
+    if (m_selectedRow != NO_ROW_SELECTION && displayToRow(visualIndex) == m_selectedRow && m_tProps.selectedRowColor.a > 0.0f) {
         bgColor = m_tProps.selectedRowColor;
     }
 
@@ -563,8 +586,8 @@ void Table::arrange()
         arrangeHeader(childClip);
     }
 
-    bool showRowBackgrounds = m_tProps.rowBackgroundColor.a > 0.0f || m_tProps.rowAlternateColor.a > 0.0f;
-    uint32_t neededBackgrounds = showRowBackgrounds ? visibleCount : 0;
+    // built even when fully transparent: the backgrounds are what a click on a row lands on
+    uint32_t neededBackgrounds = visibleCount;
     ensureRowBackgroundCapacity(neededBackgrounds);
     float backgroundY = 0.0f;
     for (uint32_t vi = 0; vi < neededBackgrounds; vi++) {
@@ -612,6 +635,19 @@ void Table::arrange()
         arrangeRow(logicalRow, rowY, rowHeight, bodyOrigin, bodyClip);
         rowY += rowHeight + separatorH;
     }
+}
+
+EventResult Table::onMouseScrollUp()
+{
+    // cells sit beside the scrolling frame rather than in it, so a wheel over one bubbles up to here
+    m_scrollFrame->scrollByWheel(1.0f);
+    return EventResult::CONSUMED;
+}
+
+EventResult Table::onMouseScrollDown()
+{
+    m_scrollFrame->scrollByWheel(-1.0f);
+    return EventResult::CONSUMED;
 }
 
 void Table::draw(DrawContext &ctx)

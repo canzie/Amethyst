@@ -1,6 +1,7 @@
 #include "components/collapsible_header.h"
 
 #include "amethyst/icons.h"
+#include "components/click_through.h"
 #include "components/extensions/ui_grid_layout.h"
 #include "components/extensions/ui_list_layout.h"
 #include "components/image_label.h"
@@ -13,7 +14,9 @@
 
 namespace Amethyst {
 
-static constexpr int32_t Z_HEADER_BUTTON = 3;
+// level with the header background and listed before it, so whatever sits on the header is hit first and only
+// clicks that pass through it reach the toggle button
+static constexpr int32_t Z_HEADER_BUTTON = 1;
 
 CollapsibleHeader::CollapsibleHeader() : CollapsibleHeader(nullptr, nullptr) {}
 
@@ -70,6 +73,8 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_headerContent->bindPart(ComponentPart::HEADER);
     m_headerContent->setClasses(getClasses());
     m_headerContent->propagateClassesToChildren();
+
+    passClicksThroughPassiveContent(m_headerBackground.get());
 }
 
 CollapsibleHeader::~CollapsibleHeader()
@@ -155,6 +160,8 @@ CollapsibleHeader &CollapsibleHeader::header(std::function<void(Frame &)> fn)
         fn(*m_headerBackground);
         m_headerBackground->propagateClassesToChildren();
         m_indicator->bindPart(ComponentPart::INDICATOR);
+        // decoration added to the header still toggles on click, controls added to it keep their clicks
+        passClicksThroughPassiveContent(m_headerBackground.get());
     }
     return *this;
 }
@@ -292,7 +299,8 @@ std::vector<Instance *> CollapsibleHeader::getHittableInstances()
 {
     std::vector<Instance *> result;
     result.push_back(m_headerButton.get());
-    result.push_back(m_headerContent);
+    // the whole header, so controls placed on it through header() can be hit
+    result.push_back(m_headerBackground.get());
 
     if (static_cast<bool>(m_chProps.expanded)) {
         for (auto &child : m_children) {

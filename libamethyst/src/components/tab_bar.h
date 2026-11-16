@@ -111,6 +111,18 @@ class TabBar : public UIObject {
 
     int32_t findTabIndex(const Tab *tab) const;
     int32_t indexFromPosition(float pos) const;
+
+    /**
+     * @brief Sets or clears a tab's ACTIVE state, on its label and everything in it, and shows its close button to match
+     */
+    void setTabActive(Tab &tab, bool active);
+
+    /**
+     * @brief Fixes up the selection after a tab left m_tabs, firing onSelectionChanged when another tab takes over
+     * @param removedIdx Index the tab had
+     * @param newSelected Index to select when the removed tab was the selected one, clamped to the tabs left
+     */
+    void afterTabRemoved(int32_t removedIdx, int32_t newSelected);
     std::unique_ptr<Tab> extractTab(Instance *content);
 
   private:

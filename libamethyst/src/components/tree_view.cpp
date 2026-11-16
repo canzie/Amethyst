@@ -1,6 +1,8 @@
 #include "components/tree_view.h"
 
 #include "amethyst/icons.h"
+#include "components/click_through.h"
+#include "components/column_sizing.h"
 #include "components/image_button.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
@@ -162,6 +164,7 @@ Instance *TreeView::nextCell(std::unique_ptr<Instance> child)
     if (auto *obj = raw->asUiObject()) {
         obj->setBaseProperties({.visible = false});
     }
+    passClicksThroughPassiveContent(raw);
     m_cells[idx] = raw;
     m_cursorCol++;
     markDirty();
@@ -192,6 +195,10 @@ void TreeView::setCell(uint32_t row, uint32_t col, std::unique_ptr<Instance> chi
     }
 
     Instance *raw = addChild(std::move(child));
+    if (auto *obj = raw->asUiObject()) {
+        obj->setBaseProperties({.visible = false});
+    }
+    passClicksThroughPassiveContent(raw);
     m_cells[idx] = raw;
     markDirty();
 }
@@ -224,6 +231,9 @@ void TreeView::clear()
     m_rowInputConns.clear();
     m_cursorRow = 0;
     m_cursorCol = 0;
+    selectedRow = NO_ROW_SELECTION;
+    hoveredRow = NO_ROW_SELECTION;
+    m_hoveredSlot = NO_ROW_SELECTION;
     markDirty();
 }
 
@@ -258,14 +268,20 @@ bool TreeView::isExpanded(uint32_t row) const
     return m_rows[row].expanded;
 }
 
+void TreeView::notifyToggled(uint32_t row, bool expanded)
+{
+    // run from a copy: the callback may rebuild the tree and reassign itself
+    if (std::function<void(uint32_t, bool)> toggled = onRowToggled; toggled != nullptr) {
+        toggled(row, expanded);
+    }
+}
+
 void TreeView::toggle(uint32_t row)
 {
     AM_ASSERT(row < m_rows.size(), "Row index out of bounds");
     m_rows[row].expanded = !m_rows[row].expanded;
     markDirty();
-    if (onRowToggled) {
-        onRowToggled(row, m_rows[row].expanded);
-    }
+    notifyToggled(row, m_rows[row].expanded);
 }
 
 void TreeView::expand(uint32_t row)
@@ -274,9 +290,7 @@ void TreeView::expand(uint32_t row)
     if (!m_rows[row].expanded) {
         m_rows[row].expanded = true;
         markDirty();
-        if (onRowToggled) {
-            onRowToggled(row, true);
-        }
+        notifyToggled(row, true);
     }
 }
 
@@ -286,9 +300,7 @@ void TreeView::collapse(uint32_t row)
     if (m_rows[row].expanded) {
         m_rows[row].expanded = false;
         markDirty();
-        if (onRowToggled) {
-            onRowToggled(row, false);
-        }
+        notifyToggled(row, false);
     }
 }
 
@@ -332,25 +344,7 @@ void TreeView::rebuildVisiblePlan()
 
 void TreeView::rebuildColumnPositions()
 {
-    m_columnPositions.clear();
-    uint32_t cols = columnCount();
-    m_columnPositions.reserve(cols + 1);
-    m_columnPositions.push_back(0.0f);
-
-    float totalWidth = absoluteSize.x;
-    float weightTotal = 0.0f;
-    for (const auto &col : m_columns) {
-        weightTotal += col.weight;
-    }
-    if (weightTotal <= 0.0f) {
-        weightTotal = 1.0f;
-    }
-
-    float x = 0.0f;
-    for (const auto &col : m_columns) {
-        x += (col.weight / weightTotal) * totalWidth;
-        m_columnPositions.push_back(x);
-    }
+    distributeColumnWidths(m_columns, TreeColumnSizing::FIXED, absoluteSize.x, m_columnPositions);
 }
 
 void TreeView::updateSeparators()
@@ -412,29 +406,37 @@ void TreeView::ensurePoolCapacity(uint32_t count)
         frame->addChild(std::move(disc));
 
         uint32_t poolSlot = static_cast<uint32_t>(m_rowBackgrounds.size());
+        // hover is tracked by slot: a slot shows another row once the body scrolls under a resting cursor
         m_rowHoverConns.push_back(frame->onHoverChanged.connect([this, poolSlot](bool hovered) {
-            uint32_t logicalRow = m_rowBySlot[poolSlot];
+            int32_t slot = static_cast<int32_t>(poolSlot);
             if (hovered) {
-                hoveredRow = static_cast<int32_t>(logicalRow);
-            } else if (hoveredRow == static_cast<int32_t>(logicalRow)) {
-                hoveredRow = NO_ROW_SELECTION;
+                m_hoveredSlot = slot;
+            } else if (m_hoveredSlot == slot) {
+                m_hoveredSlot = NO_ROW_SELECTION;
             }
+            uint32_t logicalRow = m_rowBySlot[poolSlot];
+            hoveredRow = m_hoveredSlot != NO_ROW_SELECTION && logicalRow != INVALID_ROW ? static_cast<int32_t>(logicalRow)
+                                                                                        : NO_ROW_SELECTION;
             markDirty();
         }));
         m_rowInputConns.push_back(frame->onInputBeganCb.connect([this, poolSlot](const InputObject &io) {
             uint32_t logicalRow = m_rowBySlot[poolSlot];
+            if (logicalRow == INVALID_ROW) {
+                return;
+            }
+            // state first, the callback last and from a copy: it may clear, rebuild or destroy this tree
             if (io.type == InputType::MOUSE_BUTTON_1) {
                 selectedRow = static_cast<int32_t>(logicalRow);
-                if (onRowClicked) {
-                    onRowClicked(logicalRow);
-                }
                 markDirty();
+                if (std::function<void(uint32_t)> clicked = onRowClicked; clicked != nullptr) {
+                    clicked(logicalRow);
+                }
             } else if (io.type == InputType::MOUSE_BUTTON_2) {
                 selectedRow = static_cast<int32_t>(logicalRow);
-                if (onRowRightClicked) {
-                    onRowRightClicked(logicalRow, vec2(io.position.x, io.position.y));
-                }
                 markDirty();
+                if (std::function<void(uint32_t, vec2)> rightClicked = onRowRightClicked; rightClicked != nullptr) {
+                    rightClicked(logicalRow, vec2(io.position.x, io.position.y));
+                }
             }
         }));
 
@@ -670,6 +672,13 @@ void TreeView::arrange()
 
     uint32_t windowCount = last - first;
     ensurePoolCapacity(windowCount);
+
+    // slot k shows visible row first + k, so the row under a resting cursor follows the scroll
+    if (m_hoveredSlot != NO_ROW_SELECTION && static_cast<uint32_t>(m_hoveredSlot) < windowCount) {
+        hoveredRow = static_cast<int32_t>(m_visible[first + static_cast<uint32_t>(m_hoveredSlot)]);
+    } else {
+        hoveredRow = NO_ROW_SELECTION;
+    }
 
     if (static_cast<bool>(m_tvProps.showHeader)) {
         arrangeHeader(childClip);

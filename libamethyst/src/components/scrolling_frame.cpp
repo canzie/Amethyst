@@ -7,6 +7,8 @@
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 
+#include <algorithm>
+
 namespace Amethyst {
 
 static constexpr int32_t Z_SCROLLBAR = 100;
@@ -141,10 +143,12 @@ void ScrollingFrame::arrange()
     }
 
     bool barsEnabled = m_sfProps.scrollBarVisibility != ScrollBarVisibility::NEVER && isVisible();
-    m_needsVertical =
-        barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) && m_maxScroll.y > 0.0f;
-    m_needsHorizontal =
-        barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::X || m_sfProps.scrollAxis == ScrollAxis::XY) && m_maxScroll.x > 0.0f;
+    // ALWAYS keeps a bar on every scroll axis even with nothing to scroll; AUTO only shows one when there is
+    bool always = m_sfProps.scrollBarVisibility == ScrollBarVisibility::ALWAYS;
+    m_needsVertical = barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) &&
+                      (always || m_maxScroll.y > 0.0f);
+    m_needsHorizontal = barsEnabled && (m_sfProps.scrollAxis == ScrollAxis::X || m_sfProps.scrollAxis == ScrollAxis::XY) &&
+                        (always || m_maxScroll.x > 0.0f);
 
     if (m_needsVertical || m_needsHorizontal) {
         if (m_needsVertical) {
@@ -208,9 +212,10 @@ void ScrollingFrame::arrangeScrollbars()
         }
 
         float trackHeight = absoluteSize.y - (m_needsHorizontal ? m_sfProps.scrollBarThickness : 0.0f);
-        float thumbRatio = viewport.y / m_absCanvasSize.y;
+        // a canvas no taller than the viewport (ALWAYS with nothing to scroll) gets a thumb filling the track
+        float thumbRatio = m_absCanvasSize.y > viewport.y ? viewport.y / m_absCanvasSize.y : 1.0f;
         float thumbHeight = trackHeight * thumbRatio;
-        float scrollRatio = m_scrollOffset.y / (m_absCanvasSize.y - viewport.y);
+        float scrollRatio = m_absCanvasSize.y > viewport.y ? m_scrollOffset.y / (m_absCanvasSize.y - viewport.y) : 0.0f;
         float thumbY = scrollRatio * (trackHeight - thumbHeight);
 
         m_verticalBar->setBaseStyleProperties({
@@ -256,9 +261,9 @@ void ScrollingFrame::arrangeScrollbars()
         }
 
         float trackWidth = absoluteSize.x - (m_needsVertical ? m_sfProps.scrollBarThickness : 0.0f);
-        float thumbRatio = viewport.x / m_absCanvasSize.x;
+        float thumbRatio = m_absCanvasSize.x > viewport.x ? viewport.x / m_absCanvasSize.x : 1.0f;
         float thumbWidth = trackWidth * thumbRatio;
-        float scrollRatio = m_scrollOffset.x / (m_absCanvasSize.x - viewport.x);
+        float scrollRatio = m_absCanvasSize.x > viewport.x ? m_scrollOffset.x / (m_absCanvasSize.x - viewport.x) : 0.0f;
         float thumbX = scrollRatio * (trackWidth - thumbWidth);
 
         m_horizontalBar->setBaseStyleProperties({
@@ -304,25 +309,26 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
     }
 }
 
-EventResult ScrollingFrame::onMouseScrollUp()
+void ScrollingFrame::scrollByWheel(float notches)
 {
+    float delta = -notches * m_sfProps.scrollSpeed;
     if (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) {
-        m_scrollOffset.y = std::max(0.0f, m_scrollOffset.y - m_sfProps.scrollSpeed);
+        m_scrollOffset.y = std::clamp(m_scrollOffset.y + delta, 0.0f, m_maxScroll.y);
     } else {
-        m_scrollOffset.x = std::max(0.0f, m_scrollOffset.x - m_sfProps.scrollSpeed);
+        m_scrollOffset.x = std::clamp(m_scrollOffset.x + delta, 0.0f, m_maxScroll.x);
     }
     markDirty();
+}
+
+EventResult ScrollingFrame::onMouseScrollUp()
+{
+    scrollByWheel(1.0f);
     return EventResult::CONSUMED;
 }
 
 EventResult ScrollingFrame::onMouseScrollDown()
 {
-    if (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) {
-        m_scrollOffset.y = std::min(m_maxScroll.y, m_scrollOffset.y + m_sfProps.scrollSpeed);
-    } else {
-        m_scrollOffset.x = std::min(m_maxScroll.x, m_scrollOffset.x + m_sfProps.scrollSpeed);
-    }
-    markDirty();
+    scrollByWheel(-1.0f);
     return EventResult::CONSUMED;
 }
 

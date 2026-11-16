@@ -8,6 +8,7 @@
 #include "components/common.h"
 #include "components/extensions/ui_extension.h"
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace Amethyst {
@@ -31,6 +32,19 @@ class UIListLayout : public UIExtension {
     UiFlexAlignment verticalFlex = UiFlexAlignment::NONE;
     bool wraps = false;
     ItemLineAlignment itemLineAlignment = ItemLineAlignment::AUTOMATIC;
+
+  private:
+    struct SizeRecord {
+        UDim2 natural; // the size the child asked for
+        UDim2 written; // the size this layout last gave it
+    };
+
+    /**
+     * @brief The size a child asked for, before any fill stretched it
+     */
+    UDim2 naturalSize(UIObject *obj);
+
+    std::unordered_map<UIObject *, SizeRecord> m_sizes;
 };
 
 } // namespace Amethyst

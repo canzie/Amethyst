@@ -93,8 +93,10 @@ void TooltipStack::onTick(float deltaTime)
     uint32_t depth = depthOf(owner);
     closeFrom(depth);
 
+    // surfaces are shared between owners, so the previous owner's content goes before the new one builds
     Tooltip &surface = surfaceAt(depth);
-    if (build) {
+    surface.removeAllChildren();
+    if (build != nullptr) {
         build(surface);
     }
     surface.openAt(m_pendingPosition + cursorOffset);

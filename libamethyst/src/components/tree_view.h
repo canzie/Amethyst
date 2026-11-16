@@ -41,7 +41,9 @@ enum class TreeColumnSizing {
 struct TreeColumn {
     std::string header{};
     TreeColumnSizing sizing = TreeColumnSizing::STRETCH;
+    // STRETCH: share of the width left after fixed columns. FIXED: the column's width in pixels
     float weight = 1.0f;
+    // bounds in pixels for either sizing, maxWidth 0 = unbounded
     float minWidth = 0.0f;
     float maxWidth = 0.0f;
     TextXAlignment labelAlign = TextXAlignment::LEFT;
@@ -225,6 +227,7 @@ class TreeView : public UIObject {
     void attachRowCells(uint32_t poolSlot, uint32_t logicalRow);
     void parkRowCells(uint32_t logicalRow);
     void hideSlot(uint32_t poolSlot);
+    void notifyToggled(uint32_t row, bool expanded);
 
     std::vector<TreeColumn> m_columns;
     std::vector<Instance *> m_cells;
@@ -245,6 +248,7 @@ class TreeView : public UIObject {
     std::vector<std::unique_ptr<Frame>> m_rowBackgrounds;
     std::vector<ImageButton *> m_disclosures;
     std::vector<uint32_t> m_rowBySlot;
+    int32_t m_hoveredSlot = NO_ROW_SELECTION;
     std::vector<EventConnection> m_rowHoverConns;
     std::vector<EventConnection> m_rowInputConns;
 

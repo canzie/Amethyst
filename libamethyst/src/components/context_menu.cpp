@@ -93,8 +93,12 @@ Frame *ContextMenu::ToggleItemView::create(ContextMenu &owner)
     Frame *row = ItemView::create(owner);
     row->track(row->onInputBeganCb.connect([this, row](const InputObject &io) {
         if (io.type == InputType::MOUSE_BUTTON_1 && m_boundItem != nullptr) {
+            // the toggle callback may tear the menu (and this row) down
+            std::weak_ptr<bool> alive = row->aliveToken();
             toggle(m_boundItem->as<ToggleItemData>());
-            row->markDirty();
+            if (Instance::isAlive(alive)) {
+                row->markDirty();
+            }
         }
     }));
     return row;
@@ -508,9 +512,18 @@ void ContextMenu::buildMainContent()
 {
     // TODO: pool/recycle views and window off scroll offset instead of building one per item every show() (see
     // docs/amethyst/context_menu_plan.md)
+    // an opened submenu lives in the overlay rather than among this menu's children, so it would outlive the rows
+    // it belonged to and pile up with every rebuild
+    if (m_submenu != nullptr) {
+        ContextMenu *oldSubmenu = m_submenu;
+        m_submenu = nullptr;
+        oldSubmenu->hide();
+        if (oldSubmenu->parent != nullptr) {
+            oldSubmenu->parent->removeChild(oldSubmenu);
+        }
+    }
     removeAllChildren();
     m_views.clear();
-    m_submenu = nullptr;
     m_submenuSourceRow = nullptr;
 
     std::vector<std::unique_ptr<ItemData>> &itemList = items();
@@ -601,28 +614,32 @@ void ContextMenu::buildMainContent()
 
 void ContextMenu::ActionItemView::activate(ContextMenu &owner, ActionItemData &action)
 {
-    if (action.onActivate) {
-        action.onActivate();
-    }
+    // close first and run the action last, from a copy: it may destroy the menu, its owner and the item itself
+    std::function<void()> callback = action.onActivate;
     owner.rootMenu().hide();
+    if (callback != nullptr) {
+        callback();
+    }
 }
 
 void ContextMenu::SubmenuItemView::activate(ContextMenu &owner, SubmenuItemData &submenu)
 {
     // a row without one is only a way into its submenu, so a click there must not close the menu
-    if (!submenu.onActivate) {
+    if (submenu.onActivate == nullptr) {
         return;
     }
 
-    submenu.onActivate();
+    std::function<void()> callback = submenu.onActivate;
     owner.rootMenu().hide();
+    callback();
 }
 
 void ContextMenu::ToggleItemView::toggle(ToggleItemData &item)
 {
     item.value = !item.value;
-    if (item.onToggled) {
-        item.onToggled(item.value);
+    // from a copy: the callback may destroy the menu along with the item that holds it
+    if (std::function<void(bool)> toggled = item.onToggled; toggled != nullptr) {
+        toggled(item.value);
     }
 }
 

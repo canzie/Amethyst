@@ -28,7 +28,7 @@ class UIGridLayout : public UIExtension {
     SortOrder sortOrder = SortOrder::SORT_LAYOUT_ORDER;
     UDim2 cellPadding;
     UDim2 cellSize;
-    StartCorner startCorner;
+    StartCorner startCorner = StartCorner::TOP_LEFT;
     uint32_t fillDirectionMaxCells = 0; // 0=auto,
 
     bool flexCells = false;
