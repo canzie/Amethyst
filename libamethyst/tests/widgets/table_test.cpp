@@ -245,11 +245,12 @@ Table *s_columnTable(TestWindow &win, float width, std::vector<TableColumn> cols
 TEST(TableColumns, FixedAndBoundedWidths)
 {
     TestWindow win;
-    Table *table = s_columnTable(win, 400, {
-                                               {.header = "fixed", .sizing = TableColumnSizing::FIXED, .weight = 100.0f},
-                                               {.header = "capped", .weight = 1.0f, .maxWidth = 50.0f},
-                                               {.header = "rest", .weight = 1.0f},
-                                           });
+    Table *table = s_columnTable(win, 400,
+                                 {
+                                     {.header = "fixed", .sizing = TableColumnSizing::FIXED, .weight = 100.0f},
+                                     {.header = "capped", .weight = 1.0f, .maxWidth = 50.0f},
+                                     {.header = "rest", .weight = 1.0f},
+                                 });
 
     EXPECT_FLOAT_EQ(s_cellObj(table, 0, 0)->absoluteSize.x, 100.0f);
     EXPECT_FLOAT_EQ(s_cellObj(table, 0, 1)->absoluteSize.x, 50.0f);
@@ -261,10 +262,11 @@ TEST(TableColumns, FixedAndBoundedWidths)
 TEST(TableColumns, MinWidthHolds)
 {
     TestWindow win;
-    Table *table = s_columnTable(win, 300, {
-                                               {.header = "a", .weight = 1.0f, .minWidth = 200.0f},
-                                               {.header = "b", .weight = 1.0f},
-                                           });
+    Table *table = s_columnTable(win, 300,
+                                 {
+                                     {.header = "a", .weight = 1.0f, .minWidth = 200.0f},
+                                     {.header = "b", .weight = 1.0f},
+                                 });
     EXPECT_FLOAT_EQ(s_cellObj(table, 0, 0)->absoluteSize.x, 200.0f);
     EXPECT_FLOAT_EQ(s_cellObj(table, 0, 1)->absoluteSize.x, 100.0f);
 }

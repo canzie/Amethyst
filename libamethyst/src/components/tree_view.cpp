@@ -416,7 +416,7 @@ void TreeView::ensurePoolCapacity(uint32_t count)
             }
             uint32_t logicalRow = m_rowBySlot[poolSlot];
             hoveredRow = m_hoveredSlot != NO_ROW_SELECTION && logicalRow != INVALID_ROW ? static_cast<int32_t>(logicalRow)
-                                                                                          : NO_ROW_SELECTION;
+                                                                                        : NO_ROW_SELECTION;
             markDirty();
         }));
         m_rowInputConns.push_back(frame->onInputBeganCb.connect([this, poolSlot](const InputObject &io) {
