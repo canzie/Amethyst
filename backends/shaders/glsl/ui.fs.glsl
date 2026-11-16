@@ -299,9 +299,12 @@ vec4 evalGradient(uint slot, vec2 uv)
 
 void main()
 {
-    if (fragClipRect.z > 0.0 && fragClipRect.w > 0.0) {
+    // all-zero is the CPU's "no clip" sentinel (UIBase2D::clipRect default); anything else is a
+    // half-open [min, max) rect, which may lie at negative coordinates once scrolled off the
+    // top-left, or be empty, both of which must still clip
+    if (any(notEqual(fragClipRect, vec4(0.0)))) {
         if (fragWorldPos.x < fragClipRect.x || fragWorldPos.y < fragClipRect.y ||
-            fragWorldPos.x > fragClipRect.z || fragWorldPos.y > fragClipRect.w) {
+            fragWorldPos.x >= fragClipRect.z || fragWorldPos.y >= fragClipRect.w) {
             discard;
         }
     }
@@ -350,15 +353,17 @@ void main()
     }
 
     if (fragPrimitiveType == PRIMITIVE_TEXT) {
-        float texAlpha = texture(gTextures[fragTextureId], fragUV).r;
+        float texAlpha = texture(gTextures[nonuniformEXT(fragTextureId)], fragUV).r;
         float alpha = texAlpha * fragFillColor.a;
         if (alpha < 0.001) discard;
         outColor = vec4(fragFillColor.rgb, alpha);
         return;
     }
 
+    // colour textures are created as sRGB formats, so sampling already returns linear values
+    // that match the linearised fill colours
     if (fragPrimitiveType == PRIMITIVE_SVG) {
-        vec4 texColor = texture(gTextures[fragTextureId], fragUV);
+        vec4 texColor = texture(gTextures[nonuniformEXT(fragTextureId)], fragUV);
         vec4 tinted = vec4(texColor.rgb * fragFillColor.rgb, texColor.a * fragFillColor.a);
         if (tinted.a < 0.001) discard;
         outColor = tinted;
@@ -435,9 +440,11 @@ void main()
         fillColor = vec4(g.rgb * fragFillColor.rgb, g.a * fragFillColor.a);
     }
 
+    // the image replaces the fill colour and its alpha masks the shape, so transparent regions
+    // of a PNG stay transparent instead of showing the fill
     if (fragTextureId != INVALID_TEXTURE) {
-        vec4 texColor = texture(gTextures[fragTextureId], fragUV);
-        fillColor.rgb = mix(fillColor.rgb, texColor.rgb, texColor.a);
+        vec4 texColor = texture(gTextures[nonuniformEXT(fragTextureId)], fragUV);
+        fillColor = vec4(texColor.rgb * fillColor.rgb, texColor.a * fillColor.a);
     }
 
     // Composite the border as an explicit band (outer coverage minus the fill's coverage) OVER the

@@ -748,7 +748,7 @@ vec4 TextArea::contentClipRect() const
     vec4 box = {absoluteContentPosition.x, absoluteContentPosition.y, absoluteContentPosition.x + absoluteContentSize.x,
                 absoluteContentPosition.y + absoluteContentSize.y};
 
-    if (clipRect.z > 0.0f && clipRect.w > 0.0f) {
+    if (clipRect != vec4(0.0f)) {
         box.x = std::max(box.x, clipRect.x);
         box.y = std::max(box.y, clipRect.y);
         box.z = std::min(box.z, clipRect.z);

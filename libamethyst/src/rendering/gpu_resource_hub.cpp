@@ -70,7 +70,22 @@ void GpuResourceHub::syncShared(void *cmdBuffer)
         return;
     }
 
+    m_instances.advanceFrame();
+    m_glyphs.advanceFrame();
+    m_lines.advanceFrame();
+    m_slices.advanceFrame();
+    m_gradients.advanceFrame();
+
     m_gradients.sync(cmdBuffer);
+}
+
+void GpuResourceHub::setFramesInFlight(uint32_t frames)
+{
+    m_instances.setRetireLatency(frames);
+    m_glyphs.setRetireLatency(frames);
+    m_lines.setRetireLatency(frames);
+    m_slices.setRetireLatency(frames);
+    m_gradients.setRetireLatency(frames);
 }
 
 void GpuResourceHub::syncWindow(void *cmdBuffer, Window *targetWindow)
@@ -99,12 +114,14 @@ void GpuResourceHub::syncWindow(void *cmdBuffer, Window *targetWindow)
             syncGeometry(cmdBuffer, *registry, *geometry);
         }
 
+        // without its text blocks on the GPU a registry's bases would alias another registry's
+        // glyphs, so its entry keeps the NO_TEXT bases and the shader skips batched text
         GlyphBuffer *glyphBuffer = registry->getGlyphBuffer();
         TextBlocks *text = nullptr;
         if (glyphBuffer != nullptr) {
             text = obtainTextBlocks(registry);
-            if (text != nullptr) {
-                syncText(cmdBuffer, *glyphBuffer, *text);
+            if (text != nullptr && !syncText(cmdBuffer, *glyphBuffer, *text)) {
+                text = nullptr;
             }
         }
 
@@ -226,7 +243,7 @@ void GpuResourceHub::syncGeometry(void *cmdBuffer, GeometryRegistry &registry, G
     blocks.instanceCount = allocations.size();
 }
 
-void GpuResourceHub::syncText(void *cmdBuffer, GlyphBuffer &glyphBuffer, TextBlocks &blocks)
+bool GpuResourceHub::syncText(void *cmdBuffer, GlyphBuffer &glyphBuffer, TextBlocks &blocks)
 {
     struct UploadSlot {
         GpuArena *arena;
@@ -242,9 +259,9 @@ void GpuResourceHub::syncText(void *cmdBuffer, GlyphBuffer &glyphBuffer, TextBlo
     if (glyphBytes > blocks.glyph.capacity) {
         ArenaBlock grown = m_glyphs.alloc(glyphBytes);
         if (!grown.isValid()) {
+            // leave everything dirty so the upload is retried once the arena has room
             AM_LOG_ERROR("Failed to grow the glyph block to {} bytes", glyphBytes);
-            glyphBuffer.clearDirty();
-            return;
+            return false;
         }
         m_glyphs.free(blocks.glyph);
         blocks.glyph = grown;
@@ -270,6 +287,7 @@ void GpuResourceHub::syncText(void *cmdBuffer, GlyphBuffer &glyphBuffer, TextBlo
     }
 
     glyphBuffer.clearDirty();
+    return true;
 }
 
 } // namespace Amethyst

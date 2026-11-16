@@ -26,6 +26,8 @@ struct SvgEntry {
 
 class SvgAtlas {
   public:
+    static constexpr uint32_t GUTTER = 1;
+
     SvgAtlas();
     ~SvgAtlas();
 

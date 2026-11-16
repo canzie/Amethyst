@@ -57,21 +57,25 @@ const SvgEntry *SvgAtlas::loadFromData(const std::string &svgData, uint32_t widt
 
 const SvgEntry *SvgAtlas::rasterizeAndPack(SvgHash key, const uint8_t *rgbaData, uint32_t width, uint32_t height, int stride)
 {
-    auto region = m_packer.packRect(width, height);
+    // a transparent 1px gutter on every side, like the glyph atlas, so bilinear filtering at an
+    // entry's edge never pulls in its neighbour's pixels
+    auto region = m_packer.packRect(width + 2 * GUTTER, height + 2 * GUTTER);
     if (!region.has_value()) {
         AM_LOG_ERROR("SvgAtlas: atlas full");
         return nullptr;
     }
 
+    uint32_t originX = region->x + GUTTER;
+    uint32_t originY = region->y + GUTTER;
     for (uint32_t row = 0; row < height; ++row) {
-        uint32_t atlasOffset = ((region->y + row) * m_width + region->x) * 4;
-        uint32_t srcOffset = row * static_cast<uint32_t>(stride);
-        std::memcpy(&m_pixels[atlasOffset], &rgbaData[srcOffset], width * 4);
+        size_t atlasOffset = (static_cast<size_t>(originY + row) * m_width + originX) * 4;
+        size_t srcOffset = static_cast<size_t>(row) * static_cast<size_t>(stride);
+        std::memcpy(&m_pixels[atlasOffset], &rgbaData[srcOffset], static_cast<size_t>(width) * 4);
     }
 
     SvgEntry entry;
-    entry.atlasX = region->x;
-    entry.atlasY = region->y;
+    entry.atlasX = static_cast<uint16_t>(originX);
+    entry.atlasY = static_cast<uint16_t>(originY);
     entry.width = static_cast<uint16_t>(width);
     entry.height = static_cast<uint16_t>(height);
 

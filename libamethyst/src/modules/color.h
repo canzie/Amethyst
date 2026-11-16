@@ -2,9 +2,9 @@
  * @file color.h
  * @brief Color types for UI rendering
  *
- * All input values are treated as sRGB (what you see on screen).
- * Internal storage is linear for correct blending math.
- * Conversion back to sRGB happens in packColor for GPU submission.
+ * All input values are treated as sRGB (what you see on screen) and stored as given; the
+ * arithmetic operators work on those sRGB components directly. packColor quantises them
+ * unchanged to RGBA8 and the shaders linearise on the GPU before blending.
  */
 
 #ifndef AMETHYST__COLOR_H

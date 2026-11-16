@@ -143,7 +143,24 @@ void GlyphBuffer::reserve(GlyphSliceHandle handle, uint32_t glyphCapacity)
         return;
     }
 
-    fitGlyphBlock(rec.glyph, glyphCapacity);
+    // a relocated block releases its old range, so the GPU entry must follow it right away
+    // rather than at the next updateSlice
+    if (fitGlyphBlock(rec.glyph, glyphCapacity)) {
+        refreshSliceEntry(handle.id);
+    }
+}
+
+void GlyphBuffer::refreshSliceEntry(uint32_t id)
+{
+    const SliceRecord &rec = m_records[id];
+    GlyphSlice &entry = m_slices[id];
+    uint32_t firstGlyph = rec.glyph.offset == BlockAllocator::INVALID ? 0 : rec.glyph.offset;
+    uint32_t firstLine = rec.line.offset == BlockAllocator::INVALID ? 0 : rec.line.offset;
+    if (entry.firstGlyph != firstGlyph || entry.firstLine != firstLine) {
+        entry.firstGlyph = firstGlyph;
+        entry.firstLine = firstLine;
+        m_sliceDirty.add(id, id + 1);
+    }
 }
 
 void GlyphBuffer::updateSlice(GlyphSliceHandle handle, const GlyphQuad *glyphs, uint32_t glyphCount, const GlyphLine *lines,
@@ -174,6 +191,7 @@ void GlyphBuffer::updateSlice(GlyphSliceHandle handle, const GlyphQuad *glyphs, 
         if (!ensureBlockCapacity(m_lineAlloc, m_lines.data(), sizeof(GlyphLine), rec.line, lineCount, MIN_LINE_BLOCK,
                                  m_lineDirty)) {
             AM_LOG_ERROR("GlyphBuffer line arena exhausted, dropping update of {} lines", lineCount);
+            refreshSliceEntry(handle.id);
             return;
         }
     }
@@ -210,6 +228,9 @@ void GlyphBuffer::destroySlice(GlyphSliceHandle handle)
     }
 
     rec = SliceRecord{};
+    // a reused handle must draw nothing until its first successful update, not this slice's text
+    m_slices[handle.id] = GlyphSlice{};
+    m_sliceDirty.add(handle.id, handle.id + 1);
     m_freeHandles.push_back(handle.id);
     --m_liveCount;
 }

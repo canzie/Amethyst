@@ -3,7 +3,8 @@
 #include "amethyst/amethyst_backend.h"
 #include "logging/log.h"
 
-#include <iterator>
+#include <algorithm>
+#include <cstddef>
 
 namespace Amethyst {
 
@@ -120,6 +121,8 @@ void GpuArena::init(AmethystBackend &backend, const AmBufferDesc &desc, GrowthPo
     m_size = 0;
     m_capacity = desc.initialCapacity;
     m_freeList.clear();
+    m_retired.clear();
+    m_frame = 0;
     m_id = backend.createBuffer(desc);
 }
 
@@ -146,7 +149,7 @@ ArenaBlock GpuArena::alloc(size_t size)
         }
     }
 
-    if (m_size + size > m_capacity) {
+    if (size > m_capacity - m_size) {
         if (!grow(m_size + size)) {
             AM_LOG_ERROR("GpuArena out of memory and growth failed: size={}, capacity={}, requested={}", m_size, m_capacity, size);
             return {};
@@ -165,29 +168,71 @@ void GpuArena::free(const ArenaBlock &block)
     if (!block.isValid()) {
         return;
     }
+    if (m_retireLatency == 0) {
+        release(block);
+        return;
+    }
+    m_retired.push_back({block, m_frame + m_retireLatency});
+}
 
-    FreeBlock freed;
-    freed.offset = block.offset;
-    freed.size = block.capacity;
+void GpuArena::advanceFrame()
+{
+    ++m_frame;
 
-    for (auto it = m_freeList.begin(); it != m_freeList.end(); ++it) {
-        if (it->offset + it->size == freed.offset) {
-            it->size += freed.size;
-            auto next = std::next(it);
-            if (next != m_freeList.end() && it->offset + it->size == next->offset) {
-                it->size += next->size;
-                m_freeList.erase(next);
-            }
-            return;
-        }
-        if (freed.offset + freed.size == it->offset) {
-            it->offset = freed.offset;
-            it->size += freed.size;
-            return;
+    size_t kept = 0;
+    for (size_t i = 0; i < m_retired.size(); ++i) {
+        if (m_retired[i].releaseFrame <= m_frame) {
+            release(m_retired[i].block);
+        } else {
+            m_retired[kept++] = m_retired[i];
         }
     }
+    m_retired.resize(kept);
+}
 
-    m_freeList.push_back(freed);
+size_t GpuArena::retiredBytes() const
+{
+    size_t total = 0;
+    for (const RetiredBlock &retired : m_retired) {
+        total += retired.block.capacity;
+    }
+    return total;
+}
+
+size_t GpuArena::freeBytes() const
+{
+    size_t total = 0;
+    for (const FreeBlock &free : m_freeList) {
+        total += free.size;
+    }
+    return total;
+}
+
+void GpuArena::release(const ArenaBlock &block)
+{
+    // keep the list sorted so a block freed between two free neighbours merges with both
+    auto next = m_freeList.begin();
+    while (next != m_freeList.end() && next->offset < block.offset) {
+        ++next;
+    }
+
+    size_t pos = static_cast<size_t>(next - m_freeList.begin());
+    bool mergedPrev = false;
+    if (pos > 0 && m_freeList[pos - 1].offset + m_freeList[pos - 1].size == block.offset) {
+        m_freeList[pos - 1].size += block.capacity;
+        mergedPrev = true;
+    }
+
+    bool touchesNext = pos < m_freeList.size() && block.offset + block.capacity == m_freeList[pos].offset;
+    if (mergedPrev && touchesNext) {
+        m_freeList[pos - 1].size += m_freeList[pos].size;
+        m_freeList.erase(m_freeList.begin() + static_cast<std::ptrdiff_t>(pos));
+    } else if (touchesNext) {
+        m_freeList[pos].offset = block.offset;
+        m_freeList[pos].size += block.capacity;
+    } else if (!mergedPrev) {
+        m_freeList.insert(m_freeList.begin() + static_cast<std::ptrdiff_t>(pos), {block.offset, block.capacity});
+    }
 }
 
 void GpuArena::upload(void *cmdBuffer, const void *data, size_t offsetBytes, size_t sizeBytes)
@@ -204,8 +249,8 @@ bool GpuArena::grow(size_t neededCapacity)
         return false;
     }
 
-    size_t newCapacity = m_capacity * 2;
-    while (newCapacity < neededCapacity) {
+    size_t newCapacity = std::max<size_t>(m_capacity, 1) * 2;
+    while (newCapacity < neededCapacity && newCapacity < m_policy.maxBytes) {
         newCapacity *= 2;
     }
     if (newCapacity > m_policy.maxBytes) {

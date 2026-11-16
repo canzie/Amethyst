@@ -341,10 +341,15 @@ vec4 UIObject::computeChildClipRect() const
     }
     vec4 myBounds = {absolutePosition.x, absolutePosition.y, absolutePosition.x + absoluteSize.x,
                      absolutePosition.y + absoluteSize.y};
-    if (clipRect == vec4(0.0f)) {
-        return myBounds;
+    vec4 clip = myBounds;
+    if (clipRect != vec4(0.0f)) {
+        clip = {max(clipRect.x, myBounds.x), max(clipRect.y, myBounds.y), min(clipRect.z, myBounds.z), min(clipRect.w, myBounds.w)};
     }
-    return {max(clipRect.x, myBounds.x), max(clipRect.y, myBounds.y), min(clipRect.z, myBounds.z), min(clipRect.w, myBounds.w)};
+    // all-zero means "no clip" to the shader, so an empty clip at the origin must not collapse to it
+    if (clip == vec4(0.0f)) {
+        return {0.0f, 0.0f, -1.0f, -1.0f};
+    }
+    return clip;
 }
 
 void UIObject::propagate(InteractionCategory cat) { m_eventConsumptionFlags &= ~cat; }
