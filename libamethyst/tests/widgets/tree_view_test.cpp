@@ -163,14 +163,14 @@ TEST_F(TreeFixture, HoverFollowsScroll)
     EXPECT_EQ(clicked, tree->hoveredRow);
 }
 
-TEST(TreeColumns, FixedWidth)
+TEST(TreeColumns, FixedSizingStillSplitsByWeight)
 {
     TestWindow win;
     auto *tree = win->add<TreeView>();
     place(tree, 0, 0, 300, 200);
     tree->setTreeViewProperties({.showDisclosureTriangles = false});
-    tree->addColumn({.header = "a", .sizing = TreeColumnSizing::FIXED, .weight = 80.0f});
-    tree->addColumn({.header = "b"});
+    tree->addColumn({.header = "a", .sizing = TreeColumnSizing::FIXED, .weight = 1.0f});
+    tree->addColumn({.header = "b", .weight = 2.0f});
     tree->addRow(0);
     for (int c = 0; c < 2; c++) {
         auto cell = std::make_unique<TestNode>();
@@ -178,6 +178,6 @@ TEST(TreeColumns, FixedWidth)
         tree->nextCell(std::move(cell));
     }
     win.layout();
-    EXPECT_FLOAT_EQ(tree->getCell(0, 0)->asUiObject()->absoluteSize.x, 80.0f);
-    EXPECT_FLOAT_EQ(tree->getCell(0, 1)->asUiObject()->absoluteSize.x, 220.0f);
+    EXPECT_FLOAT_EQ(tree->getCell(0, 0)->asUiObject()->absoluteSize.x, 100.0f);
+    EXPECT_FLOAT_EQ(tree->getCell(0, 1)->asUiObject()->absoluteSize.x, 200.0f);
 }

@@ -344,7 +344,7 @@ void TreeView::rebuildVisiblePlan()
 
 void TreeView::rebuildColumnPositions()
 {
-    distributeColumnWidths(m_columns, TreeColumnSizing::FIXED, absoluteSize.x, m_columnPositions);
+    distributeColumnWidths(m_columns, absoluteSize.x, m_columnPositions);
 }
 
 void TreeView::updateSeparators()

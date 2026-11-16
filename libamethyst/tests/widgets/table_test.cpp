@@ -242,21 +242,32 @@ Table *s_columnTable(TestWindow &win, float width, std::vector<TableColumn> cols
 
 } // namespace
 
-TEST(TableColumns, FixedAndBoundedWidths)
+TEST(TableColumns, FixedSizingStillSplitsByWeight)
+{
+    // FIXED only means the user cannot resize it; its weight is a share like any other column's
+    TestWindow win;
+    Table *table = s_columnTable(win, 400,
+                                 {
+                                     {.header = "label", .sizing = TableColumnSizing::FIXED, .weight = 0.4f},
+                                     {.header = "value", .weight = 0.6f},
+                                 });
+    EXPECT_FLOAT_EQ(s_cellObj(table, 0, 0)->absoluteSize.x, 160.0f);
+    EXPECT_FLOAT_EQ(s_cellObj(table, 0, 1)->absoluteSize.x, 240.0f);
+}
+
+TEST(TableColumns, MaxWidthHandsBackTheRest)
 {
     TestWindow win;
     Table *table = s_columnTable(win, 400,
                                  {
-                                     {.header = "fixed", .sizing = TableColumnSizing::FIXED, .weight = 100.0f},
+                                     {.header = "a", .weight = 2.0f},
                                      {.header = "capped", .weight = 1.0f, .maxWidth = 50.0f},
-                                     {.header = "rest", .weight = 1.0f},
+                                     {.header = "b", .weight = 2.0f},
                                  });
-
-    EXPECT_FLOAT_EQ(s_cellObj(table, 0, 0)->absoluteSize.x, 100.0f);
     EXPECT_FLOAT_EQ(s_cellObj(table, 0, 1)->absoluteSize.x, 50.0f);
-    // the capped column hands back what it could not take
-    EXPECT_FLOAT_EQ(s_cellObj(table, 0, 2)->absoluteSize.x, 250.0f);
-    EXPECT_FLOAT_EQ(s_cellObj(table, 0, 2)->absolutePosition.x, 150.0f);
+    EXPECT_FLOAT_EQ(s_cellObj(table, 0, 0)->absoluteSize.x, 175.0f);
+    EXPECT_FLOAT_EQ(s_cellObj(table, 0, 2)->absoluteSize.x, 175.0f);
+    EXPECT_FLOAT_EQ(s_cellObj(table, 0, 2)->absolutePosition.x, 225.0f);
 }
 
 TEST(TableColumns, MinWidthHolds)

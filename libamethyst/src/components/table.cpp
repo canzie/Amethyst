@@ -335,7 +335,7 @@ void Table::setSelectedRow(int32_t row)
 
 void Table::rebuildColumnPositions()
 {
-    distributeColumnWidths(m_columns, TableColumnSizing::FIXED, absoluteSize.x, m_columnPositions);
+    distributeColumnWidths(m_columns, absoluteSize.x, m_columnPositions);
 }
 
 void Table::ensureColumnSeparatorCapacity(uint32_t count)

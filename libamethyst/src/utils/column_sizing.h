@@ -12,16 +12,14 @@
 namespace Amethyst {
 
 /**
- * @brief Splits a width between columns. A fixed column takes its weight as a pixel width; stretch columns share what
- * is left in proportion to their weights. Every column is held inside its minWidth and maxWidth (0 = no maximum); a
- * stretch column pinned by a bound hands the difference back to the others.
- * @param columns Column definitions with sizing, weight, minWidth and maxWidth
- * @param fixedSizing The sizing value that marks a fixed column
+ * @brief Splits a width between columns in proportion to their weights, whatever their sizing (sizing only says
+ * whether the user may resize a column). Every column is held inside its minWidth and maxWidth (0 = no maximum); a
+ * column pinned by a bound hands the difference back to the others.
+ * @param columns Column definitions with weight, minWidth and maxWidth
  * @param totalWidth The width to split
  * @param positions Receives columns.size() + 1 edges, starting at 0
  */
-template <typename Column, typename Sizing>
-void distributeColumnWidths(const std::vector<Column> &columns, Sizing fixedSizing, float totalWidth, std::vector<float> &positions)
+template <typename Column> void distributeColumnWidths(const std::vector<Column> &columns, float totalWidth, std::vector<float> &positions)
 {
     const size_t count = columns.size();
     auto bound = [](const Column &col, float width) {
@@ -34,14 +32,6 @@ void distributeColumnWidths(const std::vector<Column> &columns, Sizing fixedSizi
     std::vector<float> widths(count, 0.0f);
     std::vector<bool> settled(count, false);
     float remaining = totalWidth;
-
-    for (size_t i = 0; i < count; i++) {
-        if (columns[i].sizing == fixedSizing) {
-            widths[i] = bound(columns[i], columns[i].weight);
-            settled[i] = true;
-            remaining -= widths[i];
-        }
-    }
 
     // each round settles at least one column or finishes, so this ends within count rounds
     for (size_t round = 0; round <= count; round++) {

@@ -35,9 +35,9 @@ enum class TableColumnSizing {
 struct TableColumn {
     std::string header{};
     TableColumnSizing sizing = TableColumnSizing::STRETCH;
-    // STRETCH: share of the width left after fixed columns. FIXED: the column's width in pixels
+    // share of the total width; sizing does not change this (STRETCH = user resizable, FIXED = static)
     float weight = 1.0f;
-    // bounds in pixels for either sizing, maxWidth 0 = unbounded
+    // bounds in pixels, maxWidth 0 = unbounded
     float minWidth = 0.0f;
     float maxWidth = 0.0f;
     TextXAlignment labelAlign = TextXAlignment::LEFT;
