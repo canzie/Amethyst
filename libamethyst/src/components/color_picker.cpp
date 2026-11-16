@@ -156,6 +156,19 @@ void ColorPicker::syncFromValue()
     markDirty();
 }
 
+void ColorPicker::applyHsv(vec3 hsv)
+{
+    // gray has no hue and black no saturation either; keep the ones the picker had so dragging
+    // to an edge of the field and back does not snap the hue bar to red
+    if (hsv.z > 0.0f && hsv.y > 0.0f) {
+        m_hue = hsv.x;
+    }
+    if (hsv.z > 0.0f) {
+        m_saturation = hsv.y;
+    }
+    m_value = hsv.z;
+}
+
 void ColorPicker::onChannelsChanged()
 {
     pushValue();
@@ -204,9 +217,7 @@ void Color3Picker::pullValue()
         return;
     }
     vec3 hsv = rgbToHsv(*value);
-    m_hue = hsv.x;
-    m_saturation = hsv.y;
-    m_value = hsv.z;
+    applyHsv(hsv);
 }
 
 void Color3Picker::pushValue()
@@ -250,9 +261,7 @@ void Color4Picker::pullValue()
         return;
     }
     vec3 hsv = rgbToHsv(Color3(*value));
-    m_hue = hsv.x;
-    m_saturation = hsv.y;
-    m_value = hsv.z;
+    applyHsv(hsv);
     m_alpha = value->a;
 }
 

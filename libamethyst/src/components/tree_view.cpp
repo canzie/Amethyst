@@ -389,12 +389,12 @@ void TreeView::ensureHeaderCapacity()
 
     if (!m_headerBackground) {
         m_headerBackground = add<Frame>();
-        m_headerBackground->bindPart(ComponentPart::HEADER);
+        m_headerBackground->bindPart(ComponentPart::HEADER, ComponentType::TREE_VIEW);
     }
 
     while (m_headerLabels.size() < cols) {
         TextLabel *lbl = add<TextLabel>();
-        lbl->bindPart(ComponentPart::HEADER);
+        lbl->bindPart(ComponentPart::HEADER, ComponentType::TREE_VIEW);
         m_headerLabels.push_back(lbl);
     }
 }
@@ -596,6 +596,7 @@ void TreeView::arrange()
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }
+    refreshStyleIfStale();
 
     if (!isVisible()) {
         for (uint32_t slot = 0; slot < m_rowBackgrounds.size(); slot++) {

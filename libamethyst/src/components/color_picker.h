@@ -29,6 +29,11 @@ class ColorPicker : public UIObject {
      */
     void syncFromValue();
 
+    /**
+     * @brief The picker's current hue, saturation and value, each in [0, 1].
+     */
+    vec3 getHsv() const { return {m_hue, m_saturation, m_value}; }
+
   public:
     ColorModel model = ColorModel::HSV;
     ColorPickerShape shape = ColorPickerShape::SQUARE;
@@ -40,6 +45,12 @@ class ColorPicker : public UIObject {
     virtual void updateComponents() = 0;
 
     void onChannelsChanged();
+
+    /**
+     * @brief Take an HSV triple read back from the bound color, keeping the current hue when the
+     * color is gray or black and the current saturation when it is black.
+     */
+    void applyHsv(vec3 hsv);
 
     float m_hue = 0.0f;
     float m_saturation = 0.0f;

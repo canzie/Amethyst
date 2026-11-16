@@ -47,6 +47,7 @@ bool UIImage::setSvg(std::string svgData)
     }
     m_svgData = std::move(svgData);
     m_svgResolved = false;
+    m_svgFailedSize = {};
     return true;
 }
 
@@ -58,12 +59,13 @@ bool UIImage::setImage(AmTextureId image)
     m_image = image;
     m_svgData.clear();
     m_svgResolved = false;
+    m_svgFailedSize = {};
     return true;
 }
 
 void UIImage::resolveSvg(DrawContext &ctx, vec2 absoluteSize)
 {
-    if (m_svgResolved || m_svgData.empty() || ctx.svgAtlas == nullptr) {
+    if (m_svgData.empty() || ctx.svgAtlas == nullptr) {
         return;
     }
 
@@ -83,16 +85,45 @@ void UIImage::resolveSvg(DrawContext &ctx, vec2 absoluteSize)
     uint32_t w = static_cast<uint32_t>(absoluteSize.x);
     uint32_t h = static_cast<uint32_t>(absoluteSize.y);
 
-    const SvgEntry *entry = ctx.svgAtlas->loadFromData(m_svgData, w, h);
-    if (entry != nullptr) {
-        float aw = static_cast<float>(ctx.svgAtlas->getWidth());
-        float ah = static_cast<float>(ctx.svgAtlas->getHeight());
-        m_svgUvRect = {entry->atlasX / aw, entry->atlasY / ah, (entry->atlasX + entry->width) / aw,
-                       (entry->atlasY + entry->height) / ah};
-        m_image = ctx.svgAtlas->getTextureId();
+    // rasterized at the size it is drawn at, so a resize asks for a fresh raster; a size that
+    // already failed is not retried every frame
+    std::array<uint32_t, 2> size = {w, h};
+    if ((m_svgResolved && size == m_svgSize) || size == m_svgFailedSize) {
+        return;
     }
 
+    const SvgEntry *entry = ctx.svgAtlas->loadFromData(m_svgData, w, h);
+    if (entry == nullptr) {
+        m_svgResolved = false;
+        m_svgFailedSize = size;
+        return;
+    }
+    float aw = static_cast<float>(ctx.svgAtlas->getWidth());
+    float ah = static_cast<float>(ctx.svgAtlas->getHeight());
+    m_svgUvRect = {entry->atlasX / aw, entry->atlasY / ah, (entry->atlasX + entry->width) / aw,
+                   (entry->atlasY + entry->height) / ah};
+    m_image = ctx.svgAtlas->getTextureId();
+    m_svgSize = size;
     m_svgResolved = true;
+}
+
+Color4 UIImage::svgTint(const Color4 &color)
+{
+    // an SVG instance keeps its UVs in shapeData, the same slot a gradient's index goes in, so a
+    // gradient tint is flattened to its first stop instead of overwriting the UVs
+    if (!color.hasGradient()) {
+        return color;
+    }
+    Color4 flat(color.r, color.g, color.b, color.a);
+    const Gradient &gradient = *color.getGradient();
+    if (gradient.stopCount > 0) {
+        uint32_t packed = gradient.stops[0].color;
+        flat.r *= static_cast<float>(packed & 0xFFu) / 255.0f;
+        flat.g *= static_cast<float>((packed >> 8) & 0xFFu) / 255.0f;
+        flat.b *= static_cast<float>((packed >> 16) & 0xFFu) / 255.0f;
+        flat.a *= static_cast<float>((packed >> 24) & 0xFFu) / 255.0f;
+    }
+    return flat;
 }
 
 void UIImage::drawImage(DrawContext &ctx, vec2 absoluteSize, InstanceData base)
@@ -101,10 +132,15 @@ void UIImage::drawImage(DrawContext &ctx, vec2 absoluteSize, InstanceData base)
 
     base.textureId = m_image.id;
 
-    if (m_svgResolved && !m_svgData.empty()) {
+    if (!m_svgData.empty()) {
+        // until a raster exists (not laid out yet, or rasterizing failed) there is nothing valid
+        // to sample, so the instance is kept but hidden rather than drawn with stale UVs
         base.setPrimitiveType(PRIMITIVE_SVG);
         base.setUvRect(m_svgUvRect);
-        base.setFillColor(m_imgStyle.imageColor);
+        base.setFillColor(svgTint(m_imgStyle.imageColor));
+        if (!m_svgResolved) {
+            base.setVisible(false);
+        }
     } else {
         base.setPrimitiveType(PRIMITIVE_RECT);
         base.setFillColor(m_imgStyle.imageColor);

@@ -9,6 +9,7 @@
 #include "components/ui_base_2d.h"
 #include "components/ui_object.h"
 #include "logging/log.h"
+#include "modules/style.h"
 #include "rendering/draw_context.h"
 #include "utils/profiling.h"
 
@@ -67,6 +68,12 @@ void Window::draw(DrawContext &ctx)
 void Window::arrange()
 {
     AM_PROFILE_FUNCTION();
+    // a reloaded theme leaves nothing dirty by itself, so wake every node; each one sees the new
+    // generation in arrange and re-resolves
+    if (Style::generation() != m_styleGeneration) {
+        m_styleGeneration = Style::generation();
+        markSubtreeDirty();
+    }
     for (auto &child : m_children) {
         if (auto *obj = child->asUiObject()) {
             obj->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);

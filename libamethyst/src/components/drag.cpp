@@ -3,24 +3,19 @@
 #include "components/input_interface.h"
 #include "components/number_input.h"
 #include "components/window.h"
+#include "logging/log.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
 #include "utils/am_assert.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <cstdio>
+#include <optional>
 
 namespace Amethyst {
 
 static constexpr float SCRUB_THRESHOLD = 4.0f;
-
-template <typename T> static std::string s_formatNumber(const std::string &format, T value)
-{
-    char buffer[64];
-    std::snprintf(buffer, sizeof(buffer), format.c_str(), value);
-    return std::string(buffer);
-}
 
 // Saturating double->int64 conversion: a bare cast/llround is UB outside int64's range,
 // and 2^63 is the smallest power of two not representable as int64, so it is the threshold.
@@ -38,8 +33,12 @@ static int64_t s_saturateToInt64(double v)
     return static_cast<int64_t>(std::llround(v));
 }
 
-Drag::Drag()
+Drag::Drag(NumberKind kind, std::string defaultFormat) : m_format(defaultFormat), m_defaultFormat(std::move(defaultFormat))
 {
+    if (auto parsed = NumberFormat::parse(m_defaultFormat, kind); parsed.has_value()) {
+        m_numberFormat = *parsed;
+    }
+
     m_field = add<NumberInput>();
     m_field->setClasses(getClasses());
     m_field->setBaseProperties({
@@ -74,20 +73,27 @@ void Drag::resolveStyle()
     m_field->setClasses(getClasses());
     DragStyleProperties resolved = Style::instance().getDragStyle(ComponentType::DRAG, getClasses(), effectiveGuiState());
     if (m_dProps.apply(resolved)) {
+        syncFieldStyle();
         markDirty();
     }
+}
+
+void Drag::syncFieldStyle()
+{
+    // the field draws the text, so the drag's resolved text style has to reach it
+    TextInputStylePropertiesArgs fieldStyle;
+    fieldStyle.text = m_dProps.text;
+    fieldStyle.text.textXAlignment = TextXAlignment::CENTER;
+    fieldStyle.text.textYAlignment = TextYAlignment::CENTER;
+    fieldStyle.cursorColor = m_dProps.text.textColor;
+    m_field->setTextInputProperties(fieldStyle);
 }
 
 bool Drag::setDragProperties(const DragStylePropertiesArgs &props)
 {
     bool changed = m_dProps.apply(props);
     if (changed) {
-        TextInputStylePropertiesArgs fieldStyle;
-        fieldStyle.text = m_dProps.text;
-        fieldStyle.text.textXAlignment = TextXAlignment::CENTER;
-        fieldStyle.text.textYAlignment = TextYAlignment::CENTER;
-        fieldStyle.cursorColor = m_dProps.text.textColor;
-        m_field->setTextInputProperties(fieldStyle);
+        syncFieldStyle();
         markDirty();
     }
     return changed;
@@ -95,18 +101,33 @@ bool Drag::setDragProperties(const DragStylePropertiesArgs &props)
 
 void Drag::setFormat(std::string format)
 {
-    if (m_format != format) {
-        m_format = std::move(format);
-        markDirty();
+    if (m_format == format) {
+        return;
     }
+    std::optional<NumberFormat> parsed = NumberFormat::parse(format, m_numberFormat.kind());
+    if (!parsed.has_value()) {
+        AM_LOG_WARN("Drag format '{}' needs exactly one {} conversion; using '{}'", format,
+                    m_numberFormat.kind() == NumberKind::INTEGER ? "integer" : "floating-point", m_defaultFormat);
+        parsed = NumberFormat::parse(m_defaultFormat, m_numberFormat.kind());
+    }
+    if (parsed.has_value()) {
+        m_numberFormat = *parsed;
+    }
+    m_format = std::move(format);
+    markDirty();
 }
 
 double Drag::scrubValue(double current, float pixelDelta, double speed) const
 {
-    if (scale == ValueScale::LOGARITHMIC) {
-        return current * std::exp(static_cast<double>(pixelDelta) * speed);
+    double step = static_cast<double>(pixelDelta) * speed;
+    if (scale != ValueScale::LOGARITHMIC) {
+        return current + step;
     }
-    return current + static_cast<double>(pixelDelta) * speed;
+    // symmetric log: u = sign(v) * log1p(|v| / zone) is linear near zero and logarithmic far from
+    // it, so a pixel multiplies large magnitudes by about e^speed yet 0 and negatives still move
+    double zone = logLinearZone > 0.0 ? logLinearZone : 1.0;
+    double u = std::copysign(std::log1p(std::abs(current) / zone), current) + step;
+    return std::copysign(zone * std::expm1(std::abs(u)), u);
 }
 
 EventResult Drag::onInputBegan(const InputObject &input)
@@ -132,6 +153,7 @@ EventResult Drag::onMouseMoved(int32_t x, int32_t y)
     (void)y;
     if (m_state == State::PENDING && std::abs(static_cast<float>(x) - m_pressX) > SCRUB_THRESHOLD) {
         m_state = State::SCRUBBING;
+        beginScrub();
         // Hide and unlock the cursor for unbounded scrubbing. This switches the coordinate
         // space starting with the next event, so skip this one and reseed the reference there
         // rather than scrubbing a bogus jump across the switch.
@@ -231,15 +253,14 @@ void Drag::draw(DrawContext &ctx)
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }
 
-DragFloat::DragFloat()
+DragFloat::DragFloat() : Drag(NumberKind::FLOATING, "%.3f")
 {
-    setFormat("%.3f");
     configureField();
 }
 
 std::string DragFloat::formatValue() const
 {
-    return s_formatNumber(getFormat(), readBinding());
+    return m_numberFormat.format(readBinding());
 }
 
 void DragFloat::applyScrub(float pixelDelta)
@@ -287,15 +308,19 @@ double DragFloat::clampValue(double v) const
     return v;
 }
 
-DragInt::DragInt()
+DragInt::DragInt() : Drag(NumberKind::INTEGER, "%lld")
 {
-    setFormat("%lld");
     configureField();
 }
 
 std::string DragInt::formatValue() const
 {
-    return s_formatNumber(getFormat(), static_cast<long long>(readBinding()));
+    return m_numberFormat.format(static_cast<long long>(readBinding()));
+}
+
+void DragInt::beginScrub()
+{
+    m_scrubSeeded = false;
 }
 
 void DragInt::applyScrub(float pixelDelta)
@@ -303,8 +328,19 @@ void DragInt::applyScrub(float pixelDelta)
     if (!hasBinding()) {
         return;
     }
-    writeBinding(
-        clampValue(s_saturateToInt64(scrubValue(static_cast<double>(readBinding()), pixelDelta, static_cast<double>(speed)))));
+    // scrub an unrounded shadow value so a speed below one step per pixel still adds up
+    int64_t current = readBinding();
+    if (!m_scrubSeeded || current != m_scrubWritten) {
+        m_scrubExact = static_cast<double>(current);
+        m_scrubSeeded = true;
+    }
+    m_scrubExact = scrubValue(m_scrubExact, pixelDelta, speed);
+    if (std::isnan(m_scrubExact)) {
+        m_scrubExact = static_cast<double>(current);
+    }
+    m_scrubExact = std::clamp(m_scrubExact, static_cast<double>(min), static_cast<double>(max));
+    writeBinding(clampValue(s_saturateToInt64(m_scrubExact)));
+    m_scrubWritten = readBinding();
     if (onValueChanged) {
         onValueChanged(readBinding());
     }

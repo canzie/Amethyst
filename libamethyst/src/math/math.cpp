@@ -96,17 +96,30 @@ uint16_t packHalf1x16(float f)
         return sign | 0x7C00u;
     }
 
+    // round to nearest, ties to even, on the bits shifted out
+    auto roundShift = [](uint32_t m, uint32_t shift) {
+        uint32_t half = 1u << (shift - 1);
+        uint32_t rest = m & ((1u << shift) - 1u);
+        uint32_t out = m >> shift;
+        if (rest > half || (rest == half && (out & 1u) != 0u)) {
+            ++out;
+        }
+        return out;
+    };
+
     if (exp16 <= 0) {
+        // a half subnormal is m * 2^-24 and this float is mant24 * 2^(exp32 - 150), so
+        // m = mant24 >> (14 - exp16); below 2^-25 everything rounds to zero
         if (exp16 < -10) {
             return sign;
         }
         mant32 |= 0x800000u;
-        uint32_t shift = static_cast<uint32_t>(1 - exp16);
-        mant32 = (mant32 + (1u << (shift - 1))) >> shift;
-        return sign | static_cast<uint16_t>(mant32);
+        uint32_t shift = static_cast<uint32_t>(14 - exp16);
+        // rounding up out of the subnormal range lands on 0x0400, the smallest normal, as it should
+        return sign | static_cast<uint16_t>(roundShift(mant32, shift));
     }
 
-    uint32_t mant16 = (mant32 + 0x1000u) >> 13;
+    uint32_t mant16 = roundShift(mant32, 13);
     if (mant16 >= 0x400u) {
         exp16++;
         if (exp16 >= 31) {

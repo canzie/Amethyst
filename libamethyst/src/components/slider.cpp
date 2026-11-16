@@ -6,12 +6,15 @@
 
 #include "components/extensions/ui_drag_detector.h"
 #include "components/instance.h"
+#include "logging/log.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
+#include <cstdint>
+#include <limits>
+#include <optional>
 
 namespace Amethyst {
 
@@ -103,15 +106,29 @@ static float s_normalizedToValue(float normalized, float min, float max, ValueSc
     return min + normalized * (max - min);
 }
 
-template <typename T> static std::string s_formatNumber(const std::string &format, T value)
+// a NaN bound would poison every normalisation and an infinite one makes max - min overflow, so
+// the range is made finite and ordered before use
+static void s_normalizeRange(float &lo, float &hi)
 {
-    char buffer[64];
-    std::snprintf(buffer, sizeof(buffer), format.c_str(), value);
-    return std::string(buffer);
+    constexpr float LIMIT = std::numeric_limits<float>::max() / 4.0f;
+    if (std::isnan(lo)) {
+        lo = 0.0f;
+    }
+    if (std::isnan(hi)) {
+        hi = lo;
+    }
+    lo = std::clamp(lo, -LIMIT, LIMIT);
+    hi = std::clamp(hi, -LIMIT, LIMIT);
+    if (lo > hi) {
+        std::swap(lo, hi);
+    }
 }
 
-Slider::Slider()
+Slider::Slider(NumberKind kind, std::string defaultFormat) : m_format(defaultFormat), m_defaultFormat(std::move(defaultFormat))
 {
+    if (auto parsed = NumberFormat::parse(m_defaultFormat, kind); parsed.has_value()) {
+        m_numberFormat = *parsed;
+    }
     m_track = add<Frame>();
     m_fill = m_track->add<Frame>();
     m_thumb = add<Shape>(thumbShape);
@@ -140,10 +157,20 @@ bool Slider::setSliderProperties(const SliderStylePropertiesArgs &props)
 
 void Slider::setFormat(std::string format)
 {
-    if (m_format != format) {
-        m_format = std::move(format);
-        markDirty();
+    if (m_format == format) {
+        return;
     }
+    std::optional<NumberFormat> parsed = NumberFormat::parse(format, m_numberFormat.kind());
+    if (!parsed.has_value()) {
+        AM_LOG_WARN("Slider format '{}' needs exactly one {} conversion; using '{}'", format,
+                    m_numberFormat.kind() == NumberKind::INTEGER ? "integer" : "floating-point", m_defaultFormat);
+        parsed = NumberFormat::parse(m_defaultFormat, m_numberFormat.kind());
+    }
+    if (parsed.has_value()) {
+        m_numberFormat = *parsed;
+    }
+    m_format = std::move(format);
+    markDirty();
 }
 
 void Slider::layoutTrack(float normalizedPos, float thumbWidth, const std::string &valueText,
@@ -201,6 +228,7 @@ void Slider::arrange()
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }
+    refreshStyleIfStale();
 
     if (flags & FLAG_DIRTY) {
         updateComponents();
@@ -223,21 +251,25 @@ std::vector<Instance *> Slider::getHittableInstances()
     return result;
 }
 
-SliderFloat::SliderFloat()
-{
-    m_format = "%.3f";
-}
+SliderFloat::SliderFloat() : Slider(NumberKind::FLOATING, "%.3f") {}
 
 void SliderFloat::updateComponents()
 {
-    float current = value ? *value : min;
-    float normalized = std::clamp(s_valueToNormalized(current, min, max, scale), 0.0f, 1.0f);
+    float lo = min;
+    float hi = max;
+    s_normalizeRange(lo, hi);
+    float current = value != nullptr ? *value : lo;
+    float normalized = s_valueToNormalized(current, lo, hi, scale);
+    normalized = std::isnan(normalized) ? 0.0f : std::clamp(normalized, 0.0f, 1.0f);
 
     layoutTrack(normalized, m_sProps.thumbWidth, formatValue(), [this](float n) {
-        if (!value) {
+        if (value == nullptr) {
             return;
         }
-        *value = s_normalizedToValue(n, min, max, scale);
+        float lo = min;
+        float hi = max;
+        s_normalizeRange(lo, hi);
+        *value = std::clamp(s_normalizedToValue(n, lo, hi, scale), lo, hi);
         if (onValueChanged) {
             onValueChanged(*value);
         }
@@ -247,27 +279,36 @@ void SliderFloat::updateComponents()
 
 std::string SliderFloat::formatValue() const
 {
-    return s_formatNumber(m_format, value ? *value : 0.0f);
+    return m_numberFormat.format(static_cast<double>(value != nullptr ? *value : 0.0f));
 }
 
-SliderInt::SliderInt()
-{
-    m_format = "%d";
-}
+SliderInt::SliderInt() : Slider(NumberKind::INTEGER, "%d") {}
 
 void SliderInt::updateComponents()
 {
-    int steps = std::max(max - min + 1, 1);
-    int current = value ? std::clamp(*value, min, max) : min;
-    float normalized = steps > 1 ? static_cast<float>(current - min) / static_cast<float>(steps - 1) : 0.0f;
+    // int64 throughout: max - min + 1 overflows int for wide ranges, and std::clamp is UB when lo > hi
+    int64_t lo = std::min(min, max);
+    int64_t hi = std::max(min, max);
+    int64_t steps = hi - lo + 1;
+    int64_t current = value != nullptr ? std::clamp(static_cast<int64_t>(*value), lo, hi) : lo;
+    float normalized = steps > 1 ? static_cast<float>(static_cast<double>(current - lo) / static_cast<double>(steps - 1)) : 0.0f;
     float thumbWidth = absoluteSize.x / static_cast<float>(steps);
 
     layoutTrack(normalized, thumbWidth, formatValue(), [this](float n) {
-        if (!value) {
+        if (value == nullptr) {
             return;
         }
-        float mapped = s_normalizedToValue(n, static_cast<float>(min), static_cast<float>(max), scale);
-        *value = std::clamp(static_cast<int>(std::lround(mapped)), min, max);
+        int64_t lo = std::min(min, max);
+        int64_t hi = std::max(min, max);
+        double mapped = static_cast<double>(lo) + static_cast<double>(n) * static_cast<double>(hi - lo);
+        if (scale == ValueScale::LOGARITHMIC) {
+            mapped = s_normalizedToValue(n, static_cast<float>(lo), static_cast<float>(hi), scale);
+        }
+        int64_t rounded =
+            std::isnan(mapped)
+                ? lo
+                : static_cast<int64_t>(std::clamp(std::round(mapped), static_cast<double>(lo), static_cast<double>(hi)));
+        *value = static_cast<int>(std::clamp(rounded, lo, hi));
         if (onValueChanged) {
             onValueChanged(*value);
         }
@@ -277,7 +318,7 @@ void SliderInt::updateComponents()
 
 std::string SliderInt::formatValue() const
 {
-    return s_formatNumber(m_format, value ? *value : 0);
+    return m_numberFormat.format(static_cast<long long>(value != nullptr ? *value : 0));
 }
 
 } // namespace Amethyst

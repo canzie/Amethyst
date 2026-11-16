@@ -125,6 +125,7 @@ void ScrollingFrame::arrange()
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }
+    refreshStyleIfStale();
 
     applyLayoutExtensions();
 

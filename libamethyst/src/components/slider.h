@@ -11,6 +11,7 @@
 #include "components/shape.h"
 #include "components/text_label.h"
 #include "components/ui_object.h"
+#include "utils/number_format.h"
 #include <functional>
 #include <string>
 
@@ -18,7 +19,6 @@ namespace Amethyst {
 
 class Slider : public UIObject {
   public:
-    Slider();
     virtual ~Slider() = default;
 
     void draw(DrawContext &ctx) override;
@@ -29,14 +29,27 @@ class Slider : public UIObject {
     bool setSliderProperties(const SliderStylePropertiesArgs &props);
     const SliderStyleProperties &getSliderProperties() const { return m_sProps; }
 
+    /**
+     * @brief Set the printf-style format of the value text. It must hold exactly one conversion
+     * matching the value type (%d/%i/%u/%x... for SliderInt, %f/%e/%g/%a for SliderFloat); any
+     * length modifier is fixed up. An invalid format logs a warning and the default is used.
+     * @param format The format, e.g. "%.1f%%" or "%d px"
+     */
     void setFormat(std::string format);
     const std::string &getFormat() const { return m_format; }
+
+    /**
+     * @brief The text shown over the track for the current value.
+     */
+    virtual std::string formatValue() const = 0;
 
   public:
     ValueScale scale = ValueScale::LINEAR;
     ShapeKind thumbShape = ShapeKind::RECT;
 
   protected:
+    Slider(NumberKind kind, std::string defaultFormat);
+
     virtual void updateComponents() = 0;
 
     /**
@@ -51,6 +64,8 @@ class Slider : public UIObject {
 
     SliderStyleProperties m_sProps;
     std::string m_format;
+    NumberFormat m_numberFormat;
+    std::string m_defaultFormat;
 
     Frame *m_track = nullptr;
     Frame *m_fill = nullptr;
@@ -67,14 +82,14 @@ class SliderFloat : public Slider {
     float *value = nullptr;
     std::function<void(float)> onValueChanged;
 
+    // swapped when reversed; a NaN bound falls back to 0 (min) or min (max)
     float min = 0.0f;
     float max = 100.0f;
 
+    std::string formatValue() const override;
+
   protected:
     void updateComponents() override;
-
-  private:
-    std::string formatValue() const;
 };
 
 class SliderInt : public Slider {
@@ -86,14 +101,14 @@ class SliderInt : public Slider {
     int *value = nullptr;
     std::function<void(int)> onValueChanged;
 
+    // swapped when reversed
     int min = 0;
     int max = 100;
 
+    std::string formatValue() const override;
+
   protected:
     void updateComponents() override;
-
-  private:
-    std::string formatValue() const;
 };
 
 } // namespace Amethyst

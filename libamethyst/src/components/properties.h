@@ -692,7 +692,7 @@ struct DragIntProperties {
     DragStylePropertiesArgs drag{};
     std::string format{};
     ValueScale scale = ValueScale::LINEAR;
-    int64_t speed = 1;
+    double speed = 1.0;
     int64_t min = std::numeric_limits<int64_t>::min();
     int64_t max = std::numeric_limits<int64_t>::max();
     int64_t *value = nullptr;

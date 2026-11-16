@@ -14,7 +14,8 @@
     
     - tab bars custom close button ???
 
-    - check if both .abc and .abc#tab work, or if 1 is overwritten for the last one, --> DOES NOT, FIX IT SO I CAN SINCE ITS GIGA USEFULL FOR PROPEGATING STUFF 
+    - CollapsibleHeader still assigns its own classes onto its header pieces (setClasses(getClasses())), wiping classes set through header(fn); move it to setInheritedStyle like TabBar
+    - TabBar does not hand :disabled down to its tabs when the bar itself is disabled
 
 
 ### Core / input

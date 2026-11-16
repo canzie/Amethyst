@@ -110,6 +110,8 @@ class Window : public UILayer {
     vec2 m_lastMousePosition = vec2(0.0f);
     bool m_hasMousePosition = false;
     bool m_hoverStale = false;
+    // theme generation last arranged against; a newer one restyles the whole tree
+    uint64_t m_styleGeneration = 0;
     UIObject *m_mouseCapturedBy = nullptr;
     EventConnection m_mouseCapturedByConn;
     std::unique_ptr<OverlayLayer> m_overlayLayer;
