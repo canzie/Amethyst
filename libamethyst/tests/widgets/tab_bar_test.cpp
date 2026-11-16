@@ -83,14 +83,18 @@ TEST_F(TabFixture, ClosingActiveMiddleTabSelectsNeighbour)
     EXPECT_EQ(bar->getSelectedContent(), contents[2]);
 }
 
-TEST_F(TabFixture, ClosingInactiveTabDoesNotReportSelection)
+TEST_F(TabFixture, ClosingTabBeforeSelectionReportsShiftedIndex)
 {
     bar->select(2);
-    int changes = 0;
-    bar->onSelectionChanged = [&](int32_t) { ++changes; };
+    std::vector<int32_t> changes;
+    bar->onSelectionChanged = [&](int32_t idx) { changes.push_back(idx); };
     bar->removeTab(contents[0]);
-    EXPECT_EQ(changes, 0);
+    EXPECT_EQ(changes, std::vector<int32_t>{1});
     EXPECT_EQ(bar->getSelectedContent(), contents[2]);
+
+    // a tab after the selection leaves it where it is
+    bar->removeTab(contents[3]);
+    EXPECT_EQ(changes.size(), 1u);
 }
 
 TEST_F(TabFixture, CloseCallbackMayRemoveTheTabItself)

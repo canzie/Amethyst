@@ -238,12 +238,13 @@ void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentR
     const vec2 previousSize = absoluteSize;
     const Degrees previousRotation = absoluteRotation;
 
-    absolutePosition = parentPos + m_uiObjProps.position.resolve(parentSize) -
-                       m_uiObjProps.anchorPoint * m_uiObjProps.size.resolve(parentSize);
     absoluteRotation = m_uiObjProps.rotation + parentRotation;
     absoluteSize = resolveSize(parentSize);
 
+    // anchor against the size the object really takes, constraints included, plus its margin
     vec4 m = m_uiObjProps.margin.resolve(parentSize);
+    vec2 outerSize = absoluteSize + vec2(m.w + m.y, m.x + m.z);
+    absolutePosition = parentPos + m_uiObjProps.position.resolve(parentSize) - m_uiObjProps.anchorPoint * outerSize;
     absolutePosition += vec2(m.w, m.x);
 
     // a rotated quad has no axis-aligned edges to land on a pixel boundary, and snapping one makes it step as it turns

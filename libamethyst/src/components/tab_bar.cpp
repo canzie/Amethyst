@@ -175,8 +175,8 @@ void TabBar::afterTabRemoved(int32_t removedIdx, int32_t newSelected)
     markAllTabsDirty();
     markDirty();
 
-    // a shifted index is not a new selection, another tab taking over from the removed one is
-    if (removedWasSelected && !m_tabs.empty()) {
+    // reported both when another tab takes over and when the selected tab only shifted index
+    if (!m_tabs.empty() && (removedWasSelected || m_selectedIndex != oldSelected)) {
         if (std::function<void(int32_t)> changed = onSelectionChanged; changed != nullptr) {
             changed(m_selectedIndex);
         }
