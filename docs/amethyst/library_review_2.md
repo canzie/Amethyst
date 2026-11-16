@@ -166,6 +166,10 @@ Testapp issues (frame loop, swapchain, upload order) are out of scope by decisio
 
 ## Decisions made along the way
 
+- UITextField is single-line only; `multiline` was removed (TextArea is the multi-line
+  editor). Line breaks in a field become spaces.
+- CollapsibleHeader passes its classes to its header pieces as inherited classes, the same way
+  TabBar does, so `.abc#header` styles them and classes set on the pieces survive.
 - Testapp issues are ignored; it only has to compile.
 - Column sizing: `FIXED` = static, `RESIZABLE` = user resizable, weight is always a share.
 - `ScrollBarVisibility`:
@@ -185,11 +189,11 @@ Testapp issues (frame loop, swapchain, upload order) are out of scope by decisio
 - **RaptureVK is not migrated**: about 45 button-callback assignments in 17 files need
   `x->track(x->onMouseButton1ClickCb.connect(...))`. Enter/leave becomes
   `onHoverChanged`.
-- Instance buffers are not per-frame: writing an existing block can show one mixed frame.
-- A multiline UITextField's caret stays on the first line, and wrapped rows are ignored.
-- `image-scale-type` and `image-tile-size` are parsed but not used.
-- A disabled TabBar doesn't pass `:disabled` to its tabs. CollapsibleHeader overwrites its
-  header pieces' classes.
+- Instance buffers are single-buffered: writing an existing block can show one mixed frame.
+  Known and accepted; double buffering may come later as an option, since low-memory or
+  single-buffered apps don't need it.
+- `image-scale-type` and `image-tile-size` are parsed but not used; kept until needed.
+- A disabled TabBar doesn't pass `:disabled` to its tabs.
 - Hit-testing order vs draw order (GLOBAL z) is a design question.
 - Removed subtrees keep their registry slots and stay drawn until destroyed.
 - See `todo.md`: focus manager, deferred destruction and window-leave/focus-lost events,

@@ -41,7 +41,9 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     // the background lies over the toggle button as a surface for header content, so it hears input
     // without taking it from the button; controls placed on it still take their own clicks
     m_headerBackground->propagate(INTERACTION_CATEGORY_ALL);
-    m_headerBackground->setClasses(getClasses());
+    // inherited, not assigned, as TabBar does: classes set on the header pieces survive, and a class
+    // removed from the header leaves them too
+    m_headerBackground->setInheritedStyle(getEffectiveClasses());
 
     m_headerButton = std::make_unique<InvisibleButton>();
     m_headerButton->parent = this;
@@ -58,7 +60,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
         m_headerBackground->addChild(std::move(indicator));
     }
     m_indicator->bindPart(ComponentPart::INDICATOR);
-    m_indicator->setClasses(getClasses());
+    m_indicator->setInheritedStyle(getEffectiveClasses());
     m_indicator->propagateClassesToChildren();
 
     if (customHeader != nullptr) {
@@ -70,7 +72,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
         m_headerBackground->addChild(std::move(label));
     }
     m_headerContent->bindPart(ComponentPart::HEADER);
-    m_headerContent->setClasses(getClasses());
+    m_headerContent->setInheritedStyle(getEffectiveClasses());
     m_headerContent->propagateClassesToChildren();
 
 }
@@ -91,15 +93,16 @@ void CollapsibleHeader::resolveStyle()
         markDirty();
     }
 
-    if (m_headerBackground) {
-        m_headerBackground->setClasses(getClasses());
+    std::vector<StyleKey> classes = getEffectiveClasses();
+    if (m_headerBackground != nullptr) {
+        m_headerBackground->setInheritedStyle(classes);
     }
-    if (m_indicator) {
-        m_indicator->setClasses(getClasses());
+    if (m_indicator != nullptr) {
+        m_indicator->setInheritedStyle(classes);
         m_indicator->propagateClassesToChildren();
     }
-    if (m_headerContent) {
-        m_headerContent->setClasses(getClasses());
+    if (m_headerContent != nullptr) {
+        m_headerContent->setInheritedStyle(classes);
         m_headerContent->propagateClassesToChildren();
     }
 }

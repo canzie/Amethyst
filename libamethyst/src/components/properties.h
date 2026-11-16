@@ -369,7 +369,6 @@ template <FieldShape Shape> struct TextInputStyleFields {
     F<Color4> placeholderColor{};
     F<Color4> selectionColor{};
     F<Color4> cursorColor{};
-    F<bool> multiline{};
     F<int32_t> maxLength{};
     F<bool> readOnly{};
     F<float> cursorBlinkRate{};

@@ -495,7 +495,6 @@ bool TextInputStyleProperties::apply(const TextInputStyleProperties &src)
 bool TextInputStyleProperties::apply(const TextInputStylePropertiesArgs &src)
 {
     bool changed = false;
-    AM_APPLY_ARGS(multiline)
     AM_APPLY_ARGS(maxLength)
     AM_APPLY_ARGS(readOnly)
     AM_APPLY_ARGS(placeholderColor)
@@ -512,7 +511,6 @@ TextInputStyleProperties::operator TextInputStylePropertiesArgs() const
 {
     TextInputStylePropertiesArgs out;
     out.text = text;
-    AM_TO_ARGS(multiline)
     AM_TO_ARGS(maxLength)
     AM_TO_ARGS(readOnly)
     AM_TO_ARGS(placeholderColor)

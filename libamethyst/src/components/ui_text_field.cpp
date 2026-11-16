@@ -38,7 +38,6 @@ UITextField::UITextField()
     m_tiProps.text.textColor = Color4{0.0f, 0.0f, 0.0f, 1.0f};
     m_tiProps.text.textXAlignment = TextXAlignment::LEFT;
     m_tiProps.text.textYAlignment = TextYAlignment::CENTER;
-    m_tiProps.multiline = false;
     m_tiProps.maxLength = -1;
     m_tiProps.readOnly = false;
     m_tiProps.cursorBlinkRate = 0.5f;
@@ -103,7 +102,7 @@ std::string UITextField::sanitizeLineBreaks(std::string_view text) const
             if (ch == '\r' && i + 1 < text.size() && text[i + 1] == '\n') {
                 i++;
             }
-            out.push_back(m_tiProps.multiline ? '\n' : ' ');
+            out.push_back(' ');
         } else {
             out.push_back(ch);
         }
@@ -240,15 +239,11 @@ void UITextField::onKeyPressed(const KeyEvent &event)
             break;
         }
         resetCursorBlink();
-        if (m_tiProps.multiline) {
-            insertText("\n");
-        } else {
-            onCommit();
-            // last thing touched: the handler may destroy this field (and the std::function
-            // with it), so it is called through a copy and nothing follows it
-            if (auto onEnter = onEnterPressed; onEnter != nullptr) {
-                onEnter();
-            }
+        onCommit();
+        // last thing touched: the handler may destroy this field (and the std::function
+        // with it), so it is called through a copy and nothing follows it
+        if (auto onEnter = onEnterPressed; onEnter != nullptr) {
+            onEnter();
         }
         break;
 
@@ -263,7 +258,7 @@ void UITextField::onCharacterTyped(uint32_t codepoint)
         return;
     }
 
-    if (codepoint >= 32 || (codepoint == '\n' && m_tiProps.multiline)) {
+    if (codepoint >= 32) {
         char utf8[Utf8::MAX_SEQUENCE];
         size_t bytes = Utf8::encode(codepoint, utf8);
         insertText(std::string(utf8, bytes));
@@ -502,7 +497,7 @@ void UITextField::drawText(DrawContext &ctx)
     params.color = colorToUse;
     params.xAlign = m_tiProps.text.textXAlignment;
     params.yAlign = m_tiProps.text.textYAlignment;
-    params.wrap = m_tiProps.multiline;
+    params.wrap = false;
 
     TextLayoutState next;
     next.font = m_font.index;
@@ -575,9 +570,7 @@ void UITextField::drawText(DrawContext &ctx)
         // sequence stores its start x in every one of its byte slots, so a lookup at a
         // boundary is always the left edge of that codepoint. The row layout uses the same
         // advances and tab stops as the shaper that drew the glyphs, so the caret sits
-        // where the text is. Each hard break restarts x at 0 for its line.
-        // todo: a multiline field still puts the caret on the first line's y, and wrapped
-        //  rows are not reflected here at all.
+        // where the text is.
         m_charPositions.assign(shown.size() + 1, 0.0f);
         TextRowLayoutParams rowParams;
         rowParams.font = m_font;

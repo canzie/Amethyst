@@ -1,5 +1,6 @@
 #include "common/ui_test_helpers.h"
 
+#include "components/collapsible_header.h"
 #include "components/frame.h"
 #include "components/radio_button.h"
 #include "components/slider.h"
@@ -210,4 +211,55 @@ TEST_F(ThemedFixture, DefaultThemeGivesSelectedRadioALook)
     BaseStyleProperties idle = Style::instance().getBaseStyle(ComponentType::RADIO_BUTTON);
     BaseStyleProperties active = Style::instance().getBaseStyle(ComponentType::RADIO_BUTTON, {}, GUI_STATE_ACTIVE);
     EXPECT_NE(idle.backgroundColor, active.backgroundColor);
+}
+
+// --- collapsible header: inherits like TabBar -------------------------------------------------
+
+namespace {
+
+struct HeaderFixture : ThemedFixture {
+    CollapsibleHeader *header = nullptr;
+    Frame *bar = nullptr;
+
+    void build()
+    {
+        header = win->add<CollapsibleHeader>();
+        place(header, 0, 0, 300, 200);
+        header->header([this](Frame &f) {
+            bar = &f;
+            f.addClass("mine");
+        });
+        win.layout();
+    }
+};
+
+} // namespace
+
+TEST_F(HeaderFixture, ClassPartReachesTheHeader)
+{
+    load(".abc#header { background-color: #00ff00; }");
+    build();
+    header->addClass("abc");
+    win.layout();
+    EXPECT_TRUE(isColor(bar->getBaseStyleProperties().backgroundColor, 0, 1, 0));
+}
+
+TEST_F(HeaderFixture, OwnClassesOnHeaderPiecesSurviveARestyle)
+{
+    load(".mine { border-pixel-size: 3px; }");
+    build();
+    header->addClass("abc");
+    win.layout();
+    EXPECT_FLOAT_EQ(bar->getBaseStyleProperties().borderPixelSize, 3.0f);
+}
+
+TEST_F(HeaderFixture, RemovingTheHeaderClassLeavesItsPieces)
+{
+    load(".abc#header { background-color: #00ff00; }");
+    build();
+    header->addClass("abc");
+    win.layout();
+    header->removeClass("abc");
+    win.layout();
+    EXPECT_FALSE(isColor(bar->getBaseStyleProperties().backgroundColor, 0, 1, 0));
 }

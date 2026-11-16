@@ -177,13 +177,6 @@ TEST_F(TextFieldFixture, SingleLineReplacesLineBreaks)
     EXPECT_EQ(field->getText(), "x y");
 }
 
-TEST_F(TextFieldFixture, MultilineNormalisesCrlf)
-{
-    field->setTextInputProperties({.multiline = true});
-    field->setText("a\r\nb\rc");
-    EXPECT_EQ(field->getText(), "a\nb\nc");
-}
-
 // regression: caret offsets summed .notdef advances for tabs while the glyphs sat on tab
 // stops, so clicking after a tab put the caret in the wrong place
 TEST_F(TextFieldFixture, CaretPositionsFollowTabStops)

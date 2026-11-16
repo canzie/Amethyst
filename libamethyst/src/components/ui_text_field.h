@@ -38,7 +38,7 @@ class UITextField : public UIInput {
      * @brief Replace the buffer programmatically.
      *
      * Not passed through acceptText() or maxLength, so callers may show formatted values.
-     * A single-line field turns line breaks into spaces, since it cannot show them.
+     * Line breaks become spaces, since the field is single-line (TextArea is the multi-line editor).
      */
     void setText(const std::string &text);
     void clearText();
@@ -108,8 +108,7 @@ class UITextField : public UIInput {
 
   private:
     /**
-     * @brief Normalise line breaks for this field: CRLF/CR become LF, and a single-line
-     * field turns each break into a space.
+     * @brief Turn every line break (CRLF, CR, LF) into a space.
      */
     std::string sanitizeLineBreaks(std::string_view text) const;
 
