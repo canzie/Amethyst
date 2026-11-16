@@ -92,7 +92,7 @@ void CurveEditor::buildLayout()
         tp.fillRows = true;
         m_tree->setTreeViewProperties(tp);
     }
-    m_tree->addColumn({.header = "Name", .sizing = TreeColumnSizing::STRETCH, .weight = 1.0f});
+    m_tree->addColumn({.header = "Name", .sizing = TreeColumnSizing::RESIZABLE, .weight = 1.0f});
     m_tree->onRowClicked = [this](uint32_t row) {
         if (row < m_rowToCurve.size() && m_rowToCurve[row] >= 0) {
             selectCurve(static_cast<size_t>(m_rowToCurve[row]));

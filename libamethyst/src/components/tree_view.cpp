@@ -1,7 +1,6 @@
 #include "components/tree_view.h"
 
 #include "amethyst/icons.h"
-#include "utils/click_through.h"
 #include "utils/column_sizing.h"
 #include "components/image_button.h"
 #include "modules/style.h"
@@ -164,7 +163,6 @@ Instance *TreeView::nextCell(std::unique_ptr<Instance> child)
     if (auto *obj = raw->asUiObject()) {
         obj->setBaseProperties({.visible = false});
     }
-    passClicksThroughPassiveContent(raw);
     m_cells[idx] = raw;
     m_cursorCol++;
     markDirty();
@@ -198,7 +196,6 @@ void TreeView::setCell(uint32_t row, uint32_t col, std::unique_ptr<Instance> chi
     if (auto *obj = raw->asUiObject()) {
         obj->setBaseProperties({.visible = false});
     }
-    passClicksThroughPassiveContent(raw);
     m_cells[idx] = raw;
     markDirty();
 }

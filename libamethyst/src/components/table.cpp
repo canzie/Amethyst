@@ -1,6 +1,5 @@
 #include "components/table.h"
 
-#include "utils/click_through.h"
 #include "utils/column_sizing.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
@@ -160,7 +159,6 @@ Instance *Table::nextCell(std::unique_ptr<Instance> child)
     if (auto *obj = raw->asUiObject()) {
         obj->setBaseProperties({.zIndex = Z_ABOVE_CONTENT});
     }
-    passClicksThroughPassiveContent(raw);
     m_cursorCol++;
     markDirty();
     return raw;
@@ -191,7 +189,6 @@ void Table::setCell(uint32_t row, uint32_t col, std::unique_ptr<Instance> child)
     if (auto *obj = raw->asUiObject()) {
         obj->setBaseProperties({.zIndex = Z_ABOVE_CONTENT});
     }
-    passClicksThroughPassiveContent(raw);
     markDirty();
 }
 

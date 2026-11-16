@@ -29,13 +29,13 @@ namespace Amethyst {
 
 enum class TableColumnSizing {
     FIXED,
-    STRETCH
+    RESIZABLE
 };
 
 struct TableColumn {
     std::string header{};
-    TableColumnSizing sizing = TableColumnSizing::STRETCH;
-    // share of the total width; sizing does not change this (STRETCH = user resizable, FIXED = static)
+    TableColumnSizing sizing = TableColumnSizing::RESIZABLE;
+    // share of the total width; sizing does not change this (RESIZABLE = the user may resize it, FIXED = static)
     float weight = 1.0f;
     // bounds in pixels, maxWidth 0 = unbounded
     float minWidth = 0.0f;
@@ -68,7 +68,7 @@ class Table : public UIObject {
      * @brief Grow column count to newCount, re-striding existing cell data.
      * @param newCount New column count; no-op if <= current count
      *
-     * New columns are anonymous STRETCH. Used by TableScope to support
+     * New columns are anonymous RESIZABLE. Used by TableScope to support
      * inferred column counts when no explicit columns are declared.
      */
     void resizeColumns(uint32_t newCount);

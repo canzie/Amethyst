@@ -1,7 +1,6 @@
 #include "components/collapsible_header.h"
 
 #include "amethyst/icons.h"
-#include "utils/click_through.h"
 #include "components/extensions/ui_grid_layout.h"
 #include "components/extensions/ui_list_layout.h"
 #include "components/image_label.h"
@@ -74,7 +73,6 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_headerContent->setClasses(getClasses());
     m_headerContent->propagateClassesToChildren();
 
-    passClicksThroughPassiveContent(m_headerBackground.get());
 }
 
 CollapsibleHeader::~CollapsibleHeader()
@@ -160,8 +158,6 @@ CollapsibleHeader &CollapsibleHeader::header(std::function<void(Frame &)> fn)
         fn(*m_headerBackground);
         m_headerBackground->propagateClassesToChildren();
         m_indicator->bindPart(ComponentPart::INDICATOR);
-        // decoration added to the header still toggles on click, controls added to it keep their clicks
-        passClicksThroughPassiveContent(m_headerBackground.get());
     }
     return *this;
 }

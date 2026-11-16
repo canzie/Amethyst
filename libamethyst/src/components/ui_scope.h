@@ -204,7 +204,7 @@ struct TableScope : UIScope {
     Table &component;
     bool m_columnsExplicit = false;
     explicit TableScope(Table &t);
-    TableScope &column(std::string header, float weight, TableColumnSizing sizing = TableColumnSizing::STRETCH);
+    TableScope &column(std::string header, float weight, TableColumnSizing sizing = TableColumnSizing::RESIZABLE);
     TableScope &column(TableColumn col);
     TableScope &row(std::function<void(TableRowScope &)> fn);
     TableScope &row(float height, std::function<void(TableRowScope &)> fn);
@@ -264,7 +264,7 @@ struct TreeViewScope : UIScope {
     TreeView &component;
     bool columnsExplicit = false;
     explicit TreeViewScope(TreeView &tv);
-    TreeViewScope &column(std::string header, float weight, TreeColumnSizing sizing = TreeColumnSizing::STRETCH);
+    TreeViewScope &column(std::string header, float weight, TreeColumnSizing sizing = TreeColumnSizing::RESIZABLE);
     TreeViewScope &column(TreeColumn col);
     TreeViewScope &row(std::function<void(TreeRowScope &)> fn);
 };

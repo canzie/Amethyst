@@ -35,13 +35,13 @@ class ImageButton;
 
 enum class TreeColumnSizing {
     FIXED,
-    STRETCH
+    RESIZABLE
 };
 
 struct TreeColumn {
     std::string header{};
-    TreeColumnSizing sizing = TreeColumnSizing::STRETCH;
-    // share of the total width; sizing does not change this (STRETCH = user resizable, FIXED = static)
+    TreeColumnSizing sizing = TreeColumnSizing::RESIZABLE;
+    // share of the total width; sizing does not change this (RESIZABLE = the user may resize it, FIXED = static)
     float weight = 1.0f;
     // bounds in pixels, maxWidth 0 = unbounded
     float minWidth = 0.0f;
@@ -82,7 +82,7 @@ class TreeView : public UIObject {
      * @brief Grow column count to newCount, re-striding existing cell data.
      * @param newCount New column count; no-op if <= current count
      *
-     * New columns are anonymous STRETCH. Used by TreeViewScope to support
+     * New columns are anonymous RESIZABLE. Used by TreeViewScope to support
      * inferred column counts when no explicit columns are declared.
      */
     void resizeColumns(uint32_t newCount);
