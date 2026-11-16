@@ -399,6 +399,14 @@ void TreeView::ensurePoolCapacity(uint32_t count)
         auto disc = std::make_unique<ImageButton>();
         disc->setSvg(Icons::ARROW);
         disc->setBaseStyleProperties({.backgroundTransparency = 1.0f});
+        // connected once per pool slot; the slot looks up whichever row it shows at click time
+        uint32_t discSlot = static_cast<uint32_t>(m_rowBackgrounds.size());
+        disc->track(disc->onMouseButton1ClickCb.connect([this, discSlot]() {
+            uint32_t logicalRow = m_rowBySlot[discSlot];
+            if (logicalRow != INVALID_ROW) {
+                toggle(logicalRow);
+            }
+        }));
         m_disclosures.push_back(disc.get());
         frame->addChild(std::move(disc));
 
@@ -547,10 +555,6 @@ void TreeView::arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visib
             .zIndex = Z_ABOVE_CONTENT,
         });
         disc->setImageStyleProperties({.imageColor = m_tvProps.disclosureTriangleColor});
-        disc->onMouseButton1ClickCb = [this, logicalRow]() {
-            toggle(logicalRow);
-            return EventResult::CONSUMED;
-        };
     }
 
     float indent = static_cast<float>(m_rows[logicalRow].depth) * m_tvProps.indentPerLevel;

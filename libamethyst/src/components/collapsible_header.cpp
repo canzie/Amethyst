@@ -46,10 +46,7 @@ CollapsibleHeader::CollapsibleHeader(std::unique_ptr<UIObject> customIndicator, 
     m_headerButton = std::make_unique<InvisibleButton>();
     m_headerButton->parent = this;
     m_headerButton->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
-    m_headerButton->onMouseButton1ClickCb = [this]() {
-        toggle();
-        return EventResult::CONSUMED;
-    };
+    m_headerButton->track(m_headerButton->onMouseButton1ClickCb.connect([this]() { toggle(); }));
 
     if (customIndicator != nullptr) {
         m_indicator = customIndicator.get();

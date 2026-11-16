@@ -67,15 +67,12 @@ Dropdown *MenuBar::addMenu(std::string label, std::vector<std::unique_ptr<Contex
         .size = UDim2::fromOffset(estWidth, 0.0f),
     });
 
-    entry->onMouseEnterCb = [this, entry]() {
-        entry->setGuiState(static_cast<uint16_t>(entry->getGuiState() | GUI_STATE_HOVERED));
-        onEntryHovered(entry);
-        return EventResult::CONSUMED;
-    };
-    entry->onMouseLeaveCb = [entry]() {
-        entry->setGuiState(static_cast<uint16_t>(entry->getGuiState() & ~GUI_STATE_HOVERED));
-        return EventResult::CONSUMED;
-    };
+    // UIObject already sets and clears the hovered state itself
+    entry->track(entry->onHoverChanged.connect([this, entry](bool hovered) {
+        if (hovered) {
+            onEntryHovered(entry);
+        }
+    }));
     entry->onOpenedCb = [this, entry]() {
         m_openEntry = entry;
         entry->setGuiState(static_cast<uint16_t>(entry->getGuiState() | GUI_STATE_ACTIVE));

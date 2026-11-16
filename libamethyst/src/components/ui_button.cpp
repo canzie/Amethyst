@@ -2,12 +2,9 @@
 
 namespace Amethyst {
 
-// Callbacks are invoked through a copy: a handler that destroys its own button would otherwise
-// free the std::function (and the closure's captures) while it is still running.
-template <typename Fn, typename... Args> static EventResult s_invoke(const Fn &fn, Args... args)
+EventResult UIButton::clickResult() const
 {
-    Fn copy = fn;
-    return copy(args...);
+    return consumes(INTERACTION_CATEGORY_CLICK) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 bool UIButton::setButtonProperties(const ButtonPropertiesArgs &props)
@@ -89,63 +86,65 @@ EventResult UIButton::onInputEnded(const InputObject &input)
     }
 }
 
+// Each internal step fires its signal for outside listeners; a listener may destroy the button, in
+// which case fire() reports it and nothing here touches the button again.
 EventResult UIButton::onMouseButton1Down(int32_t x, int32_t y)
 {
     setGuiState(static_cast<uint16_t>(getGuiState() | GUI_STATE_PRESSED));
-    if (onMouseButton1DownCb) {
-        return s_invoke(onMouseButton1DownCb, x, y);
+    if (!onMouseButton1DownCb.fire(x, y)) {
+        return EventResult::CONSUMED;
     }
-    return EventResult::CONSUMED;
+    return clickResult();
 }
 
 EventResult UIButton::onMouseButton1Up(int32_t x, int32_t y)
 {
     setGuiState(static_cast<uint16_t>(getGuiState() & ~GUI_STATE_PRESSED));
-    if (onMouseButton1UpCb) {
-        return s_invoke(onMouseButton1UpCb, x, y);
+    if (!onMouseButton1UpCb.fire(x, y)) {
+        return EventResult::CONSUMED;
     }
-    return EventResult::CONSUMED;
+    return clickResult();
 }
 
 EventResult UIButton::onMouseButton1Click()
 {
-    if (onMouseButton1ClickCb) {
-        return s_invoke(onMouseButton1ClickCb);
+    if (!onMouseButton1ClickCb.fire()) {
+        return EventResult::CONSUMED;
     }
-    return EventResult::CONSUMED;
+    return clickResult();
 }
 
 EventResult UIButton::onMouseButton1DoubleClick(int32_t x, int32_t y)
 {
-    if (onMouseButton1DoubleClickCb) {
-        return s_invoke(onMouseButton1DoubleClickCb, x, y);
+    if (!onMouseButton1DoubleClickCb.fire(x, y)) {
+        return EventResult::CONSUMED;
     }
-    return EventResult::CONSUMED;
+    return clickResult();
 }
 
 EventResult UIButton::onMouseButton2Down(int32_t x, int32_t y)
 {
     m_button2Pressed = true;
-    if (onMouseButton2DownCb) {
-        return s_invoke(onMouseButton2DownCb, x, y);
+    if (!onMouseButton2DownCb.fire(x, y)) {
+        return EventResult::CONSUMED;
     }
-    return EventResult::CONSUMED;
+    return clickResult();
 }
 
 EventResult UIButton::onMouseButton2Up(int32_t x, int32_t y)
 {
-    if (onMouseButton2UpCb) {
-        return s_invoke(onMouseButton2UpCb, x, y);
+    if (!onMouseButton2UpCb.fire(x, y)) {
+        return EventResult::CONSUMED;
     }
-    return EventResult::CONSUMED;
+    return clickResult();
 }
 
 EventResult UIButton::onMouseButton2Click()
 {
-    if (onMouseButton2ClickCb) {
-        return s_invoke(onMouseButton2ClickCb);
+    if (!onMouseButton2ClickCb.fire()) {
+        return EventResult::CONSUMED;
     }
-    return EventResult::CONSUMED;
+    return clickResult();
 }
 
 void UIButton::onPressCancelled(InputType type)
@@ -155,45 +154,6 @@ void UIButton::onPressCancelled(InputType type)
     } else if (type == InputType::MOUSE_BUTTON_2) {
         m_button2Pressed = false;
     }
-}
-
-EventResult UIButton::onMouseEnter()
-{
-    std::weak_ptr<bool> alive = aliveToken();
-    UIObject::onMouseEnter();
-    if (!isAlive(alive)) {
-        return EventResult::CONSUMED;
-    }
-    if (onMouseEnterCb) {
-        return s_invoke(onMouseEnterCb);
-    }
-    return EventResult::CONSUMED;
-}
-
-EventResult UIButton::onMouseLeave()
-{
-    std::weak_ptr<bool> alive = aliveToken();
-    UIObject::onMouseLeave();
-    if (!isAlive(alive)) {
-        return EventResult::CONSUMED;
-    }
-    if (onMouseLeaveCb) {
-        return s_invoke(onMouseLeaveCb);
-    }
-    return EventResult::CONSUMED;
-}
-
-EventResult UIButton::onMouseMoved(int32_t x, int32_t y)
-{
-    std::weak_ptr<bool> alive = aliveToken();
-    UIObject::onMouseMoved(x, y);
-    if (!isAlive(alive)) {
-        return EventResult::CONSUMED;
-    }
-    if (onMouseMovedCb) {
-        return s_invoke(onMouseMovedCb, x, y);
-    }
-    return EventResult::CONSUMED;
 }
 
 } // namespace Amethyst

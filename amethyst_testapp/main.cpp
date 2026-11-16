@@ -132,18 +132,11 @@ int main()
                             [&](Amethyst::TextButtonScope &btn) {
                                 btn.component.name = "button";
                                 auto *c = &btn.component;
-                                btn.component.onMouseEnterCb = [c]() {
-                                    c->setBaseProperties({.size = Amethyst::UDim2::fromScale(1.0f, 1.0f)});
-                                    return Amethyst::EventResult::CONSUMED;
-                                };
-                                btn.component.onMouseLeaveCb = [c]() {
-                                    c->setBaseProperties({.size = Amethyst::UDim2::fromScale(0.9f, 0.9f)});
-                                    return Amethyst::EventResult::CONSUMED;
-                                };
-                                btn.component.onMouseButton1ClickCb = [&running]() {
-                                    running = false;
-                                    return Amethyst::EventResult::CONSUMED;
-                                };
+                                btn.track(btn.component.onHoverChanged.connect([c](bool hovered) {
+                                    float scale = hovered ? 1.0f : 0.9f;
+                                    c->setBaseProperties({.size = Amethyst::UDim2::fromScale(scale, scale)});
+                                }));
+                                btn.track(btn.component.onMouseButton1ClickCb.connect([&running]() { running = false; }));
                             });
                     });
             })

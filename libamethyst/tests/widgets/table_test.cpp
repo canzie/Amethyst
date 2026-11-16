@@ -143,10 +143,9 @@ TEST_F(TableFixture, InteractiveCellKeepsItsClick)
     auto button = std::make_unique<TestButton>();
     button->setBaseProperties({.size = UDim2::fromScale(1.0f, 1.0f)});
     int clicks = 0;
-    button->onMouseButton1ClickCb = [&] {
+    button->track(button->onMouseButton1ClickCb.connect([&] {
         ++clicks;
-        return EventResult::CONSUMED;
-    };
+    }));
     table->nextCell(std::move(button));
     table->nextCell(s_scopedLabelCell("b"));
     win.layout();

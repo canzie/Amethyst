@@ -356,15 +356,8 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, vec2 nodeSize, vec2 node
 
     CursorShape cursorShape = (node.axis == SplitAxis::VERTICAL) ? CURSOR_HORI_RESIZE : CURSOR_VERT_RESIZE;
 
-    node.resizeHandle->onMouseEnterCb = [cursorShape]() {
-        InputInterface::setCursorShape(cursorShape);
-        return EventResult::CONSUMED;
-    };
-
-    node.resizeHandle->onMouseLeaveCb = []() {
-        InputInterface::setCursorShape(CURSOR_ARROW);
-        return EventResult::CONSUMED;
-    };
+    node.resizeHandle->track(node.resizeHandle->onHoverChanged.connect(
+        [cursorShape](bool hovered) { InputInterface::setCursorShape(hovered ? cursorShape : CURSOR_ARROW); }));
 
     auto *drag = node.resizeHandle->addExtension<UIDragDetector>();
     drag->mode = (node.axis == SplitAxis::VERTICAL) ? DragMode::HORIZONTAL : DragMode::VERTICAL;

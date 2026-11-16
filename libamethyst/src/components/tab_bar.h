@@ -27,6 +27,8 @@ class TabBar : public UIObject {
         TextLabel *label = nullptr;
         TextButton *closeButton = nullptr;
         std::unique_ptr<Instance> content;
+        // this bar's listeners on the tab's buttons; replaced when the tab moves to another bar
+        std::vector<EventConnection> interactionConns;
     };
 
     TabBar();

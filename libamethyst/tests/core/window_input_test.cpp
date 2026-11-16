@@ -20,14 +20,12 @@ struct ButtonFixture : ::testing::Test {
     {
         button = win->add<TestButton>();
         place(button, 10, 10, 100, 40);
-        button->onMouseButton1ClickCb = [this] {
+        button->track(button->onMouseButton1ClickCb.connect([this] {
             ++clicks;
-            return EventResult::CONSUMED;
-        };
-        button->onMouseButton2ClickCb = [this] {
+        }));
+        button->track(button->onMouseButton2ClickCb.connect([this] {
             ++rightClicks;
-            return EventResult::CONSUMED;
-        };
+        }));
         win.layout();
     }
 
@@ -72,11 +70,10 @@ TEST_F(ButtonFixture, RightReleaseWithoutPressIsNoClick)
 
 TEST_F(ButtonFixture, ClickHandlerMayDestroyItsButton)
 {
-    button->onMouseButton1ClickCb = [this] {
+    button->track(button->onMouseButton1ClickCb.connect([this] {
         win->removeChild(button);
         button = nullptr;
-        return EventResult::CONSUMED;
-    };
+    }));
     win.click(50, 30);
     EXPECT_EQ(button, nullptr);
     EXPECT_TRUE(win->getChildren().empty());
@@ -231,10 +228,9 @@ struct InputModeFixture : ::testing::Test {
     {
         below = win->add<TestButton>();
         place(below, 0, 0, 100, 100);
-        below->onMouseButton1ClickCb = [this] {
+        below->track(below->onMouseButton1ClickCb.connect([this] {
             ++belowClicks;
-            return EventResult::CONSUMED;
-        };
+        }));
         above = win->add<TestNode>();
         place(above, 0, 0, 100, 100);
         above->setBaseProperties({.zIndex = 5});
@@ -287,10 +283,9 @@ TEST_F(InputModeFixture, ChildrenOfAnIgnoredNodeStillReceiveInput)
     auto *child = above->add<TestButton>();
     place(child, 0, 0, 50, 50);
     int childClicks = 0;
-    child->onMouseButton1ClickCb = [&] {
+    child->track(child->onMouseButton1ClickCb.connect([&] {
         ++childClicks;
-        return EventResult::CONSUMED;
-    };
+    }));
     win.layout();
     win.click(10, 10);
     EXPECT_EQ(childClicks, 1);
@@ -316,10 +311,9 @@ TEST(InputModeDefaults, LabelsPropagate)
     auto *button = win->add<TestButton>();
     place(button, 0, 0, 100, 100);
     int clicks = 0;
-    button->onMouseButton1ClickCb = [&] {
+    button->track(button->onMouseButton1ClickCb.connect([&] {
         ++clicks;
-        return EventResult::CONSUMED;
-    };
+    }));
     auto *label = button->add<TextLabel>();
     place(label, 0, 0, 100, 100);
     bool labelHovered = false;
@@ -329,4 +323,32 @@ TEST(InputModeDefaults, LabelsPropagate)
     win.click(50, 50);
     EXPECT_TRUE(labelHovered);
     EXPECT_EQ(clicks, 1);
+}
+
+TEST_F(ButtonFixture, EveryClickListenerFires)
+{
+    int second = 0;
+    auto conn = button->onMouseButton1ClickCb.connect([&] { ++second; });
+    win.click(50, 30);
+    EXPECT_EQ(clicks, 1);
+    EXPECT_EQ(second, 1);
+}
+
+TEST(ButtonInputMode, PropagatingButtonLetsTheClickThrough)
+{
+    TestWindow win;
+    auto *behind = win->add<TestButton>();
+    place(behind, 0, 0, 100, 100);
+    auto *front = win->add<TestButton>();
+    place(front, 0, 0, 100, 100);
+    front->setBaseProperties({.zIndex = 5});
+    front->propagate(INTERACTION_CATEGORY_CLICK);
+    int behindClicks = 0;
+    int frontClicks = 0;
+    auto a = behind->onMouseButton1ClickCb.connect([&] { ++behindClicks; });
+    auto b = front->onMouseButton1ClickCb.connect([&] { ++frontClicks; });
+    win.layout();
+    win.click(50, 50);
+    EXPECT_EQ(frontClicks, 1);
+    EXPECT_EQ(behindClicks, 1);
 }

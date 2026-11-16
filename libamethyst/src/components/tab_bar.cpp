@@ -355,42 +355,32 @@ void TabBar::setupTabDragCallbacks(Tab &tab)
 void TabBar::setupTabInteractionCallbacks(Tab &tab)
 {
     Tab *tabPtr = &tab;
+    tab.interactionConns.clear();
 
-    tab.button->onMouseEnterCb = [this, tabPtr]() {
+    tab.interactionConns.push_back(tab.button->onHoverChanged.connect([this, tabPtr](bool hovered) {
         int32_t idx = findTabIndex(tabPtr);
-        tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() | GUI_STATE_HOVERED));
+        uint16_t state = tabPtr->labelFrame->getGuiState();
+        state = hovered ? static_cast<uint16_t>(state | GUI_STATE_HOVERED) : static_cast<uint16_t>(state & ~GUI_STATE_HOVERED);
+        tabPtr->labelFrame->setGuiState(state);
         tabPtr->labelFrame->propagateGuiStateToChildren();
         tabPtr->closeButton->setBaseProperties({
-            .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, true),
+            .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, hovered),
         });
-        return EventResult::CONSUMED;
-    };
+    }));
 
-    tab.button->onMouseLeaveCb = [this, tabPtr]() {
-        int32_t idx = findTabIndex(tabPtr);
-        tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() & ~GUI_STATE_HOVERED));
-        tabPtr->labelFrame->propagateGuiStateToChildren();
-        tabPtr->closeButton->setBaseProperties({
-            .visible = s_closeButtonVisible(m_tbProps.closeButtonVisibility, idx == m_selectedIndex, false),
-        });
-        return EventResult::CONSUMED;
-    };
-
-    tab.button->onMouseButton1DownCb = [this, tabPtr](int32_t, int32_t) {
+    tab.interactionConns.push_back(tab.button->onMouseButton1DownCb.connect([this, tabPtr](int32_t, int32_t) {
         tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() | GUI_STATE_PRESSED));
         tabPtr->labelFrame->propagateGuiStateToChildren();
         int32_t idx = findTabIndex(tabPtr);
         if (idx >= 0) select(idx);
-        return EventResult::CONSUMED;
-    };
+    }));
 
-    tab.button->onMouseButton1UpCb = [tabPtr](int32_t, int32_t) {
+    tab.interactionConns.push_back(tab.button->onMouseButton1UpCb.connect([tabPtr](int32_t, int32_t) {
         tabPtr->labelFrame->setGuiState(static_cast<uint16_t>(tabPtr->labelFrame->getGuiState() & ~GUI_STATE_PRESSED));
         tabPtr->labelFrame->propagateGuiStateToChildren();
-        return EventResult::CONSUMED;
-    };
+    }));
 
-    tab.closeButton->onMouseButton1ClickCb = [this, tabPtr]() {
+    tab.interactionConns.push_back(tab.closeButton->onMouseButton1ClickCb.connect([this, tabPtr]() {
         // the callback may remove the tab itself or destroy this bar, so it runs from a copy and the tab is looked
         // up again by its content afterwards
         Instance *content = tabPtr->content.get();
@@ -401,8 +391,7 @@ void TabBar::setupTabInteractionCallbacks(Tab &tab)
         if (isAlive(alive)) {
             removeTab(content);
         }
-        return EventResult::CONSUMED;
-    };
+    }));
 }
 
 void TabBar::setupTabButton(Tab &tab, int32_t index)

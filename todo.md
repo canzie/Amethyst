@@ -29,4 +29,3 @@
 
 ### Platform
     - content scale / UI scale: lay out in logical pixels, rasterize glyphs and svgs at physical size (4k testapp renders tiny, the engine compensates itself)
-    - UIButton callbacks -> EventSignals, same api style as UIObject's signals

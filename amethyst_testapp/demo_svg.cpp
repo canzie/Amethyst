@@ -162,10 +162,8 @@ int main()
                         .image = {.imageColor = {icons[i].tint.r, icons[i].tint.g, icons[i].tint.b, 1.0f}},
                         .svg = icons[i].svg},
                        [statusLabel, name = icons[i].label](ImageButtonScope &btn) {
-                           btn.component.onMouseButton1ClickCb = [statusLabel, name]() {
-                               statusLabel->setText("Clicked: " + std::string(name));
-                               return EventResult::CONSUMED;
-                           };
+                           btn.track(btn.component.onMouseButton1ClickCb.connect(
+                               [statusLabel, name]() { statusLabel->setText("Clicked: " + std::string(name)); }));
                        });
         btnX += 115.0f;
     }

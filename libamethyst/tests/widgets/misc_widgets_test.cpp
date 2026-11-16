@@ -24,10 +24,9 @@ TEST(CollapsibleHeaderInput, ControlsOnTheHeaderTakeTheirClicks)
     header->header([&](Frame &bar) {
         auto *button = bar.add<TestButton>();
         button->setBaseProperties({.position = UDim2::fromOffset(250, 5), .size = UDim2::fromOffset(40, 20)});
-        button->onMouseButton1ClickCb = [&] {
+        button->track(button->onMouseButton1ClickCb.connect([&] {
             ++buttonClicks;
-            return EventResult::CONSUMED;
-        };
+        }));
     });
     int toggles = 0;
     header->onToggled = [&](bool) { ++toggles; };

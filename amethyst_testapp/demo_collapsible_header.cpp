@@ -335,10 +335,9 @@ int main()
                                                     .image = {.imageColor = {0.7f, 0.7f, 0.85f, 1.0f}},
                                                     .svg = SVG_GEAR},
                                                    [statusLabel](ImageButtonScope &btn) {
-                                                       btn.component.onMouseButton1ClickCb = [statusLabel]() {
+                                                       btn.track(btn.component.onMouseButton1ClickCb.connect([statusLabel]() {
                                                            statusLabel->setText("Shader Pipeline: options clicked");
-                                                           return EventResult::CONSUMED;
-                                                       };
+                                                       }));
                                                    });
                             });
 
