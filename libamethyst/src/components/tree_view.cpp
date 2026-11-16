@@ -14,8 +14,11 @@ namespace Amethyst {
 
 static constexpr float DEFAULT_ROW_HEIGHT = 24.0f;
 
+// orders among the tree's draw children (row backgrounds and header background stay at the default 1)
 static constexpr int32_t Z_ABOVE_CONTENT = 2;
 static constexpr int32_t Z_TOP = 3;
+// the frame only holds the scrollbars, which must cover the rows and separators
+static constexpr int32_t Z_SCROLL_FRAME = 4;
 
 TreeView::TreeView()
 {
@@ -48,7 +51,23 @@ TreeView::TreeView()
     m_scrollFrame = add<ScrollingFrame>();
     m_scrollFrame->propagate(
         static_cast<InteractionCategory>(INTERACTION_CATEGORY_HOVER | INTERACTION_CATEGORY_CLICK | INTERACTION_CATEGORY_MOVE));
+    // it lies over the rows, so it must not take the wheel from a scrollable inside a cell; the tree
+    // scrolls it once the wheel bubbles up
+    m_scrollFrame->ignore(INTERACTION_CATEGORY_SCROLL);
     m_scrollFrame->setBaseStyleProperties({.backgroundTransparency = 1.0f});
+    m_scrollFrame->setBaseProperties({.zIndex = Z_SCROLL_FRAME});
+}
+
+EventResult TreeView::onMouseScrollUp()
+{
+    m_scrollFrame->scrollByWheel(1.0f);
+    return EventResult::CONSUMED;
+}
+
+EventResult TreeView::onMouseScrollDown()
+{
+    m_scrollFrame->scrollByWheel(-1.0f);
+    return EventResult::CONSUMED;
 }
 
 void TreeView::resolveStyle()
@@ -347,7 +366,7 @@ void TreeView::rebuildColumnPositions()
 void TreeView::updateSeparators()
 {
     for (auto &sep : m_separators) {
-        sep->parent = nullptr;
+        releasePart(sep.get());
     }
     m_separators.clear();
     uint32_t cols = columnCount();
@@ -359,7 +378,9 @@ void TreeView::updateSeparators()
         float xPos = m_columnPositions[i + 1];
 
         auto sep = std::make_unique<Frame>();
-        sep->parent = this;
+        adoptPart(sep.get());
+        // a line drawn over the rows, not something to click
+        sep->ignore(INTERACTION_CATEGORY_ALL);
         sep->setBaseStyleProperties({
             .backgroundColor = Color3(m_tvProps.columnSeparatorColor),
             .backgroundTransparency = 1.0f - m_tvProps.columnSeparatorColor.a,
@@ -394,7 +415,8 @@ void TreeView::ensurePoolCapacity(uint32_t count)
 {
     while (m_rowBackgrounds.size() < count) {
         auto frame = std::make_unique<Frame>();
-        frame->parent = m_scrollFrame;
+        // parented to the frame so a wheel over a row bubbles into it, but drawn by the tree
+        m_scrollFrame->adoptPart(frame.get());
 
         auto disc = std::make_unique<ImageButton>();
         disc->setSvg(Icons::ARROW);
@@ -769,17 +791,15 @@ void TreeView::hideSlot(uint32_t poolSlot)
     }
 }
 
-std::vector<Instance *> TreeView::getHittableInstances()
+void TreeView::collectDrawChildren(std::vector<Instance *> &out)
 {
-    std::vector<Instance *> result;
-    result.reserve(m_rowBackgrounds.size() + m_children.size());
     for (auto &bg : m_rowBackgrounds) {
-        result.push_back(bg.get());
+        out.push_back(bg.get());
     }
-    for (auto &child : m_children) {
-        result.push_back(child.get());
+    UIObject::collectDrawChildren(out);
+    for (auto &sep : m_separators) {
+        out.push_back(sep.get());
     }
-    return result;
 }
 
 } // namespace Amethyst

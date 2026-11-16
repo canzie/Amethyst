@@ -38,7 +38,7 @@ UIObject::UIObject()
     m_uiObjProps.rotation = 0.0f;
     m_uiObjProps.visible = true;
     m_uiObjProps.zIndex = 1;
-    m_uiObjProps.zindexBehavior = ZIndexBehavior::GLOBAL;
+    m_uiObjProps.zindexBehavior = ZIndexBehavior::RELATIVE;
 
     m_baseStyle.backgroundColor = Color3{1.0f, 1.0f, 1.0f};
     m_baseStyle.backgroundTransparency = 0.0f;
@@ -59,9 +59,14 @@ bool UIObject::setBaseProperties(BasePropertiesArgs props)
     if (props.padding.has_value()) {
         m_paddingPinned = true;
     }
+    bool orderChanged = (props.zIndex.has_value() && props.zIndex.value() != m_uiObjProps.zIndex) ||
+                        (props.zindexBehavior.has_value() && props.zindexBehavior.value() != m_uiObjProps.zindexBehavior);
     bool changed = m_uiObjProps.apply(props);
     if (changed) {
         markSubtreeDirty();
+    }
+    if (orderChanged) {
+        markDrawOrderDirty();
     }
     return changed;
 }
@@ -390,7 +395,7 @@ InstanceData UIObject::createInstanceData() const
     data.setCornerRadii(m_baseStyle.cornerRadius);
     data.setPrimitiveType(PRIMITIVE_TRIANGLE);
     data.setBorderMode(m_baseStyle.borderMode);
-    data.zIndex = getZIndex();
+    data.zIndex = drawZ();
     data.setVisible(isVisible());
     return data;
 }
@@ -478,27 +483,12 @@ void UIObject::setRenderCulled(bool culled)
     }
 }
 
-int32_t UIObject::getAbsoluteZIndex() const
+void UIObject::setDrawOrder(uint32_t order)
 {
-    if (parent == nullptr) {
-        return m_uiObjProps.zIndex;
+    if (m_drawOrder != order) {
+        m_drawOrder = order;
+        markDirty();
     }
-
-    if (auto *obj = parent->asUiObject()) {
-        return obj->getAbsoluteZIndex() + m_uiObjProps.zIndex;
-    } else if (auto *layer = parent->asLayer()) {
-        return layer->getDisplayOrder() + m_uiObjProps.zIndex;
-    }
-
-    return m_uiObjProps.zIndex;
-}
-
-int32_t UIObject::getZIndex() const
-{
-    if (m_uiObjProps.zindexBehavior == ZIndexBehavior::GLOBAL) {
-        return getAbsoluteZIndex();
-    }
-    return m_uiObjProps.zIndex;
 }
 
 EventResult UIObject::onMouseLeave()

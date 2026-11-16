@@ -40,6 +40,14 @@ class OverlayLayer : public UILayer {
 
   public:
     EventSignal<void(vec2, PressVote &)> onPressVote;
+
+  protected:
+    // other layers draw some parts into this registry (tab buttons, dock hints); starting above any
+    // order they can reach keeps this layer's own content (popups, menus, tooltips) over them
+    uint32_t drawOrderBase() const override { return OVERLAY_DRAW_ORDER_BASE; }
+
+  private:
+    static constexpr uint32_t OVERLAY_DRAW_ORDER_BASE = 1u << 27;
 };
 
 } // namespace Amethyst

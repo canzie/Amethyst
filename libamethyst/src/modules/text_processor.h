@@ -52,7 +52,6 @@ struct TextLayoutState {
     vec2 bounds = {0.0f, 0.0f};
     float lineHeight = 0.0f;
     uint32_t color = 0;
-    int32_t zIndex = 0;
     TextXAlignment xAlign = TextXAlignment::NONE;
     TextYAlignment yAlign = TextYAlignment::NONE;
     TextTruncate truncate = TextTruncate::NONE;
@@ -67,7 +66,7 @@ struct TextLayoutState {
     bool matches(const TextLayoutState &o) const
     {
         return font == o.font && fontSize == o.fontSize && bounds == o.bounds && lineHeight == o.lineHeight && color == o.color &&
-               zIndex == o.zIndex && xAlign == o.xAlign && yAlign == o.yAlign && truncate == o.truncate && wrap == o.wrap;
+               xAlign == o.xAlign && yAlign == o.yAlign && truncate == o.truncate && wrap == o.wrap;
     }
 
     /**

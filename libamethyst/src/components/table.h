@@ -149,10 +149,10 @@ class Table : public UIObject {
     void sort(std::function<bool(uint32_t rowA, uint32_t rowB)> comparator);
 
     /**
-     * @brief Collect hittable instances with cells last, so they win z-index ties against the row background
-     * @return Vector of non-owning pointers to hittable instances
+     * @brief The row backgrounds, then the children: header, separators and cells above the
+     * backgrounds, the scrolling frame (scrollbars, row separators) above the cells.
      */
-    std::vector<Instance *> getHittableInstances() override;
+    void collectDrawChildren(std::vector<Instance *> &out) override;
 
     bool setTableProperties(const TableStylePropertiesArgs &props);
     const TableStyleProperties &getTableProperties() const { return m_tProps; }
@@ -211,6 +211,7 @@ class Table : public UIObject {
     void arrangeHeader(const vec4 &childClip);
     void arrangeSeparators(const vec4 &childClip);
     void layoutRowBackground(uint32_t visualIndex, float y, float height);
+    void arrangeRowBackgrounds(uint32_t count, const vec4 &bodyClip);
     void arrangeRow(uint32_t logicalRow, float y, float height, vec2 bodyOrigin, const vec4 &childClip);
 
     /**
@@ -253,7 +254,9 @@ class Table : public UIObject {
 
     std::vector<Frame *> m_columnSeparators;
     std::vector<Frame *> m_rowSeparators;
-    std::vector<Frame *> m_rowBackgrounds;
+    // parented to the scrolling frame so a wheel over one bubbles through it, but laid out and drawn by the table so
+    // the cells can sit between them and the scrollbars
+    std::vector<std::unique_ptr<Frame>> m_rowBackgrounds;
     std::vector<EventConnection> m_rowBgInputConns;
     Frame *m_headerBackground = nullptr;
     std::vector<TextLabel *> m_headerLabels;

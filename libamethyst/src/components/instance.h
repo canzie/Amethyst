@@ -59,7 +59,40 @@ class Instance {
         return raw;
     }
 
-    virtual std::vector<Instance *> getHittableInstances();
+    /**
+     * @brief Append the nodes this one draws: its children plus any parts it owns outside the
+     * child list (scrollbars, tab buttons). The draw-order pass and hit-testing both walk this, so
+     * an override must list everything its draw() draws.
+     * @param out Receives the nodes, in the order they are drawn when their zIndex ties
+     */
+    virtual void collectDrawChildren(std::vector<Instance *> &out);
+
+    /**
+     * @brief collectDrawChildren() stable-sorted by getZIndex(), lowest (drawn first) first.
+     * @param out Cleared, then filled with the sorted nodes
+     */
+    void collectSortedDrawChildren(std::vector<Instance *> &out);
+
+    /**
+     * @brief Tell the layer this node draws into that its draw order must be rebuilt. Called for
+     * anything that changes which nodes a layer draws or their order (children, parts, zIndex).
+     */
+    void markDrawOrderDirty();
+
+    /**
+     * @brief Make part a part of this node: it is drawn by this node without being one of its
+     * children. Use instead of assigning part->parent directly, so the draw order follows.
+     */
+    void adoptPart(Instance *part);
+
+    /**
+     * @brief Undo adoptPart() before part is destroyed or handed elsewhere.
+     */
+    void releasePart(Instance *part);
+
+    /**
+     * @brief The order this node takes among its siblings when drawing and hit-testing.
+     */
     virtual int32_t getZIndex() const { return 0; }
     virtual bool containsPoint(const vec2 &) const { return false; }
     virtual bool isHitTestVisible() const { return false; }

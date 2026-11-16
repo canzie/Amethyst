@@ -20,7 +20,7 @@ Window::Window()
     InputInterface::registerWindow(this);
     m_overlayLayer = std::make_unique<OverlayLayer>();
     m_overlayLayer->setDisplayOrder(1000);
-    m_overlayLayer->parent = this;
+    adoptPart(m_overlayLayer.get());
     m_tooltips = std::make_unique<TooltipStack>(this);
 }
 
@@ -33,20 +33,16 @@ Window::~Window()
     m_overlayLayer.reset();
 }
 
-std::vector<Instance *> Window::getHittableInstances()
+void Window::collectDrawChildren(std::vector<Instance *> &out)
 {
-    std::vector<Instance *> result;
-    result.reserve(m_children.size() + 1);
-    for (auto &child : m_children) {
-        result.push_back(child.get());
-    }
-    result.push_back(m_overlayLayer.get());
-    return result;
+    Instance::collectDrawChildren(out);
+    out.push_back(m_overlayLayer.get());
 }
 
 void Window::draw(DrawContext &ctx)
 {
     AM_PROFILE_FUNCTION();
+    ensureDrawOrder();
     DrawContext layerCtx;
     layerCtx.geometry = geometryRegistry();
     layerCtx.overlay = m_overlayLayer->geometryRegistry();
@@ -96,6 +92,12 @@ void Window::arrange()
     }
 }
 
+// Hit-testing visits nodes in exactly the reverse of their draw order. Inside a layer that is: nested
+// layers drawn above it, ABSOLUTE subtrees with zIndex >= 0 (highest first), the tree (later and higher
+// siblings first, a node's children before the node itself), ABSOLUTE subtrees with zIndex < 0, then
+// nested layers drawn below it. Layers draw by display order; a nested layer tied with its parent counts
+// as below it, as its registry is created later and sorts before the parent's.
+
 // TRANSPARENT mirrors a propagated click: lower siblings still see the cursor
 enum class HoverHit : uint8_t {
     MISS,        // nothing in the subtree is under the cursor
@@ -103,110 +105,224 @@ enum class HoverHit : uint8_t {
     OPAQUE,      // a hover consumer was hit, siblings below are blocked
 };
 
-static HoverHit s_fillHoverStackRecursive(const std::vector<Instance *> &instances, const vec2 &point, UIObject **stack,
-                                          uint8_t &count, uint8_t capacity)
+// one entry of a layer's hit order: an absolute node, a nested layer, or the layer's own tree (nullptr)
+struct HitSegment {
+    Instance *node = nullptr;
+    std::weak_ptr<bool> alive;
+};
+
+static std::vector<HitSegment> s_hitSegments(UILayer *layer)
 {
-    std::vector<Instance *> sorted(instances.begin(), instances.end());
-    std::stable_sort(sorted.begin(), sorted.end(), [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
+    layer->ensureDrawOrder();
+
+    std::vector<UILayer *> above;
+    std::vector<UILayer *> below;
+    for (UILayer *nested : layer->getNestedLayers()) {
+        (nested->getDisplayOrder() > layer->getDisplayOrder() ? above : below).push_back(nested);
+    }
+    auto byDisplayOrder = [](UILayer *a, UILayer *b) { return a->getDisplayOrder() < b->getDisplayOrder(); };
+    std::stable_sort(above.begin(), above.end(), byDisplayOrder);
+    std::stable_sort(below.begin(), below.end(), byDisplayOrder);
+
+    // the absolute nodes come sorted by zIndex, lowest first
+    const std::vector<UIObject *> &absolutes = layer->getAbsoluteNodes();
+    auto firstAbove = std::find_if(absolutes.begin(), absolutes.end(), [](UIObject *obj) { return obj->getZIndex() >= 0; });
+
+    std::vector<HitSegment> segments;
+    segments.reserve(above.size() + below.size() + absolutes.size() + 1);
+    for (auto it = above.rbegin(); it != above.rend(); ++it) {
+        segments.push_back({*it, (*it)->aliveToken()});
+    }
+    for (auto it = absolutes.rbegin(); it != std::make_reverse_iterator(firstAbove); ++it) {
+        segments.push_back({*it, (*it)->aliveToken()});
+    }
+    segments.push_back({});
+    for (auto it = std::make_reverse_iterator(firstAbove); it != absolutes.rend(); ++it) {
+        segments.push_back({*it, (*it)->aliveToken()});
+    }
+    for (auto it = below.rbegin(); it != below.rend(); ++it) {
+        segments.push_back({*it, (*it)->aliveToken()});
+    }
+    return segments;
+}
+
+// An absolute node or nested layer is hit-tested out of tree order, so the visibility and clipping of
+// the ancestors the walk skipped are checked here instead.
+static bool s_reachable(Instance *node, UILayer *layer, const vec2 &point)
+{
+    for (Instance *ancestor = node->parent; ancestor != nullptr && ancestor != layer; ancestor = ancestor->parent) {
+        if (!ancestor->isHitTestVisible()) {
+            return false;
+        }
+        if (ancestor->getClipsDescendants() && !ancestor->containsPoint(point)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// node's children in its tree walk, topmost first; absolute nodes and nested layers are left to their layer
+static void s_treeChildrenTopFirst(Instance *node, std::vector<Instance *> &out)
+{
+    std::vector<Instance *> sorted;
+    node->collectSortedDrawChildren(sorted);
+    out.clear();
+    for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) {
+        if (UILayer::isTreeNode(*it)) {
+            out.push_back(*it);
+        }
+    }
+}
+
+static HoverHit s_fillHoverChildren(Instance *node, const vec2 &point, UIObject **stack, uint8_t &count, uint8_t capacity);
+
+static HoverHit s_fillHoverNode(Instance *inst, const vec2 &point, UIObject **stack, uint8_t &count, uint8_t capacity)
+{
+    if (!inst->isHitTestVisible()) {
+        return HoverHit::MISS;
+    }
+
+    bool pointInside = inst->containsPoint(point);
+    HoverHit childHit = HoverHit::MISS;
+    if (pointInside || !inst->getClipsDescendants()) {
+        childHit = s_fillHoverChildren(inst, point, stack, count, capacity);
+    }
+
+    if (childHit == HoverHit::MISS && !pointInside) {
+        return HoverHit::MISS;
+    }
+
+    UIObject *obj = inst->asUiObject();
+    // an ignored node is transparent: only what its children hit counts
+    if (obj != nullptr && obj->ignores(INTERACTION_CATEGORY_HOVER)) {
+        return childHit;
+    }
+
+    HoverHit hit = childHit;
+    if (pointInside) {
+        if (obj != nullptr) {
+            if (count < capacity) {
+                stack[count++] = obj;
+            }
+            if (obj->consumes(INTERACTION_CATEGORY_HOVER)) {
+                hit = HoverHit::OPAQUE;
+            }
+        }
+    }
+    return hit == HoverHit::OPAQUE ? HoverHit::OPAQUE : HoverHit::TRANSPARENT;
+}
+
+static HoverHit s_fillHoverChildren(Instance *node, const vec2 &point, UIObject **stack, uint8_t &count, uint8_t capacity)
+{
+    std::vector<Instance *> children;
+    s_treeChildrenTopFirst(node, children);
 
     HoverHit result = HoverHit::MISS;
-    for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) {
-        Instance *inst = *it;
-        if (!inst->isHitTestVisible()) {
-            continue;
+    for (Instance *child : children) {
+        HoverHit hit = s_fillHoverNode(child, point, stack, count, capacity);
+        if (hit == HoverHit::OPAQUE) {
+            return HoverHit::OPAQUE;
         }
-
-        bool pointInside = inst->containsPoint(point);
-        HoverHit childHit = HoverHit::MISS;
-
-        if (pointInside || !inst->getClipsDescendants()) {
-            auto hittable = inst->getHittableInstances();
-            if (!hittable.empty()) {
-                childHit = s_fillHoverStackRecursive(hittable, point, stack, count, capacity);
-            }
+        if (hit == HoverHit::TRANSPARENT) {
+            result = HoverHit::TRANSPARENT;
         }
+    }
+    return result;
+}
 
-        if (childHit == HoverHit::MISS && !pointInside) {
-            continue;
-        }
-
-        UIObject *obj = inst->asUiObject();
-        // an ignored node is transparent: only what its children hit counts
-        if (obj != nullptr && obj->ignores(INTERACTION_CATEGORY_HOVER)) {
-            if (childHit == HoverHit::OPAQUE) {
-                return HoverHit::OPAQUE;
-            }
-            if (childHit == HoverHit::TRANSPARENT) {
-                result = HoverHit::TRANSPARENT;
-            }
-            continue;
-        }
-
-        HoverHit hit = childHit;
-        if (pointInside) {
-            if (obj != nullptr) {
-                if (count < capacity) {
-                    stack[count++] = obj;
+static HoverHit s_fillHoverLayer(UILayer *layer, const vec2 &point, UIObject **stack, uint8_t &count, uint8_t capacity)
+{
+    HoverHit result = HoverHit::MISS;
+    for (const HitSegment &segment : s_hitSegments(layer)) {
+        HoverHit hit = HoverHit::MISS;
+        if (segment.node == nullptr) {
+            hit = s_fillHoverChildren(layer, point, stack, count, capacity);
+        } else if (s_reachable(segment.node, layer, point)) {
+            if (UILayer *nested = segment.node->asLayer(); nested != nullptr) {
+                if (nested->isHitTestVisible()) {
+                    hit = s_fillHoverLayer(nested, point, stack, count, capacity);
                 }
-                if (obj->consumes(INTERACTION_CATEGORY_HOVER)) {
-                    hit = HoverHit::OPAQUE;
-                }
-            }
-            if (hit == HoverHit::MISS) {
-                hit = HoverHit::TRANSPARENT;
+            } else {
+                hit = s_fillHoverNode(segment.node, point, stack, count, capacity);
             }
         }
 
         if (hit == HoverHit::OPAQUE) {
             return HoverHit::OPAQUE;
         }
-        result = HoverHit::TRANSPARENT;
+        if (hit == HoverHit::TRANSPARENT) {
+            result = HoverHit::TRANSPARENT;
+        }
     }
     return result;
 }
 
-template <typename Fn>
-static bool s_dispatchRecursive(const std::vector<Instance *> &instances, const vec2 &point, InteractionCategory category, Fn &&fn)
+template <typename Fn> static bool s_dispatchChildren(Instance *node, const vec2 &point, InteractionCategory category, Fn &fn);
+
+template <typename Fn> static bool s_dispatchNode(Instance *inst, const vec2 &point, InteractionCategory category, Fn &fn)
 {
-    std::vector<Instance *> sorted(instances.begin(), instances.end());
-    std::stable_sort(sorted.begin(), sorted.end(), [](Instance *a, Instance *b) { return a->getZIndex() < b->getZIndex(); });
+    if (!inst->isHitTestVisible()) {
+        return false;
+    }
 
-    for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) {
-        Instance *inst = *it;
+    // A handler further down may destroy this node, or the siblings we still have queued
+    // (a row callback clearing its table). Once anything on the path dies the event counts
+    // as handled: carrying on would walk freed nodes.
+    std::weak_ptr<bool> alive = inst->aliveToken();
 
-        if (!inst->isHitTestVisible()) {
-            continue;
+    bool pointInside = inst->containsPoint(point);
+    if (pointInside || !inst->getClipsDescendants()) {
+        if (s_dispatchChildren(inst, point, category, fn)) {
+            return true;
         }
-
-        // A handler further down may destroy this node, or the siblings we still have queued
-        // (a row callback clearing its table). Once anything on the path dies the event counts
-        // as handled: carrying on would walk freed nodes.
-        std::weak_ptr<bool> alive = inst->aliveToken();
-
-        bool pointInside = inst->containsPoint(point);
-        bool shouldCheckChildren = pointInside || !inst->getClipsDescendants();
-
-        if (shouldCheckChildren) {
-            auto hittable = inst->getHittableInstances();
-            if (!hittable.empty()) {
-                if (s_dispatchRecursive(std::move(hittable), point, category, fn)) {
-                    return true;
-                }
-                if (!Instance::isAlive(alive)) {
-                    return true;
-                }
-            }
-        }
-
-        if (pointInside) {
-            if (auto *obj = inst->asUiObject(); obj != nullptr && !obj->ignores(category)) {
-                if (fn(obj) == EventResult::CONSUMED || !Instance::isAlive(alive)) {
-                    return true;
-                }
-            }
+        if (!Instance::isAlive(alive)) {
+            return true;
         }
     }
 
+    if (pointInside) {
+        if (auto *obj = inst->asUiObject(); obj != nullptr && !obj->ignores(category)) {
+            if (fn(obj) == EventResult::CONSUMED || !Instance::isAlive(alive)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+template <typename Fn> static bool s_dispatchChildren(Instance *node, const vec2 &point, InteractionCategory category, Fn &fn)
+{
+    std::vector<Instance *> children;
+    s_treeChildrenTopFirst(node, children);
+    for (Instance *child : children) {
+        if (s_dispatchNode(child, point, category, fn)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+template <typename Fn> static bool s_dispatchLayer(UILayer *layer, const vec2 &point, InteractionCategory category, Fn &fn)
+{
+    std::weak_ptr<bool> layerAlive = layer->aliveToken();
+    for (const HitSegment &segment : s_hitSegments(layer)) {
+        if (segment.node == nullptr) {
+            if (s_dispatchChildren(layer, point, category, fn)) {
+                return true;
+            }
+        } else if (Instance::isAlive(segment.alive) && s_reachable(segment.node, layer, point)) {
+            if (UILayer *nested = segment.node->asLayer(); nested != nullptr) {
+                if (nested->isHitTestVisible() && s_dispatchLayer(nested, point, category, fn)) {
+                    return true;
+                }
+            } else if (s_dispatchNode(segment.node, point, category, fn)) {
+                return true;
+            }
+        }
+        if (!Instance::isAlive(layerAlive)) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -215,10 +331,11 @@ Instance *Window::findClickedObject(int32_t x, int32_t y)
     AM_PROFILE_FUNCTION();
     vec2 point(x, y);
     Instance *result = nullptr;
-    s_dispatchRecursive(getHittableInstances(), point, INTERACTION_CATEGORY_SCROLL, [&result](UIObject *obj) {
+    auto take = [&result](UIObject *obj) {
         result = obj;
         return EventResult::CONSUMED;
-    });
+    };
+    s_dispatchLayer(this, point, INTERACTION_CATEGORY_SCROLL, take);
     return result;
 }
 
@@ -263,12 +380,13 @@ void Window::onMouseButton(int button, int action, int mods, int32_t x, int32_t 
             press.released = press.object == captured;
             captured->onInputEnded(input);
         } else {
-            s_dispatchRecursive(getHittableInstances(), vec2(x, y), INTERACTION_CATEGORY_CLICK, [&](UIObject *obj) -> EventResult {
+            auto release = [&](UIObject *obj) -> EventResult {
                 if (obj == press.object) {
                     press.released = true;
                 }
                 return obj->onInputEnded(input);
-            });
+            };
+            s_dispatchLayer(this, vec2(x, y), INTERACTION_CATEGORY_CLICK, release);
         }
 
         PressRecord finished = std::move(press);
@@ -290,14 +408,15 @@ void Window::onMouseButton(int button, int action, int mods, int32_t x, int32_t 
         }
     }
 
-    s_dispatchRecursive(getHittableInstances(), point, INTERACTION_CATEGORY_CLICK, [&](UIObject *obj) -> EventResult {
+    auto begin = [&](UIObject *obj) -> EventResult {
         std::weak_ptr<bool> alive = obj->aliveToken();
         EventResult result = obj->onInputBegan(input);
         if (result == EventResult::CONSUMED && Instance::isAlive(alive)) {
             press = PressRecord{obj, alive, false};
         }
         return result;
-    });
+    };
+    s_dispatchLayer(this, point, INTERACTION_CATEGORY_CLICK, begin);
 }
 
 void Window::onMouseMove(int32_t x, int32_t y)
@@ -333,7 +452,7 @@ void Window::updateHover(int32_t x, int32_t y)
 
     std::array<UIObject *, MAX_HOVER_DEPTH> hit{};
     uint8_t hitCount = 0;
-    s_fillHoverStackRecursive(getHittableInstances(), point, hit.data(), hitCount, MAX_HOVER_DEPTH);
+    s_fillHoverLayer(this, point, hit.data(), hitCount, MAX_HOVER_DEPTH);
     std::reverse(hit.data(), hit.data() + hitCount);
     for (uint8_t i = 0; i < hitCount; ++i) {
         m_hoverCurrent.items[i] = HoverEntry{hit[i], hit[i]->aliveToken()};

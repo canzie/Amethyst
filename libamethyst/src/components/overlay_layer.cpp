@@ -10,6 +10,8 @@ OverlayLayer::~OverlayLayer() = default;
 
 void OverlayLayer::draw(DrawContext &ctx)
 {
+    // first: nodes whose order moved are marked dirty here, before the check below
+    ensureDrawOrder();
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }

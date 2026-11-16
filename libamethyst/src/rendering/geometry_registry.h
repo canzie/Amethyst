@@ -71,6 +71,13 @@ class GeometryRegistry {
     InstanceData *getMutable(const GeometryAllocation &alloc);
 
     /**
+     * @brief Move an allocation to another z, re-sorting on the next flush if it changed
+     * @param alloc The allocation handle to move
+     * @param zIndex The new z
+     */
+    void setZIndex(const GeometryAllocation &alloc, int32_t zIndex);
+
+    /**
      * @brief Release an allocation, freeing its slot for reuse
      * @param alloc The allocation handle to release
      */

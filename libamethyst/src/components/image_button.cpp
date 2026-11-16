@@ -5,6 +5,9 @@
 
 namespace Amethyst {
 
+// local draw layer of the image, over the node's own quad (see UIObject::drawZ)
+static constexpr uint32_t IMAGE_DRAW_LAYER = 1;
+
 ImageButton::ImageButton()
 {
     resolveStyle();
@@ -76,7 +79,9 @@ void ImageButton::draw(DrawContext &ctx)
         data.setPrimitiveType(PRIMITIVE_RECT);
         pushData(ctx.geometry, data);
 
-        m_image.drawImage(ctx, absoluteSize, createInstanceData());
+        InstanceData imageData = createInstanceData();
+        imageData.zIndex = drawZ(IMAGE_DRAW_LAYER);
+        m_image.drawImage(ctx, absoluteSize, imageData);
     }
 
     drawChildren(ctx);

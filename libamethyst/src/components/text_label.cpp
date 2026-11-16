@@ -12,6 +12,9 @@
 
 namespace Amethyst {
 
+// local draw layer of the glyphs, over the node's own quad (see UIObject::drawZ)
+static constexpr uint32_t TEXT_DRAW_LAYER = 1;
+
 static GeometryAllocation *s_pushData(GeometryRegistry *registry, GeometryAllocation *&alloc, const InstanceData &data)
 {
     if (alloc == nullptr) {
@@ -152,7 +155,7 @@ void TextLabel::updateTextGeometry(DrawContext &ctx)
         effectiveFontSize = m_textStyle.fontSize * std::min(scaleX, scaleY);
     }
 
-    int32_t glyphZIndex = getAbsoluteZIndex() + 1;
+    int32_t glyphZIndex = drawZ(TEXT_DRAW_LAYER);
     bool glyphVisible = isVisible();
 
     TextLayoutState next;
@@ -161,7 +164,6 @@ void TextLabel::updateTextGeometry(DrawContext &ctx)
     next.bounds = absoluteContentSize;
     next.lineHeight = m_textStyle.lineHeight;
     next.color = packColor(m_textStyle.textColor);
-    next.zIndex = glyphZIndex;
     next.xAlign = m_textStyle.textXAlignment;
     next.yAlign = m_textStyle.textYAlignment;
     next.truncate = m_textStyle.textTruncate;
@@ -170,7 +172,7 @@ void TextLabel::updateTextGeometry(DrawContext &ctx)
 
     bool registryChanged = m_textAlloc != nullptr && m_textAlloc->registry != ctx.geometry;
     if (m_textLayout.matches(next) && !registryChanged) {
-        repositionGlyphs(ctx, next.origin - m_textLayout.origin, glyphVisible);
+        repositionGlyphs(ctx, next.origin - m_textLayout.origin, glyphZIndex, glyphVisible);
     } else {
         reshapeGlyphs(ctx, effectiveFontSize, glyphZIndex, glyphVisible);
     }
@@ -178,7 +180,7 @@ void TextLabel::updateTextGeometry(DrawContext &ctx)
     m_textLayout = next;
 }
 
-void TextLabel::repositionGlyphs(DrawContext &ctx, vec2 delta, bool visible)
+void TextLabel::repositionGlyphs(DrawContext &ctx, vec2 delta, int32_t zIndex, bool visible)
 {
     AM_PROFILE_FUNCTION();
     if (m_textAlloc == nullptr) {
@@ -190,6 +192,7 @@ void TextLabel::repositionGlyphs(DrawContext &ctx, vec2 delta, bool visible)
         inst->clipRect = clipRect;
         inst->setVisible(visible);
     }
+    ctx.geometry->setZIndex(*m_textAlloc, zIndex);
 }
 
 void TextLabel::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t zIndex, bool visible)

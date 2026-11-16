@@ -11,6 +11,9 @@
 
 namespace Amethyst {
 
+// local draw layer of the glyphs, over the node's own quad (see UIObject::drawZ)
+static constexpr uint32_t TEXT_DRAW_LAYER = 1;
+
 Canvas::~Canvas()
 {
     if (m_registry) {
@@ -156,7 +159,7 @@ InstanceData Canvas::buildInstanceData(const DrawCmd &cmd) const
     data.setPrimitiveType(cmd.primitive);
     data.setFillColor(cmd.fillColor);
     data.setBorderColor(cmd.borderColor);
-    data.zIndex = getZIndex();
+    data.zIndex = drawZ();
     data.setVisible(isVisible());
     data.setBorderMode(BorderMode::MIDDLE);
 
@@ -301,7 +304,7 @@ void Canvas::draw(DrawContext &ctx)
 
             for (size_t i = 0; i < glyphs.size(); i++) {
                 glyphs[i].clipRect = clipRect;
-                glyphs[i].zIndex = getZIndex() + 1;
+                glyphs[i].zIndex = drawZ(TEXT_DRAW_LAYER);
                 glyphs[i].setVisible(isVisible());
 
                 if (slot < m_textAllocations.size()) {

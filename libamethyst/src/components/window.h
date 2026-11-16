@@ -56,7 +56,7 @@ class Window : public UILayer {
 
     OverlayLayer *getOverlayLayer() { return m_overlayLayer.get(); }
     TooltipStack &getTooltips() { return *m_tooltips; }
-    std::vector<Instance *> getHittableInstances() override;
+    void collectDrawChildren(std::vector<Instance *> &out) override;
 
     /**
      * @brief Subscribe a callback to per-frame ticks. Pair with unregisterTick on teardown.

@@ -38,7 +38,7 @@ class TabBar : public UIObject {
     void arrange() override;
     void markChildrenDirty() override;
     void resolveStyle() override;
-    std::vector<Instance *> getHittableInstances() override;
+    void collectDrawChildren(std::vector<Instance *> &out) override;
 
     /** @brief Not allowed. Use addTab() to add tabs. */
     Instance *addChild(std::unique_ptr<Instance> child) override;

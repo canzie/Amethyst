@@ -61,7 +61,7 @@ class DockingLayer : public UILayer {
 
     void draw(DrawContext &ctx) override;
     void arrange() override;
-    std::vector<Instance *> getHittableInstances() override;
+    void collectDrawChildren(std::vector<Instance *> &out) override;
 
     DockLayoutConfig saveConfig() const;
     void applyConfig(const DockLayoutConfig &config);

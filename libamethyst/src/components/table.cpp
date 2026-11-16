@@ -11,8 +11,11 @@ namespace Amethyst {
 
 static constexpr float FALLBACK_ROW_HEIGHT = 24.0f;
 
+// orders among the table's draw children
 static constexpr int32_t Z_ROW_BG = 1;
 static constexpr int32_t Z_ABOVE_CONTENT = 2;
+// the frame holds the scrollbars and row separators, which must cover the cells
+static constexpr int32_t Z_SCROLL_FRAME = 3;
 
 static bool s_showColumnSeparators(TableSeparatorMode mode)
 {
@@ -48,7 +51,11 @@ Table::Table()
     m_scrollFrame = add<ScrollingFrame>();
     m_scrollFrame->propagate(
         static_cast<InteractionCategory>(INTERACTION_CATEGORY_HOVER | INTERACTION_CATEGORY_CLICK | INTERACTION_CATEGORY_MOVE));
+    // it lies over the cells, so it must not take the wheel from a scrollable inside one; the table scrolls it
+    // once the wheel bubbles up
+    m_scrollFrame->ignore(INTERACTION_CATEGORY_SCROLL);
     m_scrollFrame->setBaseStyleProperties({.backgroundTransparency = 1.0f});
+    m_scrollFrame->setBaseProperties({.zIndex = Z_SCROLL_FRAME});
 }
 
 void Table::resolveStyle()
@@ -232,8 +239,8 @@ void Table::clear()
             removeChild(cell);
         }
     }
-    for (Frame *bg : m_rowBackgrounds) {
-        m_scrollFrame->removeChild(bg);
+    for (auto &bg : m_rowBackgrounds) {
+        m_scrollFrame->releasePart(bg.get());
     }
 
     m_cells.clear();
@@ -424,7 +431,9 @@ void Table::ensureRowBackgroundCapacity(uint32_t count)
 {
     while (m_rowBackgrounds.size() < count) {
         uint32_t slot = static_cast<uint32_t>(m_rowBackgrounds.size());
-        Frame *bg = m_scrollFrame->add<Frame>();
+        auto owned = std::make_unique<Frame>();
+        Frame *bg = owned.get();
+        m_scrollFrame->adoptPart(bg);
         m_rowBgInputConns.push_back(bg->onInputBeganCb.connect([this, slot](const InputObject &io) {
             if (io.type != InputType::MOUSE_BUTTON_1 || slot >= m_displayOrder.size()) {
                 return;
@@ -446,7 +455,7 @@ void Table::ensureRowBackgroundCapacity(uint32_t count)
                 }
             }
         }));
-        m_rowBackgrounds.push_back(bg);
+        m_rowBackgrounds.push_back(std::move(owned));
     }
 }
 
@@ -506,7 +515,7 @@ void Table::arrangeSeparators(const vec4 &childClip)
 
 void Table::layoutRowBackground(uint32_t visualIndex, float y, float height)
 {
-    Frame *bg = m_rowBackgrounds[visualIndex];
+    Frame *bg = m_rowBackgrounds[visualIndex].get();
     Color4 bgColor = m_tProps.rowBackgroundColor;
     if (visualIndex % 2 == 1 && m_tProps.rowAlternateColor.a > 0.0f) {
         bgColor = m_tProps.rowAlternateColor;
@@ -525,6 +534,23 @@ void Table::layoutRowBackground(uint32_t visualIndex, float y, float height)
         .visible = true,
         .zIndex = Z_ROW_BG,
     });
+}
+
+void Table::arrangeRowBackgrounds(uint32_t count, const vec4 &bodyClip)
+{
+    // placed on the frame's canvas the way it places its own children, culled the same way too
+    vec2 viewport = m_scrollFrame->absoluteContentSize;
+    vec2 canvasOrigin = m_scrollFrame->absoluteContentPosition - m_scrollFrame->getScrollOffset();
+    vec2 canvasSize = {viewport.x, contentHeight()};
+    for (uint32_t vi = 0; vi < count; vi++) {
+        Frame *bg = m_rowBackgrounds[vi].get();
+        bg->clipRect = bodyClip;
+        bg->computeAbsolutes(canvasSize, canvasOrigin, absoluteRotation);
+        bg->arrange();
+
+        float top = bg->absolutePosition.y - m_scrollFrame->absoluteContentPosition.y;
+        bg->setRenderCulled(top + bg->absoluteSize.y <= 0.0f || top >= viewport.y);
+    }
 }
 
 void Table::arrangeRow(uint32_t logicalRow, float y, float height, vec2 bodyOrigin, const vec4 &childClip)
@@ -610,6 +636,10 @@ void Table::arrange()
     m_scrollFrame->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
     m_scrollFrame->arrange();
 
+    vec4 bodyClip = childClip;
+    bodyClip.y = std::max(bodyClip.y, m_scrollFrame->absolutePosition.y);
+    arrangeRowBackgrounds(neededBackgrounds, bodyClip);
+
     float viewportHeight = m_scrollFrame->absoluteContentSize.y;
     if (viewportHeight <= 0.0f) {
         return;
@@ -617,14 +647,8 @@ void Table::arrange()
 
     vec2 scrollOffset = m_scrollFrame->getScrollOffset();
     vec2 bodyOrigin = m_scrollFrame->absolutePosition - vec2(0.0f, scrollOffset.y);
-    vec4 bodyClip = childClip;
-    bodyClip.y = std::max(bodyClip.y, m_scrollFrame->absolutePosition.y);
 
     arrangeSeparators(childClip);
-
-    for (uint32_t vi = 0; vi < neededBackgrounds; vi++) {
-        m_rowBackgrounds[vi]->clipRect = bodyClip;
-    }
 
     float rowY = 0.0f;
     for (uint32_t vi = 0; vi < visibleCount; vi++) {
@@ -665,39 +689,20 @@ void Table::draw(DrawContext &ctx)
         pushData(ctx.geometry, data);
     }
 
+    for (auto &bg : m_rowBackgrounds) {
+        bg->draw(ctx);
+    }
     drawChildren(ctx);
 
     flags &= ~(FLAG_DIRTY | FLAG_CHILD_DIRTY);
 }
 
-std::vector<Instance *> Table::getHittableInstances()
+void Table::collectDrawChildren(std::vector<Instance *> &out)
 {
-    std::vector<Instance *> result;
-    result.reserve(m_children.size());
-
-    for (Frame *bg : m_rowBackgrounds) {
-        result.push_back(bg);
+    for (auto &bg : m_rowBackgrounds) {
+        out.push_back(bg.get());
     }
-    if (m_headerBackground != nullptr) {
-        result.push_back(m_headerBackground);
-    }
-    for (TextLabel *lbl : m_headerLabels) {
-        result.push_back(lbl);
-    }
-    for (Frame *sep : m_columnSeparators) {
-        result.push_back(sep);
-    }
-    for (Frame *sep : m_rowSeparators) {
-        result.push_back(sep);
-    }
-    for (Instance *cell : m_cells) {
-        if (cell != nullptr) {
-            result.push_back(cell);
-        }
-    }
-    result.push_back(m_scrollFrame);
-
-    return result;
+    UIObject::collectDrawChildren(out);
 }
 
 } // namespace Amethyst

@@ -39,6 +39,7 @@ void DockingLayer::draw(DrawContext &ctx)
     if (m_rootNode < 0) {
         return;
     }
+    ensureDrawOrder();
 
     DrawContext layerCtx;
     layerCtx.geometry = geometryRegistry();
@@ -122,19 +123,20 @@ void DockingLayer::processPendingDeletions()
     m_pendingDeletions.clear();
 }
 
-std::vector<Instance *> DockingLayer::getHittableInstances()
+void DockingLayer::collectDrawChildren(std::vector<Instance *> &out)
 {
-    std::vector<Instance *> result;
+    for (auto &tabBar : m_tabBars) {
+        out.push_back(tabBar.get());
+    }
+    // the hints go into the overlay registry; the handles draw nothing but sit above the tab bars for input
+    for (auto &hint : m_dockHintComponents) {
+        out.push_back(hint.get());
+    }
     for (auto &node : m_nodes) {
-        if (node.resizeHandle) {
-            result.push_back(node.resizeHandle.get());
+        if (node.resizeHandle != nullptr) {
+            out.push_back(node.resizeHandle.get());
         }
     }
-
-    for (auto &tabBar : m_tabBars) {
-        result.push_back(tabBar.get());
-    }
-    return result;
 }
 
 void DockingLayer::swapAndRemoveNode(int32_t nodeIndex)
@@ -338,7 +340,7 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, vec2 nodeSize, vec2 node
     }
 
     node.resizeHandle = std::make_unique<InvisibleButton>();
-    node.resizeHandle->parent = this;
+    adoptPart(node.resizeHandle.get());
 
     if (node.axis == SplitAxis::VERTICAL) {
         node.resizeHandle->setBaseProperties({
@@ -414,7 +416,7 @@ int32_t DockingLayer::splitNode(int32_t nodeIndex, DockZone zone, std::unique_pt
     m_nodes[existingChild].parentNode = nodeIndex;
 
     auto newTabBar = std::make_unique<TabBar>();
-    newTabBar->parent = this;
+    adoptPart(newTabBar.get());
     setupTabBarCallbacks(newTabBar.get());
     newTabBar->setTabBarProperties({.tabTearOffEnabled = true});
     newTabBar->addTab(std::move(tab));
@@ -598,7 +600,7 @@ void DockingLayer::initDockHints()
 
     for (auto &hint : m_dockHintComponents) {
         hint = std::make_unique<Frame>();
-        hint->parent = this;
+        adoptPart(hint.get());
         hint->setBaseStyleProperties({
             .backgroundColor = hintColor,
             .backgroundTransparency = hintTransparency,
@@ -716,7 +718,7 @@ TabBar *DockingLayer::obtainLeafTabBar(int32_t nodeIndex)
 
     if (!m_nodes[nodeIndex].content) {
         auto tabBar = std::make_unique<TabBar>();
-        tabBar->parent = this;
+        adoptPart(tabBar.get());
         setupTabBarCallbacks(tabBar.get());
         tabBar->setTabBarProperties({.tabTearOffEnabled = true});
         tabBar->setBaseProperties({
@@ -741,7 +743,7 @@ TabBar *DockingLayer::dockNewRegion(DockZone zone)
     int32_t newLeaf = createNode();
 
     auto newTabBar = std::make_unique<TabBar>();
-    newTabBar->parent = this;
+    adoptPart(newTabBar.get());
     setupTabBarCallbacks(newTabBar.get());
     newTabBar->setTabBarProperties({.tabTearOffEnabled = true});
     TabBar *result = newTabBar.get();
@@ -841,7 +843,7 @@ void DockingLayer::applyConfig(const DockLayoutConfig &config)
 
         if (src.isLeaf()) {
             auto tabBar = std::make_unique<TabBar>();
-            tabBar->parent = this;
+            adoptPart(tabBar.get());
             setupTabBarCallbacks(tabBar.get());
             tabBar->setTabBarProperties({.tabTearOffEnabled = true});
 

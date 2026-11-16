@@ -15,6 +15,11 @@
 
 namespace Amethyst {
 
+// local draw layers over the node's own quad (see UIObject::drawZ): selection under the text, caret on top
+static constexpr uint32_t SELECTION_DRAW_LAYER = 1;
+static constexpr uint32_t TEXT_DRAW_LAYER = 2;
+static constexpr uint32_t CARET_DRAW_LAYER = 3;
+
 static constexpr float CURSOR_WIDTH = 1.0f;
 static constexpr uint64_t WHEEL_LINES = 3;
 
@@ -861,7 +866,7 @@ void TextArea::drawRows(DrawContext &ctx, bool reshaped)
     inst.setFillColor(m_taProps.text.textColor);
     inst.setPrimitiveType(PRIMITIVE_TEXT);
     inst.setGlyphSlice(m_glyphSlice.id);
-    inst.zIndex = getZIndex() + 1;
+    inst.zIndex = drawZ(TEXT_DRAW_LAYER);
     inst.clipRect = contentClipRect();
     inst.setVisible(isVisible());
 
@@ -892,7 +897,7 @@ void TextArea::drawSelection(DrawContext &ctx)
         data.scale = size;
         data.setFillColor(m_taProps.selectionColor);
         data.setPrimitiveType(PRIMITIVE_RECT);
-        data.zIndex = getZIndex();
+        data.zIndex = drawZ(SELECTION_DRAW_LAYER);
         data.clipRect = clip;
         data.setVisible(isVisible());
 
@@ -944,6 +949,7 @@ void TextArea::drawSelection(DrawContext &ctx)
     }
     for (size_t i = used; i < m_selectionAllocs.size(); i++) {
         InstanceData hidden{};
+        hidden.zIndex = drawZ(SELECTION_DRAW_LAYER);
         hidden.setVisible(false);
         ctx.geometry->update(*m_selectionAllocs[i], hidden);
     }
@@ -971,7 +977,7 @@ void TextArea::drawCursor(DrawContext &ctx)
     data.scale = size;
     data.setFillColor(m_taProps.cursorColor);
     data.setPrimitiveType(PRIMITIVE_RECT);
-    data.zIndex = getZIndex() + 2;
+    data.zIndex = drawZ(CARET_DRAW_LAYER);
     data.clipRect = contentClipRect();
     data.setVisible(visible && isVisible());
 
