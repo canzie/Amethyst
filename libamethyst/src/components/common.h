@@ -295,11 +295,10 @@ enum class ColorPickerShape {
     WHEEL,
 };
 
+// AUTO is first so a value-initialised field defaults to it
 enum class ScrollBarVisibility {
-    // a bar only on an axis whose content overflows; first so a value-initialised field gets it
-    AUTO,
-    // a bar on every scroll axis, even when the content fits
-    ALWAYS,
+    AUTO,   // a bar only on an axis whose content overflows
+    ALWAYS, // a bar on every scroll axis, even when the content fits
     NEVER,
 };
 
