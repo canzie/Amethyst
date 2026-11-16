@@ -31,6 +31,7 @@ Testapp issues (frame loop, swapchain, upload order) are out of scope by decisio
 | layout | 9 | list/grid layout, anchor |
 | style | 54 | parser robustness, cascade, specificity, parts, class propagation, reload |
 | math | 7 | half packing (exhaustive), colour conversions |
+| zorder | 20 | draw order, hit order == reverse draw order, ABSOLUTE, per-component part order |
 | widgets_value | 14 | number formats, slider/drag ranges, log drag, colour picker hue |
 
 ## What was fixed
@@ -166,6 +167,14 @@ Testapp issues (frame loop, swapchain, upload order) are out of scope by decisio
 
 ## Decisions made along the way
 
+- Z order (`2430fcb`): `ZIndexBehavior` is `RELATIVE` (default; zIndex orders siblings, a
+  parent draws below its children, subtrees stay contiguous) or `ABSOLUTE` (the node and its
+  subtree are placed layer-wide by zIndex, below the tree when negative, above otherwise).
+  One walk per layer assigns each node a draw order (`drawZ(localLayer)` = order * 4 + local
+  layer for a node's own parts), and hit-testing is the exact reverse of it.
+  `collectDrawChildren` replaces `getHittableInstances` so both walks see the same nodes.
+  Caret now draws above text. RaptureVK's `GLOBAL` in `header_layouts.cpp` must become
+  `RELATIVE`.
 - UITextField is single-line only; `multiline` was removed (TextArea is the multi-line
   editor). Line breaks in a field become spaces.
 - CollapsibleHeader passes its classes to its header pieces as inherited classes, the same way
@@ -194,7 +203,6 @@ Testapp issues (frame loop, swapchain, upload order) are out of scope by decisio
   single-buffered apps don't need it.
 - `image-scale-type` and `image-tile-size` are parsed but not used; kept until needed.
 - A disabled TabBar doesn't pass `:disabled` to its tabs.
-- Hit-testing order vs draw order (GLOBAL z) is a design question.
 - Removed subtrees keep their registry slots and stay drawn until destroyed.
 - See `todo.md`: focus manager, deferred destruction and window-leave/focus-lost events,
   content scale / DPI, keyboard navigation in widgets.
