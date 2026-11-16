@@ -49,8 +49,9 @@ class ScrollingFrame : public UIObject {
     /**
      * @brief Scroll the way a mouse wheel does, along the frame's scroll axis.
      * @param notches Wheel steps, positive towards the start; each moves by scrollSpeed pixels
+     * @return False if the content fits along the scroll axis, so there is nothing to scroll
      */
-    void scrollByWheel(float notches);
+    bool scrollByWheel(float notches);
 
   protected:
     EventResult onMouseScrollUp() override;

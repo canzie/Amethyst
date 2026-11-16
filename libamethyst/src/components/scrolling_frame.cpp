@@ -315,27 +315,32 @@ void ScrollingFrame::drawScrollbars(DrawContext &ctx)
     }
 }
 
-void ScrollingFrame::scrollByWheel(float notches)
+bool ScrollingFrame::scrollByWheel(float notches)
 {
+    bool vertical = m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY;
+    float maxScroll = vertical ? m_maxScroll.y : m_maxScroll.x;
+    if (maxScroll <= 0.0f) {
+        return false;
+    }
+
     float delta = -notches * m_sfProps.scrollSpeed;
-    if (m_sfProps.scrollAxis == ScrollAxis::Y || m_sfProps.scrollAxis == ScrollAxis::XY) {
+    if (vertical) {
         m_scrollOffset.y = std::clamp(m_scrollOffset.y + delta, 0.0f, m_maxScroll.y);
     } else {
         m_scrollOffset.x = std::clamp(m_scrollOffset.x + delta, 0.0f, m_maxScroll.x);
     }
     markDirty();
+    return true;
 }
 
 EventResult ScrollingFrame::onMouseScrollUp()
 {
-    scrollByWheel(1.0f);
-    return EventResult::CONSUMED;
+    return scrollByWheel(1.0f) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 EventResult ScrollingFrame::onMouseScrollDown()
 {
-    scrollByWheel(-1.0f);
-    return EventResult::CONSUMED;
+    return scrollByWheel(-1.0f) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 } // namespace Amethyst

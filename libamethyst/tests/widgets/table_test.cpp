@@ -1,6 +1,7 @@
 #include "common/ui_test_helpers.h"
 
 #include "components/container.h"
+#include "components/scrolling_frame.h"
 #include "components/table.h"
 #include "components/text_label.h"
 
@@ -171,6 +172,28 @@ TEST_F(TableFixture, WheelOverCellScrollsTheBody)
     win.scroll(1.0f, 50, rowY(2));
     win.layout();
     EXPECT_FLOAT_EQ(s_cellObj(table, 0, 0)->absolutePosition.y, before);
+}
+
+TEST(TableWheel, WheelOverAFittingTableScrollsWhatHoldsIt)
+{
+    TestWindow win;
+    auto *outer = win->add<ScrollingFrame>();
+    place(outer, 0, 0, 400, 200);
+    outer->setScrollingFrameProperties({.canvasSize = UDim2::fromOffset(400, 800)});
+
+    auto *table = outer->add<Table>();
+    place(table, 0, 0, 400, 300);
+    table->setTableProperties({.rowHeight = 20.0f, .headerHeight = 20.0f});
+    table->addColumn({.header = "a"});
+    for (int r = 0; r < 3; r++) {
+        table->addRow();
+        table->nextCell(s_scopedLabelCell("a"));
+    }
+    win.layout();
+
+    win.scroll(-1.0f, 50, 40);
+    win.layout();
+    EXPECT_GT(outer->getScrollOffset().y, 0.0f);
 }
 
 TEST_F(TableFixture, SelectionFollowsRowThroughSort)

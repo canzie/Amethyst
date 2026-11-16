@@ -662,14 +662,12 @@ void Table::arrange()
 EventResult Table::onMouseScrollUp()
 {
     // cells sit beside the scrolling frame rather than in it, so a wheel over one bubbles up to here
-    m_scrollFrame->scrollByWheel(1.0f);
-    return EventResult::CONSUMED;
+    return m_scrollFrame->scrollByWheel(1.0f) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 EventResult Table::onMouseScrollDown()
 {
-    m_scrollFrame->scrollByWheel(-1.0f);
-    return EventResult::CONSUMED;
+    return m_scrollFrame->scrollByWheel(-1.0f) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 void Table::draw(DrawContext &ctx)

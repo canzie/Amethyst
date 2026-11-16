@@ -60,14 +60,12 @@ TreeView::TreeView()
 
 EventResult TreeView::onMouseScrollUp()
 {
-    m_scrollFrame->scrollByWheel(1.0f);
-    return EventResult::CONSUMED;
+    return m_scrollFrame->scrollByWheel(1.0f) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 EventResult TreeView::onMouseScrollDown()
 {
-    m_scrollFrame->scrollByWheel(-1.0f);
-    return EventResult::CONSUMED;
+    return m_scrollFrame->scrollByWheel(-1.0f) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
 void TreeView::resolveStyle()
