@@ -2,7 +2,7 @@
 
 #include "amethyst/icons.h"
 #include "utils/click_through.h"
-#include "components/column_sizing.h"
+#include "utils/column_sizing.h"
 #include "components/image_button.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"
