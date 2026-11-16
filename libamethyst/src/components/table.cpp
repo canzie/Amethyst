@@ -1,6 +1,6 @@
 #include "components/table.h"
 
-#include "components/click_through.h"
+#include "utils/click_through.h"
 #include "components/column_sizing.h"
 #include "modules/style.h"
 #include "rendering/draw_context.h"

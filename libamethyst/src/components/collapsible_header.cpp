@@ -1,7 +1,7 @@
 #include "components/collapsible_header.h"
 
 #include "amethyst/icons.h"
-#include "components/click_through.h"
+#include "utils/click_through.h"
 #include "components/extensions/ui_grid_layout.h"
 #include "components/extensions/ui_list_layout.h"
 #include "components/image_label.h"

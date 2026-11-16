@@ -1,7 +1,7 @@
 #include "components/tree_view.h"
 
 #include "amethyst/icons.h"
-#include "components/click_through.h"
+#include "utils/click_through.h"
 #include "components/column_sizing.h"
 #include "components/image_button.h"
 #include "modules/style.h"
