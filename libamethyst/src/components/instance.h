@@ -40,7 +40,7 @@ class Instance {
     virtual ~Instance();
 
     /**
-     * @brief Move this node under @p newParent. Passing nullptr destroys the node (it is
+     * @brief Move this node under newParent. Passing nullptr destroys the node (it is
      * removed from its parent and nothing else owns it). Moving a node under itself or one of
      * its own descendants is refused.
      */
@@ -120,7 +120,7 @@ class Instance {
     }
 
     /**
-     * @brief True if this node is @p other or one of its descendants.
+     * @brief True if this node is other or one of its descendants.
      */
     bool isSelfOrDescendantOf(const Instance *other) const;
 

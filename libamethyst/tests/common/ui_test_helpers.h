@@ -45,7 +45,7 @@ class TestWindow {
     std::unique_ptr<Window> window;
 };
 
-/** @brief Places @p obj at a pixel rect inside its parent. */
+/** @brief Places obj at a pixel rect inside its parent. */
 inline void place(UIObject *obj, float x, float y, float w, float h)
 {
     obj->setBaseProperties({.position = UDim2::fromOffset(x, y), .size = UDim2::fromOffset(w, h)});
