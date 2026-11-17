@@ -76,7 +76,11 @@ class UITextField : public UIInput {
   public:
     std::function<void(const std::string &)> onTextChanged;
     std::function<void()> onEnterPressed;
-    std::function<void()> onTabPressed;
+
+    /**
+     * @brief Sees every key before the field handles it, returning true to keep the field from handling it
+     */
+    std::function<bool(const KeyEvent &)> interceptKey;
 
   protected:
     UITextField();

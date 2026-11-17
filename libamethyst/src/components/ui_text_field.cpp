@@ -150,6 +150,11 @@ void UITextField::moveCursorToEnd()
 
 void UITextField::onKeyPressed(const KeyEvent &event)
 {
+    // called through a copy, the handler may destroy this field, in which case it has to take the key
+    if (auto intercept = interceptKey; intercept != nullptr && intercept(event)) {
+        return;
+    }
+
     // read-only still navigates, selects and copies; only the edits below check it
     bool editable = !m_tiProps.readOnly;
     bool ctrl = (event.mods & MOD_CONTROL) != 0;
@@ -255,17 +260,6 @@ void UITextField::onKeyPressed(const KeyEvent &event)
         // with it), so it is called through a copy and nothing follows it
         if (auto onEnter = onEnterPressed; onEnter != nullptr) {
             onEnter();
-        }
-        break;
-
-    case KEY_TAB:
-        if (!editable) {
-            break;
-        }
-        resetCursorBlink();
-        // called through a copy for the same reason as Enter
-        if (auto onTab = onTabPressed; onTab != nullptr) {
-            onTab();
         }
         break;
 
