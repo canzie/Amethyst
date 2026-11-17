@@ -43,6 +43,11 @@ class UITextField : public UIInput {
     void setText(const std::string &text);
     void clearText();
 
+    /**
+     * @brief Put the caret after the last character, dropping any selection
+     */
+    void moveCursorToEnd();
+
     void setPlaceholder(std::string placeholder);
     const std::string &getPlaceholder() const { return m_placeholder; }
 
@@ -71,6 +76,7 @@ class UITextField : public UIInput {
   public:
     std::function<void(const std::string &)> onTextChanged;
     std::function<void()> onEnterPressed;
+    std::function<void()> onTabPressed;
 
   protected:
     UITextField();

@@ -142,6 +142,12 @@ void UITextField::moveCursorToPoint(vec2 position, bool extendSelection)
     setCursorPosition(getCursorFromMouseX(static_cast<int32_t>(position.x)), extendSelection);
 }
 
+void UITextField::moveCursorToEnd()
+{
+    setCursorPosition(m_text.size(), false);
+    resetCursorBlink();
+}
+
 void UITextField::onKeyPressed(const KeyEvent &event)
 {
     // read-only still navigates, selects and copies; only the edits below check it
@@ -249,6 +255,17 @@ void UITextField::onKeyPressed(const KeyEvent &event)
         // with it), so it is called through a copy and nothing follows it
         if (auto onEnter = onEnterPressed; onEnter != nullptr) {
             onEnter();
+        }
+        break;
+
+    case KEY_TAB:
+        if (!editable) {
+            break;
+        }
+        resetCursorBlink();
+        // called through a copy for the same reason as Enter
+        if (auto onTab = onTabPressed; onTab != nullptr) {
+            onTab();
         }
         break;
 
