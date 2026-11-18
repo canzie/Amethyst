@@ -495,8 +495,9 @@ void UITextField::drawText(DrawContext &ctx)
     }
 
     TextLayoutParams params;
-    params.position = absoluteContentPosition;
+    params.position = snapToPhysicalPixel(absoluteContentPosition, ctx.logicalToPhysicalScale);
     params.bounds = absoluteContentSize;
+    params.logicalToPhysicalScale = ctx.logicalToPhysicalScale;
     params.font = m_font;
     params.fontSize = m_tiProps.text.fontSize;
     params.color = colorToUse;
@@ -514,10 +515,12 @@ void UITextField::drawText(DrawContext &ctx)
     next.yAlign = params.yAlign;
     next.truncate = params.truncate;
     next.wrap = params.wrap;
+    next.logicalToPhysicalScale = params.logicalToPhysicalScale;
     next.origin = params.position;
 
     bool textChanged = textToRender != m_renderedText;
-    bool sizeChanged = m_textLayout.fontSize != next.fontSize || m_textLayout.font != next.font;
+    bool sizeChanged = m_textLayout.fontSize != next.fontSize || m_textLayout.font != next.font ||
+                       m_textLayout.logicalToPhysicalScale != next.logicalToPhysicalScale;
     bool registryChanged = m_textAlloc != nullptr && m_textAlloc->registry != ctx.geometry;
 
     if (!textChanged && !registryChanged && m_textLayout.matches(next)) {
@@ -582,6 +585,7 @@ void UITextField::drawText(DrawContext &ctx)
         rowParams.fontSize = m_tiProps.text.fontSize;
         rowParams.letterSpacing = params.letterSpacing;
         rowParams.tabSize = params.tabSize;
+        rowParams.logicalToPhysicalScale = params.logicalToPhysicalScale;
 
         TextRowLayout row;
         float widest = 0.0f;

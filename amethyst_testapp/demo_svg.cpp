@@ -90,7 +90,7 @@ int main()
         static_cast<float>(ctx.swapchainExtent.height),
     };
 
-    window.absoluteSize = screenSize;
+    window.setFramebufferSize(screenSize);
     window.absoluteRotation = 0.0f;
     window.setDisplayOrder(10);
 

@@ -126,8 +126,9 @@ void TextButton::updateTextGeometry(DrawContext &ctx)
         // measured with the same line height the layout uses, so textScaled fits the real block
         TextLayoutParams measure;
         measure.font = m_font;
-        measure.fontSize = static_cast<float>(static_cast<uint32_t>(m_textStyle.fontSize));
+        measure.fontSize = m_textStyle.fontSize;
         measure.lineHeight = m_textStyle.lineHeight;
+        measure.logicalToPhysicalScale = ctx.logicalToPhysicalScale;
         m_textSize = ctx.textProcessor->measureTextAtlas(m_text, measure);
     }
 
@@ -151,7 +152,9 @@ void TextButton::updateTextGeometry(DrawContext &ctx)
     next.yAlign = m_textStyle.textYAlignment;
     next.truncate = m_textStyle.textTruncate;
     next.wrap = static_cast<bool>(m_textStyle.textWrapped);
-    next.origin = absoluteContentPosition;
+    next.logicalToPhysicalScale = ctx.logicalToPhysicalScale;
+    // on the physical pixel grid, so a move by the difference of two origins keeps it there
+    next.origin = snapToPhysicalPixel(absoluteContentPosition, ctx.logicalToPhysicalScale);
 
     bool registryChanged = m_textAlloc != nullptr && m_textAlloc->registry != ctx.geometry;
     if (m_textLayout.matches(next) && !registryChanged) {
@@ -183,8 +186,9 @@ void TextButton::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_
     AM_PROFILE_FUNCTION();
 
     TextLayoutParams params;
-    params.position = absoluteContentPosition;
+    params.position = snapToPhysicalPixel(absoluteContentPosition, ctx.logicalToPhysicalScale);
     params.bounds = absoluteContentSize;
+    params.logicalToPhysicalScale = ctx.logicalToPhysicalScale;
     params.fontSize = effectiveFontSize;
     params.color = m_textStyle.textColor;
     params.lineHeight = m_textStyle.lineHeight;

@@ -22,6 +22,9 @@ struct DrawContext {
     TextProcessor *textProcessor = nullptr;
     GlyphAtlas *glyphAtlas = nullptr;
     SvgAtlas *svgAtlas = nullptr;
+    // physical (framebuffer) pixels per logical pixel of the window being drawn; text and SVGs
+    // rasterise at their logical size times this, so they stay sharp on a scaled display
+    float logicalToPhysicalScale = 1.0f;
 };
 
 } // namespace Amethyst
