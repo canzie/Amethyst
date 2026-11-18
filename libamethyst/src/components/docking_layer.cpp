@@ -41,12 +41,8 @@ void DockingLayer::draw(DrawContext &ctx)
     }
     ensureDrawOrder();
 
-    DrawContext layerCtx;
+    DrawContext layerCtx = ctx;
     layerCtx.geometry = geometryRegistry();
-    layerCtx.overlay = ctx.overlay;
-    layerCtx.textProcessor = ctx.textProcessor;
-    layerCtx.glyphAtlas = ctx.glyphAtlas;
-    layerCtx.svgAtlas = ctx.svgAtlas;
 
     if (!isVisible()) {
 

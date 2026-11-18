@@ -46,6 +46,37 @@ class Window : public UILayer {
     void draw(DrawContext &ctx) override;
     void arrange() override;
 
+    /**
+     * @brief Set how many physical (framebuffer) pixels make up one logical pixel.
+     *
+     * The tree, the theme and every size a developer sets are in logical pixels. The renderer
+     * multiplies by this scale on the way to the framebuffer, and text and SVGs rasterise at
+     * their physical size. A backend sets it from the monitor's content scale (the display
+     * scaling the user picked), and again when the window moves to another monitor. A change
+     * resizes the window from its framebuffer size and redraws the tree.
+     * @param scale Physical pixels per logical pixel; zero, negative and non-finite values are ignored
+     */
+    void setLogicalToPhysicalScale(float scale);
+
+    /**
+     * @brief Physical (framebuffer) pixels per logical pixel; 1 until a backend sets it.
+     */
+    float getLogicalToPhysicalScale() const { return m_logicalToPhysicalScale; }
+
+    /**
+     * @brief Size the window from its framebuffer, in physical pixels.
+     *
+     * The window's absoluteSize becomes the logical size, the framebuffer size divided by the
+     * logical to physical scale, and follows a later change of that scale.
+     * @param pixels Framebuffer width and height in physical pixels
+     */
+    void setFramebufferSize(vec2 pixels);
+
+    /**
+     * @brief The framebuffer size last given to setFramebufferSize, in physical pixels.
+     */
+    vec2 getFramebufferSize() const { return m_framebufferSize; }
+
     void onMouseButton(int button, int action, int mods, int32_t x, int32_t y);
     void onMouseScroll(float xoffset, float yoffset, int32_t x, int32_t y);
     void onMouseMove(int32_t x, int32_t y);
@@ -79,6 +110,7 @@ class Window : public UILayer {
 
   private:
     Instance *findClickedObject(int32_t x, int32_t y);
+    void applyFramebufferSize();
     void updateHover(int32_t x, int32_t y);
 
   private:
@@ -107,6 +139,8 @@ class Window : public UILayer {
     };
     std::array<PressRecord, 3> m_pressTargets;
 
+    float m_logicalToPhysicalScale = 1.0f;
+    vec2 m_framebufferSize = vec2(0.0f);
     vec2 m_lastMousePosition = vec2(0.0f);
     bool m_hasMousePosition = false;
     bool m_hoverStale = false;

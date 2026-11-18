@@ -62,7 +62,9 @@ int main()
 
     vec2 screenSize = {static_cast<float>(ctx.swapchainExtent.width), static_cast<float>(ctx.swapchainExtent.height)};
 
-    window.absoluteSize = screenSize;
+    // the backend already set the logical to physical scale from the monitor, so this lays the
+    // tree out at the framebuffer size divided by it
+    window.setFramebufferSize(screenSize);
     window.absoluteRotation = 0.0f;
     window.setDisplayOrder(10);
 

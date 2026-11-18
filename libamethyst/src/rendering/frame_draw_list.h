@@ -31,6 +31,9 @@ struct FrameDrawEntry {
 struct FrameDrawList {
     AmBufferId indexBuffer;
     std::vector<FrameDrawEntry> entries;
+    // physical pixels per logical pixel of the window this list draws; instances are in logical
+    // pixels and the backend scales them onto the framebuffer
+    float logicalToPhysicalScale = 1.0f;
 };
 
 } // namespace Amethyst

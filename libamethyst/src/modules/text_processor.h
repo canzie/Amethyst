@@ -12,6 +12,7 @@
 #include "rendering/instance_data.h"
 
 #include "math/math.h"
+#include <cmath>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -19,7 +20,26 @@
 namespace Amethyst {
 
 /**
+ * @brief Round a logical position onto the physical pixel grid.
+ *
+ * Glyph bitmaps are rasterised in physical pixels, so text whose origin falls between two
+ * physical pixels is sampled off its grid and blurs. At a fractional scale (1.25, 1.5) a whole
+ * logical position can still land between pixels, which is why this rounds in physical space.
+ * @param logical Position in logical pixels
+ * @param logicalToPhysicalScale Physical pixels per logical pixel
+ * @return The nearest logical position that sits on a whole physical pixel
+ */
+inline vec2 snapToPhysicalPixel(vec2 logical, float logicalToPhysicalScale)
+{
+    return vec2(std::round(logical.x * logicalToPhysicalScale), std::round(logical.y * logicalToPhysicalScale)) /
+           logicalToPhysicalScale;
+}
+
+/**
  * @brief Parameters for text layout
+ *
+ * Positions, bounds, sizes and spacing are in logical pixels. Glyphs rasterise at fontSize
+ * times logicalToPhysicalScale, so text stays sharp on a scaled display.
  */
 struct TextLayoutParams {
     vec2 position = {0.0f, 0.0f};
@@ -36,6 +56,7 @@ struct TextLayoutParams {
     TextYAlignment yAlign = TextYAlignment::TOP;
     TextTruncate truncate = TextTruncate::OFF;
     bool wrap = false;
+    float logicalToPhysicalScale = 1.0f; // physical pixels per logical pixel
 };
 
 /**
@@ -56,6 +77,7 @@ struct TextLayoutState {
     TextYAlignment yAlign = TextYAlignment::NONE;
     TextTruncate truncate = TextTruncate::NONE;
     bool wrap = false;
+    float logicalToPhysicalScale = 1.0f;
     vec2 origin = {0.0f, 0.0f};
 
     /**
@@ -66,7 +88,8 @@ struct TextLayoutState {
     bool matches(const TextLayoutState &o) const
     {
         return font == o.font && fontSize == o.fontSize && bounds == o.bounds && lineHeight == o.lineHeight && color == o.color &&
-               xAlign == o.xAlign && yAlign == o.yAlign && truncate == o.truncate && wrap == o.wrap;
+               xAlign == o.xAlign && yAlign == o.yAlign && truncate == o.truncate && wrap == o.wrap &&
+               logicalToPhysicalScale == o.logicalToPhysicalScale;
     }
 
     /**
@@ -83,8 +106,10 @@ struct TextLayoutState {
 /**
  * @brief A laid-out text label reduced to a single quad plus its glyph side data.
  *
- * Glyph positions are stored inside the buffers as u16 pixels relative to `pos`; the quad
- * is `pos`/`size` in screen space. `lines` partitions `glyphs` into reading-order rows.
+ * The quad, `pos`/`size`, is in logical pixels like every other instance. The glyph side data
+ * is in physical pixels, the space the glyphs were rasterised in: glyph positions are u16
+ * pixels relative to `pos`, and `lineHeightPx` is the physical line pitch. `lines` partitions
+ * `glyphs` into reading-order rows.
  */
 struct BatchedText {
     vec2 pos = {0.0f, 0.0f};
@@ -101,11 +126,15 @@ struct TextRowLayoutParams {
     FontId font{};
     float fontSize = 14.0f;
     float letterSpacing = 0.0f;
-    float tabSize = 4.0f; // tab stop spacing, in space advances
+    float tabSize = 4.0f;                // tab stop spacing, in space advances
+    float logicalToPhysicalScale = 1.0f; // physical pixels per logical pixel
 };
 
 /**
  * @brief One glyph's ink box within a row, relative to the row's top-left corner.
+ *
+ * In physical pixels, the same space as the glyph's atlas region in `info`, so the pair goes
+ * into the glyph buffer as is.
  */
 struct TextRowGlyph {
     const GlyphInfo *info = nullptr;
@@ -119,6 +148,8 @@ struct TextRowGlyph {
  * `columnX` has one entry per byte plus one past the end, so a caret offset maps to an x
  * without a second walk. A multi-byte sequence stores its own start x in each of its byte
  * slots, so a lookup at a codepoint boundary is the left edge of that codepoint.
+ *
+ * `columnX` and `width` are in logical pixels, the glyphs in physical pixels.
  */
 struct TextRowLayout {
     std::vector<TextRowGlyph> glyphs;
@@ -165,12 +196,14 @@ class TextProcessor {
     void layoutTextRow(std::string_view text, const TextRowLayoutParams &params, TextRowLayout &out) const;
 
     /**
-     * @brief Vertical metrics of a font at a pixel size.
+     * @brief Vertical metrics of a font at a size.
      * @param font Face to read; an invalid id uses the registry default
-     * @param pixelSize Font size in pixels
-     * @return Ascender, descender and line height in pixels
+     * @param fontSize Font size in logical pixels
+     * @param logicalToPhysicalScale Physical pixels per logical pixel; the font is read at the
+     * physical size, rounded to a whole pixel the same way layout rounds it
+     * @return Ascender, descender and line height in logical pixels
      */
-    FontMetrics getMetricsAtlas(FontId font, uint32_t pixelSize) const;
+    FontMetrics getMetricsAtlas(FontId font, float fontSize, float logicalToPhysicalScale = 1.0f) const;
 
     /**
      * @brief Measure text dimensions using glyph atlas

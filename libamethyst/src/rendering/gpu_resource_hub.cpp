@@ -99,6 +99,7 @@ void GpuResourceHub::syncWindow(void *cmdBuffer, Window *targetWindow)
     FrameDrawList &drawList = m_drawLists[targetWindow];
     drawList.entries.clear();
     drawList.indexBuffer = m_quadIndexBuffer;
+    drawList.logicalToPhysicalScale = targetWindow != nullptr ? targetWindow->getLogicalToPhysicalScale() : 1.0f;
 
     for (GeometryRegistry *registry : GeometryRegistry::getRegistries()) {
         UILayer *layer = registry->getOwningLayer();
