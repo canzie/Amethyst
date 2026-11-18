@@ -69,21 +69,25 @@ void UIImage::resolveSvg(DrawContext &ctx, vec2 absoluteSize)
         return;
     }
 
+    // rasterised at the physical size it covers on screen, not its logical size, so it stays
+    // sharp on a scaled display; a new scale asks for a new raster like a resize does
+    vec2 physicalSize = absoluteSize * ctx.logicalToPhysicalScale;
+
     // the cast below is undefined for NaN, infinity and negatives, so the range is checked while these are still floats
-    bool finite = std::isfinite(absoluteSize.x) && std::isfinite(absoluteSize.y);
-    if (!finite || absoluteSize.x > MAX_SVG_EXTENT || absoluteSize.y > MAX_SVG_EXTENT) {
-        AM_LOG_WARN("refusing to rasterize an SVG at {}x{}, retrying when it is between {} and {}", absoluteSize.x, absoluteSize.y,
+    bool finite = std::isfinite(physicalSize.x) && std::isfinite(physicalSize.y);
+    if (!finite || physicalSize.x > MAX_SVG_EXTENT || physicalSize.y > MAX_SVG_EXTENT) {
+        AM_LOG_WARN("refusing to rasterize an SVG at {}x{}, retrying when it is between {} and {}", physicalSize.x, physicalSize.y,
                     MIN_SVG_EXTENT, MAX_SVG_EXTENT);
         return;
     }
 
     // a size this small is one that has not been laid out yet, which is not worth a warning every frame
-    if (absoluteSize.x < MIN_SVG_EXTENT || absoluteSize.y < MIN_SVG_EXTENT) {
+    if (physicalSize.x < MIN_SVG_EXTENT || physicalSize.y < MIN_SVG_EXTENT) {
         return;
     }
 
-    uint32_t w = static_cast<uint32_t>(absoluteSize.x);
-    uint32_t h = static_cast<uint32_t>(absoluteSize.y);
+    uint32_t w = static_cast<uint32_t>(physicalSize.x);
+    uint32_t h = static_cast<uint32_t>(physicalSize.y);
 
     // rasterized at the size it is drawn at, so a resize asks for a fresh raster; a size that
     // already failed is not retried every frame

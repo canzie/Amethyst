@@ -5,6 +5,8 @@
 
 #include "modules/text_processor.h"
 
+#include "logging/log.h"
+
 #include "utils/packing.h"
 #include "utils/profiling.h"
 #include "utils/utf8.h"
@@ -28,6 +30,47 @@ float TextProcessor::getCharAdvanceAtlas(FontId font, uint32_t codepoint, uint32
     return m_glyphAtlas->getAdvance(font, codepoint, pixelSize) + letterSpacing;
 }
 
+// A scale that would divide by zero or poison every position falls back to 1. Window refuses
+// such a scale, so one arriving here was set on a params struct by hand.
+static float s_validScale(float logicalToPhysicalScale)
+{
+    if (!std::isfinite(logicalToPhysicalScale) || logicalToPhysicalScale <= 0.0f) {
+        AM_LOG_WARN("text laid out with logical to physical scale {}, using 1", logicalToPhysicalScale);
+        return 1.0f;
+    }
+    return logicalToPhysicalScale;
+}
+
+// Fonts rasterise at whole pixel sizes, so a physical size between two is rounded to the
+// nearer one rather than down: 13px at 1.5x draws at 20px, not 19, keeping the logical size
+// as close to what was asked as the grid allows. Never 0, which FreeType cannot render.
+static uint32_t s_pixelSize(float physicalFontSize)
+{
+    if (!std::isfinite(physicalFontSize)) {
+        AM_LOG_WARN("text laid out with font size {}, using 1px", physicalFontSize);
+        return 1;
+    }
+    if (physicalFontSize < 1.0f) {
+        return 1;
+    }
+    return static_cast<uint32_t>(std::lround(physicalFontSize));
+}
+
+// Layout runs in physical pixels, where the glyphs are rasterised: every logical length is
+// scaled up here, and results are scaled back down where they leave the processor.
+static TextLayoutParams s_toPhysical(const TextLayoutParams &params)
+{
+    float scale = s_validScale(params.logicalToPhysicalScale);
+    TextLayoutParams physical = params;
+    physical.position = params.position * scale;
+    physical.bounds = params.bounds * scale;
+    physical.fontSize = params.fontSize * scale;
+    physical.letterSpacing = params.letterSpacing * scale;
+    physical.strokeThickness = params.strokeThickness * scale;
+    physical.logicalToPhysicalScale = 1.0f;
+    return physical;
+}
+
 struct ShapedGlyph {
     const GlyphInfo *info;
     float localX;
@@ -48,7 +91,7 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
                         float &lineHeightPx)
 {
     AM_PROFILE_FUNCTION();
-    uint32_t pixelSize = static_cast<uint32_t>(params.fontSize);
+    uint32_t pixelSize = s_pixelSize(params.fontSize);
     metrics = atlas.getMetrics(params.font, pixelSize);
     lineHeightPx = metrics.lineHeight * params.lineHeight;
 
@@ -176,12 +219,17 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
     flushLine(lastWasHardBreak);
 }
 
-FontMetrics TextProcessor::getMetricsAtlas(FontId font, uint32_t pixelSize) const
+FontMetrics TextProcessor::getMetricsAtlas(FontId font, float fontSize, float logicalToPhysicalScale) const
 {
     if (m_glyphAtlas == nullptr) {
         return {};
     }
-    return m_glyphAtlas->getMetrics(font, pixelSize);
+    float scale = s_validScale(logicalToPhysicalScale);
+    FontMetrics metrics = m_glyphAtlas->getMetrics(font, s_pixelSize(fontSize * scale));
+    metrics.ascender /= scale;
+    metrics.descender /= scale;
+    metrics.lineHeight /= scale;
+    return metrics;
 }
 
 void TextProcessor::layoutTextRow(std::string_view text, const TextRowLayoutParams &params, TextRowLayout &out) const
@@ -195,10 +243,13 @@ void TextProcessor::layoutTextRow(std::string_view text, const TextRowLayoutPara
         return;
     }
 
-    uint32_t pixelSize = static_cast<uint32_t>(params.fontSize);
+    float scale = s_validScale(params.logicalToPhysicalScale);
+    float fontSize = params.fontSize * scale;
+    float letterSpacing = params.letterSpacing * scale;
+    uint32_t pixelSize = s_pixelSize(fontSize);
     FontMetrics metrics = m_glyphAtlas->getMetrics(params.font, pixelSize);
 
-    float tabWidth = s_tabWidth(*m_glyphAtlas, params.font, pixelSize, params.fontSize, params.tabSize);
+    float tabWidth = s_tabWidth(*m_glyphAtlas, params.font, pixelSize, fontSize, params.tabSize);
 
     float penX = 0.0f;
     size_t i = 0;
@@ -228,12 +279,20 @@ void TextProcessor::layoutTextRow(std::string_view text, const TextRowLayoutPara
             out.glyphs.push_back(glyph);
         }
 
-        penX += info->advance + params.letterSpacing;
+        penX += info->advance + letterSpacing;
         i += decoded.bytes;
     }
 
     out.columnX[text.size()] = penX;
     out.width = penX;
+
+    // the glyphs stay physical for the glyph buffer; the caret positions go back to logical
+    if (scale != 1.0f) {
+        for (float &x : out.columnX) {
+            x /= scale;
+        }
+        out.width /= scale;
+    }
 }
 
 vec2 TextProcessor::measureTextAtlas(const std::string &text, FontId font, uint32_t pixelSize, float letterSpacing) const
@@ -245,14 +304,18 @@ vec2 TextProcessor::measureTextAtlas(const std::string &text, FontId font, uint3
     return measureTextAtlas(text, params);
 }
 
-vec2 TextProcessor::measureTextAtlas(const std::string &text, const TextLayoutParams &params) const
+vec2 TextProcessor::measureTextAtlas(const std::string &text, const TextLayoutParams &logicalParams) const
 {
     AM_PROFILE_FUNCTION();
     if (m_glyphAtlas == nullptr || text.empty()) {
         return {0.0f, 0.0f};
     }
 
-    uint32_t pixelSize = static_cast<uint32_t>(params.fontSize);
+    // measured at the size it will be drawn at, so the logical size matches the drawn glyphs
+    float scale = s_validScale(logicalParams.logicalToPhysicalScale);
+    TextLayoutParams params = s_toPhysical(logicalParams);
+
+    uint32_t pixelSize = s_pixelSize(params.fontSize);
     float letterSpacing = params.letterSpacing;
     FontMetrics metrics = m_glyphAtlas->getMetrics(params.font, pixelSize);
 
@@ -290,10 +353,10 @@ vec2 TextProcessor::measureTextAtlas(const std::string &text, const TextLayoutPa
 
     maxWidth = std::max(maxWidth, lineWidth);
     // same line pitch as s_shapeText, so a measured block is exactly as tall as its layout
-    return {maxWidth, static_cast<float>(lineCount) * metrics.lineHeight * params.lineHeight};
+    return vec2(maxWidth, static_cast<float>(lineCount) * metrics.lineHeight * params.lineHeight) / scale;
 }
 
-std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text, const TextLayoutParams &params) const
+std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text, const TextLayoutParams &logicalParams) const
 {
     AM_PROFILE_FUNCTION();
     std::vector<InstanceData> result;
@@ -301,6 +364,9 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
     if (!m_glyphAtlas || text.empty()) {
         return result;
     }
+
+    float scale = s_validScale(logicalParams.logicalToPhysicalScale);
+    TextLayoutParams params = s_toPhysical(logicalParams);
 
     std::vector<std::vector<ShapedGlyph>> lines;
     std::vector<float> lineWidths;
@@ -350,9 +416,10 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
             float centerX = posX + glyphInfo->width * 0.5f;
             float centerY = posY + glyphInfo->height * 0.5f;
 
+            // placed on whole physical pixels above, then handed back as a logical instance
             InstanceData inst{};
-            inst.translation = vec2(centerX, centerY);
-            inst.scale = vec2(glyphInfo->width, glyphInfo->height);
+            inst.translation = vec2(centerX, centerY) / scale;
+            inst.scale = vec2(glyphInfo->width, glyphInfo->height) / scale;
             inst.fillColor = packedColor;
             inst.setUvRect(vec4(uvMinX, uvMinY, uvMaxX, uvMaxY));
             inst.setPrimitiveType(PRIMITIVE_TEXT);
@@ -366,7 +433,7 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
     return result;
 }
 
-BatchedText TextProcessor::layoutTextBatched(const std::string &text, const TextLayoutParams &params) const
+BatchedText TextProcessor::layoutTextBatched(const std::string &text, const TextLayoutParams &logicalParams) const
 {
     AM_PROFILE_FUNCTION();
     BatchedText out;
@@ -374,6 +441,9 @@ BatchedText TextProcessor::layoutTextBatched(const std::string &text, const Text
     if (m_glyphAtlas == nullptr || text.empty()) {
         return out;
     }
+
+    float scale = s_validScale(logicalParams.logicalToPhysicalScale);
+    TextLayoutParams params = s_toPhysical(logicalParams);
 
     std::vector<std::vector<ShapedGlyph>> lines;
     std::vector<float> lineWidths;
@@ -416,10 +486,12 @@ BatchedText TextProcessor::layoutTextBatched(const std::string &text, const Text
     float topPad = std::ceil(std::max(topOvershoot, 0.0f));
     float bottomPad = std::ceil(std::max(bottomOvershoot, 0.0f));
 
+    // the box sits on whole physical pixels so every glyph inside it does too; the quad goes
+    // back to logical pixels while the glyph data below stays physical
     float boxX = std::round(params.position.x);
     float boxY = std::round(startY) - topPad;
-    out.pos = vec2(boxX, boxY);
-    out.size = vec2(std::max(params.bounds.x, maxLineWidth), totalHeight + topPad + bottomPad);
+    out.pos = vec2(boxX, boxY) / scale;
+    out.size = vec2(std::max(params.bounds.x, maxLineWidth), totalHeight + topPad + bottomPad) / scale;
     out.lineHeightPx = lineHeightPx;
 
     size_t glyphTotal = 0;

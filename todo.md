@@ -14,7 +14,6 @@
     
     - tab bars custom close button ???
 
-    - CollapsibleHeader still assigns its own classes onto its header pieces (setClasses(getClasses())), wiping classes set through header(fn); move it to setInheritedStyle like TabBar
     - TabBar does not hand :disabled down to its tabs when the bar itself is disabled
 
 
@@ -27,6 +26,3 @@
     - deferred destruction (destroyLater / queue-free) so callbacks can delete their own node or its owner
     - mouse-left-window, window-focus-lost and capture-lost events; actually send InputState::CANCEL
     - horizontal scroll (xoffset is dropped today)
-
-### Platform
-    - content scale / UI scale: lay out in logical pixels, rasterize glyphs and svgs at physical size (4k testapp renders tiny, the engine compensates itself)

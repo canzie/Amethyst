@@ -16,12 +16,8 @@ void PanelLayer::draw(DrawContext &ctx)
         return;
     }
 
-    DrawContext layerCtx;
+    DrawContext layerCtx = ctx;
     layerCtx.geometry = geometryRegistry();
-    layerCtx.overlay = ctx.overlay;
-    layerCtx.textProcessor = ctx.textProcessor;
-    layerCtx.glyphAtlas = ctx.glyphAtlas;
-    layerCtx.svgAtlas = ctx.svgAtlas;
 
     for (auto &child : m_children) {
         if (auto *obj = child->asUiObject()) {

@@ -1,6 +1,7 @@
 #include "amethyst__vk13_glfw.h"
 
 #include "components/input_interface.h"
+#include "components/window.h"
 #include "logging/log.h"
 #include "utils/am_assert.h"
 #include "utils/profiling.h"
@@ -32,8 +33,6 @@ static GLFWcursor *CURSOR_SHAPE_MAP[CURSOR_COUNT];
 
 struct GlfwWindowInput {
     Window *uiWindow = nullptr;
-    float contentScaleX = 1.0f;
-    float contentScaleY = 1.0f;
     GLFWmousebuttonfun prevMouseButton = nullptr;
     GLFWcursorposfun prevCursorPos = nullptr;
     GLFWscrollfun prevScroll = nullptr;
@@ -43,6 +42,47 @@ struct GlfwWindowInput {
 };
 
 static std::unordered_map<GLFWwindow *, GlfwWindowInput> gGlfwWindowInputs;
+
+/**
+ * @brief A cursor position from GLFW, in framebuffer (physical) pixels.
+ *
+ * GLFW reports the cursor in window coordinates, which are logical on macOS and Wayland and
+ * already physical on Windows and X11. The framebuffer to window ratio is the content scale in
+ * the first case and 1 in the second, so it converts both without asking which platform this is.
+ */
+static vec2 s_cursorToFramebuffer(GLFWwindow *window, double x, double y)
+{
+    int windowWidth = 0;
+    int windowHeight = 0;
+    int framebufferWidth = 0;
+    int framebufferHeight = 0;
+    glfwGetWindowSize(window, &windowWidth, &windowHeight);
+    glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
+
+    vec2 ratio(1.0f);
+    if (windowWidth > 0 && windowHeight > 0) {
+        ratio = vec2(static_cast<float>(framebufferWidth) / static_cast<float>(windowWidth),
+                     static_cast<float>(framebufferHeight) / static_cast<float>(windowHeight));
+    }
+    return vec2(static_cast<float>(x) * ratio.x, static_cast<float>(y) * ratio.y);
+}
+
+/**
+ * @brief A framebuffer position in the logical pixels the UI tree is laid out in.
+ */
+static vec2 s_framebufferToLogical(const GlfwWindowInput &input, vec2 framebufferPos)
+{
+    float scale = input.uiWindow != nullptr ? input.uiWindow->getLogicalToPhysicalScale() : 1.0f;
+    return framebufferPos / scale;
+}
+
+static vec2 s_cursorToLogical(GLFWwindow *window, const GlfwWindowInput &input)
+{
+    double x = 0.0;
+    double y = 0.0;
+    glfwGetCursorPos(window, &x, &y);
+    return s_framebufferToLogical(input, s_cursorToFramebuffer(window, x, y));
+}
 
 static GLFWcursor *createCursorFromMask(int size, const bool *fill)
 {
@@ -183,11 +223,13 @@ static GLFWcursor *s_createCustomDiagonalResizeCursor(bool nesw)
 
 constexpr size_t INDEX_COUNT_RECT = 6;
 
+// matches the vertex shader's push constant block
 struct PushConstants {
-    vec2 screenSize;
+    vec2 screenSize; // framebuffer size, physical pixels
     uint32_t glyphOffset;
     uint32_t lineOffset;
     uint32_t sliceOffset;
+    float logicalToPhysicalScale; // physical pixels per logical pixel
 };
 
 void AmVulkanBackend::init(const AmVulkanInitInfo &config, const AmGlfwInitInfo &info)
@@ -336,6 +378,7 @@ void AmVulkanBackend::record(VkCommandBuffer cmd, const FrameDrawList &drawList,
         .glyphOffset = 0,
         .lineOffset = 0,
         .sliceOffset = 0,
+        .logicalToPhysicalScale = drawList.logicalToPhysicalScale,
     };
 
     for (const FrameDrawEntry &entry : drawList.entries) {
@@ -854,13 +897,9 @@ void AmVulkanBackend::mouseButtonCallback(GLFWwindow *window, int button, int ac
         input.prevMouseButton(window, button, action, mods);
     }
 
-    double x = 0.0;
-    double y = 0.0;
-    glfwGetCursorPos(window, &x, &y);
-    int32_t scaledX = static_cast<int32_t>(x * input.contentScaleX);
-    int32_t scaledY = static_cast<int32_t>(y * input.contentScaleY);
-
-    InputInterface::onMouseButton(input.uiWindow, button, action, s_translateModifiers(mods), scaledX, scaledY);
+    vec2 pos = s_cursorToLogical(window, input);
+    InputInterface::onMouseButton(input.uiWindow, button, action, s_translateModifiers(mods), static_cast<int32_t>(pos.x),
+                                  static_cast<int32_t>(pos.y));
 }
 
 void AmVulkanBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
@@ -875,8 +914,7 @@ void AmVulkanBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
         input.prevCursorPos(window, x, y);
     }
 
-    double scaledX = x * input.contentScaleX;
-    double scaledY = y * input.contentScaleY;
+    vec2 framebufferPos = s_cursorToFramebuffer(window, x, y);
 
     // While the cursor is locked (infinite drag) GLFW reports unbounded virtual positions, so
     // pass them straight through. Otherwise GLFW keeps reporting positions outside the window
@@ -886,12 +924,14 @@ void AmVulkanBackend::cursorPosCallback(GLFWwindow *window, double x, double y)
         int fbWidth = 0;
         int fbHeight = 0;
         glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
-        if (scaledX < 0.0 || scaledY < 0.0 || scaledX >= fbWidth || scaledY >= fbHeight) {
+        if (framebufferPos.x < 0.0f || framebufferPos.y < 0.0f || framebufferPos.x >= static_cast<float>(fbWidth) ||
+            framebufferPos.y >= static_cast<float>(fbHeight)) {
             return;
         }
     }
 
-    InputInterface::onMouseMove(input.uiWindow, static_cast<int32_t>(scaledX), static_cast<int32_t>(scaledY));
+    vec2 pos = s_framebufferToLogical(input, framebufferPos);
+    InputInterface::onMouseMove(input.uiWindow, static_cast<int32_t>(pos.x), static_cast<int32_t>(pos.y));
 }
 
 void AmVulkanBackend::scrollCallback(GLFWwindow *window, double xoffset, double yoffset)
@@ -906,13 +946,9 @@ void AmVulkanBackend::scrollCallback(GLFWwindow *window, double xoffset, double 
         input.prevScroll(window, xoffset, yoffset);
     }
 
-    double x = 0.0;
-    double y = 0.0;
-    glfwGetCursorPos(window, &x, &y);
-    int32_t scaledX = static_cast<int32_t>(x * input.contentScaleX);
-    int32_t scaledY = static_cast<int32_t>(y * input.contentScaleY);
-
-    InputInterface::onMouseScroll(input.uiWindow, static_cast<float>(xoffset), static_cast<float>(yoffset), scaledX, scaledY);
+    vec2 pos = s_cursorToLogical(window, input);
+    InputInterface::onMouseScroll(input.uiWindow, static_cast<float>(xoffset), static_cast<float>(yoffset),
+                                  static_cast<int32_t>(pos.x), static_cast<int32_t>(pos.y));
 }
 
 void AmVulkanBackend::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -948,8 +984,12 @@ void AmVulkanBackend::contentScaleCallback(GLFWwindow *window, float xscale, flo
     if (it->second.prevContentScale != nullptr) {
         it->second.prevContentScale(window, xscale, yscale);
     }
-    it->second.contentScaleX = xscale;
-    it->second.contentScaleY = yscale;
+    // the content scale is the display scaling picked for the monitor the window is on now;
+    // GLFW reports one per axis, which are the same on every platform it supports
+    (void)yscale;
+    if (it->second.uiWindow != nullptr) {
+        it->second.uiWindow->setLogicalToPhysicalScale(xscale);
+    }
 }
 
 void AmVulkanBackend::setupGLFWCallbacks()
@@ -966,7 +1006,11 @@ void AmVulkanBackend::registerWindow(void *glfwWindow, Window *uiWindow)
 
     GlfwWindowInput input;
     input.uiWindow = uiWindow;
-    glfwGetWindowContentScale(window, &input.contentScaleX, &input.contentScaleY);
+    if (uiWindow != nullptr) {
+        float scale = 1.0f;
+        glfwGetWindowContentScale(window, &scale, nullptr);
+        uiWindow->setLogicalToPhysicalScale(scale);
+    }
     input.prevMouseButton = glfwSetMouseButtonCallback(window, mouseButtonCallback);
     input.prevCursorPos = glfwSetCursorPosCallback(window, cursorPosCallback);
     input.prevScroll = glfwSetScrollCallback(window, scrollCallback);

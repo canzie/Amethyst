@@ -1,10 +1,12 @@
 #version 450
 
+// Instances are in logical pixels; the framebuffer is in physical pixels.
 layout(push_constant) uniform PushConstants {
-    vec2 screenSize;
+    vec2 screenSize;              // framebuffer size, physical pixels
     uint glyphOffset;
     uint lineOffset;
     uint sliceOffset;
+    float logicalToPhysicalScale; // physical pixels per logical pixel
 } pc;
 
 struct GlyphSlice {
@@ -77,7 +79,7 @@ const uint BORDER_OUTLINE = 0u;
 const uint BORDER_MIDDLE = 1u;
 const uint BORDER_INSET = 2u;
 // Outward bleed for the outer-edge AA fringe (smoothstep over ~fwidth(dist), fwidth is
-// fragment-only so this must be a constant). 1px covers the typical ~1px fringe.
+// fragment-only so this must be a constant). One physical pixel covers the typical fringe.
 const float BORDER_AA_PAD = 1.0;
 const float PI = 3.14159265359;
 const uint INSTANCE_FLAG_VISIBLE = 0x00000001u;
@@ -132,7 +134,14 @@ void main()
     float c = cos(rotation);
     float s = sin(rotation);
 
+    float scale = pc.logicalToPhysicalScale;
+
+    // a border covers a whole number of physical pixels, at least one, so a hairline stays
+    // crisp at a fractional scale instead of smearing over two pixels
     float borderThickness = INST_BORDER_THICKNESS(inst.rotationBorderThickness);
+    if (borderThickness > 0.0) {
+        borderThickness = max(1.0, round(borderThickness * scale)) / scale;
+    }
     uint borderMode = INST_BORDER_MODE(inst.primitiveMode);
 
     // Outward border modes draw outside the shape edge, but the quad is sized to the shape so
@@ -141,7 +150,7 @@ void main()
     float outward = (borderMode == BORDER_OUTLINE) ? borderThickness
                   : (borderMode == BORDER_MIDDLE)  ? borderThickness * 0.5
                                                    : 0.0;
-    float pad = (outward > 0.0) ? (outward + BORDER_AA_PAD) : 0.0;
+    float pad = (outward > 0.0) ? (outward + BORDER_AA_PAD / scale) : 0.0;
     vec2 paddedScale = inst.scale + 2.0 * pad;
 
     // Build transform: scale, rotate, translate
@@ -150,7 +159,7 @@ void main()
     vec2 rotated = vec2(scaled.x * c - scaled.y * s, scaled.x * s + scaled.y * c);
     vec2 worldPos = rotated + inst.translation;
 
-    vec2 ndc = (worldPos / pc.screenSize) * 2.0 - 1.0;
+    vec2 ndc = (worldPos * scale / pc.screenSize) * 2.0 - 1.0;
     gl_Position = vec4(ndc, 0.0, 1.0);
 
     vec2 padRatio = (pad > 0.0) ? (vec2(pad) / inst.scale) : vec2(0.0);
@@ -202,7 +211,9 @@ void main()
     fragCornerRadii = vec4(INST_CORNER_TL(inst.cornerRadii), INST_CORNER_TR(inst.cornerRadii),
                            INST_CORNER_BR(inst.cornerRadii), INST_CORNER_BL(inst.cornerRadii));
 
-    fragSize = inst.scale;
+    // batched text looks its glyphs up in the glyph buffer, which is in physical pixels; every
+    // other primitive works in logical pixels, where fwidth still gives a one pixel AA band
+    fragSize = textBatched ? inst.scale * scale : inst.scale;
 
     // Unpack border mode from bits 24-31
     fragBorderMode = borderMode;

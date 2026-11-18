@@ -1,6 +1,7 @@
 #include "components/window.h"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include "components/input_interface.h"
@@ -39,16 +40,47 @@ void Window::collectDrawChildren(std::vector<Instance *> &out)
     out.push_back(m_overlayLayer.get());
 }
 
+void Window::setLogicalToPhysicalScale(float scale)
+{
+    if (!std::isfinite(scale) || scale <= 0.0f) {
+        AM_LOG_WARN("ignoring logical to physical scale {}, it must be finite and above 0", scale);
+        return;
+    }
+    if (scale == m_logicalToPhysicalScale) {
+        return;
+    }
+    m_logicalToPhysicalScale = scale;
+    applyFramebufferSize();
+    // positions are logical and stay put, but text and SVGs rasterise again at the new size
+    markSubtreeDirty();
+}
+
+void Window::setFramebufferSize(vec2 pixels)
+{
+    m_framebufferSize = pixels;
+    applyFramebufferSize();
+}
+
+void Window::applyFramebufferSize()
+{
+    if (m_framebufferSize.x <= 0.0f || m_framebufferSize.y <= 0.0f) {
+        return;
+    }
+    vec2 logical = m_framebufferSize / m_logicalToPhysicalScale;
+    if (logical != absoluteSize) {
+        absoluteSize = logical;
+        markSubtreeDirty();
+    }
+}
+
 void Window::draw(DrawContext &ctx)
 {
     AM_PROFILE_FUNCTION();
     ensureDrawOrder();
-    DrawContext layerCtx;
+    DrawContext layerCtx = ctx;
     layerCtx.geometry = geometryRegistry();
     layerCtx.overlay = m_overlayLayer->geometryRegistry();
-    layerCtx.textProcessor = ctx.textProcessor;
-    layerCtx.glyphAtlas = ctx.glyphAtlas;
-    layerCtx.svgAtlas = ctx.svgAtlas;
+    layerCtx.logicalToPhysicalScale = m_logicalToPhysicalScale;
 
     for (auto &child : m_children) {
         if (auto *obj = child->asUiObject()) {

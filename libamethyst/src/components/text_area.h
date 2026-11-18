@@ -186,6 +186,7 @@ class TextArea : public UIInput {
         float lineHeight = 0.0f;
         float tabSize = 0.0f;
         uint32_t color = 0;
+        float logicalToPhysicalScale = 0.0f;
 
         bool operator==(const RowShapeState &) const = default;
     };
@@ -209,6 +210,8 @@ class TextArea : public UIInput {
     FontId m_font;
 
     TextProcessor *m_textProcessor = nullptr;
+    // of the window last drawn into, taken from the draw context like the text processor
+    float m_logicalToPhysicalScale = 1.0f;
     std::vector<TextRowLayout> m_rows;
     RowShapeState m_rowShape;
     uint64_t m_rowsFirstLine = 0;

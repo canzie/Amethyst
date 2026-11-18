@@ -299,6 +299,7 @@ void Canvas::draw(DrawContext &ctx)
             params.bounds = absoluteSize - tcmd.position;
             params.fontSize = tcmd.fontSize;
             params.color = tcmd.color;
+            params.logicalToPhysicalScale = ctx.logicalToPhysicalScale;
 
             auto glyphs = ctx.textProcessor->layoutTextAtlas(truncated, params);
 

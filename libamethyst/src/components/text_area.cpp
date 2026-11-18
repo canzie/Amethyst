@@ -229,7 +229,7 @@ float TextArea::lineHeightPx() const
     if (m_textProcessor == nullptr) {
         return 0.0f;
     }
-    FontMetrics metrics = m_textProcessor->getMetricsAtlas(m_font, static_cast<uint32_t>(m_taProps.text.fontSize));
+    FontMetrics metrics = m_textProcessor->getMetricsAtlas(m_font, m_taProps.text.fontSize, m_logicalToPhysicalScale);
     return metrics.lineHeight * m_taProps.text.lineHeight;
 }
 
@@ -264,6 +264,7 @@ const TextRowLayout &TextArea::rowForLine(uint64_t line) const
             params.font = m_font;
             params.fontSize = m_taProps.text.fontSize;
             params.tabSize = m_taProps.tabSize;
+            params.logicalToPhysicalScale = m_logicalToPhysicalScale;
             m_textProcessor->layoutTextRow(m_source->line(line), params, m_probeRow);
         }
     }
@@ -729,6 +730,7 @@ bool TextArea::layoutVisibleRows()
     next.lineHeight = m_taProps.text.lineHeight;
     next.tabSize = m_taProps.tabSize;
     next.color = packColor(m_taProps.text.textColor);
+    next.logicalToPhysicalScale = m_logicalToPhysicalScale;
 
     if (next == m_rowShape) {
         return false;
@@ -740,6 +742,7 @@ bool TextArea::layoutVisibleRows()
     params.font = m_font;
     params.fontSize = m_taProps.text.fontSize;
     params.tabSize = m_taProps.tabSize;
+    params.logicalToPhysicalScale = m_logicalToPhysicalScale;
 
     // resize() rather than clear() + resize(): a row keeps the buffers it shaped into last
     // frame, so a steady viewport reshapes without touching the allocator.
@@ -785,7 +788,8 @@ bool TextArea::buildRowQuads(DrawContext &ctx)
     m_quads.clear();
     m_quadLines.clear();
 
-    float lineHeight = lineHeightPx();
+    // the glyph buffer is in physical pixels, the space the row glyphs already come in
+    float lineHeight = lineHeightPx() * m_logicalToPhysicalScale;
     uint32_t color = packColor(m_taProps.text.textColor);
     float maxWidth = 0.0f;
 
@@ -857,7 +861,7 @@ void TextArea::drawRows(DrawContext &ctx, bool reshaped)
 
     // The quad starts at the unscrolled text origin so no glyph needs a negative offset, and
     // the clip rect takes back everything left of the content box.
-    vec2 pos = {absoluteContentPosition.x - m_scrollX, absoluteContentPosition.y};
+    vec2 pos = snapToPhysicalPixel({absoluteContentPosition.x - m_scrollX, absoluteContentPosition.y}, m_logicalToPhysicalScale);
     vec2 size = {std::max(m_rowsWidth, 1.0f), static_cast<float>(m_rows.size()) * lineHeightPx()};
 
     InstanceData inst{};
@@ -987,6 +991,11 @@ void TextArea::drawCursor(DrawContext &ctx)
 void TextArea::draw(DrawContext &ctx)
 {
     m_textProcessor = ctx.textProcessor;
+    if (ctx.logicalToPhysicalScale != m_logicalToPhysicalScale) {
+        m_logicalToPhysicalScale = ctx.logicalToPhysicalScale;
+        invalidateRows();
+        markDirty();
+    }
 
     if (m_source != nullptr && m_source->revision() != m_sourceRevision) {
         m_sourceRevision = m_source->revision();

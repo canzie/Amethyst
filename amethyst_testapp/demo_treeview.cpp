@@ -58,7 +58,7 @@ int main()
     };
 
     bool running = true;
-    window.absoluteSize = screenSize;
+    window.setFramebufferSize(screenSize);
     window.absoluteRotation = 0.0f;
     window.setDisplayOrder(10);
 
