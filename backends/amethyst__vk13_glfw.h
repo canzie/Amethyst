@@ -8,6 +8,8 @@
 #include <GLFW/glfw3.h>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -37,7 +39,6 @@ struct AmVulkanInitInfo {
     VkExtent2D extent;
     const char *vertexShaderPath;
     const char *fragmentShaderPath;
-    // frames the swapchain loop keeps in flight; sizes the per-texture staging ring
     uint32_t framesInFlight = 2;
 };
 
@@ -50,10 +51,23 @@ struct BufferRecord {
     bool alive = false;
 };
 
+/**
+ * @brief Host visible buffer a frame copies its uploads from, filled front to back.
+ */
 struct StagingBuffer {
     VkBuffer buffer = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE;
     void *mapped = nullptr;
+    size_t capacity = 0;
+    size_t used = 0;
+};
+
+/**
+ * @brief Where an upload's data sits inside a staging buffer, the source of its GPU copy.
+ */
+struct StagingLocation {
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VkDeviceSize offset = 0;
 };
 
 struct TextureRecord {
@@ -61,10 +75,6 @@ struct TextureRecord {
     VkDeviceMemory memory = VK_NULL_HANDLE;
     VkImageView view = VK_NULL_HANDLE;
     VkSampler sampler = VK_NULL_HANDLE;
-    // one staging buffer per frame in flight, used round robin: a copy recorded in an earlier
-    // frame may still be pending when the next upload writes its pixels
-    std::vector<StagingBuffer> staging;
-    uint32_t nextStaging = 0;
     bool uploaded = false; // false while the image is still in VK_IMAGE_LAYOUT_UNDEFINED
     AmTextureDesc desc;
 };
@@ -75,6 +85,11 @@ class AmVulkanBackend : public AmethystBackend {
     void shutdown();
 
   public:
+    /**
+     * @brief Call once per frame, after waiting on the fence of the frame slot about to be reused.
+     *
+     * Runs the deletions deferred framesInFlight frames ago and reuses this frame's staging buffer.
+     */
     void beginFrame();
     void endFrame();
     void record(VkCommandBuffer cmd, const FrameDrawList &drawList, VkExtent2D extent);
@@ -86,6 +101,8 @@ class AmVulkanBackend : public AmethystBackend {
 
     AmTextureId createTexture(const AmTextureDesc &desc) override;
     void uploadTexture(void *cmdBuffer, AmTextureId id, const uint8_t *pixels) override;
+    void uploadTextureRegion(void *cmdBuffer, AmTextureId id, uint32_t x, uint32_t y, uint32_t width, uint32_t height,
+                             const uint8_t *pixels) override;
     void destroyTexture(AmTextureId id) override;
 
     AmTextureId registerTexture(VkImageView imageView, VkSampler sampler);
@@ -101,7 +118,29 @@ class AmVulkanBackend : public AmethystBackend {
     void uploadDeviceLocal(VkBuffer dst, const void *data, size_t offsetBytes, size_t sizeBytes);
     void destroyBufferRecord(BufferRecord &record);
     void destroyTextureRecord(TextureRecord &record);
+
+    /**
+     * @brief Copy upload data into this frame's staging buffer, growing it when full.
+     * @return Where the data now sits, or nullopt if a bigger staging buffer could not be created
+     */
+    std::optional<StagingLocation> copyToStaging(const void *data, size_t size);
     bool createStagingBuffer(size_t size, StagingBuffer &out);
+    void destroyStagingBuffer(StagingBuffer &staging);
+
+    /**
+     * @brief Delete a resource once no frame in flight can still be using it.
+     */
+    void deferDeletion(std::function<void()> deletion);
+
+    /**
+     * @brief Run the deferred deletions whose frames have finished.
+     */
+    void runFinishedDeletions();
+
+    /**
+     * @brief Run every deferred deletion. Only valid once the device is idle.
+     */
+    void runAllDeletions();
     VkShaderModule loadShaderModule(const char *path);
     void setupGLFWCallbacks();
     static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods);
@@ -133,6 +172,16 @@ class AmVulkanBackend : public AmethystBackend {
 
     std::vector<uint32_t> m_textureFreeList;
     uint32_t m_nextTextureSlot = 0;
+
+    struct DeferredDeletion {
+        uint64_t frame = 0; // m_frameCount when it was deferred
+        std::function<void()> run;
+    };
+
+    uint64_t m_frameCount = 0;
+    std::vector<StagingBuffer> m_stagingBuffers; // one per frame in flight
+    std::vector<DeferredDeletion> m_deferredDeletions;
+    bool m_warnedNoBeginFrame = false;
 };
 
 } // namespace Amethyst

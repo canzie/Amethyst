@@ -44,6 +44,10 @@ class AmethystBackend {
 
     virtual void destroyBuffer(AmBufferId id) = 0;
 
+    /**
+     * @brief Create a texture. It starts cleared to zero (transparent), so a texture filled only
+     *        partly by uploadTextureRegion reads as transparent everywhere else.
+     */
     virtual AmTextureId createTexture(const AmTextureDesc &desc) = 0;
 
     /**
@@ -51,11 +55,21 @@ class AmethystBackend {
      *        command buffer the copy is recorded into (e.g. VkCommandBuffer).
      *
      * The copy and its layout transitions are transfer commands, so cmdBuffer must not be
-     * inside a render pass (Vulkan: outside vkCmdBeginRendering/vkCmdBeginRenderPass). Called at
-     * most once per texture per frame; the backend may recycle the staging memory after its
-     * frames in flight have passed.
+     * inside a render pass (Vulkan: outside vkCmdBeginRendering/vkCmdBeginRenderPass).
      */
     virtual void uploadTexture(void *cmdBuffer, AmTextureId id, const uint8_t *pixels) = 0;
+
+    /**
+     * @brief Upload a rectangle of a texture, leaving the rest as it is. Same command buffer
+     *        rules as uploadTexture.
+     * @param x Left edge of the rectangle in texels
+     * @param y Top edge of the rectangle in texels
+     * @param width Rectangle width in texels
+     * @param height Rectangle height in texels
+     * @param pixels width * height texels, rows packed with no padding
+     */
+    virtual void uploadTextureRegion(void *cmdBuffer, AmTextureId id, uint32_t x, uint32_t y, uint32_t width, uint32_t height,
+                                     const uint8_t *pixels) = 0;
 
     virtual void destroyTexture(AmTextureId id) = 0;
 };

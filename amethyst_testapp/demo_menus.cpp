@@ -175,6 +175,7 @@ int main()
 
         uint32_t imageIndex;
         if (!contextBeginFrame(ctx, imageIndex)) continue;
+        backend.beginFrame();
 
         VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];
 

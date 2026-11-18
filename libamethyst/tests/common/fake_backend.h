@@ -73,6 +73,10 @@ class FakeBackend : public AmethystBackend {
 
     AmTextureId createTexture(const AmTextureDesc &) override { return AmTextureId{nextTexture++}; }
     void uploadTexture(void *, AmTextureId, const uint8_t *) override { ++textureUploads; }
+    void uploadTextureRegion(void *, AmTextureId, uint32_t, uint32_t, uint32_t, uint32_t, const uint8_t *) override
+    {
+        ++textureRegionUploads;
+    }
     void destroyTexture(AmTextureId) override {}
 
     /** @brief The buffer bound at a shader binding, or nullptr. */
@@ -92,6 +96,7 @@ class FakeBackend : public AmethystBackend {
     uint32_t growCount = 0;
     uint32_t outOfBoundsUploads = 0;
     uint32_t textureUploads = 0;
+    uint32_t textureRegionUploads = 0;
     uint32_t nextTexture = 0;
 };
 

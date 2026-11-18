@@ -46,6 +46,7 @@ int main()
     initInfo.imageCount = static_cast<uint32_t>(ctx.swapchainImages.size());
     initInfo.colorFormat = ctx.swapchainFormat;
     initInfo.extent = ctx.swapchainExtent;
+    initInfo.framesInFlight = VkContext::MAX_FRAMES_IN_FLIGHT;
     initInfo.vertexShaderPath = AMETHYST_SHADER_DIR "/ui.vs.spv";
     initInfo.fragmentShaderPath = AMETHYST_SHADER_DIR "/ui.fs.spv";
 
@@ -542,6 +543,8 @@ int main()
         if (!contextBeginFrame(ctx, imageIndex)) {
             continue;
         }
+        // contextBeginFrame waited on this frame slot's fence, which is what beginFrame needs
+        backend.beginFrame();
 
         VkCommandBuffer cmd = ctx.commandBuffers[ctx.currentFrame];
 

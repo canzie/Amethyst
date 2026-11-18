@@ -223,6 +223,11 @@ static GLFWcursor *s_createCustomDiagonalResizeCursor(bool nesw)
 
 constexpr size_t INDEX_COUNT_RECT = 6;
 
+// a frame's staging buffer starts here and doubles when one frame uploads more
+constexpr size_t MIN_STAGING_CAPACITY = 1024 * 1024;
+// keeps every upload's offset valid for a buffer to image copy of any texel size used here
+constexpr size_t STAGING_ALIGNMENT = 16;
+
 // matches the vertex shader's push constant block
 struct PushConstants {
     vec2 screenSize; // framebuffer size, physical pixels
@@ -279,6 +284,7 @@ void AmVulkanBackend::init(const AmVulkanInitInfo &config, const AmGlfwInitInfo 
     if (m_info.framesInFlight == 0) {
         m_info.framesInFlight = 1;
     }
+    m_stagingBuffers.resize(m_info.framesInFlight);
 
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(m_info.physicalDevice, &properties);
@@ -309,6 +315,12 @@ void AmVulkanBackend::shutdown()
 {
     VkDevice device = m_info.device;
     vkDeviceWaitIdle(device);
+
+    runAllDeletions();
+    for (StagingBuffer &staging : m_stagingBuffers) {
+        destroyStagingBuffer(staging);
+    }
+    m_stagingBuffers.clear();
 
     for (BufferRecord &record : m_buffers) {
         if (record.alive) {
@@ -341,13 +353,49 @@ void AmVulkanBackend::shutdown()
     }
 }
 
-void AmVulkanBackend::beginFrame() {}
+void AmVulkanBackend::beginFrame()
+{
+    ++m_frameCount;
+    m_stagingBuffers[m_frameCount % m_stagingBuffers.size()].used = 0;
+    runFinishedDeletions();
+}
+
+void AmVulkanBackend::deferDeletion(std::function<void()> deletion)
+{
+    m_deferredDeletions.push_back({m_frameCount, std::move(deletion)});
+}
+
+void AmVulkanBackend::runFinishedDeletions()
+{
+    // deferred in frame order, so the finished ones are at the front
+    size_t finished = 0;
+    while (finished < m_deferredDeletions.size() && m_deferredDeletions[finished].frame + m_info.framesInFlight <= m_frameCount) {
+        m_deferredDeletions[finished].run();
+        finished++;
+    }
+    m_deferredDeletions.erase(m_deferredDeletions.begin(), m_deferredDeletions.begin() + static_cast<std::ptrdiff_t>(finished));
+}
+
+void AmVulkanBackend::runAllDeletions()
+{
+    for (DeferredDeletion &deletion : m_deferredDeletions) {
+        deletion.run();
+    }
+    m_deferredDeletions.clear();
+}
 
 void AmVulkanBackend::endFrame() {}
 
 void AmVulkanBackend::record(VkCommandBuffer cmd, const FrameDrawList &drawList, VkExtent2D extent)
 {
     AM_PROFILE_FUNCTION();
+
+    if (m_frameCount == 0 && !m_warnedNoBeginFrame) {
+        AM_LOG_WARN(
+            "record() ran before any beginFrame(): call beginFrame() once per frame after waiting on its fence, or destroyed "
+            "resources are never released and staging memory keeps growing");
+        m_warnedNoBeginFrame = true;
+    }
 
     VkViewport viewport = {
         .x = 0.0f,
@@ -590,9 +638,11 @@ void AmVulkanBackend::destroyBuffer(AmBufferId id)
         return;
     }
 
-    vkDeviceWaitIdle(m_info.device);
-    destroyBufferRecord(m_buffers[id.id]);
+    // the slot is only a CPU handle, so it is free now
+    BufferRecord record = m_buffers[id.id];
+    m_buffers[id.id] = {};
     m_bufferFreeSlots.push_back(id.id);
+    deferDeletion([this, record]() mutable { destroyBufferRecord(record); });
 }
 
 void AmVulkanBackend::destroyBufferRecord(BufferRecord &record)
@@ -1063,7 +1113,9 @@ void AmVulkanBackend::unregisterTexture(AmTextureId id)
     if (!id.isValid()) {
         return;
     }
-    m_textureFreeList.push_back(id.id);
+    // a frame in flight may still sample this slot, and a new texture written into it would
+    // show up there instead
+    deferDeletion([this, id]() { m_textureFreeList.push_back(id.id); });
 }
 
 static size_t s_bytesPerPixel(AmTextureFormat format)
@@ -1170,9 +1222,6 @@ AmTextureId AmVulkanBackend::createTexture(const AmTextureDesc &desc)
         return AM_INVALID_TEXTURE;
     }
 
-    // staging buffers are created on first use, so a texture uploaded once only ever pays for one
-    record.staging.resize(m_info.framesInFlight);
-
     AmTextureId id = registerTexture(record.view, record.sampler);
     if (!id.isValid()) {
         destroyTextureRecord(record);
@@ -1181,6 +1230,42 @@ AmTextureId AmVulkanBackend::createTexture(const AmTextureDesc &desc)
 
     m_textures.emplace(id.id, record);
     return id;
+}
+
+std::optional<StagingLocation> AmVulkanBackend::copyToStaging(const void *data, size_t size)
+{
+    StagingBuffer &staging = m_stagingBuffers[m_frameCount % m_stagingBuffers.size()];
+    size_t offset = alignUp(staging.used, STAGING_ALIGNMENT);
+
+    if (staging.buffer == VK_NULL_HANDLE || offset + size > staging.capacity) {
+        size_t capacity = std::max({size, staging.capacity * 2, MIN_STAGING_CAPACITY});
+        // copies recorded earlier this frame still read the old buffer
+        if (staging.buffer != VK_NULL_HANDLE) {
+            StagingBuffer old = staging;
+            deferDeletion([this, old]() mutable { destroyStagingBuffer(old); });
+        }
+        staging = {};
+        if (!createStagingBuffer(capacity, staging)) {
+            return std::nullopt;
+        }
+        offset = 0;
+    }
+
+    std::memcpy(static_cast<uint8_t *>(staging.mapped) + offset, data, size);
+    staging.used = offset + size;
+    return StagingLocation{staging.buffer, offset};
+}
+
+void AmVulkanBackend::destroyStagingBuffer(StagingBuffer &staging)
+{
+    if (staging.mapped != nullptr) {
+        vkUnmapMemory(m_info.device, staging.memory);
+    }
+    if (staging.buffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(m_info.device, staging.buffer, nullptr);
+        vkFreeMemory(m_info.device, staging.memory, nullptr);
+    }
+    staging = {};
 }
 
 bool AmVulkanBackend::createStagingBuffer(size_t size, StagingBuffer &out)
@@ -1194,7 +1279,7 @@ bool AmVulkanBackend::createStagingBuffer(size_t size, StagingBuffer &out)
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     if (vkCreateBuffer(device, &bufferInfo, nullptr, &out.buffer) != VK_SUCCESS) {
-        AM_LOG_ERROR("Failed to create texture staging buffer");
+        AM_LOG_ERROR("Failed to create a staging buffer of {} bytes", size);
         out = {};
         return false;
     }
@@ -1209,7 +1294,7 @@ bool AmVulkanBackend::createStagingBuffer(size_t size, StagingBuffer &out)
                                                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     if (vkAllocateMemory(device, &allocInfo, nullptr, &out.memory) != VK_SUCCESS) {
-        AM_LOG_ERROR("Failed to allocate texture staging memory");
+        AM_LOG_ERROR("Failed to allocate {} bytes of staging memory", size);
         vkDestroyBuffer(device, out.buffer, nullptr);
         out = {};
         return false;
@@ -1217,41 +1302,48 @@ bool AmVulkanBackend::createStagingBuffer(size_t size, StagingBuffer &out)
 
     vkBindBufferMemory(device, out.buffer, out.memory, 0);
     if (vkMapMemory(device, out.memory, 0, size, 0, &out.mapped) != VK_SUCCESS) {
-        AM_LOG_ERROR("Failed to map texture staging memory");
+        AM_LOG_ERROR("Failed to map staging memory");
         vkDestroyBuffer(device, out.buffer, nullptr);
         vkFreeMemory(device, out.memory, nullptr);
         out = {};
         return false;
     }
+    out.capacity = size;
+    out.used = 0;
     return true;
 }
 
 void AmVulkanBackend::uploadTexture(void *cmdBuffer, AmTextureId id, const uint8_t *pixels)
 {
-    // TODO: This is inefficient - it uploads the entire texture every time.
-    // A better approach would be to track dirty regions and only upload changed areas.
-    // For now, this works but should be optimized later.
-
-    VkCommandBuffer cmd = static_cast<VkCommandBuffer>(cmdBuffer);
-
     auto it = m_textures.find(id.id);
     if (it == m_textures.end()) {
         return;
     }
+    uploadTextureRegion(cmdBuffer, id, 0, 0, it->second.desc.width, it->second.desc.height, pixels);
+}
+
+void AmVulkanBackend::uploadTextureRegion(void *cmdBuffer, AmTextureId id, uint32_t x, uint32_t y, uint32_t width, uint32_t height,
+                                          const uint8_t *pixels)
+{
+    VkCommandBuffer cmd = static_cast<VkCommandBuffer>(cmdBuffer);
+
+    auto it = m_textures.find(id.id);
+    if (it == m_textures.end() || width == 0 || height == 0) {
+        return;
+    }
     TextureRecord &record = it->second;
-    if (record.staging.empty()) {
+
+    if (x > record.desc.width || y > record.desc.height || width > record.desc.width - x || height > record.desc.height - y) {
+        AM_LOG_WARN("ignoring a {}x{} upload at {},{} into a {}x{} texture", width, height, x, y, record.desc.width,
+                    record.desc.height);
         return;
     }
 
-    // with at most one upload per texture per frame (AmethystContext::syncShared), the buffer
-    // used framesInFlight uploads ago belongs to a frame whose fence has been waited on
-    size_t imageSize = static_cast<size_t>(record.desc.width) * record.desc.height * s_bytesPerPixel(record.desc.format);
-    StagingBuffer &staging = record.staging[record.nextStaging];
-    if (staging.mapped == nullptr && !createStagingBuffer(imageSize, staging)) {
+    size_t regionSize = static_cast<size_t>(width) * height * s_bytesPerPixel(record.desc.format);
+    std::optional<StagingLocation> staging = copyToStaging(pixels, regionSize);
+    if (!staging.has_value()) {
         return;
     }
-    record.nextStaging = (record.nextStaging + 1) % static_cast<uint32_t>(record.staging.size());
-    std::memcpy(staging.mapped, pixels, imageSize);
 
     // after the first upload the image holds data earlier frames sample, so the copy has to
     // wait for those fragment reads (write-after-read) and keep the layout instead of
@@ -1275,18 +1367,33 @@ void AmVulkanBackend::uploadTexture(void *cmdBuffer, AmTextureId id, const uint8
 
     vkCmdPipelineBarrier(cmd, srcStage, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
+    // a texture starts transparent; the clear waits for the first upload because creating one
+    // has no command buffer to record into, and is skipped when that upload covers it all
+    bool coversTexture = width == record.desc.width && height == record.desc.height;
+    if (!record.uploaded && !coversTexture) {
+        VkClearColorValue transparent{};
+        vkCmdClearColorImage(cmd, record.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &transparent, 1, &barrier.subresourceRange);
+
+        VkMemoryBarrier clearDone{};
+        clearDone.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+        clearDone.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        clearDone.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &clearDone, 0, nullptr, 0,
+                             nullptr);
+    }
+
     VkBufferImageCopy region{};
-    region.bufferOffset = 0;
+    region.bufferOffset = staging->offset;
     region.bufferRowLength = 0;
     region.bufferImageHeight = 0;
     region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     region.imageSubresource.mipLevel = 0;
     region.imageSubresource.baseArrayLayer = 0;
     region.imageSubresource.layerCount = 1;
-    region.imageOffset = {0, 0, 0};
-    region.imageExtent = {record.desc.width, record.desc.height, 1};
+    region.imageOffset = {static_cast<int32_t>(x), static_cast<int32_t>(y), 0};
+    region.imageExtent = {width, height, 1};
 
-    vkCmdCopyBufferToImage(cmd, staging.buffer, record.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkCmdCopyBufferToImage(cmd, staging->buffer, record.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
     barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1305,10 +1412,10 @@ void AmVulkanBackend::destroyTexture(AmTextureId id)
         return;
     }
 
-    vkDeviceWaitIdle(m_info.device);
-    unregisterTexture(id);
-    destroyTextureRecord(it->second);
+    TextureRecord record = it->second;
     m_textures.erase(it);
+    unregisterTexture(id);
+    deferDeletion([this, record]() mutable { destroyTextureRecord(record); });
 }
 
 void AmVulkanBackend::destroyTextureRecord(TextureRecord &record)
@@ -1326,15 +1433,6 @@ void AmVulkanBackend::destroyTextureRecord(TextureRecord &record)
     }
     if (record.memory != VK_NULL_HANDLE) {
         vkFreeMemory(device, record.memory, nullptr);
-    }
-    for (StagingBuffer &staging : record.staging) {
-        if (staging.mapped != nullptr) {
-            vkUnmapMemory(device, staging.memory);
-        }
-        if (staging.buffer != VK_NULL_HANDLE) {
-            vkDestroyBuffer(device, staging.buffer, nullptr);
-            vkFreeMemory(device, staging.memory, nullptr);
-        }
     }
     record = {};
 }
