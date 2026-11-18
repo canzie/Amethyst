@@ -244,6 +244,17 @@ TEST(StyleValueParse, NegativeCornerRadiusClampsToZero)
     EXPECT_EQ(s.getBaseStyle(ComponentType::FRAME, tokens({"u"})).cornerRadius, uvec4(65535u));
 }
 
+TEST(StyleValueParse, BackgroundRepeat)
+{
+    Style s = parse(".t { background-repeat: repeat-x; background-size: 2px 3px; background-step: 24px; "
+                    "background-position: -4px 6px; }");
+    BaseStyleProperties r = s.getBaseStyle(ComponentType::FRAME, tokens({"t"}));
+    EXPECT_EQ(r.backgroundRepeat, BackgroundRepeat::REPEAT_X);
+    EXPECT_EQ(r.backgroundSize, vec2(2.0f, 3.0f));
+    EXPECT_EQ(r.backgroundStep, vec2(24.0f, 24.0f));
+    EXPECT_EQ(r.backgroundPosition, vec2(-4.0f, 6.0f));
+}
+
 TEST(StyleValueParse, UnknownKeywordDropped)
 {
     Style s = parse("frame { text-x-alignment: center; } .t { text-x-alignment: middle; }");

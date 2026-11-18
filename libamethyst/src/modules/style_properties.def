@@ -16,6 +16,10 @@
     X(BORDER_PIXEL_SIZE, "border-pixel-size", float, LENGTH, 0.0f)                                            \
     X(BORDER_MODE, "border-mode", BorderMode, BMODE, BorderMode::OUTLINE)                                     \
     X(CORNER_RADIUS, "corner-radius", uvec4, CORNERS, uvec4(0u))                                              \
+    X(BACKGROUND_REPEAT, "background-repeat", BackgroundRepeat, BREPEAT, BackgroundRepeat::NONE)              \
+    X(BACKGROUND_SIZE, "background-size", vec2, SIZE2, vec2(0.0f))                                            \
+    X(BACKGROUND_STEP, "background-step", vec2, SIZE2, vec2(0.0f))                                            \
+    X(BACKGROUND_POSITION, "background-position", vec2, SIZE2, vec2(0.0f))                                    \
     X(PADDING_TOP, "padding-top", UDim, UDIM, UDim{})                                                         \
     X(PADDING_RIGHT, "padding-right", UDim, UDIM, UDim{})                                                     \
     X(PADDING_BOTTOM, "padding-bottom", UDim, UDIM, UDim{})                                                   \
@@ -97,7 +101,11 @@
     X(BORDER_PIXEL_SIZE, borderPixelSize, float)              \
     X(BORDER_COLOR, borderColor, Color3)                      \
     X(BORDER_TRANSPARENCY, borderTransparency, float)         \
-    X(CORNER_RADIUS, cornerRadius, uvec4)
+    X(CORNER_RADIUS, cornerRadius, uvec4)                     \
+    X(BACKGROUND_REPEAT, backgroundRepeat, BackgroundRepeat)  \
+    X(BACKGROUND_SIZE, backgroundSize, vec2)                  \
+    X(BACKGROUND_STEP, backgroundStep, vec2)                  \
+    X(BACKGROUND_POSITION, backgroundPosition, vec2)
 
 #define AM_TEXT_STYLE_FIELDS(X)                         \
     X(FONT_SIZE, fontSize, float)                       \

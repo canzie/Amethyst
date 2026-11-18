@@ -134,6 +134,8 @@ void UIImage::drawImage(DrawContext &ctx, vec2 absoluteSize, InstanceData base)
 {
     resolveSvg(ctx, absoluteSize);
 
+    // the image is content drawn over the background, so it never repeats with it
+    base.clearBackgroundRepeat();
     base.textureId = m_image.id;
 
     if (!m_svgData.empty()) {

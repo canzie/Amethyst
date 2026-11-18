@@ -58,6 +58,7 @@ layout(location = 15) out flat float fragLineHeight;
 layout(location = 16) out flat uint fragTextBatched;
 layout(location = 17) out flat uint fragGradientSlot;
 layout(location = 18) out flat vec4 fragCornerRadii;
+layout(location = 19) out flat uint fragFlags;
 
 const vec2 positions[4] = vec2[](
     vec2(-0.5, -0.5),
@@ -224,4 +225,5 @@ void main()
     fragShapeData = uvec4(inst.shapeData[0], inst.shapeData[1], inst.shapeData[2], inst.shapeData[3]);
 
     fragGradientSlot = ((inst.flags & INSTANCE_FLAG_GRADIENT) != 0u) ? inst.shapeData[1] : INVALID_GRADIENT;
+    fragFlags = inst.flags;
 }

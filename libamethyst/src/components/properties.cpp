@@ -188,6 +188,10 @@ bool BaseStyleProperties::apply(const BaseStyleProperties &src)
     AM_APPLY_PLAIN(borderColor)
     AM_APPLY_PLAIN(borderTransparency)
     AM_APPLY_PLAIN(cornerRadius)
+    AM_APPLY_PLAIN(backgroundRepeat)
+    AM_APPLY_PLAIN(backgroundSize)
+    AM_APPLY_PLAIN(backgroundStep)
+    AM_APPLY_PLAIN(backgroundPosition)
     return changed;
 }
 
@@ -201,6 +205,10 @@ bool BaseStyleProperties::apply(const BaseStylePropertiesArgs &src)
     AM_APPLY_ARGS(borderColor)
     AM_APPLY_ARGS(borderTransparency)
     AM_APPLY_ARGS(cornerRadius)
+    AM_APPLY_ARGS(backgroundRepeat)
+    AM_APPLY_ARGS(backgroundSize)
+    AM_APPLY_ARGS(backgroundStep)
+    AM_APPLY_ARGS(backgroundPosition)
     return changed;
 }
 
@@ -214,6 +222,10 @@ BaseStyleProperties::operator BaseStylePropertiesArgs() const
     AM_TO_ARGS(borderColor)
     AM_TO_ARGS(borderTransparency)
     AM_TO_ARGS(cornerRadius)
+    AM_TO_ARGS(backgroundRepeat)
+    AM_TO_ARGS(backgroundSize)
+    AM_TO_ARGS(backgroundStep)
+    AM_TO_ARGS(backgroundPosition)
     return out;
 }
 

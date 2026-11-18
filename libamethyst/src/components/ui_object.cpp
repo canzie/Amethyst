@@ -395,6 +395,8 @@ InstanceData UIObject::createInstanceData() const
     data.setCornerRadii(m_baseStyle.cornerRadius);
     data.setPrimitiveType(PRIMITIVE_TRIANGLE);
     data.setBorderMode(m_baseStyle.borderMode);
+    data.setBackgroundRepeat(m_baseStyle.backgroundRepeat, m_baseStyle.backgroundSize, m_baseStyle.backgroundStep,
+                             m_baseStyle.backgroundPosition);
     data.zIndex = drawZ();
     data.setVisible(isVisible());
     return data;

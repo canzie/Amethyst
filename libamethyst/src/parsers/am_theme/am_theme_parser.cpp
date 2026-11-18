@@ -440,6 +440,17 @@ static ParsedValue s_parse_ISCALE(std::string_view sv, Style &)
     return s_wrap(s_parseKeyword(sv, table, "image-scale-type"));
 }
 
+static ParsedValue s_parse_BREPEAT(std::string_view sv, Style &)
+{
+    static constexpr std::array<std::pair<std::string_view, BackgroundRepeat>, 4> table = {{
+        {"none", BackgroundRepeat::NONE},
+        {"repeat", BackgroundRepeat::REPEAT},
+        {"repeat-x", BackgroundRepeat::REPEAT_X},
+        {"repeat-y", BackgroundRepeat::REPEAT_Y},
+    }};
+    return s_wrap(s_parseKeyword(sv, table, "background-repeat"));
+}
+
 static ParsedValue s_parse_SIZE2(std::string_view sv, Style &)
 {
     std::vector<std::string_view> tokens = s_splitWhitespace(sv);

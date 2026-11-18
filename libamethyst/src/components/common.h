@@ -270,6 +270,13 @@ enum class ItemLineAlignment {
     STRETCH
 };
 
+enum class BackgroundRepeat {
+    NONE,
+    REPEAT,
+    REPEAT_X,
+    REPEAT_Y,
+};
+
 enum class ImageScaleType {
     NONE,
     STRETCH,

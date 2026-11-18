@@ -102,6 +102,10 @@ template <FieldShape Shape> struct BaseStyleFields {
     F<Color3> borderColor{};
     F<float> borderTransparency{};
     F<uvec4> cornerRadius{};
+    F<BackgroundRepeat> backgroundRepeat{};
+    F<vec2> backgroundSize{};
+    F<vec2> backgroundStep{};
+    F<vec2> backgroundPosition{};
 };
 
 using BaseStylePropertiesArgs = BaseStyleFields<FieldShape::Args>;

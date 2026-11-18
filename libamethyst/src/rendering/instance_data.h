@@ -17,6 +17,8 @@ enum GpuInstanceFlags : uint32_t {
     INSTANCE_FLAG_VISIBLE = 0x00000001,
     INSTANCE_FLAG_TEXT_RICH = 0x00000002,
     INSTANCE_FLAG_GRADIENT = 0x00000004,
+    INSTANCE_FLAG_REPEAT_X = 0x00000008,
+    INSTANCE_FLAG_REPEAT_Y = 0x00000010,
 };
 
 struct InstanceData {
@@ -96,6 +98,17 @@ struct InstanceData {
         shapeData[1] = slot;
         flags |= INSTANCE_FLAG_GRADIENT;
     }
+
+    /**
+     * @brief Draw the shape as a mark repeated across the instance's area instead of once over all of it.
+     * @param repeat The axes the mark repeats along; NONE draws the shape once over the whole area
+     * @param size The size of one mark, in logical pixels
+     * @param step The distance from the start of one mark to the start of the next, in logical pixels
+     * @param position Where the first mark starts, relative to the instance's top left, in logical pixels
+     */
+    void setBackgroundRepeat(BackgroundRepeat repeat, vec2 size, vec2 step, vec2 position);
+
+    void clearBackgroundRepeat() { flags &= ~(INSTANCE_FLAG_REPEAT_X | INSTANCE_FLAG_REPEAT_Y); }
 };
 
 } // namespace Amethyst

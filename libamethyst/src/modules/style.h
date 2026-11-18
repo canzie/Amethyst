@@ -26,6 +26,10 @@ enum class StyleProperty {
     BORDER_PIXEL_SIZE,
     BORDER_MODE,
     CORNER_RADIUS,
+    BACKGROUND_REPEAT,
+    BACKGROUND_SIZE,
+    BACKGROUND_STEP,
+    BACKGROUND_POSITION,
 
     PADDING_TOP,
     PADDING_RIGHT,
@@ -216,7 +220,8 @@ struct FontHandle {
 };
 
 using StyleValue =
-    std::variant<Color3, Color4, float, uvec4, vec2, UDim, BorderMode, TextXAlignment, TextYAlignment, FontHandle, ImageScaleType>;
+    std::variant<Color3, Color4, float, uvec4, vec2, UDim, BorderMode, TextXAlignment, TextYAlignment, FontHandle, ImageScaleType,
+                 BackgroundRepeat>;
 
 inline constexpr size_t NUM_STYLE_PROPS = static_cast<size_t>(StyleProperty::COUNT);
 

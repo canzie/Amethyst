@@ -20,6 +20,7 @@ layout(location = 15) in flat float fragLineHeight;
 layout(location = 16) in flat uint fragTextBatched;
 layout(location = 17) in flat uint fragGradientSlot;
 layout(location = 18) in flat vec4 fragCornerRadii;
+layout(location = 19) in flat uint fragFlags;
 
 layout(set = 0, binding = 1) uniform sampler2D gTextures[];
 
@@ -77,6 +78,9 @@ const uint PRIMITIVE_CANVAS_CIRCLE = 8;
 const uint PRIMITIVE_CANVAS_ELLIPSE = 9;
 const uint PRIMITIVE_SVG = 10;
 const uint PRIMITIVE_CANVAS_BEZIER = 11;
+
+const uint INSTANCE_FLAG_REPEAT_X = 0x00000008u;
+const uint INSTANCE_FLAG_REPEAT_Y = 0x00000010u;
 
 const uint BORDER_OUTLINE = 0;
 const uint BORDER_MIDDLE = 1;
@@ -372,6 +376,34 @@ void main()
 
     vec2 p = (fragUV - 0.5) * fragSize;
     vec2 halfSize = fragSize * 0.5;
+    vec2 shapeUV = fragUV;
+
+    // one logical pixel's extent, taken before the cell wrap below makes the position jump at
+    // every cell edge
+    vec2 pixelExtent = fwidth(fragUV * fragSize);
+
+    bool repeatX = (fragFlags & INSTANCE_FLAG_REPEAT_X) != 0u;
+    bool repeatY = (fragFlags & INSTANCE_FLAG_REPEAT_Y) != 0u;
+    bool repeats = (repeatX || repeatY) && (fragPrimitiveType == PRIMITIVE_RECT || fragPrimitiveType == PRIMITIVE_CIRCLE ||
+                                            fragPrimitiveType == PRIMITIVE_TRIANGLE);
+    if (repeats) {
+        vec2 markSize = unpackHalf2x16(fragShapeData.x);
+        vec2 repeatStep = unpackHalf2x16(fragShapeData.z);
+        vec2 position = unpackHalf2x16(fragShapeData.w);
+
+        // the position within the mark this fragment falls in, measured from its top left
+        vec2 local = fragUV * fragSize - position;
+        if (repeatX) {
+            local.x = mod(local.x, repeatStep.x);
+        }
+        if (repeatY) {
+            local.y = mod(local.y, repeatStep.y);
+        }
+
+        halfSize = markSize * 0.5;
+        p = local - halfSize;
+        shapeUV = local / markSize;
+    }
 
     float dist;
 
@@ -414,7 +446,7 @@ void main()
         dist = sdfRect(p, halfSize, vec4(0.0));
     }
 
-    float aa = fwidth(dist) * 0.5;
+    float aa = repeats ? max(pixelExtent.x, pixelExtent.y) * 0.5 : fwidth(dist) * 0.5;
 
     float outerThreshold = 0.0;
     float innerThreshold = 0.0;
@@ -436,14 +468,14 @@ void main()
 
     vec4 fillColor = fragFillColor;
     if (fragGradientSlot != INVALID_GRADIENT) {
-        vec4 g = evalGradient(fragGradientSlot, fragUV);
+        vec4 g = evalGradient(fragGradientSlot, shapeUV);
         fillColor = vec4(g.rgb * fragFillColor.rgb, g.a * fragFillColor.a);
     }
 
     // the image replaces the fill colour and its alpha masks the shape, so transparent regions
     // of a PNG stay transparent instead of showing the fill
     if (fragTextureId != INVALID_TEXTURE) {
-        vec4 texColor = texture(gTextures[nonuniformEXT(fragTextureId)], fragUV);
+        vec4 texColor = texture(gTextures[nonuniformEXT(fragTextureId)], shapeUV);
         fillColor = vec4(texColor.rgb * fillColor.rgb, texColor.a * fillColor.a);
     }
 
