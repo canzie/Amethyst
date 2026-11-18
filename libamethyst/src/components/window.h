@@ -45,6 +45,7 @@ class Window : public UILayer {
 
     void draw(DrawContext &ctx) override;
     void arrange() override;
+    void markChildrenDirty() override;
 
     /**
      * @brief Set how many physical (framebuffer) pixels make up one logical pixel.

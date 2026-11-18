@@ -119,6 +119,23 @@ void DockingLayer::processPendingDeletions()
     m_pendingDeletions.clear();
 }
 
+void DockingLayer::markChildrenDirty()
+{
+    // the tab bars, hints and resize handles are owned outside the child list
+    Instance::markChildrenDirty();
+    for (auto &tabBar : m_tabBars) {
+        tabBar->markSubtreeDirty();
+    }
+    for (auto &hint : m_dockHintComponents) {
+        hint->markSubtreeDirty();
+    }
+    for (auto &node : m_nodes) {
+        if (node.resizeHandle != nullptr) {
+            node.resizeHandle->markSubtreeDirty();
+        }
+    }
+}
+
 void DockingLayer::collectDrawChildren(std::vector<Instance *> &out)
 {
     for (auto &tabBar : m_tabBars) {

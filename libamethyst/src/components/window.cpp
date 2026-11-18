@@ -40,6 +40,13 @@ void Window::collectDrawChildren(std::vector<Instance *> &out)
     out.push_back(m_overlayLayer.get());
 }
 
+void Window::markChildrenDirty()
+{
+    // the overlay layer is owned outside the child list
+    Instance::markChildrenDirty();
+    m_overlayLayer->markSubtreeDirty();
+}
+
 void Window::setLogicalToPhysicalScale(float scale)
 {
     if (!std::isfinite(scale) || scale <= 0.0f) {
