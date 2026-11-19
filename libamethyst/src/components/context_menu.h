@@ -9,7 +9,9 @@
 
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace Amethyst {
@@ -27,7 +29,8 @@ class ContextMenu : public Popup {
         TOGGLE,    // checkbox
         SEPARATOR, // duh
         SUBMENU,   // pure submenu entry
-        RADIO      // radio button style
+        RADIO,     // radio button style
+        NUMBER     // a value dragged or typed in place, the menu stays open
     };
 
     class ItemData {
@@ -118,6 +121,18 @@ class ContextMenu : public Popup {
         int32_t value = 0;
     };
 
+    class NumberItemData : public ItemData {
+      public:
+        NumberItemData() : ItemData(Kind::NUMBER) {}
+
+        double value = 0.0;
+        double speed = 1.0;
+        double min = std::numeric_limits<double>::lowest();
+        double max = std::numeric_limits<double>::max();
+        std::string format;
+        std::function<void(double)> onChanged;
+    };
+
     class ActionItemView : public ItemView {
       public:
         ActionItemView() : ItemView(Kind::ACTION) {}
@@ -168,6 +183,11 @@ class ContextMenu : public Popup {
         void select(RadioItemData &item);
     };
 
+    class NumberItemView : public ItemView {
+      public:
+        NumberItemView() : ItemView(Kind::NUMBER) {}
+    };
+
     /**
      * @brief One row factory per Kind. Unset fields fall back to default view for that kind, set a field to have
      * this ContextMenu build your own ItemView subclass for that kind instead.
@@ -178,6 +198,7 @@ class ContextMenu : public Popup {
         std::function<std::unique_ptr<ItemView>()> separator = {};
         std::function<std::unique_ptr<ItemView>()> submenu = {};
         std::function<std::unique_ptr<ItemView>()> radio = {};
+        std::function<std::unique_ptr<ItemView>()> number = {};
     };
 
     void setItems(std::vector<std::unique_ptr<ItemData>> items);

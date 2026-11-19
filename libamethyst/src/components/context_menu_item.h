@@ -51,12 +51,19 @@ class ContextMenuRadio : public ContextMenu::RadioItemData {
     bool enabled = true;
 };
 
+class ContextMenuNumber : public ContextMenu::NumberItemData {
+  public:
+    std::string label;
+    bool enabled = true;
+};
+
 std::unique_ptr<ContextMenu::ItemData> makeActionItem(std::string label, std::function<void()> cb);
 std::unique_ptr<ContextMenu::ItemData> makeToggleItem(std::string label, std::function<void(bool)> cb = {});
 std::unique_ptr<ContextMenu::ItemData> makeSeparatorItem();
 std::unique_ptr<ContextMenu::ItemData> makeSubmenuItem(std::string label, std::vector<std::unique_ptr<ContextMenu::ItemData>> items,
                                                        std::function<void()> onActivate = {});
 std::unique_ptr<ContextMenu::ItemData> makeRadioItem(std::string label, RadioGroup *group, int32_t value);
+std::unique_ptr<ContextMenu::ItemData> makeNumberItem(std::string label, double value, std::function<void(double)> onChanged);
 
 } // namespace Amethyst
 

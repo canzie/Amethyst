@@ -170,6 +170,7 @@ enum class ComponentPart {
     RADIO,
     SEPARATOR,
     SUBMENU,
+    NUMBER,
     CLOSE,
 };
 

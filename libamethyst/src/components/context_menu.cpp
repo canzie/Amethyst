@@ -3,6 +3,7 @@
 #include "amethyst/icons.h"
 #include "components/checkbox.h"
 #include "components/context_menu_item.h"
+#include "components/drag.h"
 #include "components/frame.h"
 #include "components/image_label.h"
 #include "components/overlay_layer.h"
@@ -36,6 +37,8 @@ static ComponentPart s_partForKind(ContextMenu::Kind kind)
         return ComponentPart::SUBMENU;
     case ContextMenu::Kind::RADIO:
         return ComponentPart::RADIO;
+    case ContextMenu::Kind::NUMBER:
+        return ComponentPart::NUMBER;
     }
     return ComponentPart::NONE;
 }
@@ -315,6 +318,58 @@ class DefaultRadioItemView : public ContextMenu::RadioItemView {
     RadioButton *m_radio = nullptr;
 };
 
+class DefaultNumberItemView : public ContextMenu::NumberItemView {
+  public:
+    Frame *create(ContextMenu &owner) override
+    {
+        Frame *row = NumberItemView::create(owner);
+        m_label = row->add<TextLabel>();
+        m_label->setTextStyleProperties(owner.getTextStyleProperties());
+        m_label->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
+        m_label->setBaseProperties({
+            .interactable = false,
+            .padding =
+                UDim4{UDim::fromOffset(0.0f), UDim::fromOffset(ROW_PADDING), UDim::fromOffset(0.0f), UDim::fromOffset(ROW_PADDING)},
+            .size = UDim2::fromScale(1.0f, 1.0f),
+        });
+
+        m_drag = row->add<DragFloat>();
+        m_drag->setBaseProperties({
+            .anchorPoint = {1.0f, 0.5f},
+            .position = UDim2(1.0f, -ROW_PADDING, 0.5f, 0.0f),
+            .size = UDim2(0.5f, 0.0f, 1.0f, -ICON_INSET),
+            .zIndex = POPUP_ZINDEX,
+        });
+        return row;
+    }
+
+    void bind(ContextMenu::ItemData &item) override
+    {
+        m_boundItem = &item;
+        auto &numberItem = item.as<ContextMenuNumber>();
+        m_label->setText(numberItem.label);
+        m_row->setBaseProperties({.interactable = numberItem.enabled});
+
+        m_drag->speed = numberItem.speed;
+        m_drag->min = numberItem.min;
+        m_drag->max = numberItem.max;
+        if (!numberItem.format.empty()) {
+            m_drag->setFormat(numberItem.format);
+        }
+        m_drag->value = &numberItem.value;
+        m_drag->onValueChanged = [&numberItem](double value) {
+            if (numberItem.onChanged != nullptr) {
+                numberItem.onChanged(value);
+            }
+        };
+        m_drag->markDirty();
+    }
+
+  private:
+    TextLabel *m_label = nullptr;
+    DragFloat *m_drag = nullptr;
+};
+
 ContextMenu::ContextMenu()
 {
     closeOnClickOutside = false;
@@ -332,6 +387,7 @@ ContextMenu::ContextMenu()
     m_rowFactories.separator = [] { return std::make_unique<DefaultSeparatorItemView>(); };
     m_rowFactories.submenu = [] { return std::make_unique<DefaultSubmenuItemView>(); };
     m_rowFactories.radio = [] { return std::make_unique<DefaultRadioItemView>(); };
+    m_rowFactories.number = [] { return std::make_unique<DefaultNumberItemView>(); };
 
     resolveStyle();
 }
@@ -387,6 +443,7 @@ void ContextMenu::setRowFactories(RowFactories factories)
     if (factories.separator) m_rowFactories.separator = std::move(factories.separator);
     if (factories.submenu) m_rowFactories.submenu = std::move(factories.submenu);
     if (factories.radio) m_rowFactories.radio = std::move(factories.radio);
+    if (factories.number) m_rowFactories.number = std::move(factories.number);
 }
 
 bool ContextMenu::prepareShow()
@@ -547,6 +604,9 @@ void ContextMenu::buildMainContent()
             break;
         case Kind::RADIO:
             factory = &m_rowFactories.radio;
+            break;
+        case Kind::NUMBER:
+            factory = &m_rowFactories.number;
             break;
         }
         views.push_back((*factory)());

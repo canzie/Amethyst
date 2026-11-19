@@ -32,6 +32,15 @@ std::unique_ptr<ContextMenu::ItemData> makeSubmenuItem(std::string label, std::v
     return item;
 }
 
+std::unique_ptr<ContextMenu::ItemData> makeNumberItem(std::string label, double value, std::function<void(double)> onChanged)
+{
+    auto item = std::make_unique<ContextMenuNumber>();
+    item->label = std::move(label);
+    item->value = value;
+    item->onChanged = std::move(onChanged);
+    return item;
+}
+
 std::unique_ptr<ContextMenu::ItemData> makeRadioItem(std::string label, RadioGroup *group, int32_t value)
 {
     auto item = std::make_unique<ContextMenuRadio>();

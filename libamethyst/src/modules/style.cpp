@@ -79,6 +79,7 @@ ComponentType defaultPartOwner(ComponentPart part)
     case ComponentPart::RADIO:
     case ComponentPart::SEPARATOR:
     case ComponentPart::SUBMENU:
+    case ComponentPart::NUMBER:
         return ComponentType::CONTEXT_MENU;
     case ComponentPart::NONE:
         break;
@@ -176,6 +177,7 @@ const std::unordered_map<std::string, ComponentPart> &Style::getPartNames()
         {"radio", ComponentPart::RADIO},
         {"separator", ComponentPart::SEPARATOR},
         {"submenu", ComponentPart::SUBMENU},
+        {"number", ComponentPart::NUMBER},
         {"close", ComponentPart::CLOSE},
     };
     return names;
