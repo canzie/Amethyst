@@ -6,6 +6,7 @@
 #include "rendering/draw_context.h"
 #include "rendering/geometry_registry.h"
 #include "rendering/instance_data.h"
+#include "utils/am_assert.h"
 
 #include "math/math.h"
 
@@ -67,6 +68,7 @@ Spline::~Spline()
 void Spline::setKnots(std::vector<vec2> knots)
 {
     m_knots = std::move(knots);
+    dropAttachmentsFrom(m_knots.size());
     markDirty();
 }
 
@@ -80,7 +82,45 @@ void Spline::clearKnots()
 {
     if (!m_knots.empty()) {
         m_knots.clear();
+        m_attachments.clear();
         markDirty();
+    }
+}
+
+void Spline::attachKnot(size_t index, UIObject *object, vec2 point, vec2 offset)
+{
+    AM_ASSERT(index < m_knots.size(), "Knot index out of bounds");
+    AM_ASSERT(object != nullptr, "A knot has to follow an object");
+    detachKnot(index);
+    m_attachments.push_back({
+        .knot = index,
+        .object = object,
+        .point = point,
+        .offset = offset,
+        .rectChanged = object->onAbsoluteRectChanged.connect([this]() { markDirty(); }),
+    });
+    markDirty();
+}
+
+void Spline::detachKnot(size_t index)
+{
+    std::erase_if(m_attachments, [index](const KnotAttachment &attachment) { return attachment.knot == index; });
+}
+
+void Spline::dropAttachmentsFrom(size_t firstKnot)
+{
+    std::erase_if(m_attachments, [firstKnot](const KnotAttachment &attachment) { return attachment.knot >= firstKnot; });
+}
+
+void Spline::placeAttachedKnots()
+{
+    // an object that was destroyed took its signal with it, so its knot stays where it was last placed
+    for (const KnotAttachment &attachment : m_attachments) {
+        if (!attachment.rectChanged.connected()) {
+            continue;
+        }
+        const UIObject &object = *attachment.object;
+        m_knots[attachment.knot] = object.absolutePosition + object.absoluteSize * attachment.point + attachment.offset - absolutePosition;
     }
 }
 
@@ -202,7 +242,8 @@ void Spline::buildInstances(std::vector<InstanceData> &out) const
         out.push_back(makeInstance(seg, m_splineProps.thickness, m_splineProps.color));
     }
 
-    if (m_splineProps.type != CurveType::QUADRATIC && m_splineProps.type != CurveType::CUBIC) {
+    if (!static_cast<bool>(m_splineProps.showKnots) ||
+        (m_splineProps.type != CurveType::QUADRATIC && m_splineProps.type != CurveType::CUBIC)) {
         return;
     }
 
@@ -344,6 +385,8 @@ void Spline::draw(DrawContext &ctx)
             m_allocations.clear();
         }
         m_registry = ctx.geometry;
+
+        placeAttachedKnots();
 
         std::vector<InstanceData> instances;
         buildInstances(instances);

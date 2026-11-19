@@ -391,10 +391,14 @@ void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentR
 
     // the parent assigns clipRect just before this call, so comparing it here is
     // what catches a clip change that leaves this object's own rect untouched
-    if (absolutePosition != previousPosition || absoluteSize != previousSize ||
-        absoluteRotation != previousRotation || clipRect != m_appliedClipRect) {
+    const bool rectChanged =
+        absolutePosition != previousPosition || absoluteSize != previousSize || absoluteRotation != previousRotation;
+    if (rectChanged || clipRect != m_appliedClipRect) {
         m_appliedClipRect = clipRect;
         markDirty();
+    }
+    if (rectChanged) {
+        onAbsoluteRectChanged.fire();
     }
 }
 

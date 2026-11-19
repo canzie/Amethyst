@@ -39,6 +39,21 @@ class Spline : public UIObject {
     const std::vector<vec2> &getKnots() const { return m_knots; }
 
     /**
+     * @brief Keeps a knot on a point of another object, following that object as it moves or resizes
+     * @param index The knot to attach
+     * @param object The object the knot follows
+     * @param point Where on the object the knot sits, as a fraction of its size
+     * @param offset Pixels added to that point
+     */
+    void attachKnot(size_t index, UIObject *object, vec2 point, vec2 offset = vec2(0.0f));
+
+    /**
+     * @brief Frees a knot from the object it follows, leaving it where it was last placed
+     * @param index The knot to detach
+     */
+    void detachKnot(size_t index);
+
+    /**
      * @brief Merge in the set fields of a spline style block, keeping current values for unset ones.
      * @param props Style block; only fields that are set override
      * @return True if any resolved value changed
@@ -47,6 +62,14 @@ class Spline : public UIObject {
     const SplineStyleProperties &getSplineProperties() const { return m_splineProps; }
 
   private:
+    struct KnotAttachment {
+        size_t knot;
+        UIObject *object;
+        vec2 point;
+        vec2 offset;
+        EventConnection rectChanged;
+    };
+
     struct QuadBezier {
         vec2 a;
         vec2 control;
@@ -62,9 +85,12 @@ class Spline : public UIObject {
     void syncHandles();
     void smoothPartner(size_t control);
     vec2 clampKnot(size_t index, vec2 knot) const;
+    void placeAttachedKnots();
+    void dropAttachmentsFrom(size_t firstKnot);
 
   private:
     std::vector<vec2> m_knots;
+    std::vector<KnotAttachment> m_attachments;
     SplineStyleProperties m_splineProps;
 
     GeometryRegistry *m_registry = nullptr;

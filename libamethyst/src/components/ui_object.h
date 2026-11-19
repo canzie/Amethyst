@@ -366,6 +366,8 @@ class UIObject : public UIBase2D {
 
   public:
     EventSignal<void(bool hovered)> onHoverChanged;
+    /// fires during layout whenever the object's absolute position, size or rotation changes
+    EventSignal<void()> onAbsoluteRectChanged;
     EventSignal<void(const InputObject &)> onInputBeganCb;
     EventSignal<void(const InputObject &)> onInputChangedCb;
     EventSignal<void(const InputObject &)> onInputEndedCb;
