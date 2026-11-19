@@ -138,18 +138,21 @@ void UIImage::drawImage(DrawContext &ctx, vec2 absoluteSize, InstanceData base)
     base.clearBackgroundRepeat();
     base.textureId = m_image.id;
 
+    Color4 tint = m_imgStyle.imageColor;
+    tint.a *= 1.0f - m_imgStyle.imageTransparency;
+
     if (!m_svgData.empty()) {
         // until a raster exists (not laid out yet, or rasterizing failed) there is nothing valid
         // to sample, so the instance is kept but hidden rather than drawn with stale UVs
         base.setPrimitiveType(PRIMITIVE_SVG);
         base.setUvRect(m_svgUvRect);
-        base.setFillColor(svgTint(m_imgStyle.imageColor));
+        base.setFillColor(svgTint(tint));
         if (!m_svgResolved) {
             base.setVisible(false);
         }
     } else {
         base.setPrimitiveType(PRIMITIVE_RECT);
-        base.setFillColor(m_imgStyle.imageColor);
+        base.setFillColor(tint);
     }
 
     s_pushData(ctx.geometry, m_alloc, base);

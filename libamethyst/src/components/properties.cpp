@@ -294,6 +294,7 @@ bool ImageStyleProperties::apply(const ImageStyleProperties &src)
     AM_APPLY_PLAIN(imageColor)
     AM_APPLY_PLAIN(scaleType)
     AM_APPLY_PLAIN(tileSize)
+    AM_APPLY_PLAIN(imageTransparency)
     return changed;
 }
 
@@ -303,6 +304,7 @@ bool ImageStyleProperties::apply(const ImageStylePropertiesArgs &src)
     AM_APPLY_ARGS(imageColor)
     AM_APPLY_ARGS(scaleType)
     AM_APPLY_ARGS(tileSize)
+    AM_APPLY_ARGS(imageTransparency)
     return changed;
 }
 
@@ -312,6 +314,7 @@ ImageStyleProperties::operator ImageStylePropertiesArgs() const
     AM_TO_ARGS(imageColor)
     AM_TO_ARGS(scaleType)
     AM_TO_ARGS(tileSize)
+    AM_TO_ARGS(imageTransparency)
     return out;
 }
 

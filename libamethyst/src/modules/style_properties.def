@@ -33,6 +33,7 @@
     X(STROKE_THICKNESS, "stroke-thickness", float, LENGTH, 0.0f)                                              \
     X(STROKE_COLOR, "stroke-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                           \
     X(IMAGE_COLOR, "image-color", Color4, COLOR4, Color4(1.0f, 1.0f, 1.0f, 1.0f))                             \
+    X(IMAGE_TRANSPARENCY, "image-transparency", float, RATIO, 0.0f)                                           \
     X(IMAGE_SCALE_TYPE, "image-scale-type", ImageScaleType, ISCALE, ImageScaleType::STRETCH)                  \
     X(IMAGE_TILE_SIZE, "image-tile-size", vec2, SIZE2, vec2(0.0f))                                            \
     X(PLACEHOLDER_COLOR, "placeholder-color", Color4, COLOR4, Color4(0.5f, 0.5f, 0.5f, 1.0f))                 \
@@ -173,7 +174,8 @@
 #define AM_IMAGE_STYLE_FIELDS(X)                \
     X(IMAGE_COLOR, imageColor, Color4)          \
     X(IMAGE_SCALE_TYPE, scaleType, ImageScaleType) \
-    X(IMAGE_TILE_SIZE, tileSize, vec2)
+    X(IMAGE_TILE_SIZE, tileSize, vec2)          \
+    X(IMAGE_TRANSPARENCY, imageTransparency, float)
 
 #define AM_TEXT_INPUT_STYLE_FIELDS(X)                  \
     X(PLACEHOLDER_COLOR, placeholderColor, Color4)     \

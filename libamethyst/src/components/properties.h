@@ -163,6 +163,7 @@ template <FieldShape Shape> struct ImageStyleFields {
     F<Color4> imageColor{};
     F<ImageScaleType> scaleType{};
     F<vec2> tileSize{};
+    F<float> imageTransparency{};
 };
 
 using ImageStylePropertiesArgs = ImageStyleFields<FieldShape::Args>;
