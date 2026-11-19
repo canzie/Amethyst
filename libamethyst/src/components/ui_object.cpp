@@ -42,7 +42,7 @@ UIObject::UIObject()
 
     m_baseStyle.backgroundColor = Color3{1.0f, 1.0f, 1.0f};
     m_baseStyle.backgroundTransparency = 0.0f;
-    m_baseStyle.borderMode = BorderMode::OUTLINE;
+    m_baseStyle.borderMode = BorderMode::INSET;
     m_baseStyle.borderPixelSize = 0.0f;
     m_baseStyle.borderColor = Color3{0.0f, 0.0f, 0.0f};
     m_baseStyle.borderTransparency = 0.0f;
@@ -271,6 +271,26 @@ void UIObject::setClasses(std::span<const StyleKey> tokens)
  * @param position The rect's top-left corner, replaced with its rounded value
  * @param size The rect's extent, replaced with the distance between the rounded edges
  */
+static float s_borderWidthInsideRect(const BaseStyleProperties &style)
+{
+    switch (style.borderMode) {
+    case BorderMode::INSET:
+        return style.borderPixelSize;
+    case BorderMode::MIDDLE:
+        return style.borderPixelSize * 0.5f;
+    case BorderMode::NONE:
+    case BorderMode::OUTLINE:
+        return 0.0f;
+    }
+    return 0.0f;
+}
+
+vec4 UIObject::resolveContentInsets(vec2 size) const
+{
+    // padding is measured from the inner edge of the border, so children never cover it
+    return m_uiObjProps.padding.resolve(size) + vec4(s_borderWidthInsideRect(m_baseStyle));
+}
+
 static void s_snapRectToPixels(vec2 &position, vec2 &size)
 {
     float left = std::round(position.x);
@@ -321,7 +341,7 @@ void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentR
         s_snapRectToPixels(absolutePosition, absoluteSize);
     }
 
-    vec4 p = m_uiObjProps.padding.resolve(absoluteSize);
+    vec4 p = resolveContentInsets(absoluteSize);
     absoluteContentPosition = absolutePosition + vec2(p.w, p.x);
     absoluteContentSize = absoluteSize - vec2(p.w + p.y, p.x + p.z);
 

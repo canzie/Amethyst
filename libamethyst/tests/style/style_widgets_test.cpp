@@ -78,6 +78,28 @@ TEST_F(ThemedFixture, ThemePaddingAppliesUnlessSetOnTheInstance)
     EXPECT_FLOAT_EQ(pinned->getBaseProperties().padding.top.offset, 2.0f);
 }
 
+TEST_F(ThemedFixture, PaddingStartsInsideAnInsetBorder)
+{
+    load(".bordered { border-pixel-size: 2px; padding: 3px; }");
+    Frame *frame = win->add<Frame>();
+    frame->setClasses({"bordered"});
+    place(frame, 0, 0, 100, 100);
+    win.layout();
+    EXPECT_FLOAT_EQ(frame->absoluteContentPosition.x, 5.0f);
+    EXPECT_FLOAT_EQ(frame->absoluteContentSize.x, 90.0f);
+}
+
+TEST_F(ThemedFixture, AnOutlineBorderLeavesTheContentBoxAlone)
+{
+    load(".outlined { border-pixel-size: 2px; border-mode: outline; padding: 3px; }");
+    Frame *frame = win->add<Frame>();
+    frame->setClasses({"outlined"});
+    place(frame, 0, 0, 100, 100);
+    win.layout();
+    EXPECT_FLOAT_EQ(frame->absoluteContentPosition.x, 3.0f);
+    EXPECT_FLOAT_EQ(frame->absoluteContentSize.x, 94.0f);
+}
+
 // --- pseudo-state re-resolve in arrange overrides -------------------------------------------
 
 TEST_F(ThemedFixture, SliderRestylesWhenItsStateChanges)

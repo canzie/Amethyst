@@ -232,6 +232,8 @@ Type names (kebab, singular): `ui-object` (the global/base), `ui-button`, `ui-la
 - **Spacing shorthand** (whitespace-separated): `padding: 10px;` | `10px 20px;` (v,h) | `10px 20px 30px 40px;` (t,r,b,l)
 - **Colors**: `#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb(r,g,b)`, `rgba(r,g,b,a)` (channels 0..255)
 - **Enums/fonts**: bare keywords (`outline`, `center`) / `font-family: "default";`
+- **Borders** default to `border-mode: inset`, drawn inside the component's rect so its size is what it draws. `outline` draws outside the rect, where a parent clipping its children can cut it off; keep it for rings around a shape. `middle` straddles the edge.
+- **Padding** is measured from the inner edge of the border, so `border-pixel-size: 1px; padding: 4px;` puts children 5px in and they never cover the border.
 
 ### Property names (kebab; full list in `style_properties.def`)
 

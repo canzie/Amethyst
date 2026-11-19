@@ -82,9 +82,11 @@ const uint PRIMITIVE_CANVAS_BEZIER = 11;
 const uint INSTANCE_FLAG_REPEAT_X = 0x00000008u;
 const uint INSTANCE_FLAG_REPEAT_Y = 0x00000010u;
 
-const uint BORDER_OUTLINE = 0;
-const uint BORDER_MIDDLE = 1;
-const uint BORDER_INSET = 2;
+// matches BorderMode in components/common.h
+const uint BORDER_NONE = 0;
+const uint BORDER_OUTLINE = 1;
+const uint BORDER_MIDDLE = 2;
+const uint BORDER_INSET = 3;
 
 
 float sdfRect(vec2 p, vec2 b, vec4 r)
@@ -451,7 +453,7 @@ void main()
     float outerThreshold = 0.0;
     float innerThreshold = 0.0;
 
-    if (fragBorderThickness > 0.0) {
+    if (fragBorderThickness > 0.0 && fragBorderMode != BORDER_NONE) {
         if (fragBorderMode == BORDER_OUTLINE) {
             outerThreshold = fragBorderThickness;
             innerThreshold = 0.0;
@@ -483,7 +485,7 @@ void main()
     // fill, rather than averaging the two colours. Averaging tints a thin border with the fill/
     // background behind it (a 1px border never reaches its own colour); band compositing keeps the
     // border's colour and only its coverage drops at sub-pixel edges - the crisp-thin-stroke look.
-    if (fragBorderThickness > 0.0) {
+    if (fragBorderThickness > 0.0 && fragBorderMode != BORDER_NONE) {
         float fillCoverage = 1.0 - smoothstep(-aa, aa, dist - innerThreshold);
         float borderCoverage = max(outerCoverage - fillCoverage, 0.0);
         float ba = fragBorderColor.a * borderCoverage;

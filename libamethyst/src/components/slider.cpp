@@ -29,19 +29,28 @@ static void s_setupTrack(Frame &track, float x, float y, float width, float heig
     });
 }
 
-static void s_setupFill(Frame &fill, float fillWidth, const Slider *slider)
+static void s_setupFill(Frame &fill, float fillEnd, vec2 trackSize, const Slider *slider)
 {
+    // the fill sits inside the border and padding the track takes from the slider, so it ends at
+    // the inner right edge and its corners round by what is left of the slider's radius
+    const vec4 insets = slider->resolveContentInsets(trackSize);
+    const float insetLeft = insets.w;
+    const float insetRight = insets.y;
+    const float fillWidth = std::max(0.0f, std::min(fillEnd, trackSize.x - insetRight) - insetLeft);
+    const uvec4 insetRadius = uvec4(static_cast<uint32_t>(std::max(insetLeft, 0.0f)));
+    const uvec4 cornerRadius = max(slider->getBaseStyleProperties().cornerRadius, insetRadius) - insetRadius;
+
     Color4 fillColor = slider->getSliderProperties().fillColor;
     fill.setBaseStyleProperties({
         .backgroundColor = Color3(fillColor),
         .backgroundTransparency = 1.0f - fillColor.a,
         .borderTransparency = 1.0f,
-        .cornerRadius = slider->getBaseStyleProperties().cornerRadius,
+        .cornerRadius = cornerRadius,
     });
     fill.setBaseProperties({
         .interactable = false,
         .position = UDim2::fromOffset(0.0f, 0.0f),
-        .size = UDim2({0.0f, 1.0f}, {fillWidth, 0.0f}),
+        .size = UDim2(0.0f, fillWidth, 1.0f, 0.0f),
     });
 }
 
@@ -133,6 +142,7 @@ Slider::Slider(NumberKind kind, std::string defaultFormat) : m_format(defaultFor
     m_fill = m_track->add<Frame>();
     m_thumb = add<Shape>(thumbShape);
     m_valueLabel = add<TextLabel>();
+
     resolveStyle();
 }
 
@@ -187,7 +197,7 @@ void Slider::layoutTrack(float normalizedPos, float thumbWidth, const std::strin
     float clampedThumbWidth = std::clamp(thumbWidth, 0.0f, boxWidth);
     float thumbX = normalizedPos * (boxWidth - clampedThumbWidth);
     float thumbY = (boxHeight - thumbHeight) * 0.5f;
-    s_setupFill(*m_fill, thumbX, this);
+    s_setupFill(*m_fill, thumbX, vec2(boxWidth, trackHeight), this);
     s_setupThumb(*m_thumb, thumbX, thumbY, clampedThumbWidth, thumbHeight, this);
 
     UIDragDetector *drag = m_track->getExtension<UIDragDetector>();
@@ -242,6 +252,7 @@ void Slider::arrange()
             obj->arrange();
         }
     }
+
 }
 
 SliderFloat::SliderFloat() : Slider(NumberKind::FLOATING, "%.3f") {}

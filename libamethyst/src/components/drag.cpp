@@ -46,7 +46,7 @@ Drag::Drag(NumberKind kind, std::string defaultFormat) : m_format(defaultFormat)
         .position = UDim2::fromOffset(0, 0),
         .size = UDim2::fromScale(1.0f, 1.0f),
     });
-    m_field->setBaseStyleProperties({.backgroundTransparency = 1.0f});
+    m_field->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
 
     TextInputStylePropertiesArgs fieldStyle;
     fieldStyle.readOnly = true;

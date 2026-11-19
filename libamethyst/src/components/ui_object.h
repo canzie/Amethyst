@@ -172,6 +172,14 @@ class UIObject : public UIBase2D {
     const BaseStyleProperties &getBaseStyleProperties() const { return m_baseStyle; }
 
     /**
+     * @brief How far the content box sits in from each edge: the padding plus the part of the
+     * border that lies inside the rect.
+     * @param size The size the padding resolves against
+     * @return The insets as (top, right, bottom, left)
+     */
+    vec4 resolveContentInsets(vec2 size) const;
+
+    /**
      * @brief Re-resolve this node's styling from the global theme, its class set and pseudo-state.
      *
      * Called from each component constructor, whenever the class set changes, and from

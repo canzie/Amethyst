@@ -569,9 +569,11 @@ void ContextMenu::buildMainContent()
         visibleHeight = std::min(visibleHeight, maxContentHeight);
     }
 
+    // the rows lay out inside the menu's border and padding, which the menu grows by
+    const vec4 insets = resolveContentInsets(vec2(popupWidth, visibleHeight));
     setBaseProperties({
         .clipsDescendants = true,
-        .size = UDim2::fromOffset(popupWidth, visibleHeight),
+        .size = UDim2::fromOffset(popupWidth, visibleHeight + insets.x + insets.z),
         .zIndex = POPUP_ZINDEX,
     });
 
@@ -579,6 +581,8 @@ void ContextMenu::buildMainContent()
     if (totalHeight > visibleHeight + 0.5f) {
         auto *sf = add<ScrollingFrame>();
         sf->setBaseStyleProperties(getBaseStyleProperties());
+        // the menu draws the border around the scrolling frame
+        sf->setBaseStyleProperties({.borderPixelSize = 0.0f});
         sf->setBaseProperties({.clipsDescendants = true, .size = UDim2::fromScale(1.0f, 1.0f)});
         sf->setScrollingFrameProperties({
             .scrollAxis = ScrollAxis::Y,

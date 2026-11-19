@@ -318,6 +318,9 @@ struct uvec4 {
     {
     }
 
+    uvec4 operator+(uvec4 o) const { return {x + o.x, y + o.y, z + o.z, w + o.w}; }
+    uvec4 operator-(uvec4 o) const { return {x - o.x, y - o.y, z - o.z, w - o.w}; }
+
     bool operator==(const uvec4 &o) const { return x == o.x && y == o.y && z == o.z && w == o.w; }
     bool operator!=(const uvec4 &o) const { return !(*this == o); }
 

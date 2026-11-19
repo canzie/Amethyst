@@ -74,11 +74,14 @@ const vec2 uvs[4] = vec2[](
     vec2(0.0, 1.0)
 );
 
+const uint PRIMITIVE_RECT = 0;
 const uint PRIMITIVE_TEXT = 4;
 const uint PRIMITIVE_SVG = 10;
-const uint BORDER_OUTLINE = 0u;
-const uint BORDER_MIDDLE = 1u;
-const uint BORDER_INSET = 2u;
+// matches BorderMode in components/common.h
+const uint BORDER_NONE = 0u;
+const uint BORDER_OUTLINE = 1u;
+const uint BORDER_MIDDLE = 2u;
+const uint BORDER_INSET = 3u;
 // Outward bleed for the outer-edge AA fringe (smoothstep over ~fwidth(dist), fwidth is
 // fragment-only so this must be a constant). One physical pixel covers the typical fringe.
 const float BORDER_AA_PAD = 1.0;
@@ -145,6 +148,17 @@ void main()
     }
     uint borderMode = INST_BORDER_MODE(inst.primitiveMode);
 
+    // an unrotated box puts its edges on physical pixels, so a border covers the same pixels on
+    // every side instead of smearing over two where an edge falls between them
+    vec2 shapeTranslation = inst.translation;
+    vec2 shapeSize = inst.scale;
+    if (INST_PRIMITIVE_TYPE(inst.primitiveMode) == PRIMITIVE_RECT && rotation == 0.0) {
+        vec2 minEdge = round((inst.translation - inst.scale * 0.5) * scale);
+        vec2 maxEdge = round((inst.translation + inst.scale * 0.5) * scale);
+        shapeTranslation = (minEdge + maxEdge) * 0.5 / scale;
+        shapeSize = (maxEdge - minEdge) / scale;
+    }
+
     // Outward border modes draw outside the shape edge, but the quad is sized to the shape so
     // they have no fragments to land on. Grow the quad by the outward extent (+ AA fringe) and
     // extend fragUV by the same ratio so the shape still maps to UV [0,1].
@@ -152,18 +166,18 @@ void main()
                   : (borderMode == BORDER_MIDDLE)  ? borderThickness * 0.5
                                                    : 0.0;
     float pad = (outward > 0.0) ? (outward + BORDER_AA_PAD / scale) : 0.0;
-    vec2 paddedScale = inst.scale + 2.0 * pad;
+    vec2 paddedScale = shapeSize + 2.0 * pad;
 
     // Build transform: scale, rotate, translate
     vec2 localPos = positions[gl_VertexIndex];
     vec2 scaled = localPos * paddedScale;
     vec2 rotated = vec2(scaled.x * c - scaled.y * s, scaled.x * s + scaled.y * c);
-    vec2 worldPos = rotated + inst.translation;
+    vec2 worldPos = rotated + shapeTranslation;
 
     vec2 ndc = (worldPos * scale / pc.screenSize) * 2.0 - 1.0;
     gl_Position = vec4(ndc, 0.0, 1.0);
 
-    vec2 padRatio = (pad > 0.0) ? (vec2(pad) / inst.scale) : vec2(0.0);
+    vec2 padRatio = (pad > 0.0) ? (vec2(pad) / shapeSize) : vec2(0.0);
     fragUV = uvs[gl_VertexIndex] * (1.0 + 2.0 * padRatio) - padRatio;
 
     // Unpack primitive type from bits 16-23
@@ -214,7 +228,7 @@ void main()
 
     // batched text looks its glyphs up in the glyph buffer, which is in physical pixels; every
     // other primitive works in logical pixels, where fwidth still gives a one pixel AA band
-    fragSize = textBatched ? inst.scale * scale : inst.scale;
+    fragSize = textBatched ? inst.scale * scale : shapeSize;
 
     // Unpack border mode from bits 24-31
     fragBorderMode = borderMode;

@@ -14,7 +14,7 @@
     X(BORDER_COLOR, "border-color", Color3, COLOR3, Color3(0.0f, 0.0f, 0.0f))                                 \
     X(BORDER_TRANSPARENCY, "border-transparency", float, RATIO, 0.0f)                                         \
     X(BORDER_PIXEL_SIZE, "border-pixel-size", float, LENGTH, 0.0f)                                            \
-    X(BORDER_MODE, "border-mode", BorderMode, BMODE, BorderMode::OUTLINE)                                     \
+    X(BORDER_MODE, "border-mode", BorderMode, BMODE, BorderMode::INSET)                                       \
     X(CORNER_RADIUS, "corner-radius", uvec4, CORNERS, uvec4(0u))                                              \
     X(BACKGROUND_REPEAT, "background-repeat", BackgroundRepeat, BREPEAT, BackgroundRepeat::NONE)              \
     X(BACKGROUND_SIZE, "background-size", vec2, SIZE2, vec2(0.0f))                                            \
