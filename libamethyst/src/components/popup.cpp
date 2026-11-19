@@ -164,17 +164,26 @@ void Popup::openAt(vec2 absolutePoint)
         return;
     }
 
-    vec2 viewport = m_overlay->absoluteSize;
-    vec2 contentSize = getBaseProperties().size.resolve(viewport);
-    vec2 pos = resolvePlacement(absolutePoint, vec2(0.0f), contentSize, viewport);
-
-    setBaseProperties({.position = UDim2::fromOffset(pos.x, pos.y), .visible = true});
+    placeAt(absolutePoint);
+    setBaseProperties({.visible = true});
 
     ensureConnected();
     m_open = true;
     if (onOpened) {
         onOpened();
     }
+}
+
+void Popup::placeAt(vec2 absolutePoint)
+{
+    if (m_overlay == nullptr) {
+        return;
+    }
+
+    vec2 viewport = m_overlay->absoluteSize;
+    vec2 contentSize = resolveSize(viewport);
+    vec2 pos = resolvePlacement(absolutePoint, vec2(0.0f), contentSize, viewport);
+    setBaseProperties({.position = UDim2::fromOffset(pos.x, pos.y)});
 }
 
 void Popup::close()

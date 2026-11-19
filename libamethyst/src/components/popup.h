@@ -32,6 +32,12 @@ class Popup : public Frame {
      */
     void openAt(vec2 absolutePoint);
 
+    /**
+     * @brief Moves the popup's top-left to an absolute point, clamped to stay on screen, without opening it
+     * @param absolutePoint Top-left position in absolute coordinates
+     */
+    void placeAt(vec2 absolutePoint);
+
     void close();
     bool isOpen() const { return m_open; }
 

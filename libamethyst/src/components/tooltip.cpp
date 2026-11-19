@@ -51,10 +51,17 @@ void TooltipStack::schedule(UIObject *owner, vec2 cursorPosition, float delaySec
     m_remaining = delaySeconds;
 }
 
-void TooltipStack::moveTo(vec2 cursorPosition)
+void TooltipStack::moveTo(UIObject *owner, vec2 cursorPosition)
 {
-    if (m_pendingOwner != nullptr) {
+    if (m_pendingOwner == owner) {
         m_pendingPosition = cursorPosition;
+    }
+
+    for (size_t i = 0; i < m_owners.size(); i++) {
+        if (m_owners[i] == owner) {
+            m_surfaces[i]->placeAt(cursorPosition + cursorOffset);
+            return;
+        }
     }
 }
 

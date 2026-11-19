@@ -39,10 +39,11 @@ class TooltipStack {
     void schedule(UIObject *owner, vec2 cursorPosition, float delaySeconds, std::function<void(Tooltip &)> build);
 
     /**
-     * @brief Moves a pending appearance to a new point, doing nothing once the surface is up
+     * @brief Moves an object's surface, pending or up, to sit beside a new point
+     * @param owner The object the surface describes
      * @param cursorPosition Absolute position the surface is placed beside
      */
-    void moveTo(vec2 cursorPosition);
+    void moveTo(UIObject *owner, vec2 cursorPosition);
 
     /**
      * @brief Drops a pending appearance and closes the surface an object owns, along with any nested in it

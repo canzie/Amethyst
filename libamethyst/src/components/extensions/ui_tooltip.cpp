@@ -33,7 +33,7 @@ void UITooltip::handleMouseMove(int32_t x, int32_t y)
     if (m_scheduledOn == nullptr) {
         return;
     }
-    m_scheduledOn->getTooltips().moveTo(vec2(static_cast<float>(x), static_cast<float>(y)));
+    m_scheduledOn->getTooltips().moveTo(m_owner, vec2(static_cast<float>(x), static_cast<float>(y)));
 }
 
 void UITooltip::handleMouseLeave()
