@@ -159,6 +159,8 @@ void ScrollingFrame::arrange()
             viewport.y -= m_sfProps.scrollBarThickness;
         }
         absoluteContentSize = viewport;
+        // the layouts were applied against the viewport before the bars took their share of it
+        applyLayoutExtensions();
         absCanvasSize = m_sfProps.canvasSize.resolve(viewport);
         layoutChildren(absCanvasSize, viewport);
         m_maxScroll = max(absCanvasSize - viewport, vec2(0.0f));
