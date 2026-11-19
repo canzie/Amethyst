@@ -94,10 +94,6 @@ const uint INVALID_GRADIENT = 0xFFFFFFFFu;
 const uint NO_TEXT = 0xFFFFFFFFu;
 const uint INVALID_SLICE = 0xFFFFFFFFu;
 
-vec3 srgbToLinear(vec3 c) {
-    return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
-}
-
 vec4 unpackColor(uint packed) {
     vec4 c = vec4(
         float(packed & 0xFFu) / 255.0,
@@ -105,7 +101,6 @@ vec4 unpackColor(uint packed) {
         float((packed >> 16u) & 0xFFu) / 255.0,
         float((packed >> 24u) & 0xFFu) / 255.0
     );
-    c.rgb = srgbToLinear(c.rgb);
     return c;
 }
 

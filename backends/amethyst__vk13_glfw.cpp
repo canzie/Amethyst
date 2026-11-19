@@ -1084,7 +1084,7 @@ static VkFormat s_translateTextureFormat(AmTextureFormat format)
         return VK_FORMAT_R8_UNORM;
     case AmTextureFormat::RGBA8:
         // colour data (SVG rasters, images) is authored in sRGB; an sRGB format makes sampling
-        // return linear values that blend correctly with the linearised fill colours
+        // return linear values, which the shader encodes back before writing
         return VK_FORMAT_R8G8B8A8_SRGB;
     }
     AM_UNREACHABLE();

@@ -256,9 +256,9 @@ float sdEllipse(vec2 p, vec2 ab)
     return length(r - p) * sign(p.y - r.y);
 }
 
-vec3 srgbToLinear(vec3 c)
+vec3 linearToSrgb(vec3 c)
 {
-    return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+    return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
 }
 
 float gradientStopT(Gradient grad, uint i)
@@ -270,7 +270,7 @@ float gradientStopT(Gradient grad, uint i)
 vec4 gradientStopColor(Gradient grad, uint i)
 {
     vec4 c = unpackUnorm4x8(grad.stopColor[i]);
-    return vec4(srgbToLinear(c.rgb), c.a);
+    return c;
 }
 
 vec4 evalGradient(uint slot, vec2 uv)
@@ -354,7 +354,7 @@ void main()
         if (alpha < 0.001) {
             discard;
         }
-        outColor = vec4(srgbToLinear(glyphColor.rgb), alpha);
+        outColor = vec4(glyphColor.rgb, alpha);
         return;
     }
 
@@ -366,11 +366,11 @@ void main()
         return;
     }
 
-    // colour textures are created as sRGB formats, so sampling already returns linear values
-    // that match the linearised fill colours
+    // the target stores sRGB-encoded values and fill colours arrive as authored, so a sampled
+    // texture, which returns linear values, is encoded before it meets them
     if (fragPrimitiveType == PRIMITIVE_SVG) {
         vec4 texColor = texture(gTextures[nonuniformEXT(fragTextureId)], fragUV);
-        vec4 tinted = vec4(texColor.rgb * fragFillColor.rgb, texColor.a * fragFillColor.a);
+        vec4 tinted = vec4(linearToSrgb(texColor.rgb) * fragFillColor.rgb, texColor.a * fragFillColor.a);
         if (tinted.a < 0.001) discard;
         outColor = tinted;
         return;
@@ -478,7 +478,7 @@ void main()
     // of a PNG stay transparent instead of showing the fill
     if (fragTextureId != INVALID_TEXTURE) {
         vec4 texColor = texture(gTextures[nonuniformEXT(fragTextureId)], shapeUV);
-        fillColor = vec4(texColor.rgb * fillColor.rgb, texColor.a * fillColor.a);
+        fillColor = vec4(linearToSrgb(texColor.rgb) * fillColor.rgb, texColor.a * fillColor.a);
     }
 
     // Composite the border as an explicit band (outer coverage minus the fill's coverage) OVER the
