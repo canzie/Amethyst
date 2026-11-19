@@ -719,9 +719,10 @@ bool TreeViewStyleProperties::apply(const TreeViewStyleProperties &src)
     AM_APPLY_PLAIN(rowAlternateColor)
     AM_APPLY_PLAIN(rowHoverColor)
     AM_APPLY_PLAIN(rowSelectedColor)
-    if (header.apply(src.header)) {
-        changed = true;
-    }
+    AM_APPLY_PLAIN(columnSeparatorWidth)
+    AM_APPLY_PLAIN(columnSeparatorColor)
+    AM_APPLY_PLAIN(headerHeight)
+    AM_APPLY_PLAIN(headerColor)
     return changed;
 }
 
@@ -747,9 +748,6 @@ bool TreeViewStyleProperties::apply(const TreeViewStylePropertiesArgs &src)
     AM_APPLY_ARGS(rowHoverColor)
     AM_APPLY_ARGS(rowSelectedColor)
     AM_APPLY_ARGS(scrollBarVisibility)
-    if (header.apply(src.header)) {
-        changed = true;
-    }
     return changed;
 }
 
@@ -765,7 +763,6 @@ TreeViewStyleProperties::operator TreeViewStylePropertiesArgs() const
     AM_TO_ARGS(showHeader)
     AM_TO_ARGS(headerHeight)
     AM_TO_ARGS(headerColor)
-    out.header = header;
     AM_TO_ARGS(rowHeight)
     AM_TO_ARGS(disclosureTriangleSize)
     AM_TO_ARGS(disclosureTrianglePadding)

@@ -509,7 +509,6 @@ template <FieldShape Shape> struct TreeViewStyleFields {
     F<bool> showHeader{};
     F<float> headerHeight{};
     F<Color3> headerColor{};
-    F<TextStyleProperties> header{};
     F<ScrollBarVisibility> scrollBarVisibility{};
 };
 

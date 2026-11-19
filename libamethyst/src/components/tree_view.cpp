@@ -40,10 +40,6 @@ TreeView::TreeView()
     m_tvProps.showHeader = false;
     m_tvProps.headerHeight = 28.0f;
     m_tvProps.headerColor = Color3{0.25f, 0.25f, 0.28f};
-    m_tvProps.header.apply(TextStylePropertiesArgs{
-        .fontSize = 14.0f,
-        .textColor = Color4{1.0f, 1.0f, 1.0f, 1.0f},
-    });
     m_tvProps.scrollBarVisibility = ScrollBarVisibility::AUTO;
 
     resolveStyle();
@@ -86,6 +82,9 @@ TreeView::~TreeView()
     }
     for (auto &sep : m_separators) {
         sep->parent = nullptr;
+    }
+    for (auto &filler : m_fillerRows) {
+        filler->parent = nullptr;
     }
 }
 
@@ -407,6 +406,13 @@ void TreeView::ensureHeaderCapacity()
         lbl->bindPart(ComponentPart::HEADER, ComponentType::TREE_VIEW);
         m_headerLabels.push_back(lbl);
     }
+
+    uint32_t dividerCount = cols > 1 ? cols - 1 : 0;
+    while (m_headerDividers.size() < dividerCount) {
+        Frame *divider = add<Frame>();
+        divider->ignore(INTERACTION_CATEGORY_ALL);
+        m_headerDividers.push_back(divider);
+    }
 }
 
 void TreeView::ensurePoolCapacity(uint32_t count)
@@ -490,7 +496,7 @@ void TreeView::arrangeHeader(const vec4 &childClip)
 
     for (uint32_t col = 0; col < cols; col++) {
         TextLabel *lbl = m_headerLabels[col];
-        lbl->setBaseStyleProperties({.backgroundTransparency = 1.0f});
+        lbl->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
         lbl->setBaseProperties({
             .padding = m_columns[col].labelPadding,
             .size = UDim2::fromScale(1.0f, 1.0f),
@@ -498,8 +504,6 @@ void TreeView::arrangeHeader(const vec4 &childClip)
             .zIndex = Z_ABOVE_CONTENT,
         });
         lbl->setTextStyleProperties({
-            .fontSize = m_tvProps.header.fontSize,
-            .textColor = m_tvProps.header.textColor,
             .textXAlignment = m_columns[col].labelAlign,
             .textYAlignment = TextYAlignment::CENTER,
         });
@@ -513,6 +517,22 @@ void TreeView::arrangeHeader(const vec4 &childClip)
         lbl->computeAbsolutes({cellWidth, headerHeight}, absolutePosition + vec2(cellX, 0.0f), absoluteRotation);
         lbl->arrange();
     }
+
+    float dividerWidth = m_tvProps.columnSeparatorWidth;
+    for (uint32_t i = 0; i < m_headerDividers.size(); i++) {
+        Frame *divider = m_headerDividers[i];
+        divider->setBaseStyleProperties({
+            .backgroundColor = Color3(m_tvProps.columnSeparatorColor),
+            .backgroundTransparency = 1.0f - m_tvProps.columnSeparatorColor.a,
+            .borderPixelSize = 0.0f,
+        });
+        divider->setBaseProperties({.visible = i + 1 < cols, .zIndex = Z_ABOVE_CONTENT});
+        divider->clipRect = childClip;
+        divider->markDirty();
+        float x = m_columnPositions[i + 1] - dividerWidth * 0.5f;
+        divider->computeAbsolutes({dividerWidth, headerHeight}, absolutePosition + vec2(x, 0.0f), absoluteRotation);
+        divider->arrange();
+    }
 }
 
 void TreeView::arrangeSeparators(const vec4 &childClip)
@@ -523,6 +543,52 @@ void TreeView::arrangeSeparators(const vec4 &childClip)
         sep->markDirty();
         sep->computeAbsolutes(absoluteSize, absolutePosition, absoluteRotation);
         sep->arrange();
+    }
+}
+
+void TreeView::arrangeFillerRows(uint32_t firstFillerRow, uint32_t lastFillerRow, vec2 bodyOrigin, const vec4 &childClip)
+{
+    uint32_t count = lastFillerRow > firstFillerRow ? lastFillerRow - firstFillerRow : 0;
+    while (m_fillerRows.size() < count) {
+        auto filler = std::make_unique<Frame>();
+        adoptPart(filler.get());
+        // empty rows continuing the pattern, not something to click
+        filler->ignore(INTERACTION_CATEGORY_ALL);
+        m_fillerRows.push_back(std::move(filler));
+    }
+
+    for (uint32_t i = 0; i < count; i++) {
+        uint32_t visualIndex = firstFillerRow + i;
+        Color4 bgColor = m_tvProps.rowBackgroundColor;
+        if (visualIndex % 2 == 1 && m_tvProps.rowAlternateColor.a > 0.0f) {
+            bgColor = m_tvProps.rowAlternateColor;
+        }
+
+        Frame *filler = m_fillerRows[i].get();
+        filler->setBaseStyleProperties({
+            .backgroundColor = Color3(bgColor),
+            .backgroundTransparency = 1.0f - bgColor.a,
+            .borderPixelSize = 0.0f,
+        });
+        filler->setBaseProperties({
+            .position = UDim2(0.0f, 0.0f, 0.0f, static_cast<float>(visualIndex) * m_rowHeightPx),
+            .size = UDim2(1.0f, 0.0f, 0.0f, m_rowHeightPx),
+            .visible = true,
+        });
+        filler->clipRect = childClip;
+        filler->markDirty();
+        filler->computeAbsolutes({absoluteSize.x, 0.0f}, bodyOrigin, absoluteRotation);
+        filler->arrange();
+    }
+    hideFillerRows(count);
+}
+
+void TreeView::hideFillerRows(uint32_t fromIndex)
+{
+    for (uint32_t i = fromIndex; i < m_fillerRows.size(); i++) {
+        if (m_fillerRows[i]->setBaseProperties({.visible = false})) {
+            m_fillerRows[i]->markDirty();
+        }
     }
 }
 
@@ -634,6 +700,10 @@ void TreeView::arrange()
         for (auto &sep : m_separators) {
             sep->setBaseProperties({.visible = false});
         }
+        for (Frame *divider : m_headerDividers) {
+            divider->setBaseProperties({.visible = false});
+        }
+        hideFillerRows(0);
         m_scrollFrame->setBaseProperties({.visible = false});
         return;
     }
@@ -728,6 +798,13 @@ void TreeView::arrange()
     for (uint32_t slot = windowCount; slot < m_rowBackgrounds.size(); slot++) {
         hideSlot(slot);
     }
+
+    if (static_cast<bool>(m_tvProps.fillRows)) {
+        uint32_t lastOnScreen = static_cast<uint32_t>(std::ceil((scrollOffset.y + viewportHeight) / m_rowHeightPx));
+        arrangeFillerRows(std::max(totalVisible, first), lastOnScreen, bodyOrigin, bodyClip);
+    } else {
+        hideFillerRows(0);
+    }
 }
 
 void TreeView::draw(DrawContext &ctx)
@@ -738,6 +815,9 @@ void TreeView::draw(DrawContext &ctx)
 
     for (auto &sep : m_separators) {
         sep->draw(ctx);
+    }
+    for (auto &filler : m_fillerRows) {
+        filler->draw(ctx);
     }
     for (auto &bg : m_rowBackgrounds) {
         bg->draw(ctx);
@@ -791,6 +871,9 @@ void TreeView::hideSlot(uint32_t poolSlot)
 
 void TreeView::collectDrawChildren(std::vector<Instance *> &out)
 {
+    for (auto &filler : m_fillerRows) {
+        out.push_back(filler.get());
+    }
     for (auto &bg : m_rowBackgrounds) {
         out.push_back(bg.get());
     }

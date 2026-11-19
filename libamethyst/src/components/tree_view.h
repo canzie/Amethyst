@@ -226,6 +226,8 @@ class TreeView : public UIObject {
     void ensurePoolCapacity(uint32_t count);
     void arrangeHeader(const vec4 &childClip);
     void arrangeSeparators(const vec4 &childClip);
+    void arrangeFillerRows(uint32_t firstFillerRow, uint32_t lastFillerRow, vec2 bodyOrigin, const vec4 &childClip);
+    void hideFillerRows(uint32_t fromIndex);
     void arrangeRow(uint32_t logicalRow, uint32_t poolSlot, uint32_t visibleIndex, float y, vec2 bodyOrigin, const vec4 &childClip);
     void attachRowCells(uint32_t poolSlot, uint32_t logicalRow);
     void parkRowCells(uint32_t logicalRow);
@@ -255,8 +257,11 @@ class TreeView : public UIObject {
     std::vector<EventConnection> m_rowHoverConns;
     std::vector<EventConnection> m_rowInputConns;
 
+    std::vector<std::unique_ptr<Frame>> m_fillerRows;
+
     Frame *m_headerBackground = nullptr;
     std::vector<TextLabel *> m_headerLabels;
+    std::vector<Frame *> m_headerDividers;
 
     ScrollingFrame *m_scrollFrame = nullptr;
 };

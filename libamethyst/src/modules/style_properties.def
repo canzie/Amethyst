@@ -156,7 +156,11 @@
     X(ROW_BACKGROUND_COLOR, rowBackgroundColor, Color4) \
     X(ROW_ALTERNATE_COLOR, rowAlternateColor, Color4)  \
     X(ROW_HOVER_COLOR, rowHoverColor, Color4)          \
-    X(ROW_SELECTED_COLOR, rowSelectedColor, Color4)
+    X(ROW_SELECTED_COLOR, rowSelectedColor, Color4)    \
+    X(SEPARATOR_WIDTH, columnSeparatorWidth, float)    \
+    X(SEPARATOR_COLOR, columnSeparatorColor, Color4)   \
+    X(HEADER_HEIGHT, headerHeight, float)              \
+    X(HEADER_COLOR, headerColor, Color3)
 
 #define AM_CHECKBOX_STYLE_FIELDS(X)         \
     X(CHECK_COLOR, checkColor, Color4)      \

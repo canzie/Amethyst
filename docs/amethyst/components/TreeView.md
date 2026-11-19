@@ -78,17 +78,18 @@ Interactive cells (e.g. `TextInput`) sit at a higher z-index and consume their o
 | `disclosureTrianglePadding` | 4px | Padding around the triangle |
 | `disclosureTriangleColor` | grey | Triangle fill color |
 | `showHeader` | false | Render column headers |
-| `headerHeight` | 28px | Height of header row |
-| `headerColor` | dark grey | Header background color |
-| `headerText` | `TextProperties` | Font/color for header labels |
-| `showColumnSeparators` | false | Vertical lines between columns |
-| `columnSeparatorWidth` | 1px | Separator line width |
-| `columnSeparatorColor` | grey | Separator color |
+| `headerHeight` | 30px | Height of header row, `header-height` in a theme |
+| `headerColor` | dark grey | Header background color, `header-color` in a theme |
+| `showColumnSeparators` | false | Vertical lines between columns through the rows; the header always divides its columns |
+| `columnSeparatorWidth` | 1px | Separator and header divider width, `separator-width` in a theme |
+| `columnSeparatorColor` | grey | Separator and header divider color, `separator-color` in a theme |
 | `rowBackgroundColor` | — | Default row background |
 | `rowAlternateColor` | — | Alternating row tint (set alpha=0 to disable) |
 | `rowHoverColor` | — | Hovered row background |
 | `rowSelectedColor` | — | Selected row background |
 | `fillRows` | true | Fill empty viewport space with alternating rows |
+
+Header labels take their font and colour from `tree-view#header`, the same rule as the header background.
 | `cellPadding` | 0 | Inner padding applied to each cell |
 
 ## Public API
