@@ -65,6 +65,7 @@ void TabBar::propagateClassesToTabs()
     for (auto &tab : m_tabs) {
         tab->labelFrame->setInheritedStyle(classes);
         tab->labelFrame->propagateClassesToChildren();
+        tab->closeButton->setInheritedStyle(classes);
     }
 }
 
@@ -259,9 +260,10 @@ void TabBar::ensureTabComponents(Tab &tab)
         .visible = false,
         .zIndex = 101,
     });
-    closeBtn->setBaseStyleProperties({.backgroundTransparency = 1.0f});
+    // a part like the tab label, so `.class#close` and its pseudo-states style it
+    closeBtn->bindPart(ComponentPart::CLOSE, ComponentType::TAB_BAR);
+    closeBtn->setInheritedStyle(getEffectiveClasses());
     closeBtn->setTextStyleProperties({
-        .textColor = m_tbProps.closeColor,
         .textXAlignment = TextXAlignment::CENTER,
         .textYAlignment = TextYAlignment::CENTER,
     });

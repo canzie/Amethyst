@@ -75,7 +75,6 @@
     X(TAB_OFFSET, "tab-offset", float, LENGTH, 0.0f)                                                          \
     X(BAR_THICKNESS, "bar-thickness", float, LENGTH, 30.0f)                                                   \
     X(TAB_CORNER_RADIUS, "tab-corner-radius", uvec4, CORNERS, uvec4(0u))                                      \
-    X(TAB_CLOSE_COLOR, "tab-close-color", Color4, COLOR4, Color4(0.6f, 0.6f, 0.6f, 1.0f))                     \
     X(HEADER_COLOR, "header-color", Color3, COLOR3, Color3(0.25f, 0.25f, 0.28f))                              \
     X(HEADER_HEIGHT, "header-height", float, LENGTH, 30.0f)                                                   \
     X(INDICATOR_SIZE, "indicator-size", float, LENGTH, 16.0f)                                                 \
@@ -139,7 +138,6 @@
     X(TAB_SPACING, tabSpacing, float)             \
     X(TAB_OFFSET, tabOffset, float)               \
     X(TAB_CORNER_RADIUS, tabCornerRadius, uvec4)  \
-    X(TAB_CLOSE_COLOR, closeColor, Color4)
 
 #define AM_TABLE_STYLE_FIELDS(X)                       \
     X(ROW_HEIGHT, rowHeight, float)                    \

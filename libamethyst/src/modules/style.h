@@ -90,7 +90,6 @@ enum class StyleProperty {
     TAB_OFFSET,
     BAR_THICKNESS,
     TAB_CORNER_RADIUS,
-    TAB_CLOSE_COLOR,
 
     HEADER_COLOR,
     HEADER_HEIGHT,
@@ -170,6 +169,7 @@ enum class ComponentPart {
     RADIO,
     SEPARATOR,
     SUBMENU,
+    CLOSE,
 };
 
 /**

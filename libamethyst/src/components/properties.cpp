@@ -435,7 +435,6 @@ bool TabBarStyleProperties::apply(const TabBarStyleProperties &src)
     AM_APPLY_PLAIN(tabSpacing)
     AM_APPLY_PLAIN(tabOffset)
     AM_APPLY_PLAIN(tabCornerRadius)
-    AM_APPLY_PLAIN(closeColor)
     return changed;
 }
 
@@ -452,7 +451,6 @@ bool TabBarStyleProperties::apply(const TabBarStylePropertiesArgs &src)
     AM_APPLY_ARGS(tabSpacing)
     AM_APPLY_ARGS(tabOffset)
     AM_APPLY_ARGS(tabCornerRadius)
-    AM_APPLY_ARGS(closeColor)
     AM_APPLY_ARGS(closeButtonVisibility)
     AM_APPLY_ARGS(tabTearOffEnabled)
     return changed;
@@ -471,7 +469,6 @@ TabBarStyleProperties::operator TabBarStylePropertiesArgs() const
     AM_TO_ARGS(tabSpacing)
     AM_TO_ARGS(tabOffset)
     AM_TO_ARGS(tabCornerRadius)
-    AM_TO_ARGS(closeColor)
     AM_TO_ARGS(closeButtonVisibility)
     AM_TO_ARGS(tabTearOffEnabled)
     return out;

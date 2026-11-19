@@ -333,7 +333,6 @@ template <FieldShape Shape> struct TabBarStyleFields {
     F<float> tabSpacing{};
     F<float> tabOffset{};
     F<uvec4> tabCornerRadius{};
-    F<Color4> closeColor{};
     F<TabCloseButtonVisibility> closeButtonVisibility{};
     F<bool> tabTearOffEnabled{};
 };

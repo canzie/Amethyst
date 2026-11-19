@@ -270,7 +270,8 @@ where the theme has `.danger` and `text-button.primary` → `text-button.primary
 ### Built-in parts
 
 A component attaches a reserved class to an internal sub-element, themable via `type#part`. Shipped:
-`collapsible-header#header` (the header bar). The `#`-form can't collide with user `.class` names.
+`collapsible-header#header` (the header bar), `tab-bar#tab` (a tab's label) and `tab-bar#close` (a tab's close
+button, which takes its own `:hover`). The `#`-form can't collide with user `.class` names.
 
 ## Known gaps / caveats (read before migrating wide)
 

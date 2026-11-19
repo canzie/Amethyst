@@ -67,6 +67,7 @@ ComponentType defaultPartOwner(ComponentPart part)
 {
     switch (part) {
     case ComponentPart::TAB:
+    case ComponentPart::CLOSE:
         return ComponentType::TAB_BAR;
     case ComponentPart::ENTRY:
         return ComponentType::MENU_BAR;
@@ -175,6 +176,7 @@ const std::unordered_map<std::string, ComponentPart> &Style::getPartNames()
         {"radio", ComponentPart::RADIO},
         {"separator", ComponentPart::SEPARATOR},
         {"submenu", ComponentPart::SUBMENU},
+        {"close", ComponentPart::CLOSE},
     };
     return names;
 }
