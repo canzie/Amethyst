@@ -29,6 +29,7 @@
     X(TEXT_COLOR, "text-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                               \
     X(TEXT_X_ALIGNMENT, "text-x-alignment", TextXAlignment, XALIGN, TextXAlignment::LEFT)                     \
     X(TEXT_Y_ALIGNMENT, "text-y-alignment", TextYAlignment, YALIGN, TextYAlignment::TOP)                      \
+    X(TEXT_TRUNCATE, "text-truncate", TextTruncate, TRUNCATE, TextTruncate::OFF)                              \
     X(LINE_HEIGHT, "line-height", float, RATIO, 1.0f)                                                         \
     X(STROKE_THICKNESS, "stroke-thickness", float, LENGTH, 0.0f)                                              \
     X(STROKE_COLOR, "stroke-color", Color4, COLOR4, Color4(0.0f, 0.0f, 0.0f, 1.0f))                           \
@@ -113,6 +114,7 @@
     X(TEXT_COLOR, textColor, Color4)                    \
     X(TEXT_X_ALIGNMENT, textXAlignment, TextXAlignment) \
     X(TEXT_Y_ALIGNMENT, textYAlignment, TextYAlignment) \
+    X(TEXT_TRUNCATE, textTruncate, TextTruncate)        \
     X(LINE_HEIGHT, lineHeight, float)                   \
     X(STROKE_THICKNESS, strokeThickness, float)         \
     X(STROKE_COLOR, strokeColor, Color4)

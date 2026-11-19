@@ -424,6 +424,17 @@ static ParsedValue s_parse_YALIGN(std::string_view sv, Style &)
     return s_wrap(s_parseKeyword(sv, table, "text-y-alignment"));
 }
 
+static ParsedValue s_parse_TRUNCATE(std::string_view sv, Style &)
+{
+    static constexpr std::array<std::pair<std::string_view, TextTruncate>, 4> table = {{
+        {"off", TextTruncate::OFF},
+        {"at_end", TextTruncate::AT_END},
+        {"split_word", TextTruncate::SPLIT_WORD},
+        {"ellipsis", TextTruncate::ELLIPSIS},
+    }};
+    return s_wrap(s_parseKeyword(sv, table, "text-truncate"));
+}
+
 static ParsedValue s_parse_FONT(std::string_view sv, Style &style)
 {
     return StyleValue(FontHandle{style.internFont(s_unquote(sv))});

@@ -247,7 +247,7 @@ Type names (kebab, singular): `ui-object` (the global/base), `ui-button`, `ui-la
 
 `background-color, background-transparency, border-color, border-transparency, border-pixel-size,
 border-mode, corner-radius, padding (+ -top/-right/-bottom/-left), font-family, font-size, text-color,
-text-x-alignment, text-y-alignment, line-height, stroke-thickness, stroke-color, scrollbar-color,
+text-x-alignment, text-y-alignment, text-truncate (off, at_end, split_word, ellipsis), line-height, stroke-thickness, stroke-color, scrollbar-color,
 scrollbar-transparency, scrollbar-thickness, scrollbar-thumb-color, scrollbar-thumb-transparency,
 row-height, cell-padding (+ sides), separator-width, separator-color,
 row-background-color, row-alternate-color, row-hover-color, row-selected-color, indent-per-level,

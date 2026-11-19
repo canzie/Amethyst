@@ -41,6 +41,7 @@ enum class StyleProperty {
     TEXT_COLOR,
     TEXT_X_ALIGNMENT,
     TEXT_Y_ALIGNMENT,
+    TEXT_TRUNCATE,
     LINE_HEIGHT,
     STROKE_THICKNESS,
     STROKE_COLOR,
@@ -221,8 +222,8 @@ struct FontHandle {
 };
 
 using StyleValue =
-    std::variant<Color3, Color4, float, uvec4, vec2, UDim, BorderMode, TextXAlignment, TextYAlignment, FontHandle, ImageScaleType,
-                 BackgroundRepeat>;
+    std::variant<Color3, Color4, float, uvec4, vec2, UDim, BorderMode, TextXAlignment, TextYAlignment, TextTruncate, FontHandle,
+                 ImageScaleType, BackgroundRepeat>;
 
 inline constexpr size_t NUM_STYLE_PROPS = static_cast<size_t>(StyleProperty::COUNT);
 

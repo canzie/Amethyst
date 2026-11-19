@@ -20,6 +20,8 @@ static constexpr uint32_t CP_TAB = 0x09u;
 static constexpr uint32_t CP_LINE_FEED = 0x0Au;
 static constexpr uint32_t CP_CARRIAGE_RETURN = 0x0Du;
 static constexpr uint32_t CP_SPACE = 0x20u;
+static constexpr uint32_t CP_ELLIPSIS = 0x2026u;
+static constexpr uint32_t CP_FULL_STOP = 0x2Eu;
 
 float TextProcessor::getCharAdvanceAtlas(FontId font, uint32_t codepoint, uint32_t pixelSize, float letterSpacing) const
 {
@@ -105,6 +107,33 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
     size_t wordStartGlyphIdx = 0;
     float wordStartWidth = 0.0f;
 
+    // drops glyphs off the end of the line until an ellipsis fits after them, then places it; the font's own
+    // ellipsis when it has one, three full stops otherwise
+    auto appendEllipsis = [&]() {
+        const GlyphInfo *ellipsis = atlas.getGlyph(params.font, CP_ELLIPSIS, pixelSize);
+        uint32_t repeats = 1;
+        if (ellipsis == nullptr) {
+            ellipsis = atlas.getGlyph(params.font, CP_FULL_STOP, pixelSize);
+            repeats = 3;
+        }
+        if (ellipsis == nullptr) {
+            return;
+        }
+
+        const float ellipsisAdvance = ellipsis->advance + params.letterSpacing;
+        const float ellipsisWidth = ellipsisAdvance * static_cast<float>(repeats);
+        while (!currentLine.empty() && currentLineWidth + ellipsisWidth > params.bounds.x) {
+            currentLineWidth = currentLine.back().localX;
+            currentLine.pop_back();
+        }
+        for (uint32_t i = 0; i < repeats; i++) {
+            if (ellipsis->width > 0 && ellipsis->height > 0) {
+                currentLine.push_back({.info = ellipsis, .localX = currentLineWidth});
+            }
+            currentLineWidth += ellipsisAdvance;
+        }
+    };
+
     // force emits a row even with no glyphs on it, so blank lines do not collapse.
     auto flushLine = [&](bool force) {
         if (force || !currentLine.empty()) {
@@ -188,8 +217,12 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
             }
         }
 
-        if (params.truncate == TextTruncate::AT_END && params.bounds.x > 0.0f && !params.wrap) {
+        const bool truncatesAtEnd = params.truncate == TextTruncate::AT_END || params.truncate == TextTruncate::ELLIPSIS;
+        if (truncatesAtEnd && params.bounds.x > 0.0f && !params.wrap) {
             if (currentLineWidth + advance > params.bounds.x) {
+                if (params.truncate == TextTruncate::ELLIPSIS) {
+                    appendEllipsis();
+                }
                 // Skip to the next hard break so later lines still lay out; without this a
                 // single long line would truncate the rest of the text away.
                 while (i < text.size()) {

@@ -197,6 +197,7 @@ enum class TextTruncate {
     OFF,
     AT_END,
     SPLIT_WORD,
+    ELLIPSIS,
 };
 
 /**
