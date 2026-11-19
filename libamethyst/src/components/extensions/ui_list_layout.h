@@ -22,6 +22,14 @@ class UIListLayout : public UIExtension {
 
     void apply(const std::vector<std::unique_ptr<Instance>> &children);
 
+    /**
+     * @brief How much room the visible children take laid out at the sizes they ask for, spacing included
+     * @param children The children to measure
+     * @param ownerSize The size their scale parts resolve against
+     * @return The extent along the main axis and the largest child across it
+     */
+    vec2 measureNaturalContent(const std::vector<std::unique_ptr<Instance>> &children, vec2 ownerSize) const;
+
   public:
     FillDirection fillDirection = FillDirection::FILL_VERTICAL;
     HorizontalAlignment horizontalAlignment = HorizontalAlignment::ALIGN_LEFT;

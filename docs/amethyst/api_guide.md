@@ -189,7 +189,15 @@ lbl->setText("hello");
 `UIObject` accessors: `setBaseProperties / getBaseProperties`, `setBaseStyleProperties /
 getBaseStyleProperties`, plus a `set<Component>Properties` / `get<Component>Properties` per component.
 Extensions: `addExtension<T>()` / `removeExtension<T>()` (e.g. `UIDragDetector`, `UIListLayout`,
-`UIGridLayout`, `UISizeConstraint`, `UIAspectRatioConstraint`).
+`UIGridLayout`, `UISizeConstraint`, `UIAspectRatioConstraint`, `UIFlexItem`).
+
+Sizing to content: `automaticSize` (`X`, `Y`, `XY`) grows an object on those axes to fit its content inside its
+padding and border; the `size` it asks for stays as a minimum. Content is the extent of its visible children (their
+scale parts resolve against nothing), and for `TextLabel`/`TextButton` also their own text, measured at the window's
+display scale, so it follows scale changes. It changes the box, never the font size (that is `textScaled`).
+
+Sharing space: in a `UIListLayout` with main axis `FILL`, children carrying a `UIFlexItem` share what the others leave
+by `flexRatio`, within their `UISizeConstraint`; without any flex item every child gets an even share as before.
 
 ## Classes API (runtime)
 

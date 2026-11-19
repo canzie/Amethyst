@@ -295,13 +295,19 @@ void TextProcessor::layoutTextRow(std::string_view text, const TextRowLayoutPara
     }
 }
 
-vec2 TextProcessor::measureTextAtlas(const std::string &text, FontId font, uint32_t pixelSize, float letterSpacing) const
+vec2 TextProcessor::measureTextSize(const std::string &text, FontId font, float fontSize, float lineHeight,
+                                    float logicalToPhysicalScale) const
 {
     TextLayoutParams params;
     params.font = font;
-    params.fontSize = static_cast<float>(pixelSize);
-    params.letterSpacing = letterSpacing;
-    return measureTextAtlas(text, params);
+    params.fontSize = fontSize;
+    params.lineHeight = lineHeight;
+    params.logicalToPhysicalScale = logicalToPhysicalScale;
+
+    // a box is snapped to whole physical pixels, so the size is rounded up to one to never lose the last glyph
+    float scale = s_validScale(logicalToPhysicalScale);
+    vec2 size = measureTextAtlas(text, params);
+    return vec2(std::ceil(size.x * scale), std::ceil(size.y * scale)) / scale;
 }
 
 vec2 TextProcessor::measureTextAtlas(const std::string &text, const TextLayoutParams &logicalParams) const

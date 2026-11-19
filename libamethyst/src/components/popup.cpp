@@ -133,7 +133,7 @@ void Popup::open(UIObject *anchor)
     }
 
     vec2 viewport = m_overlay->absoluteSize;
-    vec2 contentSize = getBaseProperties().size.resolve(viewport);
+    vec2 contentSize = resolveSize(viewport);
     if (matchAnchorWidth) {
         contentSize.x = anchor->absoluteSize.x;
     }

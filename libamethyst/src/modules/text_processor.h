@@ -219,14 +219,15 @@ class TextProcessor {
     vec2 measureTextAtlas(const std::string &text, const TextLayoutParams &params) const;
 
     /**
-     * @brief Measure text at a pixel size, using default layout parameters otherwise.
+     * @brief How large text is drawn at a display scale, so a box that size shows all of it
      * @param text The text to measure
      * @param font Face to measure against; an invalid id uses the registry default
-     * @param pixelSize Font size in pixels
-     * @param letterSpacing Additional spacing between characters
-     * @return Width of the widest line, and the total height of all lines
+     * @param fontSize Font size in logical pixels
+     * @param lineHeight Line pitch as a multiple of the font's own
+     * @param logicalToPhysicalScale Physical pixels per logical pixel of the display it is drawn on
+     * @return Width of the widest line and height of all lines in logical pixels, each rounded up to a whole physical pixel
      */
-    vec2 measureTextAtlas(const std::string &text, FontId font, uint32_t pixelSize, float letterSpacing = 0.0f) const;
+    vec2 measureTextSize(const std::string &text, FontId font, float fontSize, float lineHeight, float logicalToPhysicalScale) const;
 
     /**
      * @brief Get advance width for a character using glyph atlas

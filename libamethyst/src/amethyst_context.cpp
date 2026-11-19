@@ -1,6 +1,7 @@
 #include "amethyst/amethyst_context.h"
 
 #include "components/ui_base_2d.h"
+#include "components/window.h"
 
 namespace Amethyst {
 
@@ -72,6 +73,10 @@ void AmethystContext::syncWindow(void *cmdBuffer, Window &window)
 
 void AmethystContext::draw(UIBase2D &root)
 {
+    // text that sizes its box is measured while arranging, before drawing hands the processor over
+    if (auto *window = root.as<Window>()) {
+        window->setTextProcessor(&m_textProcessor);
+    }
     root.arrange();
     root.draw(m_drawCtx);
 }

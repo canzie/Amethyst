@@ -109,9 +109,9 @@ TEST_F(ProcessorFixture, MeasureWidthAgreesWithRowLayout)
 
 TEST_F(ProcessorFixture, DifferentFontsMeasureDifferently)
 {
-    vec2 roboto = env.processor.measureTextAtlas("The quick brown fox", env.roboto, 16);
-    vec2 openSans = env.processor.measureTextAtlas("The quick brown fox", env.openSans, 16);
-    EXPECT_NE(roboto.x, openSans.x);
+    float roboto = env.processor.measureTextSize("The quick brown fox", env.roboto, 16.0f, 1.0f, 1.0f).x;
+    float openSans = env.processor.measureTextSize("The quick brown fox", env.openSans, 16.0f, 1.0f, 1.0f).x;
+    EXPECT_NE(roboto, openSans);
 }
 
 // regression: the cache key had no font, so a family-only style change kept the old glyphs

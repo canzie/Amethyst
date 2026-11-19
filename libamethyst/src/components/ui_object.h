@@ -49,6 +49,7 @@ class UIObject : public UIBase2D {
     void arrange() override;
     InstanceData createInstanceData() const;
     Window *getWindow();
+    const Window *getWindow() const;
 
     vec4 computeChildClipRect() const;
 
@@ -180,6 +181,13 @@ class UIObject : public UIBase2D {
     vec4 resolveContentInsets(vec2 size) const;
 
     /**
+     * @brief A size grown on the axes automaticSize names to fit this object's content inside its padding and border
+     * @param size The size the object asked for, kept wherever it is already larger than the content
+     * @return The size with automaticSize honoured
+     */
+    vec2 applyAutomaticSize(vec2 size) const;
+
+    /**
      * @brief Re-resolve this node's styling from the global theme, its class set and pseudo-state.
      *
      * Called from each component constructor, whenever the class set changes, and from
@@ -302,6 +310,14 @@ class UIObject : public UIBase2D {
     std::vector<StyleKey> getEffectiveClasses() const;
 
   protected:
+    /**
+     * @brief The size of what this object holds, which automaticSize fits it to: by default the extent of its
+     * visible children as its list layout places them, or as they place themselves without one, their scale parts
+     * resolving against nothing since the object is being sized by them
+     * @return The content size in logical pixels
+     */
+    virtual vec2 automaticContentSize() const;
+
     /**
      * @brief Apply an attached layout extension
      */

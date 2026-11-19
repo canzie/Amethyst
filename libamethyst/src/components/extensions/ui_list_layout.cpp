@@ -2,10 +2,12 @@
 
 #include "components/common.h"
 #include "components/extensions/ui_aspect_ratio_constraint.h"
+#include "components/extensions/ui_flex_item.h"
 #include "components/extensions/ui_size_constraint.h"
 #include "components/instance.h"
 #include "components/ui_object.h"
 #include <algorithm>
+#include <cmath>
 #include <unordered_set>
 
 namespace Amethyst {
@@ -18,6 +20,7 @@ static vec2 s_resolveNaturalSize(const UIObject &obj, const UDim2 &size, vec2 pa
     vec2 resolved = size.resolve(parentSize);
     vec4 m = obj.getBaseProperties().margin.resolve(parentSize);
     resolved -= vec2(m.w + m.y, m.x + m.z);
+    resolved = obj.applyAutomaticSize(resolved);
     if (const auto *sizeConstraint = obj.getExtension<UISizeConstraint>(); sizeConstraint != nullptr) {
         resolved = sizeConstraint->constrain(resolved);
     }
@@ -25,6 +28,95 @@ static vec2 s_resolveNaturalSize(const UIObject &obj, const UDim2 &size, vec2 pa
         resolved = arConstraint->constrain(resolved);
     }
     return resolved;
+}
+
+/**
+ * @brief Shares out space along the main axis between the flex items, by ratio and within their size constraints,
+ * handing what a clamped item cannot take to the others
+ * @param children The children being laid out
+ * @param mainSizes Each child's size along the main axis
+ * @param space The space to share, negative when the children ask for more than there is
+ * @param isVertical Whether the main axis is vertical
+ * @return How much each child grows along the main axis, zero for the children without a flex item
+ */
+static std::vector<float> s_shareFlexSpace(const std::vector<UIObject *> &children, const std::vector<float> &mainSizes, float space,
+                                           bool isVertical)
+{
+    std::vector<float> extra(children.size(), 0.0f);
+    std::vector<bool> active(children.size(), false);
+    for (size_t i = 0; i < children.size(); i++) {
+        const UIFlexItem *flex = children[i]->getExtension<UIFlexItem>();
+        active[i] = flex != nullptr && flex->flexRatio > 0.0f;
+    }
+
+    // each pass hands the space out by ratio; an item that hits a limit keeps it and drops out, and what it could not
+    // take goes round again, so at most one pass per item
+    for (size_t pass = 0; pass < children.size() && std::abs(space) > 0.001f; pass++) {
+        float totalRatio = 0.0f;
+        for (size_t i = 0; i < children.size(); i++) {
+            if (active[i]) {
+                totalRatio += children[i]->getExtension<UIFlexItem>()->flexRatio;
+            }
+        }
+        if (totalRatio <= 0.0f) {
+            break;
+        }
+
+        float handedOut = 0.0f;
+        bool anyClamped = false;
+        for (size_t i = 0; i < children.size(); i++) {
+            if (!active[i]) {
+                continue;
+            }
+            const float current = mainSizes[i] + extra[i];
+            float wanted = current + space * children[i]->getExtension<UIFlexItem>()->flexRatio / totalRatio;
+            float limited = std::max(0.0f, wanted);
+            if (const auto *limits = children[i]->getExtension<UISizeConstraint>()) {
+                limited = std::clamp(limited, isVertical ? limits->minSize.y : limits->minSize.x,
+                                     isVertical ? limits->maxSize.y : limits->maxSize.x);
+            }
+            if (limited != wanted) {
+                active[i] = false;
+                anyClamped = true;
+            }
+            extra[i] += limited - current;
+            handedOut += limited - current;
+        }
+        space -= handedOut;
+        if (!anyClamped) {
+            break;
+        }
+    }
+    return extra;
+}
+
+vec2 UIListLayout::measureNaturalContent(const std::vector<std::unique_ptr<Instance>> &children, vec2 ownerSize) const
+{
+    const bool isVertical = fillDirection == FillDirection::FILL_VERTICAL;
+    const float padding = innerPadding.resolve(isVertical ? ownerSize.y : ownerSize.x);
+
+    float mainExtent = 0.0f;
+    float crossExtent = 0.0f;
+    size_t count = 0;
+    for (const auto &child : children) {
+        const UIObject *obj = child->asUiObject();
+        if (obj == nullptr || !static_cast<bool>(obj->getBaseProperties().visible)) {
+            continue;
+        }
+        // a stretched child is measured at the size it asked for, not the one a fill gave it
+        UDim2 natural = obj->getBaseProperties().size;
+        if (auto it = m_sizes.find(const_cast<UIObject *>(obj)); it != m_sizes.end() && it->second.written == natural) {
+            natural = it->second.natural;
+        }
+        const vec2 size = s_resolveNaturalSize(*obj, natural, ownerSize);
+        mainExtent += isVertical ? size.y : size.x;
+        crossExtent = std::max(crossExtent, isVertical ? size.x : size.y);
+        count++;
+    }
+    if (count > 1) {
+        mainExtent += padding * static_cast<float>(count - 1);
+    }
+    return isVertical ? vec2(crossExtent, mainExtent) : vec2(mainExtent, crossExtent);
 }
 
 UDim2 UIListLayout::naturalSize(UIObject *obj)
@@ -76,20 +168,25 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
     UiFlexAlignment crossAxisFlex = isVertical ? horizontalFlex : verticalFlex;
 
     std::vector<UDim2> naturalSizes;
+    std::vector<float> mainSizes;
     naturalSizes.reserve(sortedChildren.size());
+    mainSizes.reserve(sortedChildren.size());
     float totalChildSize = 0.0f;
     size_t validChildren = sortedChildren.size();
+    bool hasFlexItems = false;
     for (UIObject *obj : sortedChildren) {
         naturalSizes.push_back(naturalSize(obj));
         vec2 childSize = s_resolveNaturalSize(*obj, naturalSizes.back(), ownerSize);
-        totalChildSize += isVertical ? childSize.y : childSize.x;
+        mainSizes.push_back(isVertical ? childSize.y : childSize.x);
+        totalChildSize += mainSizes.back();
+        hasFlexItems = hasFlexItems || obj->getExtension<UIFlexItem>() != nullptr;
     }
 
     float totalPadding = validChildren > 1 ? absPadding * (validChildren - 1) : 0.0f;
     float remainingSpace = containerSize - totalChildSize - totalPadding;
     float currentOffset = 0.0f;
     float spacing = absPadding;
-    float extraItemSize = 0.0f;
+    std::vector<float> extraItemSizes(sortedChildren.size(), 0.0f);
 
     switch (mainAxisFlex) {
     case UiFlexAlignment::NONE:
@@ -98,8 +195,10 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
         break;
     case UiFlexAlignment::FILL:
         // negative when the children ask for more than there is, so they shrink instead of overlapping
-        if (validChildren > 0) {
-            extraItemSize = remainingSpace / static_cast<float>(validChildren);
+        if (hasFlexItems) {
+            extraItemSizes = s_shareFlexSpace(sortedChildren, mainSizes, remainingSpace, isVertical);
+        } else if (validChildren > 0) {
+            std::fill(extraItemSizes.begin(), extraItemSizes.end(), remainingSpace / static_cast<float>(validChildren));
         }
         currentOffset = 0.0f;
         spacing = absPadding;
@@ -166,7 +265,7 @@ void UIListLayout::apply(const std::vector<std::unique_ptr<Instance>> &children)
             }
         }
 
-        float mainSize = std::max(0.0f, (isVertical ? childSize.y : childSize.x) + extraItemSize);
+        float mainSize = std::max(0.0f, (isVertical ? childSize.y : childSize.x) + extraItemSizes[idx]);
         // the child keeps the size it asked for unless a fill stretches it; the stretched size is written as an
         // offset, and the size it asked for is remembered so it can shrink back
         UDim2 size = natural;

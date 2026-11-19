@@ -34,6 +34,13 @@ class TextLabel : public UILabel {
     vec2 getTextSize() const { return m_textSize; }
 
   protected:
+    /**
+     * @brief The larger of its text, drawn in the window it sits in, and the extent of its children
+     * @return The content size in logical pixels
+     */
+    vec2 automaticContentSize() const override;
+
+  protected:
     TextStyleProperties m_textStyle;
     std::string m_text;
 

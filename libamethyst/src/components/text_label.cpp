@@ -4,6 +4,7 @@
 
 #include "components/text_label.h"
 
+#include "components/window.h"
 #include "modules/style.h"
 #include "modules/text_processor.h"
 #include "rendering/draw_context.h"
@@ -282,6 +283,20 @@ void TextLabel::releaseText(DrawContext &ctx)
         }
         m_textAlloc = nullptr;
     }
+}
+
+vec2 TextLabel::automaticContentSize() const
+{
+    vec2 content = UIObject::automaticContentSize();
+    const Window *window = getWindow();
+    if (m_text.empty() || window == nullptr || window->getTextProcessor() == nullptr) {
+        return content;
+    }
+
+    const vec2 text = window->getTextProcessor()->measureTextSize(m_text, FontRegistry::instance().findFont(m_textStyle.fontFamily),
+                                                                  m_textStyle.fontSize, m_textStyle.lineHeight,
+                                                                  window->getLogicalToPhysicalScale());
+    return max(content, text);
 }
 
 } // namespace Amethyst

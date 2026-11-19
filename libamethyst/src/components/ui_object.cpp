@@ -307,6 +307,7 @@ vec2 UIObject::resolveSize(vec2 parentSize) const
 
     vec4 m = m_uiObjProps.margin.resolve(parentSize);
     size -= vec2(m.w + m.y, m.x + m.z);
+    size = applyAutomaticSize(size);
 
     if (!m_extensions.empty()) {
         if (const auto *sizeConstraint = getExtension<UISizeConstraint>()) {
@@ -318,6 +319,49 @@ vec2 UIObject::resolveSize(vec2 parentSize) const
     }
 
     return size;
+}
+
+vec2 UIObject::applyAutomaticSize(vec2 size) const
+{
+    const AutomaticSize mode = m_uiObjProps.automaticSize;
+    const bool fitsX = mode == AutomaticSize::X || mode == AutomaticSize::XY;
+    const bool fitsY = mode == AutomaticSize::Y || mode == AutomaticSize::XY;
+    if (!fitsX && !fitsY) {
+        return size;
+    }
+
+    const vec2 content = automaticContentSize();
+    const vec4 insets = resolveContentInsets(size);
+    if (fitsX) {
+        size.x = std::max(size.x, content.x + insets.w + insets.y);
+    }
+    if (fitsY) {
+        size.y = std::max(size.y, content.y + insets.x + insets.z);
+    }
+    return size;
+}
+
+vec2 UIObject::automaticContentSize() const
+{
+    // laid out children sit where the layout puts them, which it decides only after this object has its size
+    if (const auto *listLayout = getExtension<UIListLayout>(); listLayout != nullptr && !listLayout->wraps) {
+        return listLayout->measureNaturalContent(m_children, vec2(0.0f));
+    }
+
+    vec2 extent(0.0f);
+    for (const auto &child : m_children) {
+        const UIObject *obj = child->asUiObject();
+        if (obj == nullptr || !static_cast<bool>(obj->getBaseProperties().visible)) {
+            continue;
+        }
+
+        const BaseProperties &props = obj->getBaseProperties();
+        const vec4 m = props.margin.resolve(vec2(0.0f));
+        const vec2 outerSize = obj->resolveSize(vec2(0.0f)) + vec2(m.w + m.y, m.x + m.z);
+        const vec2 topLeft = props.position.resolve(vec2(0.0f)) - props.anchorPoint * outerSize;
+        extent = max(extent, topLeft + outerSize);
+    }
+    return extent;
 }
 
 void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentRotation)
@@ -469,6 +513,11 @@ Window *UIObject::getWindow()
         }
     }
     return nullptr;
+}
+
+const Window *UIObject::getWindow() const
+{
+    return const_cast<UIObject *>(this)->getWindow();
 }
 
 EventResult UIObject::onMouseEnter()

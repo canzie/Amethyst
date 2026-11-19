@@ -19,6 +19,7 @@
 namespace Amethyst {
 
 class Instance;
+class TextProcessor;
 class TooltipStack;
 class UIObject;
 class Window;
@@ -88,6 +89,18 @@ class Window : public UILayer {
 
     OverlayLayer *getOverlayLayer() { return m_overlayLayer.get(); }
     TooltipStack &getTooltips() { return *m_tooltips; }
+
+    /**
+     * @brief Sets the text processor this window's text is measured and laid out with
+     * @param textProcessor The processor, nullptr for none
+     */
+    void setTextProcessor(const TextProcessor *textProcessor) { m_textProcessor = textProcessor; }
+
+    /**
+     * @brief The text processor this window's text is measured and laid out with
+     * @return The processor, nullptr before the window was first drawn
+     */
+    const TextProcessor *getTextProcessor() const { return m_textProcessor; }
     void collectDrawChildren(std::vector<Instance *> &out) override;
 
     /**
@@ -148,6 +161,7 @@ class Window : public UILayer {
     // theme generation last arranged against; a newer one restyles the whole tree
     uint64_t m_styleGeneration = 0;
     UIObject *m_mouseCapturedBy = nullptr;
+    const TextProcessor *m_textProcessor = nullptr;
     EventConnection m_mouseCapturedByConn;
     std::unique_ptr<OverlayLayer> m_overlayLayer;
     std::unique_ptr<TooltipStack> m_tooltips;
