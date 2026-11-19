@@ -152,6 +152,7 @@ enum class ComponentType {
     MENU_BAR,
     SPLINE,
     CONTEXT_MENU,
+    SHAPE,
 };
 
 /**

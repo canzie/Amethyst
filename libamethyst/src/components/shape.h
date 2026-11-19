@@ -14,6 +14,7 @@ class Shape : public UIObject {
     explicit Shape(ShapeKind kind);
 
     void draw(DrawContext &ctx) override;
+    void resolveStyle() override;
 
     bool setKind(ShapeKind kind);
     ShapeKind getKind() const { return m_kind; }

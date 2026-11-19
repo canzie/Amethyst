@@ -31,7 +31,13 @@ static PrimitiveType s_toPrimitiveType(ShapeKind kind)
 
 Shape::Shape(ShapeKind kind) : m_kind(kind), m_primitive(s_toPrimitiveType(kind))
 {
+    resolveStyle();
     markDirty();
+}
+
+void Shape::resolveStyle()
+{
+    resolveBaseStyle(ComponentType::SHAPE);
 }
 
 bool Shape::setKind(ShapeKind kind)

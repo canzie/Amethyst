@@ -199,6 +199,12 @@ display scale, so it follows scale changes. It changes the box, never the font s
 Sharing space: in a `UIListLayout` with main axis `FILL`, children carrying a `UIFlexItem` share what the others leave
 by `flexRatio`, within their `UISizeConstraint`; without any flex item every child gets an even share as before.
 
+Following other objects: `onAbsoluteRectChanged` fires during layout whenever an object's absolute position, size or
+rotation changes. `Spline::attachKnot(index, object, point, offset)` keeps a knot on `point` (a fraction of the object's
+size) plus `offset` pixels, so a curve between two laid out objects (a node graph wire between two pins) follows them
+without the caller ever handling a coordinate. `detachKnot` leaves the knot where it last was, as does the followed
+object being destroyed.
+
 ## Classes API (runtime)
 
 ```cpp
@@ -230,7 +236,7 @@ CSS-like. A rule is a comma-separated selector list and a `{ ... }` declaration 
 
 Type names (kebab, singular): `ui-object` (the global/base), `ui-button`, `ui-label`, `frame`,
 `scrolling-frame`, `table`, `tree-view`, `text-button`, `image-button`, `text-label`, `image-label`,
-`canvas`, `checkbox`, `dropdown`, `tab-bar`, `slider`, `radio-button`, `collapsible-header`.
+`canvas`, `checkbox`, `dropdown`, `tab-bar`, `slider`, `radio-button`, `collapsible-header`, `spline`, `shape`.
 
 ### Values
 

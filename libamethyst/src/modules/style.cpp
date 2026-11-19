@@ -606,6 +606,7 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
     static const std::array<ComponentType, 2> spline = {ComponentType::SPLINE, ComponentType::UI_OBJECT};
     static const std::array<ComponentType, 3> contextMenu = {ComponentType::CONTEXT_MENU, ComponentType::FRAME,
                                                              ComponentType::UI_OBJECT};
+    static const std::array<ComponentType, 2> shape = {ComponentType::SHAPE, ComponentType::UI_OBJECT};
 
     switch (type) {
     case ComponentType::UI_OBJECT:
@@ -656,6 +657,8 @@ std::span<const ComponentType> Style::getTypeHierarchy(ComponentType type)
         return spline;
     case ComponentType::CONTEXT_MENU:
         return contextMenu;
+    case ComponentType::SHAPE:
+        return shape;
     }
     return uiObject;
 }
@@ -687,6 +690,7 @@ const std::unordered_map<std::string, ComponentType> &Style::getComponentTypeNam
         {"menu-bar", ComponentType::MENU_BAR},
         {"spline", ComponentType::SPLINE},
         {"context-menu", ComponentType::CONTEXT_MENU},
+        {"shape", ComponentType::SHAPE},
     };
     return names;
 }
