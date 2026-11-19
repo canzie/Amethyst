@@ -1,5 +1,7 @@
 #include "components/dropdown.h"
 
+#include "amethyst/icons.h"
+#include "components/image_label.h"
 #include "components/text_button.h"
 #include "modules/style.h"
 
@@ -18,7 +20,15 @@ Dropdown::Dropdown()
         .itemDisabledColor = Color4{0.45f, 0.45f, 0.45f, 1.0f},
         .itemHoverBackground = Color3{0.25f, 0.42f, 0.65f},
         .separatorColor = Color3{0.32f, 0.32f, 0.32f},
+        .indicatorSize = 10.0f,
+        .indicatorPadding = 8.0f,
+        .indicatorColor = Color4{0.6f, 0.6f, 0.6f, 1.0f},
     });
+
+    m_indicator = add<ImageLabel>();
+    m_indicator->setSvg(Icons::ARROW);
+    m_indicator->setBaseStyleProperties({.backgroundTransparency = 1.0f, .borderPixelSize = 0.0f});
+
     resolveStyle();
 }
 
@@ -32,12 +42,41 @@ void Dropdown::resolveStyle()
     if (m_ddProps.apply(resolved)) {
         markDirty();
     }
+    placeIndicator();
+}
+
+Dropdown &Dropdown::indicator(std::function<void(ImageLabel &)> fn)
+{
+    if (fn) {
+        fn(*m_indicator);
+    }
+    return *this;
+}
+
+void Dropdown::placeIndicator()
+{
+    if (m_indicator == nullptr) {
+        return;
+    }
+
+    // children lay out inside the border and padding, so the arrow is pushed out past the
+    // content's right edge into the right padding, which a theme sizes to fit it
+    const float rightInset = resolveContentInsets(absoluteSize).y;
+    m_indicator->setBaseProperties({
+        .anchorPoint = vec2(1.0f, 0.5f),
+        .interactable = false,
+        .position = UDim2(1.0f, rightInset - m_ddProps.indicatorPadding, 0.5f, 0.0f),
+        .size = UDim2::fromOffset(m_ddProps.indicatorSize, m_ddProps.indicatorSize),
+        .rotation = 90.0f,
+    });
+    m_indicator->setImageStyleProperties({.imageColor = m_ddProps.indicatorColor});
 }
 
 bool Dropdown::setDropdownProperties(const DropdownStylePropertiesArgs &props)
 {
     bool changed = m_ddProps.apply(props);
     if (changed) {
+        placeIndicator();
         if (m_contextMenu != nullptr) {
             syncContextMenu();
         }

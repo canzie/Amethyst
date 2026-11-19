@@ -770,6 +770,15 @@ DropdownScope &DropdownScope::radio(std::string label, RadioGroup *group, int32_
     return *this;
 }
 
+DropdownScope &DropdownScope::indicator(std::function<void(ImageLabelScope &)> fn)
+{
+    component.indicator([&fn](ImageLabel &arrow) {
+        ImageLabelScope scope(arrow);
+        fn(scope);
+    });
+    return *this;
+}
+
 DropdownScope &DropdownScope::items(std::vector<std::string> labels)
 {
     for (auto &label : labels) {

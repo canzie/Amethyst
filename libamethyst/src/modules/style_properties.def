@@ -202,6 +202,9 @@
     X(DROPDOWN_ITEM_TEXT_COLOR, itemTextColor, Color4)          \
     X(DROPDOWN_ITEM_DISABLED_COLOR, itemDisabledColor, Color4)  \
     X(MENU_ITEM_HOVER_BACKGROUND, itemHoverBackground, Color3)  \
-    X(MENU_SEPARATOR_COLOR, separatorColor, Color3)
+    X(MENU_SEPARATOR_COLOR, separatorColor, Color3)             \
+    X(INDICATOR_SIZE, indicatorSize, float)                     \
+    X(INDICATOR_PADDING, indicatorPadding, float)               \
+    X(INDICATOR_COLOR, indicatorColor, Color4)
 
 #endif // AMETHYST__STYLE_PROPERTIES_DEF

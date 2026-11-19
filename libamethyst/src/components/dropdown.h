@@ -11,6 +11,8 @@
 
 namespace Amethyst {
 
+class ImageLabel;
+
 class Dropdown : public TextButton {
   public:
     Dropdown();
@@ -27,6 +29,13 @@ class Dropdown : public TextButton {
     bool setDropdownProperties(const DropdownStylePropertiesArgs &props);
     const DropdownStyleProperties &getDropdownProperties() const { return m_ddProps; }
 
+    /**
+     * @brief Gives access to the arrow shown in the right padding, to change its icon
+     * @param fn Called with the arrow
+     * @return This dropdown
+     */
+    Dropdown &indicator(std::function<void(ImageLabel &)> fn);
+
     std::function<void(std::string_view)> onItemSelected;
     std::function<void()> onOpenedCb;
     std::function<void()> onClosedCb;
@@ -39,8 +48,14 @@ class Dropdown : public TextButton {
   private:
     void syncContextMenu();
 
+    /**
+     * @brief Places the arrow in the right padding and tints it, after the size, padding or color changed
+     */
+    void placeIndicator();
+
     std::vector<std::unique_ptr<ContextMenu::ItemData>> m_items;
     ContextMenu *m_contextMenu = nullptr;
+    ImageLabel *m_indicator = nullptr;
 };
 
 } // namespace Amethyst

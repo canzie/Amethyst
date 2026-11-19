@@ -143,6 +143,9 @@ bool DropdownStyleProperties::apply(const DropdownStyleProperties &src)
     AM_APPLY_PLAIN(itemDisabledColor)
     AM_APPLY_PLAIN(itemHoverBackground)
     AM_APPLY_PLAIN(separatorColor)
+    AM_APPLY_PLAIN(indicatorSize)
+    AM_APPLY_PLAIN(indicatorPadding)
+    AM_APPLY_PLAIN(indicatorColor)
     return changed;
 }
 
@@ -159,6 +162,9 @@ bool DropdownStyleProperties::apply(const DropdownStylePropertiesArgs &src)
     AM_APPLY_ARGS(itemDisabledColor)
     AM_APPLY_ARGS(itemHoverBackground)
     AM_APPLY_ARGS(separatorColor)
+    AM_APPLY_ARGS(indicatorSize)
+    AM_APPLY_ARGS(indicatorPadding)
+    AM_APPLY_ARGS(indicatorColor)
     return changed;
 }
 
@@ -175,6 +181,9 @@ DropdownStyleProperties::operator DropdownStylePropertiesArgs() const
     AM_TO_ARGS(itemDisabledColor)
     AM_TO_ARGS(itemHoverBackground)
     AM_TO_ARGS(separatorColor)
+    AM_TO_ARGS(indicatorSize)
+    AM_TO_ARGS(indicatorPadding)
+    AM_TO_ARGS(indicatorColor)
     return out;
 }
 

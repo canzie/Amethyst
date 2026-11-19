@@ -281,6 +281,7 @@ struct DropdownScope {
     DropdownScope &submenu(std::string label, std::function<void(DropdownScope &)> fn);
     DropdownScope &radio(std::string label, RadioGroup *group, int32_t value);
     DropdownScope &items(std::vector<std::string> labels);
+    DropdownScope &indicator(std::function<void(ImageLabelScope &)> fn);
 };
 
 struct ContextMenuScope {

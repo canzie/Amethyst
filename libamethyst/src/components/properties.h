@@ -302,6 +302,9 @@ template <FieldShape Shape> struct DropdownStyleFields {
     F<Color4> itemDisabledColor{};
     F<Color3> itemHoverBackground{};
     F<Color3> separatorColor{};
+    F<float> indicatorSize{};
+    F<float> indicatorPadding{};
+    F<Color4> indicatorColor{};
 };
 
 using DropdownStylePropertiesArgs = DropdownStyleFields<FieldShape::Args>;
