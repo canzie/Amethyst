@@ -16,7 +16,9 @@
 
 #include "components/common.h"
 #include "components/ui_object.h"
+#include "parsers/freetype/font_registry.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -83,6 +85,21 @@ class Canvas : public UIObject {
      */
     void drawText(const std::string &text, vec2 position, float fontSize, Color4 color, uint32_t maxChars);
 
+    /**
+     * @brief Draw text aligned inside a box in local canvas coordinates
+     * @param text The string to render
+     * @param boxPosition Top-left of the box in local canvas coordinates
+     * @param boxSize Size of the box
+     * @param font The font to render with
+     * @param fontSize Font size in pixels
+     * @param color Text color
+     * @param xAlign Where the text sits across the box
+     * @param yAlign Where the text sits down the box
+     * @param maxChars Maximum characters to reserve GPU slots for, the text is truncated past it
+     */
+    void drawText(const std::string &text, vec2 boxPosition, vec2 boxSize, FontId font, float fontSize, Color4 color,
+                  TextXAlignment xAlign, TextYAlignment yAlign, uint32_t maxChars);
+
     bool isEmpty() const { return m_commands.empty() && m_textCommands.empty(); }
 
   private:
@@ -101,8 +118,12 @@ class Canvas : public UIObject {
     struct TextCmd {
         std::string text;
         vec2 position;
+        std::optional<vec2> bounds; // to the canvas edge when unset
+        FontId font;
         float fontSize;
         Color4 color;
+        TextXAlignment xAlign;
+        TextYAlignment yAlign;
         uint32_t maxChars;
     };
 

@@ -145,8 +145,28 @@ void Canvas::drawText(const std::string &text, vec2 position, float fontSize, Co
     TextCmd cmd;
     cmd.text = text;
     cmd.position = position;
+    cmd.font = FontId{};
     cmd.fontSize = fontSize;
     cmd.color = color;
+    cmd.xAlign = TextXAlignment::LEFT;
+    cmd.yAlign = TextYAlignment::TOP;
+    cmd.maxChars = maxChars;
+    m_textCommands.push_back(std::move(cmd));
+    markDirty();
+}
+
+void Canvas::drawText(const std::string &text, vec2 boxPosition, vec2 boxSize, FontId font, float fontSize, Color4 color,
+                      TextXAlignment xAlign, TextYAlignment yAlign, uint32_t maxChars)
+{
+    TextCmd cmd;
+    cmd.text = text;
+    cmd.position = boxPosition;
+    cmd.bounds = boxSize;
+    cmd.font = font;
+    cmd.fontSize = fontSize;
+    cmd.color = color;
+    cmd.xAlign = xAlign;
+    cmd.yAlign = yAlign;
     cmd.maxChars = maxChars;
     m_textCommands.push_back(std::move(cmd));
     markDirty();
@@ -296,9 +316,12 @@ void Canvas::draw(DrawContext &ctx)
 
             TextLayoutParams params;
             params.position = absolutePosition + tcmd.position;
-            params.bounds = absoluteSize - tcmd.position;
+            params.bounds = tcmd.bounds.has_value() ? *tcmd.bounds : absoluteSize - tcmd.position;
+            params.font = tcmd.font;
             params.fontSize = tcmd.fontSize;
             params.color = tcmd.color;
+            params.xAlign = tcmd.xAlign;
+            params.yAlign = tcmd.yAlign;
             params.logicalToPhysicalScale = ctx.logicalToPhysicalScale;
 
             auto glyphs = ctx.textProcessor->layoutTextAtlas(truncated, params);
