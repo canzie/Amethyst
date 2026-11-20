@@ -230,6 +230,19 @@ class TextProcessor {
     vec2 measureTextSize(const std::string &text, FontId font, float fontSize, float lineHeight, float logicalToPhysicalScale) const;
 
     /**
+     * @brief How large text is drawn when it wraps at a width, so a box that size shows all of it
+     * @param text The text to measure
+     * @param font Face to measure against; an invalid id uses the registry default
+     * @param fontSize Font size in logical pixels
+     * @param lineHeight Line pitch as a multiple of the font's own
+     * @param wrapWidth Width in logical pixels the lines wrap at
+     * @param logicalToPhysicalScale Physical pixels per logical pixel of the display it is drawn on
+     * @return Width of the widest line and height of all lines in logical pixels, each rounded up to a whole physical pixel
+     */
+    vec2 measureWrappedTextSize(const std::string &text, FontId font, float fontSize, float lineHeight, float wrapWidth,
+                                float logicalToPhysicalScale) const;
+
+    /**
      * @brief Get advance width for a character using glyph atlas
      * @param font Face to measure against; an invalid id uses the registry default
      * @param codepoint Unicode codepoint

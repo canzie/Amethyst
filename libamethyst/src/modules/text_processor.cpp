@@ -343,6 +343,40 @@ vec2 TextProcessor::measureTextSize(const std::string &text, FontId font, float 
     return vec2(std::ceil(size.x * scale), std::ceil(size.y * scale)) / scale;
 }
 
+vec2 TextProcessor::measureWrappedTextSize(const std::string &text, FontId font, float fontSize, float lineHeight, float wrapWidth,
+                                           float logicalToPhysicalScale) const
+{
+    AM_PROFILE_FUNCTION();
+    if (m_glyphAtlas == nullptr || text.empty()) {
+        return {0.0f, 0.0f};
+    }
+
+    TextLayoutParams logicalParams;
+    logicalParams.bounds = vec2(wrapWidth, 0.0f);
+    logicalParams.font = font;
+    logicalParams.fontSize = fontSize;
+    logicalParams.lineHeight = lineHeight;
+    logicalParams.wrap = true;
+    logicalParams.logicalToPhysicalScale = logicalToPhysicalScale;
+
+    float scale = s_validScale(logicalToPhysicalScale);
+    TextLayoutParams params = s_toPhysical(logicalParams);
+
+    std::vector<std::vector<ShapedGlyph>> lines;
+    std::vector<float> lineWidths;
+    FontMetrics metrics;
+    float lineHeightPx = 0.0f;
+    s_shapeText(text, params, *m_glyphAtlas, lines, lineWidths, metrics, lineHeightPx);
+
+    float maxLineWidth = 0.0f;
+    for (float width : lineWidths) {
+        maxLineWidth = std::max(maxLineWidth, width);
+    }
+
+    // a box is snapped to whole physical pixels, so the size is rounded up to one to never lose the last glyph
+    return vec2(std::ceil(maxLineWidth), std::ceil(static_cast<float>(lines.size()) * lineHeightPx)) / scale;
+}
+
 vec2 TextProcessor::measureTextAtlas(const std::string &text, const TextLayoutParams &logicalParams) const
 {
     AM_PROFILE_FUNCTION();

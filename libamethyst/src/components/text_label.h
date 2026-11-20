@@ -38,7 +38,7 @@ class TextLabel : public UILabel {
      * @brief The larger of its text, drawn in the window it sits in, and the extent of its children
      * @return The content size in logical pixels
      */
-    vec2 automaticContentSize() const override;
+    vec2 automaticContentSize(vec2 available) const override;
 
   protected:
     TextStyleProperties m_textStyle;

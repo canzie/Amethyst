@@ -313,10 +313,12 @@ class UIObject : public UIBase2D {
     /**
      * @brief The size of what this object holds, which automaticSize fits it to: by default the extent of its
      * visible children as its list layout places them, or as they place themselves without one, their scale parts
-     * resolving against nothing since the object is being sized by them
+     * resolving against the room this object has
+     * @param available Room inside this object's insets on the axes it is not sized along, zero on the axes it is,
+     * since those are being sized by its content
      * @return The content size in logical pixels
      */
-    virtual vec2 automaticContentSize() const;
+    virtual vec2 automaticContentSize(vec2 available) const;
 
     /**
      * @brief Apply an attached layout extension

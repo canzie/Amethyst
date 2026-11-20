@@ -330,8 +330,9 @@ vec2 UIObject::applyAutomaticSize(vec2 size) const
         return size;
     }
 
-    const vec2 content = automaticContentSize();
     const vec4 insets = resolveContentInsets(size);
+    const vec2 available(fitsX ? 0.0f : std::max(0.0f, size.x - insets.w - insets.y), fitsY ? 0.0f : std::max(0.0f, size.y - insets.x - insets.z));
+    const vec2 content = automaticContentSize(available);
     if (fitsX) {
         size.x = std::max(size.x, content.x + insets.w + insets.y);
     }
@@ -341,11 +342,11 @@ vec2 UIObject::applyAutomaticSize(vec2 size) const
     return size;
 }
 
-vec2 UIObject::automaticContentSize() const
+vec2 UIObject::automaticContentSize(vec2 available) const
 {
     // laid out children sit where the layout puts them, which it decides only after this object has its size
     if (const auto *listLayout = getExtension<UIListLayout>(); listLayout != nullptr && !listLayout->wraps) {
-        return listLayout->measureNaturalContent(m_children, vec2(0.0f));
+        return listLayout->measureNaturalContent(m_children, available);
     }
 
     vec2 extent(0.0f);
@@ -356,9 +357,9 @@ vec2 UIObject::automaticContentSize() const
         }
 
         const BaseProperties &props = obj->getBaseProperties();
-        const vec4 m = props.margin.resolve(vec2(0.0f));
-        const vec2 outerSize = obj->resolveSize(vec2(0.0f)) + vec2(m.w + m.y, m.x + m.z);
-        const vec2 topLeft = props.position.resolve(vec2(0.0f)) - props.anchorPoint * outerSize;
+        const vec4 m = props.margin.resolve(available);
+        const vec2 outerSize = obj->resolveSize(available) + vec2(m.w + m.y, m.x + m.z);
+        const vec2 topLeft = props.position.resolve(available) - props.anchorPoint * outerSize;
         extent = max(extent, topLeft + outerSize);
     }
     return extent;

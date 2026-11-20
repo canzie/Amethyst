@@ -29,6 +29,7 @@ class UIDragDetector : public UIExtension {
 
   public:
     DragMode mode = DragMode::FREE;
+    /// the part of the owner a press has to land on to start a drag, the whole owner when it is the owner itself
     UIObject *dragZone = nullptr;
     float softLockDistance = 30.0f;
 

@@ -285,17 +285,22 @@ void TextLabel::releaseText(DrawContext &ctx)
     }
 }
 
-vec2 TextLabel::automaticContentSize() const
+vec2 TextLabel::automaticContentSize(vec2 available) const
 {
-    vec2 content = UIObject::automaticContentSize();
+    vec2 content = UIObject::automaticContentSize(available);
     const Window *window = getWindow();
     if (m_text.empty() || window == nullptr || window->getTextProcessor() == nullptr) {
         return content;
     }
 
-    const vec2 text = window->getTextProcessor()->measureTextSize(m_text, FontRegistry::instance().findFont(m_textStyle.fontFamily),
-                                                                  m_textStyle.fontSize, m_textStyle.lineHeight,
-                                                                  window->getLogicalToPhysicalScale());
+    const TextProcessor *textProcessor = window->getTextProcessor();
+    const FontId font = FontRegistry::instance().findFont(m_textStyle.fontFamily);
+    const float scale = window->getLogicalToPhysicalScale();
+
+    // wrapped text is as tall as the lines it breaks into at the width it has, which it only has when not sized by its text
+    const bool wraps = static_cast<bool>(m_textStyle.textWrapped) && available.x > 0.0f;
+    const vec2 text = wraps ? textProcessor->measureWrappedTextSize(m_text, font, m_textStyle.fontSize, m_textStyle.lineHeight, available.x, scale)
+                            : textProcessor->measureTextSize(m_text, font, m_textStyle.fontSize, m_textStyle.lineHeight, scale);
     return max(content, text);
 }
 

@@ -12,6 +12,16 @@ void UIDragDetector::handleMouseDown(int32_t x, int32_t y)
         return;
     }
 
+    // a press that reaches the owner outside the zone it is dragged by is not a drag
+    if (dragZone != nullptr && dragZone != m_owner) {
+        const vec2 point(static_cast<float>(x), static_cast<float>(y));
+        const vec2 zoneMin = dragZone->absolutePosition;
+        const vec2 zoneMax = zoneMin + dragZone->absoluteSize;
+        if (point.x < zoneMin.x || point.y < zoneMin.y || point.x >= zoneMax.x || point.y >= zoneMax.y) {
+            return;
+        }
+    }
+
     m_isDragging = true;
     m_softLockBroken = false;
 
