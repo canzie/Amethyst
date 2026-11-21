@@ -64,6 +64,22 @@ EventResult TreeView::onMouseScrollDown()
     return m_scrollFrame->scrollByWheel(-1.0f) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
+EventResult TreeView::onInputBegan(const InputObject &input)
+{
+    const float headerHeight = m_tvProps.showHeader ? m_tvProps.headerHeight : 0.0f;
+    const bool inBody = input.position.y >= absolutePosition.y + headerHeight;
+
+    // a row takes its own clicks, so one reaching the tree landed on empty space
+    if (input.type == InputType::MOUSE_BUTTON_2 && inBody) {
+        if (std::function<void(vec2)> rightClicked = onEmptySpaceRightClicked; rightClicked != nullptr) {
+            rightClicked(vec2(input.position.x, input.position.y));
+            return EventResult::CONSUMED;
+        }
+    }
+
+    return UIObject::onInputBegan(input);
+}
+
 void TreeView::resolveStyle()
 {
     resolveBaseStyle(ComponentType::TREE_VIEW);

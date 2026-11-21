@@ -209,8 +209,11 @@ class TreeView : public UIObject {
     std::function<void(uint32_t)> onRowClicked;
     std::function<void(uint32_t, vec2)> onRowRightClicked;
     std::function<void(uint32_t, bool)> onRowToggled;
+    /// Called with the cursor position when the body is right clicked where there is no row
+    std::function<void(vec2)> onEmptySpaceRightClicked;
 
   protected:
+    EventResult onInputBegan(const InputObject &input) override;
     EventResult onMouseScrollUp() override;
     EventResult onMouseScrollDown() override;
 
