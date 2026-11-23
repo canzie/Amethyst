@@ -624,6 +624,9 @@ void Window::onMouseScroll(float xoffset, float yoffset, int32_t x, int32_t y)
 {
     AM_PROFILE_FUNCTION();
     (void)xoffset;
+    if (yoffset == 0.0f) {
+        return;
+    }
     m_hoverStale = true;
     Instance *target = findClickedObject(x, y);
     vec2 point(x, y);
@@ -632,19 +635,17 @@ void Window::onMouseScroll(float xoffset, float yoffset, int32_t x, int32_t y)
         auto *uiObject = target->asUiObject();
         if (uiObject != nullptr && !uiObject->ignores(INTERACTION_CATEGORY_SCROLL)) {
             std::weak_ptr<bool> alive = target->aliveToken();
-            EventResult result = EventResult::PROPAGATE;
-            if (yoffset > 0) {
-                result = uiObject->onMouseScrollUp();
-            } else if (yoffset < 0) {
-                result = uiObject->onMouseScrollDown();
-            }
+            const EventResult result = uiObject->handleMouseWheel(yoffset, point);
             if (result == EventResult::CONSUMED || !Instance::isAlive(alive)) {
                 return;
             }
         }
 
         target = target->parent;
-        if (auto *parentObj = target ? target->as<UIBase2D>() : nullptr) {
+        // an ancestor that ignores the wheel is not there for it, so its rect cannot end the walk
+        const auto *parentUiObject = target != nullptr ? target->asUiObject() : nullptr;
+        const bool parentIgnoresScroll = parentUiObject != nullptr && parentUiObject->ignores(INTERACTION_CATEGORY_SCROLL);
+        if (auto *parentObj = target ? target->asBase2D() : nullptr; parentObj != nullptr && !parentIgnoresScroll) {
             if (!parentObj->containsScreenPoint(point)) {
                 target = nullptr;
             }

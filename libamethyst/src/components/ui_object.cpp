@@ -649,6 +649,27 @@ EventResult UIObject::onInputChanged(const InputObject &input)
     return consumes(INTERACTION_CATEGORY_MOVE) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
+EventResult UIObject::handleMouseWheel(float amount, vec2 screenPoint)
+{
+    std::weak_ptr<bool> alive = aliveToken();
+    const vec2 position = toLayout(screenPoint);
+    InputObject input{};
+    input.type = InputType::MOUSE_WHEEL;
+    input.state = InputState::CHANGE;
+    input.position = {position.x, position.y, 0.0f};
+    input.delta = {0.0f, 0.0f, amount};
+    input.modifiers = InputInterface::getModifiers();
+    if (!onMouseWheelCb.fire(input) || !isAlive(alive)) {
+        return EventResult::CONSUMED;
+    }
+
+    const EventResult result = amount > 0.0f ? onMouseScrollUp() : onMouseScrollDown();
+    if (result == EventResult::CONSUMED || !isAlive(alive)) {
+        return EventResult::CONSUMED;
+    }
+    return consumes(INTERACTION_CATEGORY_SCROLL) ? EventResult::CONSUMED : EventResult::PROPAGATE;
+}
+
 EventResult UIObject::onInputEnded(const InputObject &input)
 {
     std::weak_ptr<bool> alive = aliveToken();

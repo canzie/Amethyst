@@ -368,6 +368,14 @@ class UIObject : public UIBase2D {
     virtual EventResult onMouseScrollUp(void) { return EventResult::PROPAGATE; }
     virtual EventResult onMouseScrollDown(void) { return EventResult::PROPAGATE; }
 
+    /**
+     * @brief The wheel turned over this node: tells its wheel listeners, then lets the node itself react.
+     * @param amount How far the wheel turned, positive away from the user
+     * @param screenPoint The pointer in window coordinates
+     * @return CONSUMED when the node itself took the wheel or consumes the scroll category
+     */
+    EventResult handleMouseWheel(float amount, vec2 screenPoint);
+
     virtual EventResult onInputBegan(const InputObject &input);
     virtual EventResult onInputChanged(const InputObject &input);
     virtual EventResult onInputEnded(const InputObject &input);
@@ -385,6 +393,7 @@ class UIObject : public UIBase2D {
     EventSignal<void(const InputObject &)> onInputBeganCb;
     EventSignal<void(const InputObject &)> onInputChangedCb;
     EventSignal<void(const InputObject &)> onInputEndedCb;
+    EventSignal<void(const InputObject &)> onMouseWheelCb;
 
   protected:
     BaseProperties m_uiObjProps;
