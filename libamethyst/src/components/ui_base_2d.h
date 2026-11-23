@@ -17,7 +17,7 @@ struct UIBase2DProperties {};
 
 class UIBase2D : public Instance {
   public:
-    UIBase2D() = default;
+    UIBase2D() { kind |= KIND_UI_BASE_2D; }
     virtual ~UIBase2D()
     {
         if (m_geometryAlloc && m_geometryAlloc->isValid() && m_geometryAlloc->owning) {

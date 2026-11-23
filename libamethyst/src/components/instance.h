@@ -16,6 +16,7 @@
 
 namespace Amethyst {
 
+class UIBase2D;
 class UIObject;
 class UILayer;
 
@@ -32,6 +33,7 @@ enum InstanceKind : uint16_t {
     KIND_BASE = 0,
     KIND_UI_OBJECT = 1 << 0,
     KIND_UI_LAYER = 1 << 1,
+    KIND_UI_BASE_2D = 1 << 2,
 };
 
 class Instance {
@@ -125,6 +127,8 @@ class Instance {
 
     UIObject *asUiObject() { return (kind & KIND_UI_OBJECT) ? reinterpret_cast<UIObject *>(this) : nullptr; }
     UILayer *asLayer() { return (kind & KIND_UI_LAYER) ? reinterpret_cast<UILayer *>(this) : nullptr; }
+    UIBase2D *asBase2D() { return (kind & KIND_UI_BASE_2D) ? reinterpret_cast<UIBase2D *>(this) : nullptr; }
+    const UIBase2D *asBase2D() const { return (kind & KIND_UI_BASE_2D) ? reinterpret_cast<const UIBase2D *>(this) : nullptr; }
 
     Instance *findFirstChild(const std::string &childName) const;
 

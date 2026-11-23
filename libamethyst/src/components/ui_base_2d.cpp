@@ -6,10 +6,8 @@ namespace Amethyst {
 
 void UIBase2D::inheritTransform()
 {
-    // Window, layers and UI objects are the only UIBase2D kinds, and both flags sit on the same base
-    const Instance *above = parent;
-    if (above != nullptr && (above->kind & (KIND_UI_OBJECT | KIND_UI_LAYER)) != 0) {
-        const auto *base = reinterpret_cast<const UIBase2D *>(above);
+    const UIBase2D *base = parent != nullptr ? parent->asBase2D() : nullptr;
+    if (base != nullptr) {
         absoluteScale = base->absoluteScale;
         screenOffset = base->screenOffset;
     } else {

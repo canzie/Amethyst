@@ -9,9 +9,8 @@ namespace Amethyst {
 // the owner's position offset lives in its parent's layout space, which is scaled by every ancestor but not by the owner
 static vec2 s_toParentLayout(const UIObject &owner, vec2 screenPoint)
 {
-    const Instance *above = owner.parent;
-    if (above != nullptr && (above->kind & (KIND_UI_OBJECT | KIND_UI_LAYER)) != 0) {
-        const auto *parentBase = reinterpret_cast<const UIBase2D *>(above);
+    const UIBase2D *parentBase = owner.parent != nullptr ? owner.parent->asBase2D() : nullptr;
+    if (parentBase != nullptr) {
         return parentBase->toLayout(screenPoint) - parentBase->absolutePosition;
     }
     return screenPoint;
