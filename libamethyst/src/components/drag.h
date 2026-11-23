@@ -89,7 +89,7 @@ class Drag : public UIObject {
 
     EventResult onInputBegan(const InputObject &input) override;
     EventResult onInputEnded(const InputObject &input) override;
-    EventResult onMouseMoved(int32_t x, int32_t y) override;
+    EventResult onMouseMoved(vec2 position) override;
 
     NumberInput *m_field = nullptr;
     NumberFormat m_numberFormat;

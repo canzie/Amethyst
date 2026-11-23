@@ -73,6 +73,7 @@ void DockingLayer::draw(DrawContext &ctx)
 
 void DockingLayer::arrange()
 {
+    inheritTransform();
     if (m_rootNode < 0) {
         return;
     }
@@ -381,7 +382,8 @@ void DockingLayer::setupResizeHandle(int32_t nodeIndex, vec2 nodeSize, vec2 node
 
     drag->onDragStart = [cursorShape](vec2) { InputInterface::setCursorShape(cursorShape); };
 
-    drag->onDragUpdate = [this, handlePtr](vec2, vec2 mousePos) {
+    drag->onDragUpdate = [this, handlePtr](vec2, vec2 screenPos) {
+        const vec2 mousePos = toLayout(screenPos);
         vec2 handlePos = handlePtr->absolutePosition + handlePtr->absoluteSize * 0.5f;
         int32_t ownerIndex = findNodeByResizeHandlePosition(handlePos, m_rootNode);
 
@@ -566,7 +568,8 @@ void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
         tabBar->setClasses(tabBarClasses);
     }
 
-    tabBar->onTornOffTabReleased = [this, tabBar](std::unique_ptr<TabBar::Tab> tab, vec2 dropPos) {
+    tabBar->onTornOffTabReleased = [this, tabBar](std::unique_ptr<TabBar::Tab> tab, vec2 screenDropPos) {
+        const vec2 dropPos = toLayout(screenDropPos);
         hideDockHints();
         int32_t sourceNode = findNodeByPosition(tabBar->absolutePosition, m_rootNode, absoluteSize, absolutePosition);
 
@@ -592,7 +595,7 @@ void DockingLayer::setupTabBarCallbacks(TabBar *tabBar)
         markDirty();
     };
 
-    tabBar->onTornOffTabMoved = [this](Instance *, vec2 pos) { updateDockHints(pos); };
+    tabBar->onTornOffTabMoved = [this](Instance *, vec2 screenPos) { updateDockHints(toLayout(screenPos)); };
 
     // onTabClosed fires before the tab is removed, so a count of 1 means this was the last tab.
     tabBar->onTabClosed = [this, tabBar](Instance *) {

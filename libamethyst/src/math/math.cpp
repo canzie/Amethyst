@@ -136,4 +136,31 @@ uint32_t packHalf2x16(vec2 v)
     return static_cast<uint32_t>(packHalf1x16(v.x)) | (static_cast<uint32_t>(packHalf1x16(v.y)) << 16);
 }
 
+float unpackHalf1x16(uint16_t h)
+{
+    uint32_t sign = static_cast<uint32_t>(h & 0x8000u) << 16;
+    uint32_t exp16 = (h >> 10) & 0x1Fu;
+    uint32_t mant16 = h & 0x3FFu;
+
+    uint32_t bits;
+    if (exp16 == 0) {
+        // subnormal halves are m * 2^-24, which a float holds exactly
+        float magnitude = static_cast<float>(mant16) * (1.0f / 16777216.0f);
+        return sign != 0u ? -magnitude : magnitude;
+    }
+    if (exp16 == 31) {
+        bits = sign | 0x7F800000u | (mant16 << 13);
+    } else {
+        bits = sign | ((exp16 - 15 + 127) << 23) | (mant16 << 13);
+    }
+    float f;
+    std::memcpy(&f, &bits, sizeof(f));
+    return f;
+}
+
+vec2 unpackHalf2x16(uint32_t v)
+{
+    return vec2(unpackHalf1x16(static_cast<uint16_t>(v & 0xFFFFu)), unpackHalf1x16(static_cast<uint16_t>(v >> 16)));
+}
+
 } // namespace Amethyst

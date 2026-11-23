@@ -36,6 +36,7 @@ UIObject::UIObject()
     m_uiObjProps.position = UDim2{};
     m_uiObjProps.size = UDim2{};
     m_uiObjProps.rotation = 0.0f;
+    m_uiObjProps.scale = 1.0f;
     m_uiObjProps.visible = true;
     m_uiObjProps.zIndex = 1;
     m_uiObjProps.zindexBehavior = ZIndexBehavior::RELATIVE;
@@ -47,6 +48,7 @@ UIObject::UIObject()
     m_baseStyle.borderColor = Color3{0.0f, 0.0f, 0.0f};
     m_baseStyle.borderTransparency = 0.0f;
     m_baseStyle.cornerRadius = 0.0f;
+    m_baseStyle.thicknessScaling = ThicknessScaling::SCALED;
 
     // components resolve in their constructors against the theme installed now
     m_styleGeneration = Style::generation();
@@ -371,6 +373,8 @@ void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentR
     const vec2 previousPosition = absolutePosition;
     const vec2 previousSize = absoluteSize;
     const Degrees previousRotation = absoluteRotation;
+    const float previousScale = absoluteScale;
+    const vec2 previousScreenOffset = screenOffset;
 
     absoluteRotation = m_uiObjProps.rotation + parentRotation;
     absoluteSize = resolveSize(parentSize);
@@ -378,8 +382,16 @@ void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentR
     // anchor against the size the object really takes, constraints included, plus its margin
     vec4 m = m_uiObjProps.margin.resolve(parentSize);
     vec2 outerSize = absoluteSize + vec2(m.w + m.y, m.x + m.z);
-    absolutePosition = parentPos + m_uiObjProps.position.resolve(parentSize) - m_uiObjProps.anchorPoint * outerSize;
+    const vec2 anchor = parentPos + m_uiObjProps.position.resolve(parentSize);
+    absolutePosition = anchor - m_uiObjProps.anchorPoint * outerSize;
     absolutePosition += vec2(m.w, m.x);
+
+    // the scale draws this node and its subtree larger around the anchor point after layout, so nothing above
+    // changes with it: window = parent(anchor + (layout - anchor) * scale)
+    inheritTransform();
+    const float ownScale = m_uiObjProps.scale;
+    screenOffset += absoluteScale * anchor * (1.0f - ownScale);
+    absoluteScale *= ownScale;
 
     // a rotated quad has no axis-aligned edges to land on a pixel boundary, and snapping one makes it step as it turns
     if (absoluteRotation == 0.0f) {
@@ -392,8 +404,9 @@ void UIObject::computeAbsolutes(vec2 parentSize, vec2 parentPos, Degrees parentR
 
     // the parent assigns clipRect just before this call, so comparing it here is
     // what catches a clip change that leaves this object's own rect untouched
-    const bool rectChanged =
-        absolutePosition != previousPosition || absoluteSize != previousSize || absoluteRotation != previousRotation;
+    const bool rectChanged = absolutePosition != previousPosition || absoluteSize != previousSize ||
+                             absoluteRotation != previousRotation || absoluteScale != previousScale ||
+                             screenOffset != previousScreenOffset;
     if (rectChanged || clipRect != m_appliedClipRect) {
         m_appliedClipRect = clipRect;
         markDirty();
@@ -461,7 +474,9 @@ InstanceData UIObject::createInstanceData() const
     data.setBorderColor(Color4(m_baseStyle.borderColor, 1.0f - m_baseStyle.borderTransparency));
     data.setRotation(radians(absoluteRotation));
     data.setBorderThickness(m_baseStyle.borderPixelSize);
-    data.setCornerRadii(m_baseStyle.cornerRadius);
+    const uvec4 &radii = m_baseStyle.cornerRadius;
+    data.setCornerRadii(vec4(static_cast<float>(radii.x), static_cast<float>(radii.y), static_cast<float>(radii.z), static_cast<float>(radii.w)),
+                        absoluteSize);
     data.setPrimitiveType(PRIMITIVE_TRIANGLE);
     data.setBorderMode(m_baseStyle.borderMode);
     data.setBackgroundRepeat(m_baseStyle.backgroundRepeat, m_baseStyle.backgroundSize, m_baseStyle.backgroundStep,
@@ -471,13 +486,17 @@ InstanceData UIObject::createInstanceData() const
     return data;
 }
 
+void UIObject::mapToScreen(InstanceData &data) const
+{
+    data.transform(absoluteScale, screenOffset, m_baseStyle.thicknessScaling != ThicknessScaling::FIXED);
+}
+
 vec4 UIObject::computeChildClipRect() const
 {
     if (!m_uiObjProps.clipsDescendants) {
         return clipRect;
     }
-    vec4 myBounds = {absolutePosition.x, absolutePosition.y, absolutePosition.x + absoluteSize.x,
-                     absolutePosition.y + absoluteSize.y};
+    vec4 myBounds = screenRect();
     vec4 clip = myBounds;
     if (clipRect != vec4(0.0f)) {
         clip = {max(clipRect.x, myBounds.x), max(clipRect.y, myBounds.y), min(clipRect.z, myBounds.z), min(clipRect.w, myBounds.w)};
@@ -581,23 +600,23 @@ EventResult UIObject::onMouseLeave()
     return consumes(INTERACTION_CATEGORY_HOVER) ? EventResult::CONSUMED : EventResult::PROPAGATE;
 }
 
-EventResult UIObject::onMouseMoved(int32_t x, int32_t y)
+EventResult UIObject::onMouseMoved(vec2 position)
 {
     std::weak_ptr<bool> alive = aliveToken();
     if (auto *drag = getExtension<UIDragDetector>(); drag != nullptr) {
-        drag->handleMouseMove(x, y);
+        drag->handleMouseMove(toScreen(position));
         if (!isAlive(alive)) {
             return EventResult::CONSUMED;
         }
     }
     if (auto *tooltip = getExtension<UITooltip>(); tooltip != nullptr) {
-        tooltip->handleMouseMove(x, y);
+        tooltip->handleMouseMove(toScreen(position));
     }
 
     InputObject input{};
     input.type = InputType::MOUSE_MOVEMENT;
     input.state = InputState::CHANGE;
-    input.position = {static_cast<float>(x), static_cast<float>(y), 0.0f};
+    input.position = {position.x, position.y, 0.0f};
     input.modifiers = InputInterface::getModifiers();
     return onInputChanged(input);
 }
@@ -609,7 +628,7 @@ EventResult UIObject::onInputBegan(const InputObject &input)
     std::weak_ptr<bool> alive = aliveToken();
     if (input.type == InputType::MOUSE_BUTTON_1) {
         if (auto *drag = getExtension<UIDragDetector>(); drag != nullptr) {
-            drag->handleMouseDown(static_cast<int32_t>(input.position.x), static_cast<int32_t>(input.position.y));
+            drag->handleMouseDown(toScreen(vec2(input.position.x, input.position.y)));
             if (!isAlive(alive)) {
                 return EventResult::CONSUMED;
             }
@@ -635,7 +654,7 @@ EventResult UIObject::onInputEnded(const InputObject &input)
     std::weak_ptr<bool> alive = aliveToken();
     if (input.type == InputType::MOUSE_BUTTON_1) {
         if (auto *drag = getExtension<UIDragDetector>(); drag != nullptr) {
-            drag->handleMouseUp(static_cast<int32_t>(input.position.x), static_cast<int32_t>(input.position.y));
+            drag->handleMouseUp(toScreen(vec2(input.position.x, input.position.y)));
             if (!isAlive(alive)) {
                 return EventResult::CONSUMED;
             }

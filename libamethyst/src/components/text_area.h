@@ -187,6 +187,7 @@ class TextArea : public UIInput {
         float tabSize = 0.0f;
         uint32_t color = 0;
         float logicalToPhysicalScale = 0.0f;
+        float renderScale = 0.0f;
 
         bool operator==(const RowShapeState &) const = default;
     };

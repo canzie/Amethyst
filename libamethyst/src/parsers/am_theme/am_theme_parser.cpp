@@ -462,6 +462,24 @@ static ParsedValue s_parse_BREPEAT(std::string_view sv, Style &)
     return s_wrap(s_parseKeyword(sv, table, "background-repeat"));
 }
 
+static ParsedValue s_parse_ISAMPLE(std::string_view sv, Style &)
+{
+    static constexpr std::array<std::pair<std::string_view, ImageSamplingMode>, 2> table = {{
+        {"smooth", ImageSamplingMode::SMOOTH},
+        {"pixelated", ImageSamplingMode::PIXELATED},
+    }};
+    return s_wrap(s_parseKeyword(sv, table, "image-sampling-mode"));
+}
+
+static ParsedValue s_parse_TSCALE(std::string_view sv, Style &)
+{
+    static constexpr std::array<std::pair<std::string_view, ThicknessScaling>, 2> table = {{
+        {"scaled", ThicknessScaling::SCALED},
+        {"fixed", ThicknessScaling::FIXED},
+    }};
+    return s_wrap(s_parseKeyword(sv, table, "thickness-scaling"));
+}
+
 static ParsedValue s_parse_SIZE2(std::string_view sv, Style &)
 {
     std::vector<std::string_view> tokens = s_splitWhitespace(sv);

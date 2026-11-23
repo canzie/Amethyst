@@ -291,11 +291,13 @@ void Canvas::draw(DrawContext &ctx)
 
     for (size_t i = 0; i < m_allocations.size(); i++) {
         InstanceData data = buildInstanceData(m_commands[i]);
+        mapToScreen(data);
         ctx.geometry->update(*m_allocations[i], data);
     }
 
     for (size_t i = m_allocations.size(); i < newCount; i++) {
         InstanceData data = buildInstanceData(m_commands[i]);
+        mapToScreen(data);
         m_allocations.push_back(ctx.geometry->submit(data));
     }
 
@@ -323,10 +325,12 @@ void Canvas::draw(DrawContext &ctx)
             params.xAlign = tcmd.xAlign;
             params.yAlign = tcmd.yAlign;
             params.logicalToPhysicalScale = ctx.logicalToPhysicalScale;
+            params.renderScale = absoluteScale;
 
             auto glyphs = ctx.textProcessor->layoutTextAtlas(truncated, params);
 
             for (size_t i = 0; i < glyphs.size(); i++) {
+                mapToScreen(glyphs[i]);
                 glyphs[i].clipRect = clipRect;
                 glyphs[i].zIndex = drawZ(TEXT_DRAW_LAYER);
                 glyphs[i].setVisible(isVisible());

@@ -24,8 +24,8 @@ struct InstanceData {
     uint borderColor;             // 4B packed RGBA
     uint shapeData[4];            // 16B packed half2 pairs for text UV etc
     uint rotationBorderThickness; // 4B: rotation(16) | borderThickness(16 half)
-    uint primitiveMode;           // 4B: unused(16) | primitiveType(8) | borderMode(8)
-    uint cornerRadii;             // 4B: rounded-box per-corner radii tl|tr|br|bl (uint8), else radius(16 half)
+    uint primitiveMode;           // 4B: cornerRadiiHigh(16) | primitiveType(8) | borderMode(8)
+    uint cornerRadii;             // 4B: a rect's radii tl(12) | tr(12) | br low(8), else radius(16 half)
     uint textureId;               // 4B texture handle
     int zIndex;                   // 4B z-index
     uint flags;                   // 4B: visible(1) | padding(31)
@@ -89,6 +89,7 @@ const float PI = 3.14159265359;
 const uint INSTANCE_FLAG_VISIBLE = 0x00000001u;
 const uint INSTANCE_FLAG_TEXT_RICH = 0x00000002u;
 const uint INSTANCE_FLAG_GRADIENT = 0x00000004u;
+const uint INSTANCE_FLAG_UNSNAPPED = 0x00000020u;
 const uint INVALID_GRADIENT = 0xFFFFFFFFu;
 // FrameDrawEntry::NO_TEXT / an invalid GlyphSliceHandle
 const uint NO_TEXT = 0xFFFFFFFFu;
@@ -113,10 +114,13 @@ float unpackHalf(uint packed) {
 #define INST_PRIMITIVE_TYPE(pm)    (((pm) >> 16u) & 0xFFu)
 #define INST_BORDER_MODE(pm)       (((pm) >> 24u) & 0xFFu)
 #define INST_CORNER_RADIUS(cr)     unpackHalf(cr)
-#define INST_CORNER_TL(cr)         ((cr) & 0xFFu)
-#define INST_CORNER_TR(cr)         (((cr) >> 8u) & 0xFFu)
-#define INST_CORNER_BR(cr)         (((cr) >> 16u) & 0xFFu)
-#define INST_CORNER_BL(cr)         (((cr) >> 24u) & 0xFFu)
+// a rect's four radii are 12 bit half floats without their sign and lowest 3 mantissa bits,
+// laid out tl | tr | br across cornerRadii and the rest of br | bl in primitiveMode's low 16 bits
+#define INST_RADIUS(bits)          unpackHalf2x16((bits) << 3u).x
+#define INST_CORNER_TL(cr, pm)     INST_RADIUS((cr) & 0xFFFu)
+#define INST_CORNER_TR(cr, pm)     INST_RADIUS(((cr) >> 12u) & 0xFFFu)
+#define INST_CORNER_BR(cr, pm)     INST_RADIUS(((cr) >> 24u) | (((pm) & 0xFu) << 8u))
+#define INST_CORNER_BL(cr, pm)     INST_RADIUS(((pm) >> 4u) & 0xFFFu)
 
 void main()
 {
@@ -134,11 +138,13 @@ void main()
     float s = sin(rotation);
 
     float scale = pc.logicalToPhysicalScale;
+    // an instance drawn under a node's scale sits wherever the scale puts it, between pixels too
+    bool snapped = (inst.flags & INSTANCE_FLAG_UNSNAPPED) == 0u;
 
     // a border covers a whole number of physical pixels, at least one, so a hairline stays
     // crisp at a fractional scale instead of smearing over two pixels
     float borderThickness = INST_BORDER_THICKNESS(inst.rotationBorderThickness);
-    if (borderThickness > 0.0) {
+    if (borderThickness > 0.0 && snapped) {
         borderThickness = max(1.0, round(borderThickness * scale)) / scale;
     }
     uint borderMode = INST_BORDER_MODE(inst.primitiveMode);
@@ -147,7 +153,7 @@ void main()
     // every side instead of smearing over two where an edge falls between them
     vec2 shapeTranslation = inst.translation;
     vec2 shapeSize = inst.scale;
-    if (INST_PRIMITIVE_TYPE(inst.primitiveMode) == PRIMITIVE_RECT && rotation == 0.0) {
+    if (INST_PRIMITIVE_TYPE(inst.primitiveMode) == PRIMITIVE_RECT && rotation == 0.0 && snapped) {
         vec2 minEdge = round((inst.translation - inst.scale * 0.5) * scale);
         vec2 maxEdge = round((inst.translation + inst.scale * 0.5) * scale);
         shapeTranslation = (minEdge + maxEdge) * 0.5 / scale;
@@ -218,8 +224,8 @@ void main()
     // The cornerRadii word is primitive-dependent: a rounded box reads four per-corner radius
     // bytes, every other primitive reads its low 16 bits as a stroke/circle radius half float.
     fragCornerRadius = INST_CORNER_RADIUS(inst.cornerRadii);
-    fragCornerRadii = vec4(INST_CORNER_TL(inst.cornerRadii), INST_CORNER_TR(inst.cornerRadii),
-                           INST_CORNER_BR(inst.cornerRadii), INST_CORNER_BL(inst.cornerRadii));
+    fragCornerRadii = vec4(INST_CORNER_TL(inst.cornerRadii, inst.primitiveMode), INST_CORNER_TR(inst.cornerRadii, inst.primitiveMode),
+                           INST_CORNER_BR(inst.cornerRadii, inst.primitiveMode), INST_CORNER_BL(inst.cornerRadii, inst.primitiveMode));
 
     // batched text looks its glyphs up in the glyph buffer, which is in physical pixels; every
     // other primitive works in logical pixels, where fwidth still gives a one pixel AA band

@@ -6,6 +6,7 @@
 #define AMETHYST__UI_TOOLTIP_H
 
 #include "components/extensions/ui_extension.h"
+#include "math/math.h"
 
 #include <cstdint>
 #include <functional>
@@ -22,7 +23,11 @@ class UITooltip : public UIExtension {
     ~UITooltip() override;
 
     void handleMouseEnter();
-    void handleMouseMove(int32_t x, int32_t y);
+    /**
+     * @brief Moves a pending tooltip along with the pointer.
+     * @param screenPoint The pointer in window coordinates
+     */
+    void handleMouseMove(vec2 screenPoint);
     void handleMouseLeave();
 
   public:

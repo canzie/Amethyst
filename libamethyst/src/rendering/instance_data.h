@@ -19,6 +19,8 @@ enum GpuInstanceFlags : uint32_t {
     INSTANCE_FLAG_GRADIENT = 0x00000004,
     INSTANCE_FLAG_REPEAT_X = 0x00000008,
     INSTANCE_FLAG_REPEAT_Y = 0x00000010,
+    INSTANCE_FLAG_UNSNAPPED = 0x00000020, // drawn under a scale: edges and border widths are not snapped to pixels
+    INSTANCE_FLAG_PIXELATED = 0x00000040, // an enlarged texture is sampled nearest, see ImageSamplingMode::PIXELATED
 };
 
 struct InstanceData {
@@ -29,8 +31,12 @@ struct InstanceData {
     uint32_t borderColor = 0;               // 4B packed RGBA
     uint32_t shapeData[4] = {0, 0, 0, 0};   // 16B packed half2 pairs for triangle/line/text UV
     uint32_t rotationBorderThickness = 0;   // 4B: rotation(16 bits) | borderThickness(16 bits half)
-    uint32_t primitiveMode = 0;             // 4B: unused(16 bits) | primitiveType(8) | borderMode(8)
-    uint32_t cornerRadii = 0;               // 4B: per-corner radii tl|tr|br|bl (uint8), for lines its thickness(16 half)
+    // a rect's corner radii are four 12 bit values across these two (tl | tr | br, then br | bl), see setCornerRadii();
+    // other primitives keep one half float radius or thickness in the low 16 bits of cornerRadii
+    uint16_t cornerRadiiHigh = 0;           // 2B: last 4 bits of br | bl
+    uint8_t primitiveType = 0;              // 1B: PrimitiveType
+    uint8_t borderMode = 0;                 // 1B: BorderMode
+    uint32_t cornerRadii = 0;               // 4B: tl | tr | first 8 bits of br, or a half float radius / thickness
     uint32_t textureId = UINT32_MAX;        // 4B texture handle
     int32_t zIndex = 0;                     // 4B z-index for sorting
     uint32_t flags = INSTANCE_FLAG_VISIBLE; // 4B: visible(1 bit) | padding(31 bits)
@@ -56,14 +62,37 @@ struct InstanceData {
         cornerRadii = (cornerRadii & 0xFFFF0000u) | packed;
     }
 
-    void setCornerRadii(const uvec4 &radii) { cornerRadii = packU8x4(min(radii, uvec4(255u))); }
+    /**
+     * @brief Rounds a rect's corners. When the two radii on one side add up to more than that side, all four
+     * shrink by the same factor until they fit.
+     *
+     * Each radius is kept as a 12 bit half float without its sign and lowest 3 mantissa bits, so it stays
+     * within 0.8% of what was asked at any size, up to 65504.
+     * @param radii Radii in logical pixels as (top left, top right, bottom right, bottom left)
+     * @param boxSize The size of the rect being rounded
+     */
+    void setCornerRadii(vec4 radii, vec2 boxSize);
 
-    void setPrimitiveType(PrimitiveType type)
-    {
-        primitiveMode = (primitiveMode & 0xFF00FFFFu) | (static_cast<uint32_t>(type) << 16);
-    }
+    /**
+     * @brief The corner radii setCornerRadii() stored, as they come back out of their packing.
+     * @return Radii as (top left, top right, bottom right, bottom left)
+     */
+    vec4 getCornerRadii() const;
 
-    void setBorderMode(BorderMode mode) { primitiveMode = (primitiveMode & 0x00FFFFFFu) | (static_cast<uint32_t>(mode) << 24); }
+    void setPrimitiveType(PrimitiveType type) { primitiveType = static_cast<uint8_t>(type); }
+
+    void setBorderMode(BorderMode mode) { borderMode = static_cast<uint8_t>(mode); }
+
+    /**
+     * @brief Maps this instance from a node's layout space into the window, at window = layout * scale + offset.
+     * Lengths it carries grow with it: size, border, corner radii, shape points, line widths and repeated marks.
+     * An instance moved this way is drawn as is, without being snapped to pixels.
+     * @param scale How many window pixels one layout pixel covers
+     * @param offset Where the layout origin lands in the window
+     * @param scaleThickness Whether border and line thickness grow with the scale; false keeps them as thick in the
+     * window as they were asked to be
+     */
+    void transform(float scale, vec2 offset, bool scaleThickness);
 
     void setUvRect(const vec4 &uvRect)
     {

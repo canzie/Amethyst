@@ -30,6 +30,7 @@ enum class StyleProperty {
     BACKGROUND_SIZE,
     BACKGROUND_STEP,
     BACKGROUND_POSITION,
+    THICKNESS_SCALING,
 
     PADDING_TOP,
     PADDING_RIGHT,
@@ -102,6 +103,7 @@ enum class StyleProperty {
     IMAGE_TRANSPARENCY,
     IMAGE_SCALE_TYPE,
     IMAGE_TILE_SIZE,
+    IMAGE_SAMPLING_MODE,
     PLACEHOLDER_COLOR,
     SELECTION_COLOR,
     CURSOR_COLOR,
@@ -225,7 +227,7 @@ struct FontHandle {
 
 using StyleValue =
     std::variant<Color3, Color4, float, uvec4, vec2, UDim, BorderMode, TextXAlignment, TextYAlignment, TextTruncate, FontHandle,
-                 ImageScaleType, BackgroundRepeat>;
+                 ImageScaleType, BackgroundRepeat, ThicknessScaling, ImageSamplingMode>;
 
 inline constexpr size_t NUM_STYLE_PROPS = static_cast<size_t>(StyleProperty::COUNT);
 

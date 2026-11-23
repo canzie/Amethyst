@@ -1,5 +1,7 @@
 #include "components/ui_image.h"
 
+#include "components/ui_base_2d.h"
+
 #include "logging/log.h"
 #include "modules/svg_atlas.h"
 #include "rendering/draw_context.h"
@@ -63,7 +65,7 @@ bool UIImage::setImage(AmTextureId image)
     return true;
 }
 
-void UIImage::resolveSvg(DrawContext &ctx, vec2 absoluteSize)
+void UIImage::resolveSvg(DrawContext &ctx, vec2 drawnSize)
 {
     if (m_svgData.empty() || ctx.svgAtlas == nullptr) {
         return;
@@ -71,7 +73,7 @@ void UIImage::resolveSvg(DrawContext &ctx, vec2 absoluteSize)
 
     // rasterised at the physical size it covers on screen, not its logical size, so it stays
     // sharp on a scaled display; a new scale asks for a new raster like a resize does
-    vec2 physicalSize = absoluteSize * ctx.logicalToPhysicalScale;
+    vec2 physicalSize = drawnSize * ctx.logicalToPhysicalScale;
 
     // the cast below is undefined for NaN, infinity and negatives, so the range is checked while these are still floats
     bool finite = std::isfinite(physicalSize.x) && std::isfinite(physicalSize.y);
@@ -130,13 +132,16 @@ Color4 UIImage::svgTint(const Color4 &color)
     return flat;
 }
 
-void UIImage::drawImage(DrawContext &ctx, vec2 absoluteSize, InstanceData base)
+void UIImage::drawImage(DrawContext &ctx, const UIBase2D &owner, InstanceData base)
 {
-    resolveSvg(ctx, absoluteSize);
+    resolveSvg(ctx, owner.absoluteSize * owner.absoluteScale);
 
     // the image is content drawn over the background, so it never repeats with it
     base.clearBackgroundRepeat();
     base.textureId = m_image.id;
+    if (m_imgStyle.samplingMode == ImageSamplingMode::PIXELATED) {
+        base.flags |= INSTANCE_FLAG_PIXELATED;
+    }
 
     Color4 tint = m_imgStyle.imageColor;
     tint.a *= 1.0f - m_imgStyle.imageTransparency;
@@ -155,6 +160,7 @@ void UIImage::drawImage(DrawContext &ctx, vec2 absoluteSize, InstanceData base)
         base.setFillColor(tint);
     }
 
+    owner.mapToScreen(base);
     s_pushData(ctx.geometry, m_alloc, base);
 }
 

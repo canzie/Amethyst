@@ -20,9 +20,23 @@ class UIDragDetector : public UIExtension {
     explicit UIDragDetector(UIObject *owner, UIObject *_dragZone) : UIExtension(owner), dragZone(_dragZone) {}
     virtual ~UIDragDetector() = default;
 
-    void handleMouseDown(int32_t x, int32_t y);
-    void handleMouseMove(int32_t x, int32_t y);
-    void handleMouseUp(int32_t x, int32_t y);
+    /**
+     * @brief Starts a drag if the press lands in the drag zone.
+     * @param screenPoint The pointer in window coordinates
+     */
+    void handleMouseDown(vec2 screenPoint);
+
+    /**
+     * @brief Moves the owner after the pointer, by the distance it covers in the owner's parent's layout space.
+     * @param screenPoint The pointer in window coordinates
+     */
+    void handleMouseMove(vec2 screenPoint);
+
+    /**
+     * @brief Ends the drag.
+     * @param screenPoint The pointer in window coordinates
+     */
+    void handleMouseUp(vec2 screenPoint);
 
     bool isDragging() const { return m_isDragging; }
     bool isSoftLockBroken() const { return m_softLockBroken; }
@@ -33,6 +47,7 @@ class UIDragDetector : public UIExtension {
     UIObject *dragZone = nullptr;
     float softLockDistance = 30.0f;
 
+    // positions are in window coordinates; the delta is how far the owner moved in its parent's layout space
     std::function<void(vec2 startPos)> onDragStart;
     std::function<void(vec2 delta, vec2 position)> onDragUpdate;
     std::function<void(vec2 endPos)> onDragEnd;

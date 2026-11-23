@@ -20,6 +20,7 @@
     X(BACKGROUND_SIZE, "background-size", vec2, SIZE2, vec2(0.0f))                                            \
     X(BACKGROUND_STEP, "background-step", vec2, SIZE2, vec2(0.0f))                                            \
     X(BACKGROUND_POSITION, "background-position", vec2, SIZE2, vec2(0.0f))                                    \
+    X(THICKNESS_SCALING, "thickness-scaling", ThicknessScaling, TSCALE, ThicknessScaling::SCALED)             \
     X(PADDING_TOP, "padding-top", UDim, UDIM, UDim{})                                                         \
     X(PADDING_RIGHT, "padding-right", UDim, UDIM, UDim{})                                                     \
     X(PADDING_BOTTOM, "padding-bottom", UDim, UDIM, UDim{})                                                   \
@@ -37,6 +38,7 @@
     X(IMAGE_TRANSPARENCY, "image-transparency", float, RATIO, 0.0f)                                           \
     X(IMAGE_SCALE_TYPE, "image-scale-type", ImageScaleType, ISCALE, ImageScaleType::STRETCH)                  \
     X(IMAGE_TILE_SIZE, "image-tile-size", vec2, SIZE2, vec2(0.0f))                                            \
+    X(IMAGE_SAMPLING_MODE, "image-sampling-mode", ImageSamplingMode, ISAMPLE, ImageSamplingMode::SMOOTH)      \
     X(PLACEHOLDER_COLOR, "placeholder-color", Color4, COLOR4, Color4(0.5f, 0.5f, 0.5f, 1.0f))                 \
     X(SELECTION_COLOR, "selection-color", Color4, COLOR4, Color4(0.2f, 0.4f, 0.8f, 0.4f))                     \
     X(CURSOR_COLOR, "cursor-color", Color4, COLOR4, Color4(1.0f, 1.0f, 1.0f, 1.0f))                           \
@@ -106,7 +108,8 @@
     X(BACKGROUND_REPEAT, backgroundRepeat, BackgroundRepeat)  \
     X(BACKGROUND_SIZE, backgroundSize, vec2)                  \
     X(BACKGROUND_STEP, backgroundStep, vec2)                  \
-    X(BACKGROUND_POSITION, backgroundPosition, vec2)
+    X(BACKGROUND_POSITION, backgroundPosition, vec2)          \
+    X(THICKNESS_SCALING, thicknessScaling, ThicknessScaling)
 
 #define AM_TEXT_STYLE_FIELDS(X)                         \
     X(FONT_SIZE, fontSize, float)                       \
@@ -175,7 +178,8 @@
     X(IMAGE_COLOR, imageColor, Color4)          \
     X(IMAGE_SCALE_TYPE, scaleType, ImageScaleType) \
     X(IMAGE_TILE_SIZE, tileSize, vec2)          \
-    X(IMAGE_TRANSPARENCY, imageTransparency, float)
+    X(IMAGE_TRANSPARENCY, imageTransparency, float)  \
+    X(IMAGE_SAMPLING_MODE, samplingMode, ImageSamplingMode)
 
 #define AM_TEXT_INPUT_STYLE_FIELDS(X)                  \
     X(PLACEHOLDER_COLOR, placeholderColor, Color4)     \

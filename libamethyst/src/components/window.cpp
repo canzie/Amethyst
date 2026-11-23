@@ -47,12 +47,34 @@ void Window::markChildrenDirty()
     m_overlayLayer->markSubtreeDirty();
 }
 
-void Window::setLogicalToPhysicalScale(float scale)
+static bool s_isValidScale(float scale, const char *what)
 {
     if (!std::isfinite(scale) || scale <= 0.0f) {
-        AM_LOG_WARN("ignoring logical to physical scale {}, it must be finite and above 0", scale);
-        return;
+        AM_LOG_WARN("ignoring {} {}, it must be finite and above 0", what, scale);
+        return false;
     }
+    return true;
+}
+
+void Window::setDisplayScale(float scale)
+{
+    if (s_isValidScale(scale, "display scale")) {
+        m_displayScale = scale;
+        applyScale();
+    }
+}
+
+void Window::setUiScale(float scale)
+{
+    if (s_isValidScale(scale, "UI scale")) {
+        m_uiScale = scale;
+        applyScale();
+    }
+}
+
+void Window::applyScale()
+{
+    const float scale = m_displayScale * m_uiScale;
     if (scale == m_logicalToPhysicalScale) {
         return;
     }
@@ -137,6 +159,16 @@ void Window::arrange()
 // nested layers drawn below it. Layers draw by display order; a nested layer tied with its parent counts
 // as below it, as its registry is created later and sorts before the parent's.
 
+// a handler compares the pointer against its own absolutes, so it gets the pointer in its own layout space
+static InputObject s_mapInputToLayout(const UIObject &obj, const InputObject &input)
+{
+    InputObject local = input;
+    const vec2 point = obj.toLayout(vec2(input.position.x, input.position.y));
+    local.position.x = point.x;
+    local.position.y = point.y;
+    return local;
+}
+
 // TRANSPARENT mirrors a propagated click: lower siblings still see the cursor
 enum class HoverHit : uint8_t {
     MISS,        // nothing in the subtree is under the cursor
@@ -193,7 +225,7 @@ static bool s_reachable(Instance *node, UILayer *layer, const vec2 &point)
         if (!ancestor->isHitTestVisible()) {
             return false;
         }
-        if (ancestor->getClipsDescendants() && !ancestor->containsPoint(point)) {
+        if (ancestor->getClipsDescendants() && !ancestor->containsScreenPoint(point)) {
             return false;
         }
     }
@@ -221,7 +253,7 @@ static HoverHit s_fillHoverNode(Instance *inst, const vec2 &point, UIObject **st
         return HoverHit::MISS;
     }
 
-    bool pointInside = inst->containsPoint(point);
+    bool pointInside = inst->containsScreenPoint(point);
     HoverHit childHit = HoverHit::MISS;
     if (pointInside || !inst->getClipsDescendants()) {
         childHit = s_fillHoverChildren(inst, point, stack, count, capacity);
@@ -309,7 +341,7 @@ template <typename Fn> static bool s_dispatchNode(Instance *inst, const vec2 &po
     // as handled: carrying on would walk freed nodes.
     std::weak_ptr<bool> alive = inst->aliveToken();
 
-    bool pointInside = inst->containsPoint(point);
+    bool pointInside = inst->containsScreenPoint(point);
     if (pointInside || !inst->getClipsDescendants()) {
         if (s_dispatchChildren(inst, point, category, fn)) {
             return true;
@@ -417,13 +449,13 @@ void Window::onMouseButton(int button, int action, int mods, int32_t x, int32_t 
         if (m_mouseCapturedBy != nullptr) {
             UIObject *captured = m_mouseCapturedBy;
             press.released = press.object == captured;
-            captured->onInputEnded(input);
+            captured->onInputEnded(s_mapInputToLayout(*captured, input));
         } else {
             auto release = [&](UIObject *obj) -> EventResult {
                 if (obj == press.object) {
                     press.released = true;
                 }
-                return obj->onInputEnded(input);
+                return obj->onInputEnded(s_mapInputToLayout(*obj, input));
             };
             s_dispatchLayer(this, vec2(x, y), INTERACTION_CATEGORY_CLICK, release);
         }
@@ -449,7 +481,7 @@ void Window::onMouseButton(int button, int action, int mods, int32_t x, int32_t 
 
     auto begin = [&](UIObject *obj) -> EventResult {
         std::weak_ptr<bool> alive = obj->aliveToken();
-        EventResult result = obj->onInputBegan(input);
+        EventResult result = obj->onInputBegan(s_mapInputToLayout(*obj, input));
         if (result == EventResult::CONSUMED && Instance::isAlive(alive)) {
             press = PressRecord{obj, alive, false};
         }
@@ -464,8 +496,9 @@ void Window::onMouseMove(int32_t x, int32_t y)
     m_lastMousePosition = vec2(x, y);
     m_hasMousePosition = true;
 
-    if (m_mouseCapturedBy) {
-        m_mouseCapturedBy->onMouseMoved(x, y);
+    const vec2 point(static_cast<float>(x), static_cast<float>(y));
+    if (m_mouseCapturedBy != nullptr) {
+        m_mouseCapturedBy->onMouseMoved(m_mouseCapturedBy->toLayout(point));
         return;
     }
 
@@ -476,7 +509,7 @@ void Window::onMouseMove(int32_t x, int32_t y)
         if (!Instance::isAlive(entry.alive)) {
             continue;
         }
-        if (entry.object->onMouseMoved(x, y) == EventResult::CONSUMED) {
+        if (entry.object->onMouseMoved(entry.object->toLayout(point)) == EventResult::CONSUMED) {
             break;
         }
     }
@@ -612,7 +645,7 @@ void Window::onMouseScroll(float xoffset, float yoffset, int32_t x, int32_t y)
 
         target = target->parent;
         if (auto *parentObj = target ? target->as<UIBase2D>() : nullptr) {
-            if (!parentObj->containsPoint(point)) {
+            if (!parentObj->containsScreenPoint(point)) {
                 target = nullptr;
             }
         }

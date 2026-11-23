@@ -27,14 +27,14 @@ class Popup : public Frame {
     void open(UIObject *anchor);
 
     /**
-     * @brief Show the popup with its top-left at an absolute point, clamped to stay on screen.
-     * @param absolutePoint Top-left position in absolute coordinates
+     * @brief Show the popup with its top-left at a point, clamped to stay on screen.
+     * @param absolutePoint Top-left position in window coordinates
      */
     void openAt(vec2 absolutePoint);
 
     /**
-     * @brief Moves the popup's top-left to an absolute point, clamped to stay on screen, without opening it
-     * @param absolutePoint Top-left position in absolute coordinates
+     * @brief Moves the popup's top-left to a point, clamped to stay on screen, without opening it
+     * @param absolutePoint Top-left position in window coordinates
      */
     void placeAt(vec2 absolutePoint);
 

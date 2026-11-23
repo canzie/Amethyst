@@ -48,6 +48,13 @@ class UIObject : public UIBase2D {
 
     void arrange() override;
     InstanceData createInstanceData() const;
+
+    /**
+     * @brief Maps an instance into the window, keeping its border and line thickness as given when the
+     * thicknessScaling style is FIXED.
+     * @param data The instance to map in place
+     */
+    void mapToScreen(InstanceData &data) const override;
     Window *getWindow();
     const Window *getWindow() const;
 
@@ -352,7 +359,12 @@ class UIObject : public UIBase2D {
     friend class Window;
     virtual EventResult onMouseEnter(void);
     virtual EventResult onMouseLeave(void);
-    virtual EventResult onMouseMoved(int32_t x, int32_t y);
+    /**
+     * @brief The pointer moved over this node, or anywhere while it holds the mouse capture.
+     * @param position The pointer in this node's layout space, the space of absolutePosition; toScreen() gives it
+     * in the window
+     */
+    virtual EventResult onMouseMoved(vec2 position);
     virtual EventResult onMouseScrollUp(void) { return EventResult::PROPAGATE; }
     virtual EventResult onMouseScrollDown(void) { return EventResult::PROPAGATE; }
 

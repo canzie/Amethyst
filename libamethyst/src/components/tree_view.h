@@ -207,9 +207,10 @@ class TreeView : public UIObject {
     int32_t selectedRow = NO_ROW_SELECTION;
 
     std::function<void(uint32_t)> onRowClicked;
+    /// Called with the row and the cursor in window coordinates, where a context menu would open
     std::function<void(uint32_t, vec2)> onRowRightClicked;
     std::function<void(uint32_t, bool)> onRowToggled;
-    /// Called with the cursor position when the body is right clicked where there is no row
+    /// Called with the cursor in window coordinates when the body is right clicked where there is no row
     std::function<void(vec2)> onEmptySpaceRightClicked;
 
   protected:

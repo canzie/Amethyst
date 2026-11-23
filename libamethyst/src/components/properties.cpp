@@ -24,6 +24,7 @@ bool BaseProperties::apply(const BasePropertiesArgs &src)
     AM_APPLY_ARGS(position)
     AM_APPLY_ARGS(size)
     AM_APPLY_ARGS(rotation)
+    AM_APPLY_ARGS(scale)
     AM_APPLY_ARGS(visible)
     AM_APPLY_ARGS(zIndex)
     AM_APPLY_ARGS(zindexBehavior)
@@ -44,6 +45,7 @@ BaseProperties::operator BasePropertiesArgs() const
     out.position = position;
     out.size = size;
     out.rotation = rotation;
+    out.scale = scale;
     out.visible = visible;
     out.zIndex = zIndex;
     out.zindexBehavior = zindexBehavior;
@@ -201,6 +203,7 @@ bool BaseStyleProperties::apply(const BaseStyleProperties &src)
     AM_APPLY_PLAIN(backgroundSize)
     AM_APPLY_PLAIN(backgroundStep)
     AM_APPLY_PLAIN(backgroundPosition)
+    AM_APPLY_PLAIN(thicknessScaling)
     return changed;
 }
 
@@ -218,6 +221,7 @@ bool BaseStyleProperties::apply(const BaseStylePropertiesArgs &src)
     AM_APPLY_ARGS(backgroundSize)
     AM_APPLY_ARGS(backgroundStep)
     AM_APPLY_ARGS(backgroundPosition)
+    AM_APPLY_ARGS(thicknessScaling)
     return changed;
 }
 
@@ -235,6 +239,7 @@ BaseStyleProperties::operator BaseStylePropertiesArgs() const
     AM_TO_ARGS(backgroundSize)
     AM_TO_ARGS(backgroundStep)
     AM_TO_ARGS(backgroundPosition)
+    AM_TO_ARGS(thicknessScaling)
     return out;
 }
 
@@ -296,6 +301,7 @@ bool ImageStyleProperties::apply(const ImageStyleProperties &src)
     AM_APPLY_PLAIN(scaleType)
     AM_APPLY_PLAIN(tileSize)
     AM_APPLY_PLAIN(imageTransparency)
+    AM_APPLY_PLAIN(samplingMode)
     return changed;
 }
 
@@ -306,6 +312,7 @@ bool ImageStyleProperties::apply(const ImageStylePropertiesArgs &src)
     AM_APPLY_ARGS(scaleType)
     AM_APPLY_ARGS(tileSize)
     AM_APPLY_ARGS(imageTransparency)
+    AM_APPLY_ARGS(samplingMode)
     return changed;
 }
 
@@ -316,6 +323,7 @@ ImageStyleProperties::operator ImageStylePropertiesArgs() const
     AM_TO_ARGS(scaleType)
     AM_TO_ARGS(tileSize)
     AM_TO_ARGS(imageTransparency)
+    AM_TO_ARGS(samplingMode)
     return out;
 }
 

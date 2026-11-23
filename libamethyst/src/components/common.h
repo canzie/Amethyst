@@ -271,6 +271,22 @@ enum class ItemLineAlignment {
     STRETCH
 };
 
+/**
+ * @brief How an image's pixels are sampled when it is drawn at a different size than its pixels.
+ */
+enum class ImageSamplingMode {
+    SMOOTH,    // blended between neighbouring pixels, enlarged or shrunk
+    PIXELATED, // each pixel a hard edged square when enlarged, blended when shrunk
+};
+
+/**
+ * @brief Whether a node's border and line thickness follow the scale it is drawn at. Its size and position always do.
+ */
+enum class ThicknessScaling {
+    SCALED, // border and line thickness grow and shrink with the scale
+    FIXED,  // border and line thickness stay as given, in window pixels, at any scale
+};
+
 enum class BackgroundRepeat {
     NONE,
     REPEAT,

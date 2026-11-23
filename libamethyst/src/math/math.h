@@ -545,6 +545,8 @@ template <typename T> constexpr T pi()
 mat4 inverse(const mat4 &m);
 uint16_t packHalf1x16(float v);
 uint32_t packHalf2x16(vec2 v);
+float unpackHalf1x16(uint16_t h);
+vec2 unpackHalf2x16(uint32_t v);
 
 } // namespace Amethyst
 

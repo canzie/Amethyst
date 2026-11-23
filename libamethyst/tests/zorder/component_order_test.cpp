@@ -24,7 +24,7 @@ namespace {
 
 uint32_t s_primitive(const InstanceData &data)
 {
-    return (data.primitiveMode >> 16) & 0xFFu;
+    return data.primitiveType;
 }
 
 struct ComponentOrderFixture : ::testing::Test {

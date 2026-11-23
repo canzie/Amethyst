@@ -33,10 +33,10 @@ TEST(LogicalToPhysicalScale, WindowIsLaidOutInLogicalPixels)
     win->setFramebufferSize(vec2(1000.0f, 800.0f));
     EXPECT_EQ(win->absoluteSize, vec2(1000.0f, 800.0f));
 
-    win->setLogicalToPhysicalScale(2.0f);
+    win->setDisplayScale(2.0f);
     EXPECT_EQ(win->absoluteSize, vec2(500.0f, 400.0f));
 
-    win->setLogicalToPhysicalScale(1.25f);
+    win->setDisplayScale(1.25f);
     EXPECT_EQ(win->absoluteSize, vec2(800.0f, 640.0f));
 
     // a framebuffer resize follows the scale already set
@@ -48,11 +48,11 @@ TEST(LogicalToPhysicalScale, WindowIsLaidOutInLogicalPixels)
 TEST(LogicalToPhysicalScale, InvalidScalesAreIgnored)
 {
     TestWindow win;
-    win->setLogicalToPhysicalScale(1.5f);
-    win->setLogicalToPhysicalScale(0.0f);
-    win->setLogicalToPhysicalScale(-2.0f);
-    win->setLogicalToPhysicalScale(std::numeric_limits<float>::quiet_NaN());
-    win->setLogicalToPhysicalScale(std::numeric_limits<float>::infinity());
+    win->setDisplayScale(1.5f);
+    win->setDisplayScale(0.0f);
+    win->setDisplayScale(-2.0f);
+    win->setDisplayScale(std::numeric_limits<float>::quiet_NaN());
+    win->setDisplayScale(std::numeric_limits<float>::infinity());
     EXPECT_FLOAT_EQ(win->getLogicalToPhysicalScale(), 1.5f);
 }
 
@@ -62,7 +62,7 @@ TEST(LogicalToPhysicalScale, ReachesEveryNodeThroughTheDrawContext)
     TestWindow win;
     auto *probe = win->add<ScaleProbe>();
     auto *overlayProbe = win->getOverlayLayer()->add<ScaleProbe>();
-    win->setLogicalToPhysicalScale(1.5f);
+    win->setDisplayScale(1.5f);
 
     win->draw(env.ctx);
     EXPECT_FLOAT_EQ(probe->seen, 1.5f);
@@ -71,11 +71,11 @@ TEST(LogicalToPhysicalScale, ReachesEveryNodeThroughTheDrawContext)
 
 TEST(LogicalToPhysicalScale, SnapLandsOnWholePhysicalPixels)
 {
-    vec2 snapped = snapToPhysicalPixel(vec2(10.0f, 10.5f), 1.5f);
+    vec2 snapped = TextProcessor::snapToPhysicalPixel(vec2(10.0f, 10.5f), 1.5f);
     EXPECT_FLOAT_EQ(snapped.x * 1.5f, 15.0f);
     EXPECT_FLOAT_EQ(snapped.y * 1.5f, 16.0f);
 
-    EXPECT_EQ(snapToPhysicalPixel(vec2(3.0f, 4.0f), 1.0f), vec2(3.0f, 4.0f));
+    EXPECT_EQ(TextProcessor::snapToPhysicalPixel(vec2(3.0f, 4.0f), 1.0f), vec2(3.0f, 4.0f));
 }
 
 TEST(LogicalToPhysicalScale, MeasuredTextKeepsItsLogicalSize)
@@ -199,4 +199,20 @@ TEST(LogicalToPhysicalScale, TinyFontSizesStillRasteriseAtOnePixel)
     params.logicalToPhysicalScale = 0.5f;
     EXPECT_GE(env.processor.measureTextAtlas("a", params).y, 0.0f);
     EXPECT_GT(env.processor.getMetricsAtlas(env.roboto, 0.1f).lineHeight, 0.0f);
+}
+
+TEST(LogicalToPhysicalScale, UiScaleMultipliesTheDisplayScale)
+{
+    TestWindow win;
+    win->setFramebufferSize(vec2(1200.0f, 800.0f));
+    win->setDisplayScale(1.5f);
+    win->setUiScale(2.0f);
+    EXPECT_FLOAT_EQ(win->getLogicalToPhysicalScale(), 3.0f);
+    EXPECT_EQ(win->absoluteSize, vec2(400.0f, 800.0f / 3.0f));
+
+    // moving to another monitor keeps the user's UI scale
+    win->setDisplayScale(1.0f);
+    EXPECT_FLOAT_EQ(win->getUiScale(), 2.0f);
+    EXPECT_FLOAT_EQ(win->getLogicalToPhysicalScale(), 2.0f);
+    EXPECT_EQ(win->absoluteSize, vec2(600.0f, 400.0f));
 }

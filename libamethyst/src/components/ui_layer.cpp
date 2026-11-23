@@ -24,6 +24,8 @@ UILayer::~UILayer()
 
 void UILayer::arrange()
 {
+    // a layer has no scale of its own, but whatever it is nested in can be scaled
+    inheritTransform();
     if (!(flags & (FLAG_DIRTY | FLAG_CHILD_DIRTY))) {
         return;
     }

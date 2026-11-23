@@ -134,17 +134,19 @@ ColorPicker::ColorPicker()
 
     auto *drag = m_field->addExtension<UIDragDetector>();
     drag->mode = DragMode::FREE;
-    auto applyFromAbs = [this](vec2 abs) {
+    // the drag detector reports the cursor in window coordinates
+    auto applyFromScreen = [this](vec2 screenPoint) {
         vec2 size = m_field->absoluteSize;
         if (size.x <= 0.0f || size.y <= 0.0f) {
             return;
         }
-        m_saturation = std::clamp((abs.x - m_field->absolutePosition.x) / size.x, 0.0f, 1.0f);
-        m_value = 1.0f - std::clamp((abs.y - m_field->absolutePosition.y) / size.y, 0.0f, 1.0f);
+        const vec2 point = m_field->toLayout(screenPoint);
+        m_saturation = std::clamp((point.x - m_field->absolutePosition.x) / size.x, 0.0f, 1.0f);
+        m_value = 1.0f - std::clamp((point.y - m_field->absolutePosition.y) / size.y, 0.0f, 1.0f);
         onChannelsChanged();
     };
-    drag->onDragStart = [applyFromAbs](vec2 start) { applyFromAbs(start); };
-    drag->onDragUpdate = [applyFromAbs](vec2, vec2 position) { applyFromAbs(position); };
+    drag->onDragStart = [applyFromScreen](vec2 start) { applyFromScreen(start); };
+    drag->onDragUpdate = [applyFromScreen](vec2, vec2 position) { applyFromScreen(position); };
 }
 
 void ColorPicker::syncFromValue()

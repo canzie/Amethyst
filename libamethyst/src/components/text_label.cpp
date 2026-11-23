@@ -171,11 +171,14 @@ void TextLabel::updateTextGeometry(DrawContext &ctx)
     next.truncate = m_textStyle.textTruncate;
     next.wrap = static_cast<bool>(m_textStyle.textWrapped);
     next.logicalToPhysicalScale = ctx.logicalToPhysicalScale;
+    next.renderScale = absoluteScale;
     // on the physical pixel grid, so a move by the difference of two origins keeps it there
-    next.origin = snapToPhysicalPixel(absoluteContentPosition, ctx.logicalToPhysicalScale);
+    next.origin = TextProcessor::snapToPhysicalPixel(absoluteContentPosition, ctx.logicalToPhysicalScale);
 
     bool registryChanged = m_textAlloc != nullptr && m_textAlloc->registry != ctx.geometry;
-    if (m_textLayout.matches(next) && !registryChanged) {
+    // drawn scaled, the quad is placed on the window's pixel grid as a whole, which moving it by a layout delta
+    // would undo
+    if (m_textLayout.matches(next) && !registryChanged && !isScaled()) {
         repositionGlyphs(ctx, next.origin - m_textLayout.origin, glyphZIndex, glyphVisible);
     } else {
         reshapeGlyphs(ctx, effectiveFontSize, glyphZIndex, glyphVisible);
@@ -204,9 +207,10 @@ void TextLabel::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t
     AM_PROFILE_FUNCTION();
 
     TextLayoutParams params;
-    params.position = snapToPhysicalPixel(absoluteContentPosition, ctx.logicalToPhysicalScale);
+    params.position = TextProcessor::snapToPhysicalPixel(absoluteContentPosition, ctx.logicalToPhysicalScale);
     params.bounds = absoluteContentSize;
     params.logicalToPhysicalScale = ctx.logicalToPhysicalScale;
+    params.renderScale = absoluteScale;
     params.font = m_font;
     params.fontSize = effectiveFontSize;
     params.color = m_textStyle.textColor;
@@ -253,6 +257,8 @@ void TextLabel::reshapeGlyphs(DrawContext &ctx, float effectiveFontSize, int32_t
     inst.clipRect = clipRect;
     inst.setVisible(visible);
 
+    mapToScreen(inst);
+    TextProcessor::snapQuadToPhysicalPixel(inst, ctx.logicalToPhysicalScale);
     s_pushData(ctx.geometry, m_textAlloc, inst);
 }
 

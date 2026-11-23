@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 
 namespace Amethyst {
 
@@ -49,19 +50,39 @@ class Window : public UILayer {
     void markChildrenDirty() override;
 
     /**
-     * @brief Set how many physical (framebuffer) pixels make up one logical pixel.
+     * @brief Set the display scaling of the monitor the window is on.
      *
      * The tree, the theme and every size a developer sets are in logical pixels. The renderer
-     * multiplies by this scale on the way to the framebuffer, and text and SVGs rasterise at
-     * their physical size. A backend sets it from the monitor's content scale (the display
-     * scaling the user picked), and again when the window moves to another monitor. A change
-     * resizes the window from its framebuffer size and redraws the tree.
-     * @param scale Physical pixels per logical pixel; zero, negative and non-finite values are ignored
+     * multiplies by the display scale times the UI scale on the way to the framebuffer, and text
+     * and SVGs rasterise at their physical size. A backend sets this from the monitor's content
+     * scale (the display scaling the user picked), and again when the window moves to another
+     * monitor. A change resizes the window from its framebuffer size and redraws the tree.
+     * @param scale Physical pixels per logical pixel the monitor asks for; zero, negative and non-finite values are ignored
      */
-    void setLogicalToPhysicalScale(float scale);
+    void setDisplayScale(float scale);
 
     /**
-     * @brief Physical (framebuffer) pixels per logical pixel; 1 until a backend sets it.
+     * @brief Set how large the whole UI is drawn on top of the display scale.
+     *
+     * Unlike a node's scale this is seen by layout: the window has less logical room at 2 than at 1,
+     * and everything is laid out again to fit it. It is the app's to set, from a user preference,
+     * and a monitor change leaves it as it is.
+     * @param scale The UI size, 1 for the size the theme was made at; zero, negative and non-finite values are ignored
+     */
+    void setUiScale(float scale);
+
+    /**
+     * @brief Where the mouse was last seen over this window, for handlers that are not handed a position, such as
+     * the wheel's.
+     * @return The position in window coordinates, empty before the mouse first moved over the window
+     */
+    std::optional<vec2> getMousePosition() const { return m_hasMousePosition ? std::optional<vec2>(m_lastMousePosition) : std::nullopt; }
+
+    float getDisplayScale() const { return m_displayScale; }
+    float getUiScale() const { return m_uiScale; }
+
+    /**
+     * @brief Physical (framebuffer) pixels per logical pixel: the display scale times the UI scale.
      */
     float getLogicalToPhysicalScale() const { return m_logicalToPhysicalScale; }
 
@@ -153,6 +174,13 @@ class Window : public UILayer {
     };
     std::array<PressRecord, 3> m_pressTargets;
 
+    /**
+     * @brief Takes up a new display or UI scale: resizes the window and redraws the tree when their product moved.
+     */
+    void applyScale();
+
+    float m_displayScale = 1.0f;
+    float m_uiScale = 1.0f;
     float m_logicalToPhysicalScale = 1.0f;
     vec2 m_framebufferSize = vec2(0.0f);
     vec2 m_lastMousePosition = vec2(0.0f);

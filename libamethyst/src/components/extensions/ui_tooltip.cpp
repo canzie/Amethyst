@@ -25,15 +25,15 @@ void UITooltip::handleMouseEnter()
     }
 
     m_scheduledOn = window;
-    window->getTooltips().schedule(m_owner, m_owner->absolutePosition, delaySeconds, build);
+    window->getTooltips().schedule(m_owner, m_owner->toScreen(m_owner->absolutePosition), delaySeconds, build);
 }
 
-void UITooltip::handleMouseMove(int32_t x, int32_t y)
+void UITooltip::handleMouseMove(vec2 screenPoint)
 {
     if (m_scheduledOn == nullptr) {
         return;
     }
-    m_scheduledOn->getTooltips().moveTo(m_owner, vec2(static_cast<float>(x), static_cast<float>(y)));
+    m_scheduledOn->getTooltips().moveTo(m_owner, screenPoint);
 }
 
 void UITooltip::handleMouseLeave()

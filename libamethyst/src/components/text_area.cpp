@@ -731,6 +731,7 @@ bool TextArea::layoutVisibleRows()
     next.tabSize = m_taProps.tabSize;
     next.color = packColor(m_taProps.text.textColor);
     next.logicalToPhysicalScale = m_logicalToPhysicalScale;
+    next.renderScale = absoluteScale;
 
     if (next == m_rowShape) {
         return false;
@@ -743,6 +744,7 @@ bool TextArea::layoutVisibleRows()
     params.fontSize = m_taProps.text.fontSize;
     params.tabSize = m_taProps.tabSize;
     params.logicalToPhysicalScale = m_logicalToPhysicalScale;
+    params.renderScale = absoluteScale;
 
     // resize() rather than clear() + resize(): a row keeps the buffers it shaped into last
     // frame, so a steady viewport reshapes without touching the allocator.
@@ -757,8 +759,10 @@ bool TextArea::layoutVisibleRows()
 
 vec4 TextArea::contentClipRect() const
 {
-    vec4 box = {absoluteContentPosition.x, absoluteContentPosition.y, absoluteContentPosition.x + absoluteContentSize.x,
-                absoluteContentPosition.y + absoluteContentSize.y};
+    // a clip rect is in window coordinates
+    const vec2 boxMin = toScreen(absoluteContentPosition);
+    const vec2 boxMax = toScreen(absoluteContentPosition + absoluteContentSize);
+    vec4 box = {boxMin.x, boxMin.y, boxMax.x, boxMax.y};
 
     if (clipRect != vec4(0.0f)) {
         box.x = std::max(box.x, clipRect.x);
@@ -788,8 +792,8 @@ bool TextArea::buildRowQuads(DrawContext &ctx)
     m_quads.clear();
     m_quadLines.clear();
 
-    // the glyph buffer is in physical pixels, the space the row glyphs already come in
-    float lineHeight = lineHeightPx() * m_logicalToPhysicalScale;
+    // the glyph buffer is in the physical pixels the rows are drawn at, the space the row glyphs already come in
+    float lineHeight = lineHeightPx() * m_logicalToPhysicalScale * m_rowShape.renderScale;
     uint32_t color = packColor(m_taProps.text.textColor);
     float maxWidth = 0.0f;
 
@@ -861,7 +865,7 @@ void TextArea::drawRows(DrawContext &ctx, bool reshaped)
 
     // The quad starts at the unscrolled text origin so no glyph needs a negative offset, and
     // the clip rect takes back everything left of the content box.
-    vec2 pos = snapToPhysicalPixel({absoluteContentPosition.x - m_scrollX, absoluteContentPosition.y}, m_logicalToPhysicalScale);
+    vec2 pos = TextProcessor::snapToPhysicalPixel({absoluteContentPosition.x - m_scrollX, absoluteContentPosition.y}, m_logicalToPhysicalScale);
     vec2 size = {std::max(m_rowsWidth, 1.0f), static_cast<float>(m_rows.size()) * lineHeightPx()};
 
     InstanceData inst{};
@@ -874,6 +878,8 @@ void TextArea::drawRows(DrawContext &ctx, bool reshaped)
     inst.clipRect = contentClipRect();
     inst.setVisible(isVisible());
 
+    mapToScreen(inst);
+    TextProcessor::snapQuadToPhysicalPixel(inst, m_logicalToPhysicalScale);
     s_pushData(ctx.geometry, m_textAlloc, inst);
 }
 
@@ -904,6 +910,7 @@ void TextArea::drawSelection(DrawContext &ctx)
         data.zIndex = drawZ(SELECTION_DRAW_LAYER);
         data.clipRect = clip;
         data.setVisible(isVisible());
+        mapToScreen(data);
 
         if (used < m_selectionAllocs.size()) {
             ctx.geometry->update(*m_selectionAllocs[used], data);
@@ -985,6 +992,7 @@ void TextArea::drawCursor(DrawContext &ctx)
     data.clipRect = contentClipRect();
     data.setVisible(visible && isVisible());
 
+    mapToScreen(data);
     s_pushData(ctx.geometry, m_cursorAlloc, data);
 }
 

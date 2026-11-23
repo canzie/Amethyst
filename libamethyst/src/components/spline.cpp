@@ -390,6 +390,9 @@ void Spline::draw(DrawContext &ctx)
 
         std::vector<InstanceData> instances;
         buildInstances(instances);
+        for (InstanceData &instance : instances) {
+            mapToScreen(instance);
+        }
 
         while (m_allocations.size() > instances.size()) {
             ctx.geometry->release(*m_allocations.back());

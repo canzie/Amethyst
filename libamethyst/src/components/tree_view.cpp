@@ -72,7 +72,7 @@ EventResult TreeView::onInputBegan(const InputObject &input)
     // a row takes its own clicks, so one reaching the tree landed on empty space
     if (input.type == InputType::MOUSE_BUTTON_2 && inBody) {
         if (std::function<void(vec2)> rightClicked = onEmptySpaceRightClicked; rightClicked != nullptr) {
-            rightClicked(vec2(input.position.x, input.position.y));
+            rightClicked(toScreen(vec2(input.position.x, input.position.y)));
             return EventResult::CONSUMED;
         }
     }
@@ -482,7 +482,7 @@ void TreeView::ensurePoolCapacity(uint32_t count)
                 selectedRow = static_cast<int32_t>(logicalRow);
                 markDirty();
                 if (std::function<void(uint32_t, vec2)> rightClicked = onRowRightClicked; rightClicked != nullptr) {
-                    rightClicked(logicalRow, vec2(io.position.x, io.position.y));
+                    rightClicked(logicalRow, toScreen(vec2(io.position.x, io.position.y)));
                 }
             }
         }));

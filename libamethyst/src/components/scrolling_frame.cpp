@@ -95,19 +95,25 @@ void ScrollingFrame::layoutChildren(vec2 &absCanvasSize, vec2 viewport)
         obj->computeAbsolutes(absCanvasSize, origin, absoluteRotation);
         obj->arrange();
 
+        // a scaled child takes up the room it is drawn at, so its scale reaches the scroll range;
+        // its own scale is the only one between its rect and this frame's layout space
+        const vec4 drawn = obj->screenRect();
+        const vec2 childMin = toLayout(vec2(drawn.x, drawn.y));
+        const vec2 childSize = toLayout(vec2(drawn.z, drawn.w)) - childMin;
+
         if (autoCanvas) {
-            vec2 childCanvasOffset = obj->absolutePosition - origin;
+            vec2 childCanvasOffset = childMin - origin;
             if (acs == AutomaticSize::X || acs == AutomaticSize::XY) {
-                absCanvasSize.x = std::max(absCanvasSize.x, childCanvasOffset.x + obj->absoluteSize.x);
+                absCanvasSize.x = std::max(absCanvasSize.x, childCanvasOffset.x + childSize.x);
             }
             if (acs == AutomaticSize::Y || acs == AutomaticSize::XY) {
-                absCanvasSize.y = std::max(absCanvasSize.y, childCanvasOffset.y + obj->absoluteSize.y);
+                absCanvasSize.y = std::max(absCanvasSize.y, childCanvasOffset.y + childSize.y);
             }
         }
 
-        vec2 childEffectivePos = obj->absolutePosition - absoluteContentPosition;
-        bool inViewport = (childEffectivePos.x + obj->absoluteSize.x > 0.0f) && (childEffectivePos.x < viewport.x) &&
-                          (childEffectivePos.y + obj->absoluteSize.y > 0.0f) && (childEffectivePos.y < viewport.y);
+        vec2 childEffectivePos = childMin - absoluteContentPosition;
+        bool inViewport = (childEffectivePos.x + childSize.x > 0.0f) && (childEffectivePos.x < viewport.x) &&
+                          (childEffectivePos.y + childSize.y > 0.0f) && (childEffectivePos.y < viewport.y);
         obj->setRenderCulled(!inViewport);
     }
 }

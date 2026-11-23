@@ -94,7 +94,15 @@ class Instance {
      * @brief The order this node takes among its siblings when drawing and hit-testing.
      */
     virtual int32_t getZIndex() const { return 0; }
+    /**
+     * @brief Whether a point in this node's layout space falls inside it.
+     */
     virtual bool containsPoint(const vec2 &) const { return false; }
+
+    /**
+     * @brief Whether a point in window coordinates falls inside this node as it is drawn, scale included.
+     */
+    virtual bool containsScreenPoint(const vec2 &point) const { return containsPoint(point); }
     virtual bool isHitTestVisible() const { return false; }
     virtual bool getClipsDescendants() const { return false; }
 

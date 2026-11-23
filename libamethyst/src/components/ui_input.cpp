@@ -32,7 +32,7 @@ void UIInput::focus()
     if (overlay != nullptr && !m_pressConn.connected()) {
         m_pressConn = overlay->onPressVote.connect([this](vec2 pos, PressVote &vote) {
             (void)vote;
-            if (m_focused && !containsPoint(pos)) {
+            if (m_focused && !containsScreenPoint(pos)) {
                 loseFocus();
             }
         });
@@ -117,10 +117,10 @@ EventResult UIInput::onInputEnded(const InputObject &input)
     return EventResult::CONSUMED;
 }
 
-EventResult UIInput::onMouseMoved(int32_t x, int32_t y)
+EventResult UIInput::onMouseMoved(vec2 position)
 {
     if (m_draggingSelection) {
-        moveCursorToPoint(vec2{static_cast<float>(x), static_cast<float>(y)}, true);
+        moveCursorToPoint(position, true);
     }
     return EventResult::CONSUMED;
 }

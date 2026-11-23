@@ -6,7 +6,18 @@
 
 namespace Amethyst {
 
-void UIDragDetector::handleMouseDown(int32_t x, int32_t y)
+// the owner's position offset lives in its parent's layout space, which is scaled by every ancestor but not by the owner
+static vec2 s_toParentLayout(const UIObject &owner, vec2 screenPoint)
+{
+    const Instance *above = owner.parent;
+    if (above != nullptr && (above->kind & (KIND_UI_OBJECT | KIND_UI_LAYER)) != 0) {
+        const auto *parentBase = reinterpret_cast<const UIBase2D *>(above);
+        return parentBase->toLayout(screenPoint) - parentBase->absolutePosition;
+    }
+    return screenPoint;
+}
+
+void UIDragDetector::handleMouseDown(vec2 screenPoint)
 {
     if (!enabled) {
         return;
@@ -14,7 +25,7 @@ void UIDragDetector::handleMouseDown(int32_t x, int32_t y)
 
     // a press that reaches the owner outside the zone it is dragged by is not a drag
     if (dragZone != nullptr && dragZone != m_owner) {
-        const vec2 point(static_cast<float>(x), static_cast<float>(y));
+        const vec2 point = dragZone->toLayout(screenPoint);
         const vec2 zoneMin = dragZone->absolutePosition;
         const vec2 zoneMax = zoneMin + dragZone->absoluteSize;
         if (point.x < zoneMin.x || point.y < zoneMin.y || point.x >= zoneMax.x || point.y >= zoneMax.y) {
@@ -25,19 +36,11 @@ void UIDragDetector::handleMouseDown(int32_t x, int32_t y)
     m_isDragging = true;
     m_softLockBroken = false;
 
-    vec2 mousePosParentRelative(x, y);
-    if (m_owner->parent) {
-        auto *parentBase = m_owner->parent->as<UIBase2D>();
-        if (parentBase) {
-            mousePosParentRelative -= parentBase->absolutePosition;
-        }
-    }
-
-    m_dragStartMouse = mousePosParentRelative;
+    m_dragStartMouse = s_toParentLayout(*m_owner, screenPoint);
     m_dragStartOffset = m_owner->getBaseProperties().position.offset;
 
     if (onDragStart) {
-        onDragStart(vec2(x, y));
+        onDragStart(screenPoint);
     }
 
     if (auto *window = m_owner->getWindow()) {
@@ -45,21 +48,13 @@ void UIDragDetector::handleMouseDown(int32_t x, int32_t y)
     }
 }
 
-void UIDragDetector::handleMouseMove(int32_t x, int32_t y)
+void UIDragDetector::handleMouseMove(vec2 screenPoint)
 {
     if (!m_isDragging) {
         return;
     }
 
-    vec2 mousePosParentRelative(x, y);
-    if (m_owner->parent) {
-        auto *parentBase = m_owner->parent->as<UIBase2D>();
-        if (parentBase) {
-            mousePosParentRelative -= parentBase->absolutePosition;
-        }
-    }
-
-    vec2 delta = mousePosParentRelative - m_dragStartMouse;
+    vec2 delta = s_toParentLayout(*m_owner, screenPoint) - m_dragStartMouse;
 
     switch (mode) {
     case DragMode::NONE:
@@ -97,11 +92,11 @@ void UIDragDetector::handleMouseMove(int32_t x, int32_t y)
     m_owner->setBaseProperties({.position = pos});
 
     if (onDragUpdate) {
-        onDragUpdate(delta, vec2(x, y));
+        onDragUpdate(delta, screenPoint);
     }
 }
 
-void UIDragDetector::handleMouseUp(int32_t x, int32_t y)
+void UIDragDetector::handleMouseUp(vec2 screenPoint)
 {
     if (!m_isDragging) {
         return;
@@ -118,7 +113,7 @@ void UIDragDetector::handleMouseUp(int32_t x, int32_t y)
     }
 
     if (onDragEnd) {
-        onDragEnd(vec2(x, y));
+        onDragEnd(screenPoint);
         // onDragEnd may have destroyed *this; no member access after this point.
     }
 }

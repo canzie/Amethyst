@@ -76,7 +76,42 @@ static TextLayoutParams s_toPhysical(const TextLayoutParams &params)
 struct ShapedGlyph {
     const GlyphInfo *info;
     float localX;
+    uint32_t codepoint;
 };
+
+// A render scale that would divide by zero or poison every position falls back to 1.
+static float s_validRenderScale(float renderScale)
+{
+    if (!std::isfinite(renderScale) || renderScale <= 0.0f) {
+        AM_LOG_WARN("text drawn at render scale {}, using 1", renderScale);
+        return 1.0f;
+    }
+    return renderScale;
+}
+
+// The glyphs of a laid-out size, drawn that many times larger: rasterised at the whole pixel size nearest to
+// what they cover on screen, so they are as sharp as an unscaled label while sitting where the layout put them.
+struct RenderSize {
+    float scale = 1.0f;
+    uint32_t pixelSize = 0;
+};
+
+static RenderSize s_renderSize(uint32_t layoutPixelSize, float renderScale)
+{
+    RenderSize out;
+    out.scale = renderScale;
+    out.pixelSize = renderScale == 1.0f ? layoutPixelSize : s_pixelSize(static_cast<float>(layoutPixelSize) * renderScale);
+    return out;
+}
+
+static const GlyphInfo *s_renderGlyph(GlyphAtlas &atlas, FontId font, const ShapedGlyph &shaped, uint32_t layoutPixelSize,
+                                      const RenderSize &render)
+{
+    if (render.pixelSize == layoutPixelSize) {
+        return shaped.info;
+    }
+    return atlas.getGlyph(font, shaped.codepoint, render.pixelSize);
+}
 
 // Shared so measurement and layout can never disagree on where tab stops land.
 static float s_tabWidth(GlyphAtlas &atlas, FontId font, uint32_t pixelSize, float fontSize, float tabSize)
@@ -126,9 +161,10 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
             currentLineWidth = currentLine.back().localX;
             currentLine.pop_back();
         }
+        const uint32_t ellipsisCodepoint = repeats == 1 ? CP_ELLIPSIS : CP_FULL_STOP;
         for (uint32_t i = 0; i < repeats; i++) {
             if (ellipsis->width > 0 && ellipsis->height > 0) {
-                currentLine.push_back({.info = ellipsis, .localX = currentLineWidth});
+                currentLine.push_back({.info = ellipsis, .localX = currentLineWidth, .codepoint = ellipsisCodepoint});
             }
             currentLineWidth += ellipsisAdvance;
         }
@@ -240,6 +276,7 @@ static void s_shapeText(const std::string &text, const TextLayoutParams &params,
             ShapedGlyph gi;
             gi.info = glyphInfo;
             gi.localX = currentLineWidth;
+            gi.codepoint = codepoint;
             currentLine.push_back(gi);
         }
 
@@ -283,6 +320,7 @@ void TextProcessor::layoutTextRow(std::string_view text, const TextRowLayoutPara
     FontMetrics metrics = m_glyphAtlas->getMetrics(params.font, pixelSize);
 
     float tabWidth = s_tabWidth(*m_glyphAtlas, params.font, pixelSize, fontSize, params.tabSize);
+    const RenderSize render = s_renderSize(pixelSize, s_validRenderScale(params.renderScale));
 
     float penX = 0.0f;
     size_t i = 0;
@@ -305,11 +343,15 @@ void TextProcessor::layoutTextRow(std::string_view text, const TextRowLayoutPara
         }
 
         if (info->width > 0 && info->height > 0) {
-            TextRowGlyph glyph;
-            glyph.info = info;
-            glyph.x = penX + info->bearingX;
-            glyph.y = metrics.ascender - info->bearingY;
-            out.glyphs.push_back(glyph);
+            const ShapedGlyph shaped{.info = info, .localX = penX, .codepoint = decoded.codepoint};
+            if (const GlyphInfo *drawn = s_renderGlyph(*m_glyphAtlas, params.font, shaped, pixelSize, render);
+                drawn != nullptr && drawn->width > 0 && drawn->height > 0) {
+                TextRowGlyph glyph;
+                glyph.info = drawn;
+                glyph.x = penX * render.scale + drawn->bearingX;
+                glyph.y = metrics.ascender * render.scale - drawn->bearingY;
+                out.glyphs.push_back(glyph);
+            }
         }
 
         penX += info->advance + letterSpacing;
@@ -462,6 +504,10 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
     }
 
     uint32_t packedColor = packColor(params.color);
+    const uint32_t layoutPixelSize = s_pixelSize(params.fontSize);
+    const RenderSize render = s_renderSize(layoutPixelSize, s_validRenderScale(logicalParams.renderScale));
+    // each glyph becomes an instance of its own, which the node maps into the window, render.scale times larger
+    const float toLayout = scale * render.scale;
 
     for (size_t lineIdx = 0; lineIdx < lines.size(); lineIdx++) {
         float lineWidth = lineWidths[lineIdx];
@@ -476,10 +522,13 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
         float baseline = startY + lineIdx * lineHeightPx + metrics.ascender;
 
         for (const auto &gi : lines[lineIdx]) {
-            const GlyphInfo *glyphInfo = gi.info;
+            const GlyphInfo *glyphInfo = s_renderGlyph(*m_glyphAtlas, params.font, gi, layoutPixelSize, render);
+            if (glyphInfo == nullptr || glyphInfo->width == 0 || glyphInfo->height == 0) {
+                continue;
+            }
 
-            float posX = std::round(offsetX + gi.localX + glyphInfo->bearingX);
-            float posY = std::round(baseline - glyphInfo->bearingY);
+            float posX = std::round((offsetX + gi.localX) * render.scale + glyphInfo->bearingX);
+            float posY = std::round(baseline * render.scale - glyphInfo->bearingY);
 
             float uvMinX = glyphInfo->x / atlasWidth;
             float uvMinY = glyphInfo->y / atlasHeight;
@@ -491,8 +540,8 @@ std::vector<InstanceData> TextProcessor::layoutTextAtlas(const std::string &text
 
             // placed on whole physical pixels above, then handed back as a logical instance
             InstanceData inst{};
-            inst.translation = vec2(centerX, centerY) / scale;
-            inst.scale = vec2(glyphInfo->width, glyphInfo->height) / scale;
+            inst.translation = vec2(centerX, centerY) / toLayout;
+            inst.scale = vec2(glyphInfo->width, glyphInfo->height) / toLayout;
             inst.fillColor = packedColor;
             inst.setUvRect(vec4(uvMinX, uvMinY, uvMaxX, uvMaxY));
             inst.setPrimitiveType(PRIMITIVE_TEXT);
@@ -544,28 +593,40 @@ BatchedText TextProcessor::layoutTextBatched(const std::string &text, const Text
         }
     }
 
+    const uint32_t layoutPixelSize = s_pixelSize(params.fontSize);
+    const RenderSize render = s_renderSize(layoutPixelSize, s_validRenderScale(logicalParams.renderScale));
+    const auto glyphFor = [&](const ShapedGlyph &shaped) {
+        return s_renderGlyph(*m_glyphAtlas, params.font, shaped, layoutPixelSize, render);
+    };
+
     // The render quad is sized from nominal font metrics (ascender/descender), but glyph ink
     // isn't bound by those metrics (accented caps, descenders on g/y/p/q/j, etc). Pad the quad
     // by the actual overshoot of the first/last line so that ink isn't clipped by the quad edge.
+    // Measured in the pixels the glyphs are drawn at, and taken back to the layout below.
     float topOvershoot = 0.0f;
     for (const auto &gi : lines.front()) {
-        topOvershoot = std::max(topOvershoot, gi.info->bearingY - metrics.ascender);
+        if (const GlyphInfo *info = glyphFor(gi); info != nullptr) {
+            topOvershoot = std::max(topOvershoot, info->bearingY - metrics.ascender * render.scale);
+        }
     }
     float bottomOvershoot = 0.0f;
     for (const auto &gi : lines.back()) {
-        float glyphBottom = gi.info->height - gi.info->bearingY;
-        bottomOvershoot = std::max(bottomOvershoot, glyphBottom + metrics.descender);
+        if (const GlyphInfo *info = glyphFor(gi); info != nullptr) {
+            float glyphBottom = info->height - info->bearingY;
+            bottomOvershoot = std::max(bottomOvershoot, glyphBottom + metrics.descender * render.scale);
+        }
     }
     float topPad = std::ceil(std::max(topOvershoot, 0.0f));
     float bottomPad = std::ceil(std::max(bottomOvershoot, 0.0f));
 
     // the box sits on whole physical pixels so every glyph inside it does too; the quad goes
-    // back to logical pixels while the glyph data below stays physical
+    // back to logical pixels while the glyph data below stays physical. Drawn scaled, the box is
+    // put on the window's pixel grid after it is mapped there instead.
     float boxX = std::round(params.position.x);
-    float boxY = std::round(startY) - topPad;
+    float boxY = std::round(startY) - topPad / render.scale;
     out.pos = vec2(boxX, boxY) / scale;
-    out.size = vec2(std::max(params.bounds.x, maxLineWidth), totalHeight + topPad + bottomPad) / scale;
-    out.lineHeightPx = lineHeightPx;
+    out.size = vec2(std::max(params.bounds.x, maxLineWidth), totalHeight + (topPad + bottomPad) / render.scale) / scale;
+    out.lineHeightPx = lineHeightPx * render.scale;
 
     size_t glyphTotal = 0;
     for (const auto &line : lines) {
@@ -595,10 +656,14 @@ BatchedText TextProcessor::layoutTextBatched(const std::string &text, const Text
             glyphLine.glyphCount = 0;
 
             for (const auto &gi : lines[lineIdx]) {
-                const GlyphInfo *glyphInfo = gi.info;
+                const GlyphInfo *glyphInfo = glyphFor(gi);
+                if (glyphInfo == nullptr || glyphInfo->width == 0 || glyphInfo->height == 0) {
+                    continue;
+                }
 
-                float relX = offsetX + gi.localX + glyphInfo->bearingX - boxX;
-                float relY = baseline - glyphInfo->bearingY - boxY;
+                // the pen positions are the layout's, drawn render.scale times as far apart
+                float relX = (offsetX + gi.localX - boxX) * render.scale + glyphInfo->bearingX;
+                float relY = (baseline - boxY) * render.scale - glyphInfo->bearingY;
 
                 GlyphQuad quad;
                 quad.posMin = packU16x2(clampToU16(relX), clampToU16(relY));

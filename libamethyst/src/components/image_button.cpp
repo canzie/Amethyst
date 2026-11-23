@@ -81,7 +81,7 @@ void ImageButton::draw(DrawContext &ctx)
 
         InstanceData imageData = createInstanceData();
         imageData.zIndex = drawZ(IMAGE_DRAW_LAYER);
-        m_image.drawImage(ctx, absoluteSize, imageData);
+        m_image.drawImage(ctx, *this, imageData);
     }
 
     drawChildren(ctx);

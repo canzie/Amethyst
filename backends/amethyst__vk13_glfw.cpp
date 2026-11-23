@@ -988,7 +988,7 @@ void AmVulkanBackend::contentScaleCallback(GLFWwindow *window, float xscale, flo
     // GLFW reports one per axis, which are the same on every platform it supports
     (void)yscale;
     if (it->second.uiWindow != nullptr) {
-        it->second.uiWindow->setLogicalToPhysicalScale(xscale);
+        it->second.uiWindow->setDisplayScale(xscale);
     }
 }
 
@@ -1009,7 +1009,7 @@ void AmVulkanBackend::registerWindow(void *glfwWindow, Window *uiWindow)
     if (uiWindow != nullptr) {
         float scale = 1.0f;
         glfwGetWindowContentScale(window, &scale, nullptr);
-        uiWindow->setLogicalToPhysicalScale(scale);
+        uiWindow->setDisplayScale(scale);
     }
     input.prevMouseButton = glfwSetMouseButtonCallback(window, mouseButtonCallback);
     input.prevCursorPos = glfwSetCursorPosCallback(window, cursorPosCallback);

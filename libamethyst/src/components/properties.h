@@ -67,6 +67,7 @@ template <FieldShape Shape> struct BasePropertiesFields {
     F<UDim2> position{};
     F<UDim2> size{};
     F<Degrees> rotation{};
+    F<float> scale{}; // draws this node and its subtree this many times larger around its anchor point; layout does not see it
     F<bool> visible{};
     F<int32_t> zIndex{};
     F<ZIndexBehavior> zindexBehavior{};
@@ -106,6 +107,7 @@ template <FieldShape Shape> struct BaseStyleFields {
     F<vec2> backgroundSize{};
     F<vec2> backgroundStep{};
     F<vec2> backgroundPosition{};
+    F<ThicknessScaling> thicknessScaling{};
 };
 
 using BaseStylePropertiesArgs = BaseStyleFields<FieldShape::Args>;
@@ -164,6 +166,7 @@ template <FieldShape Shape> struct ImageStyleFields {
     F<ImageScaleType> scaleType{};
     F<vec2> tileSize{};
     F<float> imageTransparency{};
+    F<ImageSamplingMode> samplingMode{};
 };
 
 using ImageStylePropertiesArgs = ImageStyleFields<FieldShape::Args>;

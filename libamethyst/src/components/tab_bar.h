@@ -89,6 +89,7 @@ class TabBar : public UIObject {
 
     std::function<void(Instance *content)> onTabClosed;
     std::function<void(Instance *content)> onTabTornOff;
+    // positions are the cursor in window coordinates
     std::function<void(Instance *content, vec2 pos)> onTornOffTabMoved;
     std::function<void(std::unique_ptr<Tab>, vec2 dropPos)> onTornOffTabReleased;
     std::function<void(int32_t index)> onSelectionChanged;

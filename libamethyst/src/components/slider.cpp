@@ -206,17 +206,18 @@ void Slider::layoutTrack(float normalizedPos, float thumbWidth, const std::strin
         drag->mode = DragMode::HORIZONTAL;
     }
 
-    auto applyFromX = [this, clampedThumbWidth, applyNormalized](float absoluteX) {
-        float relative = absoluteX - absolutePosition.x;
+    // the drag detector reports the cursor in window coordinates
+    auto applyFromX = [this, clampedThumbWidth, applyNormalized](vec2 screenPoint) {
+        float relative = toLayout(screenPoint).x - absolutePosition.x;
         float span = std::max(absoluteSize.x - clampedThumbWidth, 1.0f);
         float normalized = std::clamp((relative - clampedThumbWidth * 0.5f) / span, 0.0f, 1.0f);
         applyNormalized(normalized);
     };
     drag->onDragStart = [this, applyFromX](vec2 startPos) {
-        applyFromX(startPos.x);
+        applyFromX(startPos);
         m_thumb->setGuiState(static_cast<uint16_t>(m_thumb->getGuiState() | GUI_STATE_PRESSED));
     };
-    drag->onDragUpdate = [applyFromX](vec2, vec2 position) { applyFromX(position.x); };
+    drag->onDragUpdate = [applyFromX](vec2, vec2 position) { applyFromX(position); };
     drag->onDragEnd = [this](vec2) { m_thumb->setGuiState(static_cast<uint16_t>(m_thumb->getGuiState() & ~GUI_STATE_PRESSED)); };
 
     s_setupValueLabel(*m_valueLabel, this, valueText);

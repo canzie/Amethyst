@@ -132,13 +132,17 @@ void Popup::open(UIObject *anchor)
         return;
     }
 
+    // the overlay is never scaled, so the popup lines up with the anchor as it is drawn, not as it is laid out
+    const vec4 anchorRect = anchor->screenRect();
+    const vec2 anchorPos(anchorRect.x, anchorRect.y);
+    const vec2 anchorSize(anchorRect.z - anchorRect.x, anchorRect.w - anchorRect.y);
     vec2 viewport = m_overlay->absoluteSize;
     vec2 contentSize = resolveSize(viewport);
     if (matchAnchorWidth) {
-        contentSize.x = anchor->absoluteSize.x;
+        contentSize.x = anchorSize.x;
     }
 
-    vec2 pos = resolvePlacement(anchor->absolutePosition, anchor->absoluteSize, contentSize, viewport);
+    vec2 pos = resolvePlacement(anchorPos, anchorSize, contentSize, viewport);
 
     if (matchAnchorWidth) {
         setBaseProperties({

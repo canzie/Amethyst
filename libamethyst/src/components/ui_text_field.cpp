@@ -506,9 +506,10 @@ void UITextField::drawText(DrawContext &ctx)
     }
 
     TextLayoutParams params;
-    params.position = snapToPhysicalPixel(absoluteContentPosition, ctx.logicalToPhysicalScale);
+    params.position = TextProcessor::snapToPhysicalPixel(absoluteContentPosition, ctx.logicalToPhysicalScale);
     params.bounds = absoluteContentSize;
     params.logicalToPhysicalScale = ctx.logicalToPhysicalScale;
+    params.renderScale = absoluteScale;
     params.font = m_font;
     params.fontSize = m_tiProps.text.fontSize;
     params.color = colorToUse;
@@ -527,6 +528,7 @@ void UITextField::drawText(DrawContext &ctx)
     next.truncate = params.truncate;
     next.wrap = params.wrap;
     next.logicalToPhysicalScale = params.logicalToPhysicalScale;
+    next.renderScale = params.renderScale;
     next.origin = params.position;
 
     bool textChanged = textToRender != m_renderedText;
@@ -534,7 +536,9 @@ void UITextField::drawText(DrawContext &ctx)
                        m_textLayout.logicalToPhysicalScale != next.logicalToPhysicalScale;
     bool registryChanged = m_textAlloc != nullptr && m_textAlloc->registry != ctx.geometry;
 
-    if (!textChanged && !registryChanged && m_textLayout.matches(next)) {
+    // drawn scaled, the quad is placed on the window's pixel grid as a whole, which moving it by a layout delta
+    // would undo
+    if (!textChanged && !registryChanged && m_textLayout.matches(next) && !isScaled()) {
         if (m_textAlloc != nullptr) {
             if (InstanceData *inst = ctx.geometry->getMutable(*m_textAlloc)) {
                 inst->translation = inst->translation + (next.origin - m_textLayout.origin);
@@ -578,6 +582,8 @@ void UITextField::drawText(DrawContext &ctx)
         inst.clipRect = clipRect;
         inst.setVisible(isVisible());
 
+        mapToScreen(inst);
+        TextProcessor::snapQuadToPhysicalPixel(inst, ctx.logicalToPhysicalScale);
         s_pushData(ctx.geometry, m_textAlloc, inst);
     }
 
@@ -653,6 +659,7 @@ void UITextField::drawSelection(DrawContext &ctx)
     data.clipRect = clipRect;
     data.setVisible(visible);
 
+    mapToScreen(data);
     s_pushData(ctx.geometry, m_selectionAlloc, data);
 }
 
@@ -681,6 +688,7 @@ void UITextField::drawCursor(DrawContext &ctx)
     data.clipRect = clipRect;
     data.setVisible(visible);
 
+    mapToScreen(data);
     s_pushData(ctx.geometry, m_cursorAlloc, data);
 }
 

@@ -81,6 +81,7 @@ const uint PRIMITIVE_CANVAS_BEZIER = 11;
 
 const uint INSTANCE_FLAG_REPEAT_X = 0x00000008u;
 const uint INSTANCE_FLAG_REPEAT_Y = 0x00000010u;
+const uint INSTANCE_FLAG_PIXELATED = 0x00000040u;
 
 // matches BorderMode in components/common.h
 const uint BORDER_NONE = 0;
@@ -303,6 +304,22 @@ vec4 evalGradient(uint slot, vec2 uv)
     return prevColor;
 }
 
+// a pixelated image shows each of its pixels as a hard edged square when enlarged,
+// sampled at the texel centre; a shrunk one stays smoothed, where nearest sampling would only alias
+vec2 imageUV(uint textureIndex, vec2 uv)
+{
+    if ((fragFlags & INSTANCE_FLAG_PIXELATED) == 0u) {
+        return uv;
+    }
+    vec2 size = vec2(textureSize(gTextures[nonuniformEXT(textureIndex)], 0));
+    vec2 texel = uv * size;
+    vec2 footprint = fwidth(texel);
+    if (max(footprint.x, footprint.y) >= 1.0) {
+        return uv;
+    }
+    return (floor(texel) + 0.5) / size;
+}
+
 void main()
 {
     // all-zero is the CPU's "no clip" sentinel (UIBase2D::clipRect default); anything else is a
@@ -369,7 +386,7 @@ void main()
     // the target stores sRGB-encoded values and fill colours arrive as authored, so a sampled
     // texture, which returns linear values, is encoded before it meets them
     if (fragPrimitiveType == PRIMITIVE_SVG) {
-        vec4 texColor = texture(gTextures[nonuniformEXT(fragTextureId)], fragUV);
+        vec4 texColor = texture(gTextures[nonuniformEXT(fragTextureId)], imageUV(fragTextureId, fragUV));
         vec4 tinted = vec4(linearToSrgb(texColor.rgb) * fragFillColor.rgb, texColor.a * fragFillColor.a);
         if (tinted.a < 0.001) discard;
         outColor = tinted;
@@ -477,7 +494,7 @@ void main()
     // the image replaces the fill colour and its alpha masks the shape, so transparent regions
     // of a PNG stay transparent instead of showing the fill
     if (fragTextureId != INVALID_TEXTURE) {
-        vec4 texColor = texture(gTextures[nonuniformEXT(fragTextureId)], shapeUV);
+        vec4 texColor = texture(gTextures[nonuniformEXT(fragTextureId)], imageUV(fragTextureId, shapeUV));
         fillColor = vec4(linearToSrgb(texColor.rgb) * fillColor.rgb, texColor.a * fillColor.a);
     }
 

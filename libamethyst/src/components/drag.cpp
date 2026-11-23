@@ -138,7 +138,7 @@ EventResult Drag::onInputBegan(const InputObject &input)
     if (m_state == State::EDITING) {
         return EventResult::PROPAGATE;
     }
-    m_pressX = input.position.x;
+    m_pressX = toScreen(vec2(input.position.x, input.position.y)).x;
     m_lastX = m_pressX;
     m_state = State::PENDING;
     setGuiState(static_cast<uint16_t>(getGuiState() | GUI_STATE_PRESSED));
@@ -148,10 +148,11 @@ EventResult Drag::onInputBegan(const InputObject &input)
     return EventResult::CONSUMED;
 }
 
-EventResult Drag::onMouseMoved(int32_t x, int32_t y)
+EventResult Drag::onMouseMoved(vec2 position)
 {
-    (void)y;
-    if (m_state == State::PENDING && std::abs(static_cast<float>(x) - m_pressX) > SCRUB_THRESHOLD) {
+    // scrubbing follows how far the mouse travels on screen, whatever this field is scaled by
+    const float x = toScreen(position).x;
+    if (m_state == State::PENDING && std::abs(x - m_pressX) > SCRUB_THRESHOLD) {
         m_state = State::SCRUBBING;
         beginScrub();
         // Hide and unlock the cursor for unbounded scrubbing. This switches the coordinate
@@ -163,11 +164,11 @@ EventResult Drag::onMouseMoved(int32_t x, int32_t y)
     }
     if (m_state == State::SCRUBBING) {
         if (m_reseedScrub) {
-            m_lastX = static_cast<float>(x);
+            m_lastX = x;
             m_reseedScrub = false;
         } else {
-            float delta = static_cast<float>(x) - m_lastX;
-            m_lastX = static_cast<float>(x);
+            float delta = x - m_lastX;
+            m_lastX = x;
             if (delta != 0.0f) {
                 applyScrub(delta);
             }

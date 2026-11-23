@@ -20,22 +20,6 @@
 namespace Amethyst {
 
 /**
- * @brief Round a logical position onto the physical pixel grid.
- *
- * Glyph bitmaps are rasterised in physical pixels, so text whose origin falls between two
- * physical pixels is sampled off its grid and blurs. At a fractional scale (1.25, 1.5) a whole
- * logical position can still land between pixels, which is why this rounds in physical space.
- * @param logical Position in logical pixels
- * @param logicalToPhysicalScale Physical pixels per logical pixel
- * @return The nearest logical position that sits on a whole physical pixel
- */
-inline vec2 snapToPhysicalPixel(vec2 logical, float logicalToPhysicalScale)
-{
-    return vec2(std::round(logical.x * logicalToPhysicalScale), std::round(logical.y * logicalToPhysicalScale)) /
-           logicalToPhysicalScale;
-}
-
-/**
  * @brief Parameters for text layout
  *
  * Positions, bounds, sizes and spacing are in logical pixels. Glyphs rasterise at fontSize
@@ -57,6 +41,9 @@ struct TextLayoutParams {
     TextTruncate truncate = TextTruncate::OFF;
     bool wrap = false;
     float logicalToPhysicalScale = 1.0f; // physical pixels per logical pixel
+    // how many times larger than laid out the text is drawn, by the scale of its node and that node's ancestors;
+    // lines break and align as they would at 1, the glyphs rasterise at the size they are drawn at
+    float renderScale = 1.0f;
 };
 
 /**
@@ -78,6 +65,7 @@ struct TextLayoutState {
     TextTruncate truncate = TextTruncate::NONE;
     bool wrap = false;
     float logicalToPhysicalScale = 1.0f;
+    float renderScale = 1.0f;
     vec2 origin = {0.0f, 0.0f};
 
     /**
@@ -89,7 +77,7 @@ struct TextLayoutState {
     {
         return font == o.font && fontSize == o.fontSize && bounds == o.bounds && lineHeight == o.lineHeight && color == o.color &&
                xAlign == o.xAlign && yAlign == o.yAlign && truncate == o.truncate && wrap == o.wrap &&
-               logicalToPhysicalScale == o.logicalToPhysicalScale;
+               logicalToPhysicalScale == o.logicalToPhysicalScale && renderScale == o.renderScale;
     }
 
     /**
@@ -106,10 +94,11 @@ struct TextLayoutState {
 /**
  * @brief A laid-out text label reduced to a single quad plus its glyph side data.
  *
- * The quad, `pos`/`size`, is in logical pixels like every other instance. The glyph side data
- * is in physical pixels, the space the glyphs were rasterised in: glyph positions are u16
- * pixels relative to `pos`, and `lineHeightPx` is the physical line pitch. `lines` partitions
- * `glyphs` into reading-order rows.
+ * The quad, `pos`/`size`, is in logical pixels like every other instance, in the layout space
+ * of the node drawing it. The glyph side data is in the physical pixels the glyphs are drawn
+ * at, which is the layout scaled by renderScale: glyph positions are u16 pixels relative to
+ * `pos`, and `lineHeightPx` is the physical line pitch. `lines` partitions `glyphs` into
+ * reading-order rows.
  */
 struct BatchedText {
     vec2 pos = {0.0f, 0.0f};
@@ -128,13 +117,14 @@ struct TextRowLayoutParams {
     float letterSpacing = 0.0f;
     float tabSize = 4.0f;                // tab stop spacing, in space advances
     float logicalToPhysicalScale = 1.0f; // physical pixels per logical pixel
+    float renderScale = 1.0f;            // how many times larger than laid out the glyphs are drawn, see TextLayoutParams
 };
 
 /**
  * @brief One glyph's ink box within a row, relative to the row's top-left corner.
  *
- * In physical pixels, the same space as the glyph's atlas region in `info`, so the pair goes
- * into the glyph buffer as is.
+ * In the physical pixels the glyph is drawn at, renderScale included, the same space as the
+ * glyph's atlas region in `info`, so the pair goes into the glyph buffer as is.
  */
 struct TextRowGlyph {
     const GlyphInfo *info = nullptr;
@@ -149,7 +139,8 @@ struct TextRowGlyph {
  * without a second walk. A multi-byte sequence stores its own start x in each of its byte
  * slots, so a lookup at a codepoint boundary is the left edge of that codepoint.
  *
- * `columnX` and `width` are in logical pixels, the glyphs in physical pixels.
+ * `columnX` and `width` are in logical pixels, the glyphs in the physical pixels they are drawn
+ * at, renderScale included.
  */
 struct TextRowLayout {
     std::vector<TextRowGlyph> glyphs;
@@ -162,6 +153,37 @@ struct TextRowLayout {
  */
 class TextProcessor {
   public:
+    /**
+     * @brief Round a logical position onto the physical pixel grid.
+     *
+     * Glyph bitmaps are rasterised in physical pixels, so text whose origin falls between two
+     * physical pixels is sampled off its grid and blurs. At a fractional scale (1.25, 1.5) a whole
+     * logical position can still land between pixels, which is why this rounds in physical space.
+     * @param logical Position in logical pixels
+     * @param logicalToPhysicalScale Physical pixels per logical pixel
+     * @return The nearest logical position that sits on a whole physical pixel
+     */
+    static vec2 snapToPhysicalPixel(vec2 logical, float logicalToPhysicalScale)
+    {
+        return vec2(std::round(logical.x * logicalToPhysicalScale), std::round(logical.y * logicalToPhysicalScale)) /
+               logicalToPhysicalScale;
+    }
+
+    /**
+     * @brief Moves a batched text quad, already mapped into the window, so its top left sits on a physical pixel.
+     *
+     * Its glyphs are rasterised on whole physical pixels from that corner. A label laid out unscaled
+     * snapped its origin when it was laid out and is left where it is; one drawn under a node's
+     * scale lands wherever the scale puts it, and moves by under half a pixel here.
+     * @param data The text instance, in window coordinates
+     * @param logicalToPhysicalScale Physical pixels per logical pixel
+     */
+    static void snapQuadToPhysicalPixel(InstanceData &data, float logicalToPhysicalScale)
+    {
+        const vec2 topLeft = data.translation - data.scale * 0.5f;
+        data.translation += snapToPhysicalPixel(topLeft, logicalToPhysicalScale) - topLeft;
+    }
+
     /**
      * @brief Set the glyph atlas to use for layout
      */

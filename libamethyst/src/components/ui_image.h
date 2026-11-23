@@ -16,6 +16,7 @@ namespace Amethyst {
 struct DrawContext;
 struct GeometryAllocation;
 struct InstanceData;
+class UIBase2D;
 
 class UIImage {
 public:
@@ -35,10 +36,20 @@ public:
 
   bool resolveImageStyle(const ImageStyleProperties &resolved) { return m_imgStyle.apply(resolved); }
 
-  void drawImage(DrawContext &ctx, vec2 absoluteSize, InstanceData base);
+  /**
+   * @brief Draws the image over its owner.
+   * @param ctx Draw context
+   * @param owner The node the image fills, which also maps it into the window
+   * @param base The owner's instance in its layout space, which the image is built on
+   */
+  void drawImage(DrawContext &ctx, const UIBase2D &owner, InstanceData base);
 
 private:
-  void resolveSvg(DrawContext &ctx, vec2 absoluteSize);
+  /**
+   * @brief Rasterises an SVG at the size it covers on screen.
+   * @param drawnSize The size it is drawn at in logical window pixels, the owner's scale included
+   */
+  void resolveSvg(DrawContext &ctx, vec2 drawnSize);
 
 public:
   /**
